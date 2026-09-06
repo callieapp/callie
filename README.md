@@ -1,7 +1,7 @@
 <img src="https://raw.githubusercontent.com/callieapp/callie/main/assets/logo.svg"
      width="48" height="48" alt="Callie logo" />
 
-# Callie
+# callie
 
 > the missing linux calendar 📆
 
@@ -66,6 +66,42 @@ TBD
 
 ## Roadmap
 
-TBD
+Nothing here is released yet. Roughly in the order it needs to happen:
+
+**Calendar backends**
+
+- [ ] Google Cloud project and OAuth client, loopback redirect with PKCE
+- [ ] Google Calendar API v3 sync, using sync tokens for incremental updates
+- [ ] Submit the OAuth consent screen for verification (unverified apps are capped at
+      100 users, and review takes weeks, so this wants starting early)
+- [ ] CalDAV accounts, credentials stored in the system keyring
+- [ ] SQLite cache so the app works offline
+- [ ] Replace the placeholder sample data
+
+**The app**
+
+- [ ] Day, month and agenda views (only week exists)
+- [ ] Write path for drag-to-move, so edits actually persist
+- [ ] Natural language quick add
+- [ ] Desktop notifications, with one click to join a video call
+- [ ] Correct handling of recurring events and cross-timezone meetings
+
+**Design**
+
+- [ ] Settle the accent colour: brand `#cc6699` or interface blue, see `DESIGN.md`
+- [ ] Fill in the open questions in `DESIGN.md` (density, inspiration, font fallback)
+- [ ] A component gallery target for reviewing tokens and states in one place
+
+**Project**
+
+- [ ] Tests. There are none yet; recurrence and overlap layout need them most
+- [ ] CI that builds and runs qmllint, not just commitlint
+- [ ] Publish to a Fedora COPR and a Debian repo, then submit to the official archives
+
+**Email and domain**
+
+- [ ] Verify callieapp.org in Resend (DNS records are live)
+- [ ] Decide how `hello@` and `privacy@` forward, and wire it up
+- [ ] Send-as from those addresses, so replies come from the right place
 
 Copyright (c) 2026 Lara Kelley (larakelley.com). MIT License.

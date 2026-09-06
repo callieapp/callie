@@ -1,0 +1,58 @@
+Name:           callie
+Version:        0.1.0
+Release:        1%{?dist}
+Summary:        An elegant calendar for Linux
+
+License:        MIT
+URL:            https://callieapp.org
+Source0:        https://github.com/callieapp/callie/releases/download/v%{version}/%{name}-%{version}.tar.xz
+
+BuildRequires:  cmake >= 3.28
+BuildRequires:  gcc-c++
+BuildRequires:  ninja-build
+BuildRequires:  cmake(Qt6Core)
+BuildRequires:  cmake(Qt6Gui)
+BuildRequires:  cmake(Qt6Qml)
+BuildRequires:  cmake(Qt6Quick)
+BuildRequires:  cmake(Qt6QuickControls2)
+BuildRequires:  cmake(Qt6Network)
+BuildRequires:  cmake(Qt6Sql)
+BuildRequires:  cmake(Qt6DBus)
+BuildRequires:  cmake(KF6CalendarCore)
+BuildRequires:  desktop-file-utils
+BuildRequires:  libappstream-glib
+
+Requires:       hicolor-icon-theme
+
+%description
+Callie is a calendar for people who live in their calendar. It connects to
+Google Calendar and any CalDAV server, and gives you day, week, month and
+agenda views that are quick to read and quick to change. A companion
+command-line interface is included for power users.
+
+%prep
+%autosetup
+
+%build
+%cmake -GNinja
+%cmake_build
+
+%install
+%cmake_install
+
+%check
+desktop-file-validate %{buildroot}%{_datadir}/applications/org.callieapp.Callie.desktop
+appstream-util validate-relax --nonet \
+    %{buildroot}%{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml
+
+%files
+%license LICENSE
+%doc README.md
+%{_bindir}/callie
+%{_bindir}/callie-gui
+%{_datadir}/applications/org.callieapp.Callie.desktop
+%{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml
+
+%changelog
+* Sat Sep 05 2026 Lara Kelley <larakelley@higharc.ai> - 0.1.0-1
+- Initial package

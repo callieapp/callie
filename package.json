@@ -1,0 +1,13 @@
+{
+  "name": "callie-devtools",
+  "private": true,
+  "type": "module",
+  "description": "Development tooling only. Callie itself is C++/QML and does not use Node at runtime.",
+  "scripts": {
+    "commitlint": "commitlint --edit"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0"
+  }
+}

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.callieapp.Callie</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Callie</name>
+  <summary>An elegant calendar for Linux</summary>
+
+  <description>
+    <p>
+      Callie is a calendar for people who live in their calendar. It connects to
+      Google Calendar and any CalDAV server, and gives you day, week, month and
+      agenda views that are quick to read and quick to change.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Google Calendar and CalDAV accounts</li>
+      <li>Day, week, month and agenda views</li>
+      <li>Drag to reschedule, drag to create</li>
+      <li>Natural-language quick add</li>
+      <li>Desktop notifications with one-click join for video calls</li>
+      <li>A companion command-line interface for power users</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">org.callieapp.Callie.desktop</launchable>
+
+  <url type="homepage">https://callieapp.org</url>
+  <url type="bugtracker">https://github.com/callieapp/callie/issues</url>
+
+  <developer id="org.callieapp">
+    <name>Lara Kelley</name>
+  </developer>
+
+  <content_rating type="oars-1.1"/>
+
+  <categories>
+    <category>Office</category>
+    <category>Calendar</category>
+  </categories>
+
+  <releases>
+    <release version="0.1.0" date="2026-09-05" type="development">
+      <description>
+        <p>Initial scaffold: week view, design system, and the callie CLI.</p>
+      </description>
+    </release>
+  </releases>
+</component>

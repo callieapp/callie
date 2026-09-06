@@ -1,0 +1,120 @@
+/* Palette mirrors src/gui/qml/Theme.qml so the site and the app agree. */
+:root {
+    --bg: #fcfcfd;
+    --surface: #ffffff;
+    --hairline: #eceef1;
+    --border: #dfe3e8;
+    --text: #14161a;
+    --text-muted: #6b7280;
+    --text-faint: #9aa1ac;
+    --accent: #3b72e8;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0e1013;
+        --surface: #16191e;
+        --hairline: #22262d;
+        --border: #2c323b;
+        --text: #eef1f5;
+        --text-muted: #99a1ac;
+        --text-faint: #5f6874;
+        --accent: #6e9bf5;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+}
+
+header.site {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+}
+
+header.site a.name {
+    font-size: 1.25rem;
+    font-weight: 650;
+    color: var(--text);
+    text-decoration: none;
+}
+
+header.site span.tagline {
+    color: var(--text-faint);
+    font-size: 0.9rem;
+}
+
+h1 {
+    font-size: 2.25rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.5rem;
+}
+
+h2 {
+    font-size: 1.1rem;
+    font-weight: 650;
+    margin: 2.5rem 0 0.5rem;
+}
+
+p.lead {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    margin: 0 0 2.5rem;
+}
+
+a { color: var(--accent); }
+
+code, pre {
+    font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+    font-size: 0.875rem;
+}
+
+pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+}
+
+ul { padding-left: 1.25rem; }
+li { margin: 0.35rem 0; }
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--hairline);
+    margin: 3rem 0;
+}
+
+footer.site {
+    color: var(--text-faint);
+    font-size: 0.875rem;
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+}
+
+footer.site a { color: var(--text-muted); }
+
+.meta {
+    color: var(--text-faint);
+    font-size: 0.875rem;
+    margin-top: -0.25rem;
+}

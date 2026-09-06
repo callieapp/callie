@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Callie
+GenericName=Calendar
+Comment=An elegant calendar for Linux
+Exec=callie-gui %U
+Icon=org.callieapp.Callie
+Terminal=false
+Categories=Office;Calendar;
+Keywords=calendar;event;schedule;meeting;agenda;caldav;
+StartupNotify=true
+StartupWMClass=org.callieapp.Callie
+MimeType=text/calendar;application/x-vnd.akonadi.calendar.event;x-scheme-handler/webcal;x-scheme-handler/webcals;

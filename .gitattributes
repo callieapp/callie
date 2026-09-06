@@ -1,0 +1,16 @@
+# Keep the website and development tooling out of release tarballs, so the
+# source distro maintainers review contains only what builds the application.
+# Directories are listed without a trailing slash, which export-ignore requires.
+www                  export-ignore
+.github              export-ignore
+.githooks            export-ignore
+.gitattributes       export-ignore
+.editorconfig        export-ignore
+.clang-format        export-ignore
+package.json         export-ignore
+package-lock.json    export-ignore
+commitlint.config.js export-ignore
+CONTRIBUTING.md      export-ignore
+GUIDELINES.md        export-ignore
+CLAUDE.md            export-ignore
+AGENTS.md            export-ignore

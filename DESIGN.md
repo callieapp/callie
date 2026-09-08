@@ -1,46 +1,43 @@
-# Callie design
+# Callie design philosophy
 
-How to use this document: it holds decisions, not aspirations. Every line should be
-specific enough that a diff could violate it. If something here is only an adjective,
-it is not finished.
+> How to use this document: Every line should be specific enough that a diff could
+> violate it. If something here is only an adjective, it's not finished.
+> Meant for both human and bot eyes.
 
-Token *values* live in `src/ui/Theme.qml`. This file holds the reasoning behind them.
-Do not duplicate values here, they will drift.
+---
 
-Marked `TODO(lara)` items are the ones only Lara can answer. Everything else is settled.
+Token _values_ live in `src/ui/Theme.qml`.
+
+Things marked `TODO(lara)` items are the ones only Lara should answer as the primary
+maintainer and designer.
 
 ## When in doubt
 
-Do the plainer thing. Callie competes on feeling considered, not on having more.
+Do the plainest thing. Callie is meant to feel intentional, elegant, and considered.
+It is not compelling because it has more features or bells and whistles.
 
 ## North star
 
-Callie should feel like a well-made 2026 desktop application, not a Linux utility.
-The bar is Morgen: the reason to leave it was the subscription and the AI features being
-pushed, never the craft.
+Callie should feel like a well-made and modern desktop application, not a Linux utility.
+The bar to clear is [Morgen](https://www.morgen.so).
 
-## Anti-goals
+## Non-goals
 
-These are settled. Do not re-propose them.
+These are settled decisions; please do not re-propose them!
 
-- No tasks, scheduling links, availability sharing, or workflows. Callie is a calendar.
-- No AI features.
+- No tasks, scheduling links, availability sharing, or workflows.
+- No AI or "smart" features, beyond natural language parsing for Quick Add events.
 - No accounts, no servers, no telemetry.
-- No adopting another desktop's visual language. Not Kirigami, not libadwaita.
-- Nothing that looks like a 1990s Linux app: no beveled borders, no gradient buttons,
-  no icon-only toolbars, no modal dialog for something that could happen inline.
+- No adopting another desktop's visual language (e.g. Kirigami, libadwaita)
 
-## Resolved tensions
+## Important design choices
 
-The point of this section is extrapolation. When a case is not covered elsewhere, reason
-from here.
-
-| Tension | Callie picks | Because |
-| --- | --- | --- |
-| Density vs breathing room | TODO(lara) | |
-| Discoverability vs minimalism | TODO(lara) | |
-| Consistency vs best answer for one view | Consistency | A design system only pays off if it is obeyed when inconvenient. |
-| Animation vs immediacy | TODO(lara) | |
+| Tension                                 | Callie picks | Because                                                          |
+| --------------------------------------- | ------------ | ---------------------------------------------------------------- |
+| Density vs breathing room               | TODO(lara)   |                                                                  |
+| Discoverability vs minimalism           | TODO(lara)   |                                                                  |
+| Consistency vs best answer for one view | Consistency  | A design system only pays off if it is obeyed when inconvenient. |
+| Animation vs immediacy                  | TODO(lara)   |                                                                  |
 
 > **TODO(lara):** the first two matter most. A week view can be Fantastical-dense or
 > Google-Calendar-airy and both are defensible. Which one, and does the answer change
@@ -131,10 +128,10 @@ The CLI is a first-class surface, not a debug tool. It follows the conventions i
 
 A link alone does not transfer anything. Say what to take and what to ignore.
 
-| Reference | Take this | Not this |
-| --- | --- | --- |
-| Morgen | TODO(lara) | The subscription, the AI surface |
-| TODO(lara) | | |
+| Reference  | Take this  | Not this                         |
+| ---------- | ---------- | -------------------------------- |
+| Morgen     | TODO(lara) | The subscription, the AI surface |
+| TODO(lara) |            |                                  |
 
 > **TODO(lara):** three or four entries is plenty. Specific attributes beat a long list.
 > Screenshots pasted into a session are more useful than links for anything visual.
@@ -146,16 +143,3 @@ wrong one, annotated.
 
 > **TODO(lara):** when you next look at the week view and something feels off, screenshot
 > it and say why. That becomes an entry here and generalises further than a rule would.
-
-## Decision log
-
-Newest first. Records why, so it is not relitigated.
-
-- **2026-09-06** Logo is a calendar page with binding rings and a six-dot date grid,
-  today picked out. Tonal depth in the `#cc6699` family (`#f9e2ee` through `#8f3760`) at
-  `navi`'s level of detail rather than `git-stk`'s flat simplicity. An earlier flat
-  three-bar version was rejected as too abstract to read as a calendar. A wide outer
-  halo was also dropped: `navi` glows because it is an orb, a calendar page does not.
-- **2026-09-05** Own design system rather than Kirigami or libadwaita, accepting that QML
-  ships no design opinion and Callie must supply all of it.
-- **2026-09-05** Qt6 and QML over Electron, Tauri and GTK4. See `GUIDELINES.md`.

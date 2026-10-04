@@ -7,10 +7,12 @@ MIT licensed. App ID `org.callieapp.Callie`, homepage `callieapp.org`.
 
 | Path         | What                                                                              |
 | ------------ | --------------------------------------------------------------------------------- |
-| `src/core/`  | `libcalliecore`: `Event`, `CalendarSource`, `EventModel`. No UI.                  |
+| `src/core/`  | `libcalliecore`: `Event`, `CalendarSource`, `EventModel`. No UI and no QML types. |
 | `src/ui/`    | The QML module `Callie.Ui`: views, components, and `Theme.qml`.                   |
 | `src/gui/`   | `callie-gui` entry point. `main.cpp` only.                                        |
-| `src/cli/`   | `callie`, the command-line interface. Links QtCore only, so it stays fast.        |
+| `src/cli/`   | `callie`, the command-line interface over the same core.                          |
+| `tests/`     | Qt Test cases run by ctest. See `tst_eventmodel.cpp` for the fake-source pattern. |
+| `scripts/`   | `format.sh`, the single formatter entry point used by CMake and CI.               |
 | `data/`      | Desktop entry and AppStream metainfo.                                             |
 | `assets/`    | Logo, also installed as the application icon.                                     |
 | `packaging/` | Hand-written `rpm/callie.spec` and `debian/`, at distro-review quality.           |
@@ -41,9 +43,20 @@ Do not re-litigate these without being asked:
 
 ## Build
 
+CMake presets drive everything. `cmake --workflow --preset ci` runs exactly what CI runs.
+
+```sh
+cmake --preset dev              # configure into build/dev
+cmake --build --preset dev
+ctest --preset dev
+
+./build/dev/src/gui/callie-gui  # desktop app
+./build/dev/src/cli/callie agenda
+
+cmake --workflow --preset ci    # configure, build, qmllint and test, warnings as errors
+cmake --build --preset dev --target format        # rewrite formatting
+cmake --build --preset dev --target format-check  # verify formatting
 ```
-cmake -B build -GNinja
-cmake --build build
-./build/src/gui/callie-gui
-./build/src/cli/callie agenda
-```
+
+`clang-format` comes from `clang-tools-extra` on Fedora and `clang-format` on Debian. Without it
+the format target skips C++ and reports it.

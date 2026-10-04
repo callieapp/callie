@@ -5,7 +5,7 @@
 Callie uses [Conventional Commits](https://www.conventionalcommits.org), enforced by
 commitlint in CI and optionally by a local hook.
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
@@ -27,7 +27,7 @@ Rules the linter enforces:
 
 Good:
 
-```
+```text
 feat(qml): add drag-to-move on week view events
 fix(core): correct lane assignment for zero-length events
 docs(theme): explain why tokens live in a singleton
@@ -35,7 +35,7 @@ docs(theme): explain why tokens live in a singleton
 
 Bad:
 
-```
+```text
 Updated stuff.
 feat(qml): Added drag to move events on the week view, which required changes to EventBlock
 fix: bug
@@ -46,7 +46,7 @@ says what.
 
 ### Local hook
 
-```
+```sh
 npm install
 git config core.hooksPath .githooks
 ```
@@ -97,11 +97,32 @@ Bad:
 
 ## Code style
 
-`clang-format` and `.editorconfig` handle formatting. Run before committing:
+`clang-format`, `qmlformat` and `.editorconfig` handle formatting. One script drives the first
+two so that CMake, CI and a local run agree:
 
+```sh
+scripts/format.sh fix      # rewrite
+scripts/format.sh check    # verify, as CI does
 ```
-clang-format -i $(git diff --name-only --cached | grep -E '\.(cpp|h)$')
+
+Markdown, JSON and YAML are formatted by prettier and linted by markdownlint:
+
+```sh
+npm run format:md
+npm run lint:md
 ```
+
+## Tests
+
+Qt Test cases live in `tests/`, one executable per file, registered with ctest.
+
+```sh
+ctest --preset dev
+```
+
+New logic in `src/core/` needs a test. Follow the fake-source pattern in `tst_eventmodel.cpp`
+rather than depending on `SampleSource`, which is time-dependent. Anything asserting on wall-clock
+values must pin `TZ`, as `tests/CMakeLists.txt` does.
 
 Beyond formatting:
 

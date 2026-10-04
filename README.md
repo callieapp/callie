@@ -20,7 +20,7 @@ Callie is available to install via the following sources:
 1. FlatHub: `flatpak install org.callieapp.Callie`
 2. Fedora: `dnf install callie`
 3. Debian/Ubuntu: `apt install callie`
-4. GitHub releases [(link)](https://github.com/callieapp/callie/releases)
+4. [GitHub releases](https://github.com/callieapp/callie/releases)
 5. Build from source (see below)
 
 Installation will provide you the `Callie` desktop app and
@@ -38,18 +38,18 @@ sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kcalendarcore-deve
 Then build and run:
 
 ```sh
-cmake -B build -GNinja
-cmake --build build
+cmake --preset dev
+cmake --build --preset dev
 
-./build/src/gui/callie-gui     # desktop app
-./build/src/cli/callie agenda  # CLI
+./build/dev/src/gui/callie-gui  # desktop app
+./build/dev/src/cli/callie      # CLI, prints the agenda
 ```
 
-Editing a `.qml` file needs a rebuild, since QML is compiled into the binary. Lint it
-before committing:
+Editing a `.qml` file needs a rebuild, since QML is compiled into the binary. To run everything
+CI runs in one command:
 
 ```sh
-cmake --build build --target all_qmllint
+cmake --workflow --preset ci
 ```
 
 ## The desktop app
@@ -68,7 +68,7 @@ TBD
 
 Nothing here is released yet. Roughly in the order it needs to happen:
 
-**Calendar backends**
+### Calendar backends
 
 - [ ] Google Cloud project and OAuth client, loopback redirect with PKCE
 - [ ] Google Calendar API v3 sync, using sync tokens for incremental updates
@@ -78,7 +78,7 @@ Nothing here is released yet. Roughly in the order it needs to happen:
 - [ ] SQLite cache so the app works offline
 - [ ] Replace the placeholder sample data
 
-**The app**
+### The app
 
 - [ ] Day, month and agenda views (only week exists)
 - [ ] Write path for drag-to-move, so edits actually persist
@@ -86,19 +86,19 @@ Nothing here is released yet. Roughly in the order it needs to happen:
 - [ ] Desktop notifications, with one click to join a video call
 - [ ] Correct handling of recurring events and cross-timezone meetings
 
-**Design**
+### Design
 
 - [ ] Settle the accent colour: brand `#cc6699` or interface blue, see `DESIGN.md`
 - [ ] Fill in the open questions in `DESIGN.md` (density, inspiration, font fallback)
 - [ ] A component gallery target for reviewing tokens and states in one place
 
-**Project**
+### Project
 
 - [ ] Tests. There are none yet; recurrence and overlap layout need them most
 - [ ] CI that builds and runs qmllint, not just commitlint
 - [ ] Publish to a Fedora COPR and a Debian repo, then submit to the official archives
 
-**Email and domain**
+### Email and domain
 
 - [ ] Verify callieapp.org in Resend (DNS records are live)
 - [ ] Decide how `hello@` and `privacy@` forward, and wire it up

@@ -4,10 +4,15 @@
   "type": "module",
   "description": "Development tooling only. Callie itself is C++/QML and does not use Node at runtime.",
   "scripts": {
-    "commitlint": "commitlint --edit"
+    "commitlint": "commitlint --edit",
+    "lint:md": "markdownlint-cli2",
+    "format:md": "prettier --write \"**/*.{md,json,yml,yaml,js}\"",
+    "format:md:check": "prettier --check \"**/*.{md,json,yml,yaml,js}\""
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.6.0",
-    "@commitlint/config-conventional": "^19.6.0"
+    "@commitlint/cli": "^21.0.0",
+    "@commitlint/config-conventional": "^21.0.0",
+    "markdownlint-cli2": "^0.23.1",
+    "prettier": "3.8.1"
   }
 }

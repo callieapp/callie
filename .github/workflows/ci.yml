@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Lint commit messages
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.js
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint markdown
+        run: npx markdownlint-cli2
+
+      - name: Check formatting of docs and config
+        run: npm run format:md:check
+
+  format:
+    # Needs clang-format and qmlformat, so it runs where Qt is packaged.
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - name: Install tools
+        run: >-
+          dnf install -y --setopt=install_weak_deps=False
+          git clang-tools-extra qt6-qtdeclarative-devel
+
+      - uses: actions/checkout@v5
+
+      - name: Check C++ and QML formatting
+        run: ./scripts/format.sh check
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: fedora
+            image: fedora:44
+          - name: debian
+            image: debian:trixie
+    name: build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      # git has to exist before checkout, or the action cannot clone.
+      - name: Install build dependencies (Fedora)
+        if: matrix.name == 'fedora'
+        run: >-
+          dnf install -y --setopt=install_weak_deps=False
+          git gcc-c++ cmake ninja-build
+          qt6-qtbase-devel qt6-qtdeclarative-devel
+          qt6-qtquickcontrols2-devel
+
+      - name: Install build dependencies (Debian)
+        if: matrix.name == 'debian'
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            git build-essential cmake ninja-build \
+            qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools \
+            qml6-module-qtquick-controls qml6-module-qtquick-templates
+
+      - uses: actions/checkout@v5
+
+      # One command covers configure, build, qmllint and ctest. The preset
+      # turns compiler warnings into errors.
+      - name: Configure, build, lint and test
+        run: cmake --workflow --preset ci

@@ -41,6 +41,7 @@ command-line interface is included for power users.
 %cmake_install
 
 %check
+%ctest
 desktop-file-validate %{buildroot}%{_datadir}/applications/org.callieapp.Callie.desktop
 appstream-util validate-relax --nonet \
     %{buildroot}%{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml

@@ -9,6 +9,10 @@ add_library(calliecore STATIC
     EventModel.cpp
 )
 
+# The QML module in src/ui exposes EventModel as a foreign type. Its registrar
+# can only describe the type if this target publishes its metatypes.
+qt_extract_metatypes(calliecore)
+
 target_include_directories(calliecore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(calliecore

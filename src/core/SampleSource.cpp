@@ -8,18 +8,19 @@ namespace {
 
 struct Seed
 {
-    int dayOfWeek;      // Qt::Monday .. Qt::Sunday
+    int dayOfWeek; // Qt::Monday .. Qt::Sunday
     int startHour;
     int startMinute;
     int durationMinutes;
     const char *summary;
     const char *location;
     const char *conference;
-    int calendar;       // index into m_calendars
+    int calendar; // index into m_calendars
 };
 
 // A week that exercises the layout: back-to-back meetings, a three-way
 // overlap on Wednesday, an early call, and a long focus block.
+// clang-format off: the columns are aligned on purpose, so the table stays readable.
 constexpr Seed kSeeds[] = {
     { Qt::Monday,    9, 30,  30, "Standup",                  "",            "https://zoom.us/j/1112223334", 0 },
     { Qt::Monday,   11,  0,  60, "1:1 with Priya",           "",            "https://zoom.us/j/9998887776", 0 },
@@ -40,21 +41,23 @@ constexpr Seed kSeeds[] = {
     { Qt::Friday,   17,  0,  90, "Climbing",                 "The Wall",   "",                             2 },
     { Qt::Sunday,   10,  0, 120, "Farmers market",           "",            "",                             2 },
 };
+// clang-format on
 
 } // namespace
 
-SampleSource::SampleSource(QObject *parent)
-    : CalendarSource(parent)
+SampleSource::SampleSource(QObject *parent) : CalendarSource(parent)
 {
     m_calendars = {
-        { QStringLiteral("work"),     QStringLiteral("Work"),     QColor(QStringLiteral("#5B8DEF")), true, true },
-        { QStringLiteral("focus"),    QStringLiteral("Focus"),    QColor(QStringLiteral("#7C6BD6")), true, true },
-        { QStringLiteral("personal"), QStringLiteral("Personal"), QColor(QStringLiteral("#2FA98C")), true, true },
+        {QStringLiteral("work"), QStringLiteral("Work"), QColor(QStringLiteral("#5B8DEF")), true,
+         true},
+        {QStringLiteral("focus"), QStringLiteral("Focus"), QColor(QStringLiteral("#7C6BD6")), true,
+         true},
+        {QStringLiteral("personal"), QStringLiteral("Personal"), QColor(QStringLiteral("#2FA98C")),
+         true, true},
     };
 }
 
-QList<Event> SampleSource::eventsBetween(const QDateTime &from,
-                                         const QDateTime &to,
+QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime &to,
                                          const QTimeZone &tz) const
 {
     QList<Event> out;

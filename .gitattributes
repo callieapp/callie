@@ -6,7 +6,6 @@ www                  export-ignore
 .githooks            export-ignore
 .gitattributes       export-ignore
 .editorconfig        export-ignore
-.clang-format        export-ignore
 package.json         export-ignore
 package-lock.json    export-ignore
 commitlint.config.js export-ignore

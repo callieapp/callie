@@ -24,9 +24,18 @@ bool useColor()
     return tty;
 }
 
-QString dim(const QString &s)    { return useColor() ? QStringLiteral("\033[2m%1\033[0m").arg(s) : s; }
-QString bold(const QString &s)   { return useColor() ? QStringLiteral("\033[1m%1\033[0m").arg(s) : s; }
-QString accent(const QString &s) { return useColor() ? QStringLiteral("\033[36m%1\033[0m").arg(s) : s; }
+QString dim(const QString &s)
+{
+    return useColor() ? QStringLiteral("\033[2m%1\033[0m").arg(s) : s;
+}
+QString bold(const QString &s)
+{
+    return useColor() ? QStringLiteral("\033[1m%1\033[0m").arg(s) : s;
+}
+QString accent(const QString &s)
+{
+    return useColor() ? QStringLiteral("\033[36m%1\033[0m").arg(s) : s;
+}
 
 int runAgenda(int days)
 {
@@ -50,15 +59,15 @@ int runAgenda(int days)
         if (e.start.date() != current) {
             current = e.start.date();
             const QString label = current == today
-                ? QObject::tr("Today")
-                : QLocale().toString(current, QStringLiteral("ddd d MMM"));
+                                      ? QObject::tr("Today")
+                                      : QLocale().toString(current, QStringLiteral("ddd d MMM"));
             out << "\n" << bold(label) << "\n";
         }
 
-        const QString time = e.allDay
-            ? QStringLiteral("all-day")
-            : QStringLiteral("%1–%2").arg(e.start.toString(QStringLiteral("HH:mm")),
-                                          e.end.toString(QStringLiteral("HH:mm")));
+        const QString time =
+            e.allDay ? QStringLiteral("all-day")
+                     : QStringLiteral("%1–%2").arg(e.start.toString(QStringLiteral("HH:mm")),
+                                                   e.end.toString(QStringLiteral("HH:mm")));
 
         out << QStringLiteral("  %1  %2").arg(dim(time.leftJustified(11)), e.summary);
         if (!e.conferenceUrl.isEmpty())
@@ -93,9 +102,9 @@ int main(int argc, char *argv[])
     parser.addVersionOption();
     parser.addPositionalArgument(QStringLiteral("command"), QStringLiteral("Command to run."));
 
-    QCommandLineOption daysOption({ QStringLiteral("d"), QStringLiteral("days") },
-                                  QStringLiteral("Days of agenda to show."),
-                                  QStringLiteral("n"), QStringLiteral("7"));
+    QCommandLineOption daysOption({QStringLiteral("d"), QStringLiteral("days")},
+                                  QStringLiteral("Days of agenda to show."), QStringLiteral("n"),
+                                  QStringLiteral("7"));
     parser.addOption(daysOption);
     parser.process(app);
 
@@ -108,8 +117,8 @@ int main(int argc, char *argv[])
     if (command == QLatin1String("gui"))
         return QProcess::execute(QStringLiteral("callie-gui"), {});
 
-    if (command == QLatin1String("add") || command == QLatin1String("sync")
-        || command == QLatin1String("daemon")) {
+    if (command == QLatin1String("add") || command == QLatin1String("sync") ||
+        command == QLatin1String("daemon")) {
         err << QStringLiteral("callie: '%1' is not implemented yet.\n").arg(command);
         return 2;
     }

@@ -15,8 +15,7 @@ public:
 
     [[nodiscard]] QString sourceId() const override { return QStringLiteral("sample"); }
     [[nodiscard]] QList<CalendarInfo> calendars() const override { return m_calendars; }
-    [[nodiscard]] QList<Event> eventsBetween(const QDateTime &from,
-                                             const QDateTime &to,
+    [[nodiscard]] QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                              const QTimeZone &tz) const override;
     void refresh() override { Q_EMIT changed(); }
 

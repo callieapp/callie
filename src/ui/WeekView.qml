@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
+import Callie.Ui
 
 import QtQuick
 import QtQuick.Controls
-import Callie.Ui
 
 Item {
     id: root
@@ -21,15 +21,21 @@ Item {
 
     function isToday(d) {
         const now = new Date()
-        return d.getFullYear() === now.getFullYear()
-            && d.getMonth() === now.getMonth()
-            && d.getDate() === now.getDate()
+        if (d.getFullYear() !== now.getFullYear())
+            return false
+        if (d.getMonth() !== now.getMonth())
+            return false
+        return d.getDate() === now.getDate()
     }
 
     // ---- Day header --------------------------------------------------------
     Item {
         id: header
-        anchors { top: parent.top; left: parent.left; right: parent.right }
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+        }
         height: 62
 
         Row {
@@ -64,7 +70,8 @@ Item {
 
                         Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: 30; height: 30
+                            width: 30
+                            height: 30
                             radius: 15
                             color: dayHeader.today ? Theme.accent : "transparent"
 
@@ -83,7 +90,11 @@ Item {
         }
 
         Rectangle {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
             height: 1
             color: Theme.border
         }
@@ -92,7 +103,12 @@ Item {
     // ---- Scrollable time grid ---------------------------------------------
     Flickable {
         id: grid
-        anchors { top: header.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors {
+            top: header.bottom
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+        }
         contentHeight: 24 * Theme.hourHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -118,14 +134,21 @@ Item {
                     height: Theme.hourHeight
 
                     Rectangle {
-                        anchors { left: parent.left; right: parent.right; top: parent.top }
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            top: parent.top
+                        }
                         anchors.leftMargin: Theme.gutterWidth
                         height: 1
                         color: Theme.hairline
                     }
 
                     Text {
-                        anchors { right: parent.left; top: parent.top }
+                        anchors {
+                            right: parent.left
+                            top: parent.top
+                        }
                         anchors.rightMargin: -Theme.gutterWidth + Theme.space4
                         anchors.topMargin: -6
                         visible: hourRow.index > 0
@@ -133,7 +156,9 @@ Item {
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
-                        font.features: { "tnum": 1 }
+                        font.features: {
+                            "tnum": 1
+                        }
                     }
                 }
             }
@@ -206,8 +231,13 @@ Item {
                 }
 
                 Rectangle {
-                    anchors { verticalCenter: parent.top; left: parent.left }
-                    width: 7; height: 7; radius: 3.5
+                    anchors {
+                        verticalCenter: parent.top
+                        left: parent.left
+                    }
+                    width: 7
+                    height: 7
+                    radius: 3.5
                     color: Theme.danger
                 }
 

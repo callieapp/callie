@@ -10,19 +10,19 @@ QtObject {
     readonly property bool dark: Application.styleHints.colorScheme === Qt.Dark
 
     // ---- Color -------------------------------------------------------------
-    readonly property color bg:          dark ? "#0E1013" : "#FCFCFD"
-    readonly property color surface:     dark ? "#16191E" : "#FFFFFF"
-    readonly property color surfaceAlt:  dark ? "#1C2026" : "#F6F7F9"
-    readonly property color hairline:    dark ? "#22262D" : "#ECEEF1"
-    readonly property color border:      dark ? "#2C323B" : "#DFE3E8"
+    readonly property color bg: dark ? "#0E1013" : "#FCFCFD"
+    readonly property color surface: dark ? "#16191E" : "#FFFFFF"
+    readonly property color surfaceAlt: dark ? "#1C2026" : "#F6F7F9"
+    readonly property color hairline: dark ? "#22262D" : "#ECEEF1"
+    readonly property color border: dark ? "#2C323B" : "#DFE3E8"
 
-    readonly property color text:        dark ? "#EEF1F5" : "#14161A"
-    readonly property color textMuted:   dark ? "#99A1AC" : "#6B7280"
-    readonly property color textFaint:   dark ? "#5F6874" : "#9AA1AC"
+    readonly property color text: dark ? "#EEF1F5" : "#14161A"
+    readonly property color textMuted: dark ? "#99A1AC" : "#6B7280"
+    readonly property color textFaint: dark ? "#5F6874" : "#9AA1AC"
 
-    readonly property color accent:      dark ? "#6E9BF5" : "#3B72E8"
-    readonly property color accentText:  "#FFFFFF"
-    readonly property color danger:      dark ? "#F06B6B" : "#DC4B4B"
+    readonly property color accent: dark ? "#6E9BF5" : "#3B72E8"
+    readonly property color accentText: "#FFFFFF"
+    readonly property color danger: dark ? "#F06B6B" : "#DC4B4B"
 
     /// Tint a calendar color for use as an event background.
     function tint(c, amount) {

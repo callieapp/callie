@@ -6,8 +6,7 @@
 
 namespace callie {
 
-EventModel::EventModel(QObject *parent)
-    : QAbstractListModel(parent)
+EventModel::EventModel(QObject *parent) : QAbstractListModel(parent)
 {
     // TODO(core): replace with the real source registry once the backends land.
     setSource(new SampleSource(this));
@@ -82,9 +81,9 @@ void EventModel::assignLanes(QList<Event> &events)
         };
 
         for (Event *e : day) {
-            const bool overlapsCluster = std::any_of(
-                laneEnds.cbegin(), laneEnds.cend(),
-                [e](const QDateTime &end) { return end > e->start; });
+            const bool overlapsCluster =
+                std::any_of(laneEnds.cbegin(), laneEnds.cend(),
+                            [e](const QDateTime &end) { return end > e->start; });
             if (!overlapsCluster)
                 flush();
 
@@ -117,39 +116,39 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
 
     const Event &e = m_events.at(index.row());
     switch (role) {
-    case UidRole:             return e.uid;
-    case SummaryRole:         return e.summary;
-    case LocationRole:        return e.location;
-    case ConferenceUrlRole:   return e.conferenceUrl;
-    case CalendarColorRole:   return e.color;
-    case AllDayRole:          return e.allDay;
-    case StartRole:           return e.start;
-    case EndRole:             return e.end;
-    case LaneRole:            return e.lane;
-    case LaneCountRole:       return e.laneCount;
-    case DayIndexRole:        return static_cast<int>(m_rangeStart.daysTo(e.start.date()));
-    case StartMinutesRole:    return e.start.time().hour() * 60 + e.start.time().minute();
+    case UidRole: return e.uid;
+    case SummaryRole: return e.summary;
+    case LocationRole: return e.location;
+    case ConferenceUrlRole: return e.conferenceUrl;
+    case CalendarColorRole: return e.color;
+    case AllDayRole: return e.allDay;
+    case StartRole: return e.start;
+    case EndRole: return e.end;
+    case LaneRole: return e.lane;
+    case LaneCountRole: return e.laneCount;
+    case DayIndexRole: return static_cast<int>(m_rangeStart.daysTo(e.start.date()));
+    case StartMinutesRole: return e.start.time().hour() * 60 + e.start.time().minute();
     case DurationMinutesRole: return static_cast<int>(e.start.secsTo(e.end) / 60);
-    default:                  return {};
+    default: return {};
     }
 }
 
 QHash<int, QByteArray> EventModel::roleNames() const
 {
     return {
-        { UidRole,             "uid" },
-        { SummaryRole,         "summary" },
-        { LocationRole,        "location" },
-        { ConferenceUrlRole,   "conferenceUrl" },
-        { CalendarColorRole,   "calendarColor" },
-        { AllDayRole,          "allDay" },
-        { DayIndexRole,        "dayIndex" },
-        { StartMinutesRole,    "startMinutes" },
-        { DurationMinutesRole, "durationMinutes" },
-        { StartRole,           "start" },
-        { EndRole,             "end" },
-        { LaneRole,            "lane" },
-        { LaneCountRole,       "laneCount" },
+        {UidRole, "uid"},
+        {SummaryRole, "summary"},
+        {LocationRole, "location"},
+        {ConferenceUrlRole, "conferenceUrl"},
+        {CalendarColorRole, "calendarColor"},
+        {AllDayRole, "allDay"},
+        {DayIndexRole, "dayIndex"},
+        {StartMinutesRole, "startMinutes"},
+        {DurationMinutesRole, "durationMinutes"},
+        {StartRole, "start"},
+        {EndRole, "end"},
+        {LaneRole, "lane"},
+        {LaneCountRole, "laneCount"},
     };
 }
 

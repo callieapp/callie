@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
+import Callie.Ui
 
 import QtQuick
-import Callie.Ui
 
 /// One timed event in the week/day grid. Drag to move; the block snaps to
 /// Theme.snapMinutes and reports the delta rather than mutating state itself.
@@ -16,7 +16,7 @@ Rectangle {
     required property date end
 
     signal moveRequested(int deltaMinutes, int deltaDays)
-    signal activated()
+    signal activated
 
     readonly property bool compact: height < 34
 
@@ -29,8 +29,17 @@ Rectangle {
     scale: drag.active ? 1.02 : 1
     z: drag.active ? 100 : 1
 
-    Behavior on scale { NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing } }
-    Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
+    Behavior on scale {
+        NumberAnimation {
+            duration: Theme.durFast
+            easing.type: Theme.easing
+        }
+    }
+    Behavior on opacity {
+        NumberAnimation {
+            duration: Theme.durFast
+        }
+    }
 
     // Accent spine
     Rectangle {
@@ -68,8 +77,8 @@ Rectangle {
         Text {
             width: parent.width
             visible: !root.compact
-            text: Qt.formatTime(root.start, "h:mm") + " – " + Qt.formatTime(root.end, "h:mm")
-                  + (root.location ? "  ·  " + root.location : "")
+            text: Qt.formatTime(root.start, "h:mm") + " – " + Qt.formatTime(root.end, "h:mm") + (
+                      root.location ? "  ·  " + root.location : "")
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs
@@ -80,7 +89,11 @@ Rectangle {
     // Join affordance for events that carry a conference link
     Rectangle {
         visible: root.conferenceUrl.toString() !== "" && !root.compact && hover.hovered
-        anchors { right: parent.right; bottom: parent.bottom; margins: Theme.space2 }
+        anchors {
+            right: parent.right
+            bottom: parent.bottom
+            margins: Theme.space2
+        }
         width: joinLabel.implicitWidth + Theme.space4
         height: 20
         radius: Theme.radiusSm
@@ -96,11 +109,17 @@ Rectangle {
             font.weight: Font.DemiBold
         }
 
-        TapHandler { onTapped: Qt.openUrlExternally(root.conferenceUrl) }
+        TapHandler {
+            onTapped: Qt.openUrlExternally(root.conferenceUrl)
+        }
     }
 
-    HoverHandler { id: hover }
-    TapHandler { onDoubleTapped: root.activated() }
+    HoverHandler {
+        id: hover
+    }
+    TapHandler {
+        onDoubleTapped: root.activated()
+    }
 
     DragHandler {
         id: drag
@@ -110,9 +129,8 @@ Rectangle {
                 startY = centroid.position.y
                 startX = centroid.position.x
             } else {
-                const dyMinutes = Math.round(
-                    ((centroid.position.y - startY) / Theme.hourHeight * 60) / Theme.snapMinutes)
-                    * Theme.snapMinutes
+                const dyMinutes = Math.round(((centroid.position.y - startY) / Theme.hourHeight
+                                              * 60) / Theme.snapMinutes) * Theme.snapMinutes
                 const dxDays = Math.round((centroid.position.x - startX) / root.width)
                 if (dyMinutes !== 0 || dxDays !== 0)
                     root.moveRequested(dyMinutes, dxDays)

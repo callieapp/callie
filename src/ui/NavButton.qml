@@ -1,18 +1,22 @@
-import QtQuick
 import Callie.Ui
+import QtQuick
 
 Rectangle {
     id: root
 
     property string glyph: ""
-    signal clicked()
+    signal clicked
 
     width: 28
     height: 28
     radius: Theme.radiusMd
     color: hover.hovered ? Theme.surfaceAlt : "transparent"
 
-    Behavior on color { ColorAnimation { duration: Theme.durFast } }
+    Behavior on color {
+        ColorAnimation {
+            duration: Theme.durFast
+        }
+    }
 
     Text {
         anchors.centerIn: parent
@@ -22,6 +26,11 @@ Rectangle {
         font.pixelSize: Theme.textXl
     }
 
-    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-    TapHandler { onTapped: root.clicked() }
+    HoverHandler {
+        id: hover
+        cursorShape: Qt.PointingHandCursor
+    }
+    TapHandler {
+        onTapped: root.clicked()
+    }
 }

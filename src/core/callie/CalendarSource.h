@@ -36,8 +36,7 @@ public:
 
     /// Occurrences overlapping [from, to), expanded from recurrence rules and
     /// converted into `tz`. Must not block on the network.
-    [[nodiscard]] virtual QList<Event> eventsBetween(const QDateTime &from,
-                                                     const QDateTime &to,
+    [[nodiscard]] virtual QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                                      const QTimeZone &tz) const = 0;
 
     /// Kick off a background refresh. Emits `changed` when new data lands.

@@ -16,11 +16,44 @@ include(GNUInstallDirs)
 
 set(CALLIE_APP_ID "org.callieapp.Callie" CACHE STRING "Reverse-DNS application id")
 
+option(CALLIE_BUILD_TESTS "Build the unit tests" ON)
+option(CALLIE_WERROR "Treat compiler warnings as errors" OFF)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra -Wpedantic)
+    if(CALLIE_WERROR)
+        add_compile_options(-Werror)
+    endif()
+endif()
+
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network Sql DBus)
 qt_standard_project_setup(REQUIRES 6.6)
+
+if(CALLIE_BUILD_TESTS)
+    enable_testing()
+endif()
 
 add_subdirectory(src/core)
 add_subdirectory(src/ui)
 add_subdirectory(src/gui)
 add_subdirectory(src/cli)
 add_subdirectory(data)
+
+if(CALLIE_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
+# Formatting is driven by one script so that CMake, CI and a local run agree.
+add_custom_target(format
+    COMMAND "${CMAKE_SOURCE_DIR}/scripts/format.sh" fix
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    COMMENT "Formatting C++ and QML sources"
+    VERBATIM
+)
+
+add_custom_target(format-check
+    COMMAND "${CMAKE_SOURCE_DIR}/scripts/format.sh" check
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    COMMENT "Checking C++ and QML formatting"
+    VERBATIM
+)

@@ -19,8 +19,7 @@ LiveQml::LiveQml(QQmlApplicationEngine &engine, QList<Module> modules, std::func
     m_debounce.setInterval(100);
     connect(&m_debounce, &QTimer::timeout, this, &LiveQml::reload);
     connect(&m_watcher, &QFileSystemWatcher::fileChanged, &m_debounce, qOverload<>(&QTimer::start));
-    connect(&m_watcher, &QFileSystemWatcher::directoryChanged, &m_debounce,
-            qOverload<>(&QTimer::start));
+    connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, &LiveQml::onDirectoryChanged);
 }
 
 bool LiveQml::start()
@@ -71,6 +70,25 @@ bool LiveQml::mirror(const Module &module)
     return true;
 }
 
+QStringList LiveQml::qmlFiles() const
+{
+    QStringList files;
+    for (const Module &module : m_modules) {
+        const QDir source(module.sourceDir);
+        for (const QString &name : source.entryList({QStringLiteral("*.qml")}, QDir::Files))
+            files.append(source.filePath(name));
+    }
+    return files;
+}
+
+void LiveQml::onDirectoryChanged()
+{
+    // Editors create swap, backup and lock files beside the sources; only an
+    // added or removed .qml file matters.
+    if (qmlFiles() != m_knownFiles)
+        m_debounce.start();
+}
+
 void LiveQml::watchSources()
 {
     // Saving by rename drops a file from the watch list, so it is rebuilt each time.
@@ -83,6 +101,7 @@ void LiveQml::watchSources()
         for (const QString &name : source.entryList({QStringLiteral("*.qml")}, QDir::Files))
             m_watcher.addPath(source.filePath(name));
     }
+    m_knownFiles = qmlFiles();
 }
 
 void LiveQml::reload()
@@ -96,23 +115,22 @@ void LiveQml::reload()
     const bool quitOnClose = QGuiApplication::quitOnLastWindowClosed();
     QGuiApplication::setQuitOnLastWindowClosed(false);
 
-    QRect geometry;
     const QList<QObject *> roots = m_engine.rootObjects();
     for (QObject *root : roots) {
-        if (auto *window = qobject_cast<QQuickWindow *>(root); window && geometry.isNull())
-            geometry = window->geometry();
+        if (auto *window = qobject_cast<QQuickWindow *>(root))
+            m_geometry = window->geometry();
         root->deleteLater();
     }
 
     // Deleting a window takes an event loop turn, and the cache must forget the
     // old components before the new load.
-    QTimer::singleShot(0, this, [this, geometry, quitOnClose] {
+    QTimer::singleShot(0, this, [this, quitOnClose] {
         m_engine.clearComponentCache();
         m_load();
         const QList<QObject *> roots = m_engine.rootObjects();
         if (auto *window = roots.isEmpty() ? nullptr : qobject_cast<QQuickWindow *>(roots.last());
-            window && !geometry.isNull())
-            window->setGeometry(geometry);
+            window && !m_geometry.isNull())
+            window->setGeometry(m_geometry);
         QGuiApplication::setQuitOnLastWindowClosed(quitOnClose);
         // The engine has already logged why a load failed.
         if (!roots.isEmpty())

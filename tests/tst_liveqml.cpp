@@ -2,6 +2,7 @@
 
 #include <QFile>
 #include <QQmlApplicationEngine>
+#include <QQuickWindow>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -25,6 +26,8 @@ class TestLiveQml : public QObject
 
 private Q_SLOTS:
     void savedEditReloads();
+    void geometrySurvivesAFailedLoad();
+    void otherFilesDoNotReload();
 };
 
 void TestLiveQml::savedEditReloads()
@@ -57,6 +60,73 @@ void TestLiveQml::savedEditReloads()
     // A file added while running is picked up too.
     write(source.filePath(u"Other.qml"_s), "import QtQml\nQtObject {}\n");
     QTRY_COMPARE_WITH_TIMEOUT(loads, 2, 3000);
+}
+
+namespace {
+
+/// A module like the app's, with one window type, served live.
+struct LiveModule
+{
+    LiveModule()
+    {
+        write(build.filePath(u"qmldir"_s), "module Test.Window\nWin 1.0 Win.qml\n");
+        save("Window { width: 300; height: 200 }");
+    }
+
+    void save(const QByteArray &body)
+    {
+        write(source.filePath(u"Win.qml"_s), "import QtQuick\n" + body + "\n");
+    }
+
+    QTemporaryDir source;
+    QTemporaryDir build;
+};
+
+} // namespace
+
+void TestLiveQml::geometrySurvivesAFailedLoad()
+{
+    LiveModule module;
+    QQmlApplicationEngine engine;
+    int loads = 0;
+    LiveQml live(engine, {{u"Test.Window"_s, module.source.path(), module.build.path()}}, [&] {
+        ++loads;
+        engine.loadFromModule("Test.Window", "Win");
+    });
+    QVERIFY(live.start());
+    engine.loadFromModule("Test.Window", "Win");
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    QVERIFY(window);
+    window->setGeometry(40, 50, 640, 480);
+
+    module.save("Window { width: 300; height: 200; this is not qml");
+    QTRY_COMPARE_WITH_TIMEOUT(loads, 1, 3000);
+    QTRY_VERIFY_WITH_TIMEOUT(engine.rootObjects().isEmpty(), 3000);
+
+    module.save("Window { width: 300; height: 200 }");
+    QTRY_COMPARE_WITH_TIMEOUT(loads, 2, 3000);
+    QTRY_COMPARE_WITH_TIMEOUT(engine.rootObjects().size(), 1, 3000);
+    window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    QCOMPARE(window->size(), QSize(640, 480));
+}
+
+void TestLiveQml::otherFilesDoNotReload()
+{
+    LiveModule module;
+    QQmlApplicationEngine engine;
+    int loads = 0;
+    LiveQml live(engine, {{u"Test.Window"_s, module.source.path(), module.build.path()}}, [&] {
+        ++loads;
+        engine.loadFromModule("Test.Window", "Win");
+    });
+    QVERIFY(live.start());
+    engine.loadFromModule("Test.Window", "Win");
+
+    write(module.source.filePath(u".Win.qml.swp"_s), "editor state");
+    write(module.source.filePath(u"Win.qml~"_s), "backup");
+    QTest::qWait(400);
+
+    QCOMPARE(loads, 0);
 }
 
 QTEST_MAIN(TestLiveQml)

@@ -22,8 +22,9 @@ DEBIAN_DEPS := build-essential cmake ninja-build qt6-base-dev qt6-declarative-de
 	qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev libqt6sql6-sqlite \
 	libkf6calendarcore-dev clang-format entr nodejs npm
 
-# Files whose change should rebuild and restart the app under `make watch`.
-WATCHED := git ls-files --cached --others --exclude-standard -- src themes CMakeLists.txt
+# Files whose change should rebuild and restart the app under `make watch`. QML is left
+# out because --live-qml reloads it in place.
+WATCHED := git ls-files --cached --others --exclude-standard -- src themes CMakeLists.txt ':!:*.qml'
 
 # Rebuilds target $(1) and restarts $(2) on every save. Quitting the app or Ctrl-C
 # ends the watch; a failed build or a crash waits for the next save instead. entr -d
@@ -74,11 +75,11 @@ cli: build ## Run the CLI, e.g. make cli ARGS="accounts"
 gallery: build ## Open the theme gallery; THEME=path shows a theme file live
 	@$(DEV_ENV) $(GALLERY) $(if $(THEME),--theme $(THEME))
 
-watch: $(BUILD)/build.ninja ## Rebuild and restart the app on every save
-	$(call watch,callie-gui,$(GUI) $(ARGS))
+watch: $(BUILD)/build.ninja ## Reload QML on save; rebuild and restart on C++ changes
+	$(call watch,callie-gui,$(GUI) --live-qml $(ARGS))
 
 watch-gallery: $(BUILD)/build.ninja ## Like watch, for the gallery; THEME=path optional
-	$(call watch,callie-gallery,$(GALLERY) $(if $(THEME),--theme $(THEME)))
+	$(call watch,callie-gallery,$(GALLERY) --live-qml $(if $(THEME),--theme $(THEME)))
 
 test: build ## Run the tests
 	@ctest --preset $(PRESET)

@@ -81,7 +81,7 @@ Day to day:
 
 | Command                                 | What it does                                          |
 | --------------------------------------- | ----------------------------------------------------- |
-| `make watch`                            | Rebuild and restart the app every time you save       |
+| `make watch`                            | Reload QML on save, rebuild and restart on C++ edits  |
 | `make cli ARGS="accounts"`              | Run the CLI with arguments                            |
 | `make logs`                             | Follow the app's and the CLI's log files              |
 | `make gallery THEME=themes/callie.toml` | Preview a theme; edits to the file appear immediately |
@@ -90,11 +90,13 @@ Day to day:
 | `make check`                            | Run everything CI runs, before you push               |
 
 `make run` and `make watch` print the app's logs with timestamps. That includes Callie's own
-`callie.auth`, `callie.accounts`, `callie.sync` and `callie.theme` categories, and `console.log` from
-QML.
+`callie.auth`, `callie.accounts`, `callie.sync`, `callie.theme` and `callie.ui` categories, and
+`console.log` from QML.
 
-QML is compiled into the binary, so a QML edit needs a rebuild; `make watch` takes care of it.
-Theme files are the exception and reload without one.
+QML is compiled into the binary, but development builds also accept `--live-qml`, which loads it
+from `src/` and reloads the window in place when a `.qml` file is saved. `make watch` uses it, so
+only C++ and CMake changes rebuild and restart the app. A QML mistake is logged and the app waits
+for the fix. Theme files reload on save in any build.
 
 ### Google accounts
 

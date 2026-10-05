@@ -8,20 +8,30 @@
 
 namespace callie {
 
-/// Refresh tokens in the system keyring (Secret Service on Linux). Never falls
-/// back to plain-text storage. Each call is asynchronous and invokes its
-/// callback exactly once, with an empty error string on success.
+/// Where refresh tokens live. Every call completes asynchronously and invokes
+/// its callback exactly once, with an empty error string on success.
 class TokenStore
 {
 public:
     using Done = std::function<void(const QString &error)>;
     using Loaded = std::function<void(const QString &secret, const QString &error)>;
 
-    static void write(const Account &account, const QString &secret, Done done);
-    static void read(const Account &account, Loaded loaded);
+    virtual ~TokenStore() = default;
+
+    virtual void write(const Account &account, const QString &secret, Done done) = 0;
+    virtual void read(const Account &account, Loaded loaded) = 0;
 
     /// Removing an entry that does not exist counts as success.
-    static void remove(const Account &account, Done done);
+    virtual void remove(const Account &account, Done done) = 0;
+};
+
+/// The system keyring (Secret Service on Linux). Never falls back to plain text.
+class KeychainTokenStore final : public TokenStore
+{
+public:
+    void write(const Account &account, const QString &secret, Done done) override;
+    void read(const Account &account, Loaded loaded) override;
+    void remove(const Account &account, Done done) override;
 };
 
 } // namespace callie

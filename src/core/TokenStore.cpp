@@ -25,7 +25,7 @@ Job *makeJob(const Account &account)
 
 } // namespace
 
-void TokenStore::write(const Account &account, const QString &secret, Done done)
+void KeychainTokenStore::write(const Account &account, const QString &secret, Done done)
 {
     auto *job = makeJob<QKeychain::WritePasswordJob>(account);
     job->setTextData(secret);
@@ -35,7 +35,7 @@ void TokenStore::write(const Account &account, const QString &secret, Done done)
     job->start();
 }
 
-void TokenStore::read(const Account &account, Loaded loaded)
+void KeychainTokenStore::read(const Account &account, Loaded loaded)
 {
     auto *job = makeJob<QKeychain::ReadPasswordJob>(account);
     QObject::connect(job, &QKeychain::Job::finished, [loaded](QKeychain::Job *j) {
@@ -48,7 +48,7 @@ void TokenStore::read(const Account &account, Loaded loaded)
     job->start();
 }
 
-void TokenStore::remove(const Account &account, Done done)
+void KeychainTokenStore::remove(const Account &account, Done done)
 {
     auto *job = makeJob<QKeychain::DeletePasswordJob>(account);
     QObject::connect(job, &QKeychain::Job::finished, [done](QKeychain::Job *j) {

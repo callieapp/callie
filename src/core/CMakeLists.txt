@@ -54,6 +54,8 @@ add_library(calliecore STATIC
     callie/Account.h
     callie/AccountStore.h
     AccountStore.cpp
+    callie/AccountManager.h
+    AccountManager.cpp
     callie/TokenStore.h
     TokenStore.cpp
     callie/GoogleClientConfig.h

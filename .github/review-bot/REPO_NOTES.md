@@ -105,6 +105,10 @@ Also yours: model correctness and role plumbing, the C++ and QML boundary, and c
   or secret, is a blocking finding. Refresh tokens belong in the system keyring through
   `TokenStore`, never in `accounts.json`, a config file, or the SQLite cache. OAuth must use PKCE
   with a loopback redirect; the out-of-band flow is deprecated and must not be reintroduced.
+- **Account ordering.** `AccountManager` owns connecting and removing accounts: the token goes into
+  the keyring before the account is listed, and is removed before the account is unlisted. The CLI
+  and app call it rather than sequencing `TokenStore` and `AccountStore` themselves.
+  `tests/tst_accountmanager.cpp` pins the order and each failure branch.
 - **Loopback binding.** The OAuth callback listener must bind `QHostAddress::LocalHost`. The
   QtNetworkAuth default is `QHostAddress::Any`, which exposes the authorization code to the local
   network. `tests/tst_googleauth.cpp` checks this; a change that weakens that test is a finding.

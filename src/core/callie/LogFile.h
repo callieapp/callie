@@ -7,10 +7,8 @@ namespace callie::logfile {
 /// $XDG_STATE_HOME/callie/logs
 [[nodiscard]] QString defaultDirectory();
 
-/// Copies every Qt message into `<directory>/<name>.log`, which is rotated to
-/// `.1` .. `.3` once it passes `maxBytes`. The terminal keeps showing warnings
-/// only, or everything enabled when QT_LOGGING_RULES is set. Returns false,
-/// leaving logging to the terminal, when the file cannot be opened.
+/// Logs to `<directory>/<name>.log` as well as the terminal, so a problem can be
+/// read after the app has closed. Returns false if the file cannot be opened.
 bool install(const QString &name, const QString &directory = defaultDirectory(),
              qint64 maxBytes = 1024 * 1024);
 

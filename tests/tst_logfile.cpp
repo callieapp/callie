@@ -1,9 +1,15 @@
 #include "callie/LogFile.h"
 
 #include <QFile>
+#include <QFileInfo>
 #include <QLoggingCategory>
 #include <QTemporaryDir>
 #include <QTest>
+
+#include <cstdio>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 using namespace callie;
 using namespace Qt::StringLiterals;
@@ -33,6 +39,9 @@ private Q_SLOTS:
     void largeFileIsRotated();
     void rotationKeepsThreeOldFiles();
     void unwritableDirectoryFails();
+    void rotatesWhileRunning();
+    void plainDebugStaysOffDisk();
+    void terminalShowsOnlyProblems();
 };
 
 void TestLogFile::infoReachesTheFile()
@@ -107,6 +116,57 @@ void TestLogFile::unwritableDirectoryFails()
 
     QVERIFY(!logfile::install(u"app"_s, blocker.fileName() + u"/logs"_s));
     QCOMPARE(logfile::path(), QString());
+}
+
+void TestLogFile::rotatesWhileRunning()
+{
+    QTemporaryDir dir;
+    QVERIFY(logfile::install(u"app"_s, dir.path(), 200));
+
+    for (int i = 0; i < 10; ++i)
+        qCInfo(lcTest) << "line" << i << "of a long-running app";
+
+    QVERIFY(QFile::exists(dir.filePath(u"app.log.1"_s)));
+    QVERIFY(QFileInfo(dir.filePath(u"app.log"_s)).size() <= 200);
+    QVERIFY(read(dir.filePath(u"app.log"_s)).contains(u"line 9"_s));
+}
+
+void TestLogFile::plainDebugStaysOffDisk()
+{
+    // QML's console.log arrives as a debug message like this one.
+    // Some distributions turn debug output off everywhere, which would make
+    // this pass without reaching the log file's own filter.
+    QLoggingCategory::setFilterRules(u"default.debug=true"_s);
+    QTemporaryDir dir;
+    QVERIFY(logfile::install(u"app"_s, dir.path()));
+
+    qDebug() << "event title from console.log";
+    QLoggingCategory::setFilterRules({});
+
+    QVERIFY(!read(dir.filePath(u"app.log"_s)).contains(u"event title"_s));
+}
+
+void TestLogFile::terminalShowsOnlyProblems()
+{
+    QTemporaryDir dir;
+    QVERIFY(logfile::install(u"app"_s, dir.path()));
+
+    // Point stderr at a file for the duration, as the terminal would see it.
+    const QString captured = dir.filePath(u"stderr.txt"_s);
+    std::fflush(stderr);
+    const int saved = ::dup(STDERR_FILENO);
+    const int file = ::open(QFile::encodeName(captured).constData(), O_WRONLY | O_CREAT, 0600);
+    ::dup2(file, STDERR_FILENO);
+    qCInfo(lcTest) << "quiet progress";
+    qCWarning(lcTest) << "loud problem";
+    std::fflush(stderr);
+    ::dup2(saved, STDERR_FILENO);
+    ::close(file);
+    ::close(saved);
+
+    const QString terminal = read(captured);
+    QVERIFY2(terminal.contains(u"loud problem"_s), qPrintable(terminal));
+    QVERIFY2(!terminal.contains(u"quiet progress"_s), qPrintable(terminal));
 }
 
 QTEST_GUILESS_MAIN(TestLogFile)

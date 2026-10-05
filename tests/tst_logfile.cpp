@@ -7,6 +7,7 @@
 #include <QTest>
 
 #include <cstdio>
+#include <functional>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -22,6 +23,21 @@ QString read(const QString &path)
 {
     QFile file(path);
     return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()) : QString();
+}
+
+/// Runs `log` with stderr pointed at a file, and returns what reached it.
+QString terminalOutput(const QString &capture, const std::function<void()> &log)
+{
+    std::fflush(stderr);
+    const int saved = ::dup(STDERR_FILENO);
+    const int file = ::open(QFile::encodeName(capture).constData(), O_WRONLY | O_CREAT, 0600);
+    ::dup2(file, STDERR_FILENO);
+    log();
+    std::fflush(stderr);
+    ::dup2(saved, STDERR_FILENO);
+    ::close(file);
+    ::close(saved);
+    return read(capture);
 }
 
 } // namespace
@@ -114,8 +130,17 @@ void TestLogFile::unwritableDirectoryFails()
     QVERIFY(blocker.open(QIODevice::WriteOnly));
     blocker.close();
 
+    const QtMessageHandler before = qInstallMessageHandler(nullptr);
+    qInstallMessageHandler(before);
+
     QVERIFY(!logfile::install(u"app"_s, blocker.fileName() + u"/logs"_s));
     QCOMPARE(logfile::path(), QString());
+
+    // Without a file the handler still filters the terminal, or the CLI would
+    // print every info message.
+    const QtMessageHandler current = qInstallMessageHandler(nullptr);
+    qInstallMessageHandler(current);
+    QVERIFY(current != before);
 }
 
 void TestLogFile::rotatesWhileRunning()
@@ -151,20 +176,10 @@ void TestLogFile::terminalShowsOnlyProblems()
     QTemporaryDir dir;
     QVERIFY(logfile::install(u"app"_s, dir.path()));
 
-    // Point stderr at a file for the duration, as the terminal would see it.
-    const QString captured = dir.filePath(u"stderr.txt"_s);
-    std::fflush(stderr);
-    const int saved = ::dup(STDERR_FILENO);
-    const int file = ::open(QFile::encodeName(captured).constData(), O_WRONLY | O_CREAT, 0600);
-    ::dup2(file, STDERR_FILENO);
-    qCInfo(lcTest) << "quiet progress";
-    qCWarning(lcTest) << "loud problem";
-    std::fflush(stderr);
-    ::dup2(saved, STDERR_FILENO);
-    ::close(file);
-    ::close(saved);
-
-    const QString terminal = read(captured);
+    const QString terminal = terminalOutput(dir.filePath(u"stderr.txt"_s), [] {
+        qCInfo(lcTest) << "quiet progress";
+        qCWarning(lcTest) << "loud problem";
+    });
     QVERIFY2(terminal.contains(u"loud problem"_s), qPrintable(terminal));
     QVERIFY2(!terminal.contains(u"quiet progress"_s), qPrintable(terminal));
 }

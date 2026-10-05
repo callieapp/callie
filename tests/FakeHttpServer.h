@@ -8,8 +8,10 @@
 #include <QTcpSocket>
 #include <QUrl>
 
-/// A loopback HTTP/1.1 server that records each request and answers every one
-/// with the same canned response. Just enough for an OAuth or REST client.
+#include <utility>
+
+/// A loopback HTTP/1.1 server that records each request and answers with canned
+/// responses. Just enough for an OAuth or REST client.
 class FakeHttpServer
 {
 public:
@@ -35,11 +37,15 @@ public:
         return QUrl(QStringLiteral("http://127.0.0.1:%1%2").arg(m_server.serverPort()).arg(path));
     }
 
+    /// The response for every request not answered by the queue.
     void respond(int status, QByteArray json)
     {
         m_status = status;
         m_body = std::move(json);
     }
+
+    /// A response for one request, used in order before falling back to respond().
+    void enqueue(int status, QByteArray json) { m_queue.append({status, std::move(json)}); }
 
     QList<Request> requests;
 
@@ -74,15 +80,17 @@ private:
             request.body = buffer->mid(headerEnd + 4, length);
             requests.append(request);
 
-            socket->write("HTTP/1.1 " + QByteArray::number(m_status) +
+            const auto [status, body] =
+                m_queue.isEmpty() ? std::pair(m_status, m_body) : m_queue.takeFirst();
+            socket->write("HTTP/1.1 " + QByteArray::number(status) +
                           " X\r\nContent-Type: application/json\r\nContent-Length: " +
-                          QByteArray::number(m_body.size()) + "\r\nConnection: close\r\n\r\n" +
-                          m_body);
+                          QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body);
             socket->disconnectFromHost();
         });
     }
 
     QTcpServer m_server;
+    QList<std::pair<int, QByteArray>> m_queue;
     int m_status = 200;
     QByteArray m_body = "{}";
 };

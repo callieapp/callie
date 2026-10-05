@@ -1,7 +1,6 @@
 #include "GoogleAuthDriver.h"
 
 #include "callie/GoogleAuth.h"
-#include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleClientConfig.h"
 
 #include <QCryptographicHash>
@@ -51,8 +50,6 @@ private Q_SLOTS:
     void authorizeAgainAfterFailure();
     void signInTimesOutWithoutAnswer();
     void timeoutStopsOnceGoogleAnswers();
-    void primaryCalendarIdSendsBearerToken();
-    void apiErrorMessageIsReported();
 };
 
 void TestGoogleAuth::environmentReplacesBuiltInClient()
@@ -360,49 +357,6 @@ void TestGoogleAuth::timeoutStopsOnceGoogleAnswers()
 
     QTest::qWait(800);
     QCOMPARE(failed.size(), 0);
-}
-
-void TestGoogleAuth::primaryCalendarIdSendsBearerToken()
-{
-    FakeHttpServer server;
-    server.respond(200, R"({"id":"me@example.com"})");
-    QNetworkAccessManager network;
-    GoogleCalendarApi api(&network);
-    api.setBaseUrl(server.url(QStringLiteral("/calendar/v3/")));
-
-    QString id, error;
-    bool done = false;
-    api.fetchPrimaryCalendarId(QStringLiteral("at-1"), [&](const QString &i, const QString &e) {
-        id = i;
-        error = e;
-        done = true;
-    });
-
-    QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
-    QCOMPARE(error, QString());
-    QCOMPARE(id, QStringLiteral("me@example.com"));
-    QCOMPARE(server.requests.first().target,
-             QByteArray("/calendar/v3/users/me/calendarList/primary"));
-    QCOMPARE(server.requests.first().headers.value("authorization"), QByteArray("Bearer at-1"));
-}
-
-void TestGoogleAuth::apiErrorMessageIsReported()
-{
-    FakeHttpServer server;
-    server.respond(401, R"({"error":{"code":401,"message":"Invalid Credentials"}})");
-    QNetworkAccessManager network;
-    GoogleCalendarApi api(&network);
-    api.setBaseUrl(server.url(QStringLiteral("/calendar/v3/")));
-
-    QString error;
-    bool done = false;
-    api.fetchPrimaryCalendarId(QStringLiteral("expired"), [&](const QString &, const QString &e) {
-        error = e;
-        done = true;
-    });
-
-    QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
-    QCOMPARE(error, QStringLiteral("Invalid Credentials"));
 }
 
 QTEST_GUILESS_MAIN(TestGoogleAuth)

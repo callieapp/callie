@@ -38,6 +38,7 @@ public:
 
     /// Points the flow at a fake server in tests.
     void setEndpoints(const QUrl &authorization, const QUrl &token);
+    void setTokenUrl(const QUrl &token);
 
     /// Starts the loopback listener and emits authorizeUrlReady. Can be called
     /// again after an attempt finishes, to retry or add another account.

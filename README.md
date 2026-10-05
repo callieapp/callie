@@ -35,6 +35,8 @@ Until then, build it from source as described under [Development](#development).
 starts and every five minutes, and shows what it has cached while offline. The title bar says when it
 last synced, or that a sync failed, with the reason on hover. `--sample` shows a
 made-up week instead, and `--screenshot file.png` saves the window once it has rendered, then exits.
+`--now 2026-03-18T10:40` stops the clock at that time and `--size 1280x840` sets the window size, so
+a screenshot comes out the same every time.
 
 Choose a theme with `--theme`, passing a built-in theme's name or the path to a theme file. The
 `CALLIE_THEME` environment variable does the same. A theme loaded from a file updates the running
@@ -87,6 +89,7 @@ Day to day:
 | `make cli ARGS="accounts"`              | Run the CLI with arguments                            |
 | `make logs`                             | Follow the app's and the CLI's log files              |
 | `make gallery THEME=themes/callie.toml` | Preview a theme; edits to the file appear immediately |
+| `make screenshots`                      | Render the app and gallery for every built-in theme   |
 | `make test`                             | Run the test suite                                    |
 | `make format`                           | Fix formatting                                        |
 | `make check`                            | Run everything CI runs, before you push               |

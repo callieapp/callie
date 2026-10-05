@@ -82,7 +82,7 @@ jobs:
         if: matrix.name == 'fedora'
         run: >-
           dnf install -y --setopt=install_weak_deps=False
-          git gcc-c++ cmake ninja-build
+          git gcc-c++ cmake ninja-build make
           qt6-qtbase-devel qt6-qtdeclarative-devel
           qt6-qtquickcontrols2-devel qt6-qtnetworkauth-devel qtkeychain-qt6-devel
           tomlplusplus-devel kf6-kcalendarcore-devel
@@ -104,3 +104,16 @@ jobs:
       # turns compiler warnings into errors.
       - name: Configure, build, lint and test
         run: cmake --workflow --preset ci
+
+      # Reviewers can see what a change looks like without building it.
+      - name: Render screenshots
+        if: matrix.name == 'fedora'
+        run: make screenshots PRESET=ci
+
+      - name: Upload screenshots
+        if: matrix.name == 'fedora'
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: build/ci/screenshots/
+          if-no-files-found: error

@@ -2,6 +2,7 @@
 
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/TokenStore.h"
 
@@ -85,6 +86,8 @@ private Q_SLOTS:
     void removeForgetsTokenThenAccount();
     void removeKeepsAccountWhenKeyringFails();
     void removeUnknownAccountFails();
+    void removeClearsCachedEvents();
+    void removeKeepsAccountWhenCacheFails();
     void removeReportsCorruptList();
     void connectRefusesCorruptListBeforeSignIn();
 
@@ -237,6 +240,40 @@ void TestAccountManager::removeUnknownAccountFails()
 
     QVERIFY(failed.wait(2000));
     QCOMPARE(removed.size(), 0);
+}
+
+void TestAccountManager::removeClearsCachedEvents()
+{
+    GoogleCache cache(m_dir->filePath(QStringLiteral("google.sqlite")));
+    QVERIFY(cache.open());
+    GoogleCalendar calendar;
+    calendar.id = kAccount.id;
+    QVERIFY(cache.setCalendars(kAccount, {calendar}));
+    AccountManager manager(*m_tokens, *m_store, &cache);
+    QVERIFY(m_store->add(kAccount));
+    QSignalSpy removed(&manager, &AccountManager::removed);
+
+    manager.remove(kAccount);
+
+    QVERIFY(removed.wait(2000));
+    QVERIFY(cache.calendars(kAccount).isEmpty());
+    QVERIFY(listed(*m_store).isEmpty());
+}
+
+void TestAccountManager::removeKeepsAccountWhenCacheFails()
+{
+    // Never opened, so every write fails.
+    GoogleCache cache(m_dir->filePath(QStringLiteral("google.sqlite")));
+    AccountManager manager(*m_tokens, *m_store, &cache);
+    QVERIFY(m_store->add(kAccount));
+    QSignalSpy failed(&manager, &AccountManager::failed);
+    QSignalSpy removed(&manager, &AccountManager::removed);
+
+    manager.remove(kAccount);
+
+    QVERIFY(failed.wait(2000));
+    QCOMPARE(removed.size(), 0);
+    QCOMPARE(listed(*m_store), QList<Account>{kAccount});
 }
 
 void TestAccountManager::corruptAccountList()

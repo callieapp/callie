@@ -7,6 +7,7 @@
 namespace callie {
 
 class AccountStore;
+class GoogleCache;
 class GoogleAuth;
 class GoogleCalendarApi;
 class TokenStore;
@@ -18,14 +19,17 @@ class AccountManager : public QObject
     Q_OBJECT
 
 public:
-    AccountManager(TokenStore &tokens, AccountStore &store, QObject *parent = nullptr);
+    /// `cache`, when given, loses an account's events when the account is removed.
+    AccountManager(TokenStore &tokens, AccountStore &store, GoogleCache *cache = nullptr,
+                   QObject *parent = nullptr);
 
     /// Signs in with Google and records the account. The token is stored before
     /// the account is listed, so a keyring failure never leaves an account
     /// without a token. Emits connected or failed once.
     void connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api);
 
-    /// Forgets the token, then the account. Emits removed or failed once.
+    /// Forgets the token, then cached events, then the account, so a failed
+    /// step leaves the account listed for another try. Emits removed or failed once.
     void remove(const Account &account);
 
 Q_SIGNALS:
@@ -36,6 +40,7 @@ Q_SIGNALS:
 private:
     TokenStore &m_tokens;
     AccountStore &m_store;
+    GoogleCache *m_cache;
 };
 
 } // namespace callie

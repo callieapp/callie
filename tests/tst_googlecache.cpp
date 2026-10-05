@@ -61,6 +61,9 @@ private Q_SLOTS:
     void accountsAreSeparate();
     void dataSurvivesReopen();
     void outdatedSchemaIsRebuilt();
+    void appliedChangesRecordSuccess();
+    void calendarErrorKeepsLastSuccess();
+    void accountSyncStateIsKept();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -261,6 +264,48 @@ void TestGoogleCache::outdatedSchemaIsRebuilt()
     // A dropped cache means a full sync, so the token must go with the data.
     QVERIFY(m_cache->calendars(kAccount).isEmpty());
     QCOMPARE(m_cache->syncToken(kAccount, kCalendar), QString());
+}
+
+void TestGoogleCache::appliedChangesRecordSuccess()
+{
+    QVERIFY(m_cache->recordCalendarError(kAccount, kCalendar, u"Backend Error"_s));
+    const QDateTime before = QDateTime::currentDateTimeUtc().addSecs(-1);
+    apply({}, true);
+
+    const SyncState state = m_cache->calendarState(kAccount, kCalendar);
+    QVERIFY(state.lastSynced >= before);
+    QCOMPARE(state.lastError, QString());
+}
+
+void TestGoogleCache::calendarErrorKeepsLastSuccess()
+{
+    apply({}, true);
+    const QDateTime synced = m_cache->calendarState(kAccount, kCalendar).lastSynced;
+
+    QVERIFY(m_cache->recordCalendarError(kAccount, kCalendar, u"Backend Error"_s));
+
+    const SyncState state = m_cache->calendarState(kAccount, kCalendar);
+    QCOMPARE(state.lastSynced, synced);
+    QCOMPARE(state.lastError, u"Backend Error"_s);
+}
+
+void TestGoogleCache::accountSyncStateIsKept()
+{
+    QVERIFY(!m_cache->accountState(kAccount).lastSynced.isValid());
+
+    QVERIFY(m_cache->recordAccountSync(kAccount, {}));
+    const QDateTime synced = m_cache->accountState(kAccount).lastSynced;
+    QVERIFY(synced.isValid());
+
+    QVERIFY(m_cache->recordAccountSync(kAccount, u"keyring is locked"_s));
+    QCOMPARE(m_cache->accountState(kAccount).lastSynced, synced);
+    QCOMPARE(m_cache->accountState(kAccount).lastError, u"keyring is locked"_s);
+
+    QVERIFY(m_cache->recordAccountSync(kAccount, {}));
+    QCOMPARE(m_cache->accountState(kAccount).lastError, QString());
+
+    QVERIFY(m_cache->removeAccount(kAccount));
+    QVERIFY(!m_cache->accountState(kAccount).lastSynced.isValid());
 }
 
 QTEST_GUILESS_MAIN(TestGoogleCache)

@@ -8,7 +8,7 @@ Item {
     id: root
 
     required property EventModel model
-    property date anchorDate: new Date()
+    property date anchorDate: Clock.now
     property int dayCount: 7
 
     readonly property real dayWidth: (width - Theme.gutterWidth) / dayCount
@@ -20,7 +20,7 @@ Item {
     }
 
     function isToday(d) {
-        const now = new Date()
+        const now = Clock.now
         if (d.getFullYear() !== now.getFullYear())
             return false
         if (d.getMonth() !== now.getMonth())
@@ -274,7 +274,7 @@ Item {
             // Now indicator
             Item {
                 id: now
-                property date current: new Date()
+                readonly property date current: Clock.now
                 readonly property int columnIndex: {
                     for (let i = 0; i < root.dayCount; ++i)
                         if (root.isToday(root.dateForColumn(i)))
@@ -303,13 +303,6 @@ Item {
                     height: 7
                     radius: 3.5
                     color: Theme.accent
-                }
-
-                Timer {
-                    interval: 30000
-                    running: true
-                    repeat: true
-                    onTriggered: now.current = new Date()
                 }
             }
         }

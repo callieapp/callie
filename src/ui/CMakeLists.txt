@@ -10,6 +10,8 @@ qt_add_qml_module(callieui
     # color type when QtQuick is a declared dependency.
     DEPENDENCIES QtQuick
     SOURCES
+        Clock.h
+        Clock.cpp
         EventModelForeign.h
         LiveQml.h
         LiveQml.cpp

@@ -18,15 +18,19 @@ ApplicationWindow {
     /// Where events come from; set by main.cpp.
     required property CalendarSource source
 
-    /// Monday of the displayed week.
-    property date weekStart: {
-        const d = new Date()
+    /// Monday of the displayed week. Set once rather than bound to the clock,
+    /// which would pull the view back to this week on every tick.
+    property date weekStart
+
+    function mondayOf(day) {
+        const d = new Date(day)
         // JS Sunday=0 -> Monday-based
-        const offset = (d.getDay() + 6) % 7
-        d.setDate(d.getDate() - offset)
+        d.setDate(d.getDate() - (d.getDay() + 6) % 7)
         d.setHours(0, 0, 0, 0)
         return d
     }
+
+    Component.onCompleted: weekStart = mondayOf(Clock.now)
 
     function shiftWeeks(n) {
         const d = new Date(weekStart)
@@ -90,12 +94,7 @@ ApplicationWindow {
             PillButton {
                 anchors.verticalCenter: parent.verticalCenter
                 label: qsTr("Today")
-                onClicked: {
-                    const d = new Date()
-                    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-                    d.setHours(0, 0, 0, 0)
-                    window.weekStart = d
-                }
+                onClicked: window.weekStart = window.mondayOf(Clock.now)
             }
         }
 

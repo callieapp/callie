@@ -21,7 +21,8 @@ void EventModel::setSource(CalendarSource *source)
 
 void EventModel::setRangeStart(QDate date)
 {
-    if (m_rangeStart == date)
+    // QML passes an unset date before its first assignment.
+    if (m_rangeStart == date || !date.isValid())
         return;
     m_rangeStart = date;
     Q_EMIT rangeChanged();

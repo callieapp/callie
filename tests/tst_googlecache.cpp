@@ -1,5 +1,6 @@
 #include "callie/GoogleCache.h"
 
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSqlDatabase>
@@ -64,6 +65,9 @@ private Q_SLOTS:
     void appliedChangesRecordSuccess();
     void calendarErrorKeepsLastSuccess();
     void accountSyncStateIsKept();
+    void eventCountCoversAllCalendars();
+    void readingDoesNotCreateACache();
+    void readingLeavesOtherSchemasAlone();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -306,6 +310,61 @@ void TestGoogleCache::accountSyncStateIsKept()
 
     QVERIFY(m_cache->removeAccount(kAccount));
     QVERIFY(!m_cache->accountState(kAccount).lastSynced.isValid());
+}
+
+void TestGoogleCache::eventCountCoversAllCalendars()
+{
+    QVERIFY(m_cache->setCalendars(kAccount, {calendar(kCalendar), calendar(u"team"_s)}));
+    apply({parsed(R"({"id":"a"})"), parsed(R"({"id":"b"})")}, true);
+    QVERIFY(m_cache->applyChanges(kAccount, u"team"_s, {{parsed(R"({"id":"t"})")}, u"t"_s}, true));
+
+    QCOMPARE(m_cache->eventCount(kAccount), 3);
+    QCOMPARE(m_cache->eventCount(kOther), 0);
+}
+
+void TestGoogleCache::readingDoesNotCreateACache()
+{
+    const QString missing = m_dir->filePath(u"nowhere/google.sqlite"_s);
+    GoogleCache cache(missing);
+
+    QVERIFY(!cache.openForReading());
+    QVERIFY(!QFileInfo::exists(missing));
+}
+
+void TestGoogleCache::readingLeavesOtherSchemasAlone()
+{
+    apply({parsed(R"({"id":"a"})")}, true, u"tok"_s);
+    m_cache.reset();
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, u"old"_s);
+        db.setDatabaseName(path());
+        QVERIFY(db.open());
+        QSqlQuery query(db);
+        QVERIFY(query.exec(u"PRAGMA user_version = 99"_s));
+        db.close();
+    }
+    QSqlDatabase::removeDatabase(u"old"_s);
+
+    {
+        GoogleCache reader(path());
+        QVERIFY(!reader.openForReading());
+        QVERIFY(reader.errorString().contains(u"99"_s));
+    }
+
+    // Still the same data, still schema 99: nothing was rebuilt.
+    QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, u"check"_s);
+    db.setDatabaseName(path());
+    QVERIFY(db.open());
+    {
+        QSqlQuery query(db);
+        QVERIFY(query.exec(u"PRAGMA user_version"_s) && query.next());
+        QCOMPARE(query.value(0).toInt(), 99);
+        QVERIFY(query.exec(u"SELECT COUNT(*) FROM events"_s) && query.next());
+        QCOMPARE(query.value(0).toInt(), 1);
+    }
+    db.close();
+    db = {};
+    QSqlDatabase::removeDatabase(u"check"_s);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleCache)

@@ -136,6 +136,27 @@ bool GoogleCache::open()
     return exec(QStringLiteral("PRAGMA journal_mode=WAL"));
 }
 
+bool GoogleCache::openForReading()
+{
+    if (!QFileInfo::exists(m_path))
+        return fail(QObject::tr("no cache yet"));
+    QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), m_connection);
+    db.setDatabaseName(m_path);
+    db.setConnectOptions(QStringLiteral("QSQLITE_OPEN_READONLY;QSQLITE_BUSY_TIMEOUT=5000"));
+    if (!db.open())
+        return fail(db.lastError().text());
+
+    QSqlQuery version(db);
+    if (!version.exec(QStringLiteral("PRAGMA user_version")) || !version.next())
+        return fail(version.lastError().text());
+    const int found = version.value(0).toInt();
+    if (found != kSchemaVersion)
+        return fail(
+            QObject::tr("cache schema %1, this build reads %2").arg(found).arg(kSchemaVersion));
+    m_open = true;
+    return true;
+}
+
 QList<GoogleCalendar> GoogleCache::calendars(const Account &account)
 {
     QList<GoogleCalendar> result;

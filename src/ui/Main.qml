@@ -15,6 +15,9 @@ ApplicationWindow {
     title: qsTr("Callie")
     color: Theme.bg
 
+    /// Where events come from; set by main.cpp.
+    required property CalendarSource source
+
     /// Monday of the displayed week.
     property date weekStart: {
         const d = new Date()
@@ -33,6 +36,7 @@ ApplicationWindow {
 
     EventModel {
         id: events
+        source: window.source
         rangeStart: window.weekStart
         dayCount: 7
     }
@@ -153,26 +157,13 @@ ApplicationWindow {
                     font.letterSpacing: 0.6
                 }
 
-                // TODO(core): replace once CalendarInfo is exposed to QML.
                 Repeater {
-                    model: ListModel {
-                        ListElement {
-                            name: "Work"
-                            dot: "#5B8DEF"
-                        }
-                        ListElement {
-                            name: "Focus"
-                            dot: "#7C6BD6"
-                        }
-                        ListElement {
-                            name: "Personal"
-                            dot: "#2FA98C"
-                        }
-                    }
+                    model: events.calendars
 
                     Row {
-                        required property string name
-                        required property string dot
+                        id: calendarRow
+                        required property var modelData
+                        width: parent.width
                         spacing: Theme.space3
 
                         Rectangle {
@@ -180,12 +171,14 @@ ApplicationWindow {
                             width: 9
                             height: 9
                             radius: 2.5
-                            color: Theme.calendarColor(parent.dot, Theme.calendar)
+                            color: Theme.calendarColor(calendarRow.modelData.color, Theme.calendar)
                         }
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: parent.name
+                            width: calendarRow.width - 9 - Theme.space3
+                            text: calendarRow.modelData.name
+                            elide: Text.ElideRight
                             color: Theme.text
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textMd

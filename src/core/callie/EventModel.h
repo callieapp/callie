@@ -7,6 +7,8 @@
 #include <QDate>
 #include <QTimeZone>
 
+#include <utility>
+
 namespace callie {
 
 /// Flat list of expanded occurrences covering [rangeStart, rangeStart + dayCount).
@@ -15,8 +17,13 @@ namespace callie {
 class EventModel : public QAbstractListModel
 {
     Q_OBJECT
+    Q_PROPERTY(callie::CalendarSource *source READ source WRITE setSource NOTIFY sourceChanged)
     Q_PROPERTY(QDate rangeStart READ rangeStart WRITE setRangeStart NOTIFY rangeChanged)
     Q_PROPERTY(int dayCount READ dayCount WRITE setDayCount NOTIFY rangeChanged)
+    /// Rows the all-day strip needs so that no two all-day events overlap.
+    Q_PROPERTY(int allDayRows READ allDayRows NOTIFY allDayRowsChanged)
+    /// The source's shown calendars as {name, color} maps, for the sidebar.
+    Q_PROPERTY(QVariantList calendars READ calendars NOTIFY calendarsChanged)
 
 public:
     enum Role {
@@ -33,11 +40,14 @@ public:
         EndRole,
         LaneRole,
         LaneCountRole,
+        FirstDayRole,
+        DaySpanRole,
     };
     Q_ENUM(Role)
 
     explicit EventModel(QObject *parent = nullptr);
 
+    [[nodiscard]] CalendarSource *source() const { return m_source; }
     void setSource(CalendarSource *source);
 
     [[nodiscard]] QDate rangeStart() const { return m_rangeStart; }
@@ -46,23 +56,35 @@ public:
     [[nodiscard]] int dayCount() const { return m_dayCount; }
     void setDayCount(int days);
 
+    [[nodiscard]] int allDayRows() const { return m_allDayRows; }
+    [[nodiscard]] QVariantList calendars() const { return m_calendars; }
+
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
 Q_SIGNALS:
+    void sourceChanged();
     void rangeChanged();
+    void allDayRowsChanged();
+    void calendarsChanged();
 
 private:
     void reload();
     /// Assigns lane/laneCount to every timed event in `events`, per day.
     static void assignLanes(QList<Event> &events);
+    /// Gives each all-day event a row in `lane` and returns the rows used.
+    int assignAllDayRows(QList<Event> &events) const;
+    /// The visible columns an event covers, as [first, first + span).
+    [[nodiscard]] std::pair<int, int> visibleDays(const Event &event) const;
 
     CalendarSource *m_source = nullptr;
     QDate m_rangeStart = QDate::currentDate();
     int m_dayCount = 7;
     QTimeZone m_tz = QTimeZone::systemTimeZone();
     QList<Event> m_events;
+    int m_allDayRows = 0;
+    QVariantList m_calendars;
 };
 
 } // namespace callie

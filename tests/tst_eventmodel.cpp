@@ -18,7 +18,7 @@ public:
     explicit FakeSource(QList<Event> events) : m_events(std::move(events)) {}
 
     QString sourceId() const override { return QStringLiteral("fake"); }
-    QList<CalendarInfo> calendars() const override { return {}; }
+    QList<CalendarInfo> calendars() const override { return calendarList; }
     void refresh() override { Q_EMIT changed(); }
 
     QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
@@ -32,6 +32,8 @@ public:
         return out;
     }
 
+    QList<CalendarInfo> calendarList;
+
 private:
     QList<Event> m_events;
 };
@@ -44,6 +46,17 @@ Event timed(const QString &uid, const QDate &date, int startHour, int startMinut
     e.summary = uid;
     e.start = QDateTime(date, QTime(startHour, startMinute), QTimeZone::systemTimeZone());
     e.end = e.start.addSecs(durationMinutes * 60);
+    return e;
+}
+
+Event allDay(const QString &uid, const QDate &first, int days)
+{
+    Event e;
+    e.uid = uid;
+    e.summary = uid;
+    e.allDay = true;
+    e.start = QDateTime(first, QTime(0, 0), QTimeZone::systemTimeZone());
+    e.end = QDateTime(first.addDays(days), QTime(0, 0), QTimeZone::systemTimeZone());
     return e;
 }
 
@@ -63,6 +76,9 @@ private Q_SLOTS:
     void differentDaysDoNotShareLanes();
     void positionRolesAreComputed();
     void changingRangeReloads();
+    void allDayEventsStackInRows();
+    void allDayEventIsClippedToRange();
+    void calendarsListShownOnly();
 
 private:
     /// Builds a model over `events` starting at kMonday. Rows keep source order.
@@ -205,6 +221,50 @@ void TestEventModel::changingRangeReloads()
     QCOMPARE(model->rowCount(), 1);
     QCOMPARE(model->data(model->index(0, 0), EventModel::UidRole).toString(),
              QStringLiteral("nextWeek"));
+}
+
+void TestEventModel::allDayEventsStackInRows()
+{
+    auto [model, source] = modelFor({
+        allDay("trip", kMonday, 3),
+        allDay("tuesday", kMonday.addDays(1), 1),
+        allDay("thursday", kMonday.addDays(3), 1),
+    });
+
+    QCOMPARE(model->allDayRows(), 2);
+    QCOMPARE(intRole(*model, 0, EventModel::FirstDayRole), 0);
+    QCOMPARE(intRole(*model, 0, EventModel::DaySpanRole), 3);
+    QCOMPARE(intRole(*model, 0, EventModel::LaneRole), 0);
+    QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
+    QCOMPARE(intRole(*model, 2, EventModel::LaneRole), 0);
+}
+
+void TestEventModel::allDayEventIsClippedToRange()
+{
+    auto [model, source] = modelFor({allDay("long", kMonday.addDays(-5), 7)});
+
+    QCOMPARE(intRole(*model, 0, EventModel::FirstDayRole), 0);
+    QCOMPARE(intRole(*model, 0, EventModel::DaySpanRole), 2);
+    QCOMPARE(model->allDayRows(), 1);
+}
+
+void TestEventModel::calendarsListShownOnly()
+{
+    auto source = std::make_unique<FakeSource>(QList<Event>{});
+    source->calendarList = {
+        CalendarInfo{.id = "a", .displayName = "Shown", .color = QColor("#ff0000")},
+        CalendarInfo{
+            .id = "b", .displayName = "Hidden", .color = {}, .writable = false, .enabled = false},
+    };
+    EventModel model;
+    QSignalSpy changed(&model, &EventModel::calendarsChanged);
+    model.setSource(source.get());
+
+    QCOMPARE(changed.size(), 1);
+    QCOMPARE(model.calendars().size(), 1);
+    const QVariantMap shown = model.calendars().first().toMap();
+    QCOMPARE(shown.value("name").toString(), QStringLiteral("Shown"));
+    QCOMPARE(shown.value("color").value<QColor>(), QColor("#ff0000"));
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

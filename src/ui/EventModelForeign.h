@@ -1,5 +1,6 @@
 #pragma once
 
+#include "callie/CalendarSource.h"
 #include "callie/EventModel.h"
 
 #include <QQmlEngine>
@@ -13,6 +14,15 @@ struct EventModelForeign
     Q_GADGET
     QML_FOREIGN(callie::EventModel)
     QML_NAMED_ELEMENT(EventModel)
+};
+
+/// Lets QML name the source type; sources are created in C++ only.
+struct CalendarSourceForeign
+{
+    Q_GADGET
+    QML_FOREIGN(callie::CalendarSource)
+    QML_NAMED_ELEMENT(CalendarSource)
+    QML_UNCREATABLE("Calendar sources are created in C++.")
 };
 
 } // namespace callie

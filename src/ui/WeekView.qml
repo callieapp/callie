@@ -100,11 +100,74 @@ Item {
         }
     }
 
+    // ---- All-day events ----------------------------------------------------
+    Item {
+        id: allDayStrip
+        readonly property int rowHeight: 22
+
+        anchors {
+            top: header.bottom
+            left: parent.left
+            right: parent.right
+        }
+        height: root.model.allDayRows > 0 ? root.model.allDayRows * rowHeight + Theme.space2 * 2 : 0
+        visible: height > 0
+        clip: true
+
+        Repeater {
+            model: root.model
+
+            Rectangle {
+                id: chip
+                required property string summary
+                required property bool allDay
+                required property int firstDay
+                required property int daySpan
+                required property int lane
+                required property color calendarColor
+                readonly property color accent: Theme.calendarColor(calendarColor, Theme.calendar)
+
+                visible: allDay
+                x: Theme.gutterWidth + firstDay * root.dayWidth + 3
+                y: Theme.space2 + lane * allDayStrip.rowHeight
+                width: daySpan * root.dayWidth - 6
+                height: allDayStrip.rowHeight - 3
+                radius: Theme.radiusMd
+                color: Theme.tint(accent, Theme.dark ? 0.32 : 0.18)
+
+                Text {
+                    anchors {
+                        fill: parent
+                        leftMargin: Theme.space3
+                        rightMargin: Theme.space2
+                    }
+                    verticalAlignment: Text.AlignVCenter
+                    text: chip.summary
+                    elide: Text.ElideRight
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textSm
+                    font.weight: Font.DemiBold
+                }
+            }
+        }
+
+        Rectangle {
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
+            height: 1
+            color: Theme.border
+        }
+    }
+
     // ---- Scrollable time grid ---------------------------------------------
     Flickable {
         id: grid
         anchors {
-            top: header.bottom
+            top: allDayStrip.bottom
             left: parent.left
             right: parent.right
             bottom: parent.bottom
@@ -188,10 +251,11 @@ Item {
                     required property int lane
                     required property int laneCount
                     required property color calendarColor
+                    required property bool allDay
 
                     readonly property real laneWidth: (root.dayWidth - 6) / laneCount
 
-                    visible: dayIndex >= 0 && dayIndex < root.dayCount
+                    visible: !allDay && dayIndex >= 0 && dayIndex < root.dayCount
 
                     x: Theme.gutterWidth + dayIndex * root.dayWidth + 3 + lane * laneWidth
                     width: laneWidth - (laneCount > 1 ? 3 : 0)

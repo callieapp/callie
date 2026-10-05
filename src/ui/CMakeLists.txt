@@ -11,6 +11,8 @@ qt_add_qml_module(callieui
     DEPENDENCIES QtQuick
     SOURCES
         EventModelForeign.h
+        LiveQml.h
+        LiveQml.cpp
         ThemeController.h
         ThemeController.cpp
     QML_FILES

@@ -51,4 +51,4 @@ Run `make` to list the commands; `make check` runs what CI runs. The Makefile wr
 which work directly too: `cmake --workflow --preset ci` is CI's build, lint and test.
 
 `make run` and `make watch` enable Callie's logging categories and QML `console.log`. Log through
-`lcAuth`, `lcAccounts`, `lcSync` or `lcTheme` from `callie/Logging.h`, never `qDebug()`, and never log tokens.
+`lcAuth`, `lcAccounts`, `lcSync`, `lcTheme` or `lcUi` from `callie/Logging.h`, never `qDebug()`, and never log tokens.

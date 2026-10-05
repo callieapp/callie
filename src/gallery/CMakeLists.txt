@@ -21,3 +21,11 @@ target_link_libraries(callie-gallery PRIVATE
     callieui
     callieuiplugin
 )
+
+if(CALLIE_LIVE_QML)
+    target_compile_definitions(callie-gallery PRIVATE
+        CALLIE_LIVE_QML
+        CALLIE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+        CALLIE_BINARY_DIR="${CMAKE_BINARY_DIR}"
+    )
+endif()

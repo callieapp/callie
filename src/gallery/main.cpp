@@ -1,3 +1,4 @@
+#include "LiveQml.h"
 #include "ThemeController.h"
 
 #include "callie/LogFile.h"
@@ -28,6 +29,12 @@ int main(int argc, char *argv[])
         QStringLiteral("screenshot"),
         QStringLiteral("Save the rendered gallery to a PNG and exit."), QStringLiteral("file"));
     parser.addOption(screenshotOption);
+#ifdef CALLIE_LIVE_QML
+    QCommandLineOption liveOption(QStringLiteral("live-qml"),
+                                  QStringLiteral("Load QML from the source tree and reload it on "
+                                                 "save. Development builds only."));
+    parser.addOption(liveOption);
+#endif
     parser.process(app);
     callie::logfile::install(QStringLiteral("callie-gallery"));
 
@@ -42,9 +49,26 @@ int main(int argc, char *argv[])
 
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     QQmlApplicationEngine engine;
-    QObject::connect(
-        &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
-        [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
+    bool live = false;
+#ifdef CALLIE_LIVE_QML
+    // A QML mistake while editing should wait for the fix, not end the session.
+    callie::LiveQml liveQml(
+        engine,
+        {{QStringLiteral("Callie.Ui"), QStringLiteral(CALLIE_SOURCE_DIR "/src/ui"),
+          QStringLiteral(CALLIE_BINARY_DIR "/Callie/Ui")},
+         {QStringLiteral("Callie.Gallery"), QStringLiteral(CALLIE_SOURCE_DIR "/src/gallery"),
+          QStringLiteral(CALLIE_BINARY_DIR "/Callie/Gallery")}},
+        [&engine] { engine.loadFromModule("Callie.Gallery", "Gallery"); });
+    if (parser.isSet(liveOption)) {
+        live = liveQml.start();
+        if (!live)
+            QTextStream(stderr) << "callie-gallery: live QML: " << liveQml.errorString() << "\n";
+    }
+#endif
+    if (!live)
+        QObject::connect(
+            &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
+            [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Callie.Gallery", "Gallery");
 
     if (const QString file = parser.value(screenshotOption); !file.isEmpty()) {

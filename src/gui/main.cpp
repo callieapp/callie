@@ -1,3 +1,4 @@
+#include "LiveQml.h"
 #include "ThemeController.h"
 
 #include "callie/AccountStore.h"
@@ -48,6 +49,12 @@ int main(int argc, char *argv[])
         QStringLiteral("Save the window to a PNG once it has rendered, then exit."),
         QStringLiteral("file"));
     parser.addOption(screenshotOption);
+#ifdef CALLIE_LIVE_QML
+    QCommandLineOption liveOption(QStringLiteral("live-qml"),
+                                  QStringLiteral("Load QML from the source tree and reload it on "
+                                                 "save. Development builds only."));
+    parser.addOption(liveOption);
+#endif
     parser.process(app);
     callie::logfile::install(QStringLiteral("callie-gui"));
 
@@ -105,9 +112,24 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     engine.setInitialProperties({{QStringLiteral("source"), QVariant::fromValue(source)}});
-    QObject::connect(
-        &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
-        [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
+    bool live = false;
+#ifdef CALLIE_LIVE_QML
+    // A QML mistake while editing should wait for the fix, not end the session.
+    callie::LiveQml liveQml(
+        engine,
+        {{QStringLiteral("Callie.Ui"), QStringLiteral(CALLIE_SOURCE_DIR "/src/ui"),
+          QStringLiteral(CALLIE_BINARY_DIR "/Callie/Ui")}},
+        [&engine] { engine.loadFromModule("Callie.Ui", "Main"); });
+    if (parser.isSet(liveOption)) {
+        live = liveQml.start();
+        if (!live)
+            err << "callie-gui: live QML: " << liveQml.errorString() << "\n";
+    }
+#endif
+    if (!live)
+        QObject::connect(
+            &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
+            [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Callie.Ui", "Main");
 
     if (!screenshot.isEmpty()) {

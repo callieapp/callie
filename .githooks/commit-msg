@@ -1,5 +1,5 @@
 #!/bin/sh
-# Validates the commit message against commitlint.config.js.
+# Validates the commit message against commitlint.config.mjs.
 # Enable with: git config core.hooksPath .githooks
 # Skipped silently when commitlint is not installed, since CI enforces it too.
 

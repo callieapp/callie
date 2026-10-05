@@ -8,7 +8,7 @@ www                  export-ignore
 .editorconfig        export-ignore
 package.json         export-ignore
 package-lock.json    export-ignore
-commitlint.config.js export-ignore
+commitlint.config.mjs export-ignore
 CONTRIBUTING.md      export-ignore
 GUIDELINES.md        export-ignore
 CLAUDE.md            export-ignore

@@ -58,6 +58,7 @@ private Q_SLOTS:
     void rotatesWhileRunning();
     void plainDebugStaysOffDisk();
     void terminalShowsOnlyProblems();
+    void verboseShowsProgressAndKeepsDebug();
 };
 
 void TestLogFile::infoReachesTheFile()
@@ -182,6 +183,24 @@ void TestLogFile::terminalShowsOnlyProblems()
     });
     QVERIFY2(terminal.contains(u"loud problem"_s), qPrintable(terminal));
     QVERIFY2(!terminal.contains(u"quiet progress"_s), qPrintable(terminal));
+}
+
+void TestLogFile::verboseShowsProgressAndKeepsDebug()
+{
+    QTemporaryDir dir;
+    QVERIFY(logfile::install(u"app"_s, dir.path()));
+    logfile::setVerboseTerminal(true);
+    QLoggingCategory::setFilterRules(u"callie.test.debug=true"_s);
+
+    const QString terminal = terminalOutput(dir.filePath(u"stderr.txt"_s), [] {
+        qCInfo(lcTest) << "quiet progress";
+        qCDebug(lcTest) << "fine detail";
+    });
+    QLoggingCategory::setFilterRules({});
+
+    QVERIFY2(terminal.contains(u"quiet progress"_s), qPrintable(terminal));
+    // Asked-for debug output is kept, since whoever turned it on wants it.
+    QVERIFY(read(dir.filePath(u"app.log"_s)).contains(u"fine detail"_s));
 }
 
 QTEST_GUILESS_MAIN(TestLogFile)

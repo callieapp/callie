@@ -314,8 +314,15 @@ int runDoctor(QCoreApplication &app, bool report)
             out << text << "\n";
             if (report) {
                 const QString url = diagnostics::issueUrl(text).toString(QUrl::FullyEncoded);
-                err << QObject::tr("Opening a new issue in your browser.") << "\n";
-                QProcess::startDetached(QStringLiteral("xdg-open"), {url});
+                // Over SSH or without a desktop nothing opens, so the link is always shown.
+                if (QProcess::startDetached(QStringLiteral("xdg-open"), {url}))
+                    err << QObject::tr("Opening a new issue in your browser. If it does not "
+                                       "open, visit:")
+                        << "\n";
+                else
+                    err << QObject::tr("Could not open a browser. To report the bug, visit:")
+                        << "\n";
+                err << url << "\n";
             }
             finish(0);
         });

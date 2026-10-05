@@ -2,6 +2,7 @@
 
 #include "callie/AccountStore.h"
 #include "callie/GoogleAuth.h"
+#include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/Logging.h"
 #include "callie/TokenStore.h"
@@ -12,8 +13,9 @@
 
 namespace callie {
 
-AccountManager::AccountManager(TokenStore &tokens, AccountStore &store, QObject *parent)
-    : QObject(parent), m_tokens(tokens), m_store(store)
+AccountManager::AccountManager(TokenStore &tokens, AccountStore &store, GoogleCache *cache,
+                               QObject *parent)
+    : QObject(parent), m_tokens(tokens), m_store(store), m_cache(cache)
 {}
 
 void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
@@ -98,6 +100,8 @@ void AccountManager::remove(const Account &account)
     m_tokens.remove(account, [this, account](const QString &keyring) {
         if (!keyring.isEmpty())
             Q_EMIT failed(tr("could not remove the token: %1").arg(keyring));
+        else if (m_cache && !m_cache->removeAccount(account))
+            Q_EMIT failed(tr("could not clear cached events: %1").arg(m_cache->errorString()));
         else if (!m_store.remove(account))
             Q_EMIT failed(m_store.errorString());
         else {

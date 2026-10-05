@@ -16,6 +16,7 @@ private Q_SLOTS:
     void addIsIdempotent();
     void removeDropsOnlyThatAccount();
     void corruptFileIsEmpty();
+    void corruptFileIsNeverOverwritten();
 
 private:
     QTemporaryDir m_dir;
@@ -67,6 +68,23 @@ void TestAccountStore::corruptFileIsEmpty()
     file.write("{ not json");
     file.close();
     QVERIFY(AccountStore(file.fileName()).accounts().isEmpty());
+}
+
+void TestAccountStore::corruptFileIsNeverOverwritten()
+{
+    const QByteArray corrupt = "{ \"accounts\": [ { \"provider\": \"google\", ";
+    QFile file(path("hand-edited.json"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(corrupt);
+    file.close();
+
+    AccountStore store(file.fileName());
+    QVERIFY(!store.add({QStringLiteral("google"), QStringLiteral("new@example.com")}));
+    QVERIFY(!store.remove({QStringLiteral("google"), QStringLiteral("a@example.com")}));
+    QVERIFY(!store.errorString().isEmpty());
+
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), corrupt);
 }
 
 QTEST_GUILESS_MAIN(TestAccountStore)

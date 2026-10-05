@@ -34,27 +34,37 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
     };
 
     connect(&auth, &GoogleAuth::failed, attempt, fail);
-    connect(&auth, &GoogleAuth::granted, attempt,
-            [this, &api, finish, fail](const GoogleTokens &tokens) {
-                api.fetchPrimaryCalendarId(tokens.accessToken, [this, finish, fail,
-                                                                tokens](const QString &id,
-                                                                        const QString &error) {
-                    if (!error.isEmpty()) {
-                        fail(error);
-                        return;
-                    }
-                    const Account account{QStringLiteral("google"), id};
-                    m_tokens.write(account, tokens.refreshToken,
-                                   [this, finish, fail, account](const QString &keyring) {
-                                       if (!keyring.isEmpty())
-                                           fail(tr("could not store the token: %1").arg(keyring));
-                                       else if (!m_store.add(account))
-                                           fail(m_store.errorString());
-                                       else if (finish())
-                                           Q_EMIT connected(account);
-                                   });
-                });
+    connect(
+        &auth, &GoogleAuth::granted, attempt,
+        [this, &api, finish, fail](const GoogleTokens &tokens) {
+            api.fetchPrimaryCalendarId(tokens.accessToken, [this, finish, fail,
+                                                            tokens](const QString &id,
+                                                                    const QString &error) {
+                if (!error.isEmpty()) {
+                    fail(error);
+                    return;
+                }
+                const Account account{QStringLiteral("google"), id};
+                m_tokens.write(
+                    account, tokens.refreshToken,
+                    [this, finish, fail, account](const QString &keyring) {
+                        if (!keyring.isEmpty())
+                            fail(tr("could not store the token: %1").arg(keyring));
+                        else if (!m_store.add(account)) {
+                            // Undo the keyring write, or the token would stay behind with no
+                            // listed account, where remove() cannot reach it.
+                            const QString listError = m_store.errorString();
+                            m_tokens.remove(account, [fail, listError](const QString &cleanup) {
+                                fail(cleanup.isEmpty()
+                                         ? listError
+                                         : tr("%1, and the stored token could not be removed: %2")
+                                               .arg(listError, cleanup));
+                            });
+                        } else if (finish())
+                            Q_EMIT connected(account);
+                    });
             });
+        });
 
     auth.authorize();
 }

@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QSaveFile>
 #include <QStandardPaths>
 
@@ -23,13 +24,31 @@ QString AccountStore::defaultPath()
 
 QList<Account> AccountStore::accounts() const
 {
+    return load(nullptr).value_or(QList<Account>());
+}
+
+std::optional<QList<Account>> AccountStore::load(QString *error) const
+{
     QFile file(m_path);
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
+    if (!file.exists())
+        return QList<Account>();
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (error)
+            *error = QStringLiteral("cannot read %1: %2").arg(m_path, file.errorString());
+        return std::nullopt;
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        if (error)
+            *error = QStringLiteral("%1 is not valid, fix or remove it: %2")
+                         .arg(m_path, parseError.errorString());
+        return std::nullopt;
+    }
 
     QList<Account> out;
-    const QJsonArray array =
-        QJsonDocument::fromJson(file.readAll()).object()[u"accounts"].toArray();
+    const QJsonArray array = document.object()[u"accounts"].toArray();
     for (const QJsonValue &value : array) {
         const QJsonObject o = value.toObject();
         Account account{o[u"provider"].toString(), o[u"id"].toString()};
@@ -46,7 +65,10 @@ bool AccountStore::contains(const Account &account) const
 
 bool AccountStore::add(const Account &account)
 {
-    QList<Account> list = accounts();
+    std::optional<QList<Account>> loaded = load(&m_error);
+    if (!loaded)
+        return false;
+    QList<Account> &list = *loaded;
     if (list.contains(account))
         return true;
     list.append(account);
@@ -55,7 +77,10 @@ bool AccountStore::add(const Account &account)
 
 bool AccountStore::remove(const Account &account)
 {
-    QList<Account> list = accounts();
+    std::optional<QList<Account>> loaded = load(&m_error);
+    if (!loaded)
+        return false;
+    QList<Account> &list = *loaded;
     if (!list.removeOne(account))
         return true;
     return save(list);

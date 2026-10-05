@@ -74,7 +74,8 @@ int main(int argc, char *argv[])
     accounts.removeIf([](const callie::Account &a) { return a.provider != u"google"; });
 
     callie::KeychainTokenStore tokens;
-    callie::GoogleTokenProvider provider(callie::GoogleClientConfig::resolve(), tokens);
+    const callie::GoogleClientConfig client = callie::GoogleClientConfig::resolve();
+    callie::GoogleTokenProvider provider(client, tokens);
     QNetworkAccessManager network;
     callie::GoogleCalendarApi api(&network);
     callie::GoogleSync sync(provider, api, cache);
@@ -89,7 +90,13 @@ int main(int argc, char *argv[])
         useSample ? static_cast<callie::CalendarSource *>(&sample) : &google;
     QTimer syncTimer;
     const QString screenshot = parser.value(screenshotOption);
-    if (!useSample && !accounts.isEmpty() && screenshot.isEmpty()) {
+    // Without a client every refresh would fail, so show the cache and say why once.
+    const bool canSync = client.isValid();
+    if (!useSample && !accounts.isEmpty() && !canSync)
+        qCWarning(lcSync) << "no Google OAuth client is configured, showing cached events only."
+                          << "Build with one, or set CALLIE_GOOGLE_CLIENT_ID and"
+                          << "CALLIE_GOOGLE_CLIENT_SECRET.";
+    if (!useSample && !accounts.isEmpty() && canSync && screenshot.isEmpty()) {
         QObject::connect(&syncTimer, &QTimer::timeout, &google, &callie::GoogleSource::refresh);
         syncTimer.start(std::chrono::minutes(5));
         QTimer::singleShot(0, &google, &callie::GoogleSource::refresh);

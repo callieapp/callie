@@ -1,0 +1,45 @@
+# Callie, the default theme. Every other theme inherits whatever it leaves out
+# from this file, so it sets every key.
+
+[theme]
+name = "Callie"
+variant = "dark"
+
+[colors]
+background = "#180f17"
+surface = "#1f161e"
+surface-alt = "#271c26"
+hairline = "#2d232c"
+border = "#3d313c"
+text = "#eee7ed"
+text-muted = "#baacb8"
+text-faint = "#8a7b88"
+accent = "#e57db1"
+accent-text = "#180f17"
+danger = "#e66e6d"
+
+# Calendar colors keep their hue; lightness and chroma come from here, in OKLCH.
+[calendar]
+harmonize = true
+lightness = 0.72
+chroma = 0.12
+
+[shape]
+radius-small = 3
+radius = 4
+radius-large = 8
+radius-xlarge = 12
+
+# Empty means the system font, until Callie bundles its own.
+[type]
+family = ""
+display-family = ""
+mono-family = ""
+
+# Durations in milliseconds. Bounce is the overshoot when something arrives;
+# 0 turns it off.
+[motion]
+duration-fast = 140
+duration = 200
+duration-slow = 280
+bounce = 1.2

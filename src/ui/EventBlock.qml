@@ -32,7 +32,8 @@ Rectangle {
     Behavior on scale {
         NumberAnimation {
             duration: Theme.durFast
-            easing.type: Theme.easing
+            easing.type: Theme.easingBounce
+            easing.overshoot: Theme.bounce
         }
     }
     Behavior on opacity {

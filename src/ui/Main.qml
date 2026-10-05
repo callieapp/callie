@@ -180,7 +180,7 @@ ApplicationWindow {
                             width: 9
                             height: 9
                             radius: 2.5
-                            color: parent.dot
+                            color: Theme.calendarColor(parent.dot, Theme.calendar)
                         }
 
                         Text {

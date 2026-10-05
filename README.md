@@ -32,7 +32,7 @@ Requires Qt 6.8+, QtKeychain, CMake and Ninja. On Fedora:
 
 ```sh
 sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtnetworkauth-devel \
-    qtkeychain-qt6-devel cmake ninja-build
+    qtkeychain-qt6-devel tomlplusplus-devel cmake ninja-build
 ```
 
 Then build and run:

@@ -99,10 +99,15 @@ Also yours: model correctness and role plumbing, the C++ and QML boundary, and c
   already, which is why it is now `calendarColor`.
 - **QML delegates.** Under `pragma ComponentBehavior: Bound`, every model role a delegate reads must
   be declared as a `required property`. Unqualified access is a real bug, not a style preference.
-- **Credentials.** The Google OAuth client secret is injected at build time and must never appear in
-  a committed file, a log line, or an error message. Tokens belong in the system keyring through
-  QtKeychain, never in a config file or the SQLite cache. OAuth must use a loopback redirect with
-  PKCE; the out-of-band flow is deprecated and must not be reintroduced.
+- **Credentials.** The Google OAuth client comes from the git-ignored `google-oauth-credentials.json`
+  or CMake cache variables, and lands in a generated header, never in a committed file, a compile
+  definition, a log line, or an error message. A diff that adds that file, or a literal client id
+  or secret, is a blocking finding. Refresh tokens belong in the system keyring through
+  `TokenStore`, never in `accounts.json`, a config file, or the SQLite cache. OAuth must use PKCE
+  with a loopback redirect; the out-of-band flow is deprecated and must not be reintroduced.
+- **Loopback binding.** The OAuth callback listener must bind `QHostAddress::LocalHost`. The
+  QtNetworkAuth default is `QHostAddress::Any`, which exposes the authorization code to the local
+  network. `tests/tst_googleauth.cpp` checks this; a change that weakens that test is a finding.
 - **Network code.** `QNetworkAccessManager` replies must handle the error case, and nothing on the
   sync path may block the UI thread.
 - **Packaging.** `packaging/rpm/callie.spec` and `packaging/debian/` are reviewed by distro

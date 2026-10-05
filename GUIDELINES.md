@@ -5,18 +5,18 @@ MIT licensed. App ID `org.callieapp.Callie`, homepage `callieapp.org`.
 
 ## Layout
 
-| Path         | What                                                                              |
-| ------------ | --------------------------------------------------------------------------------- |
-| `src/core/`  | `libcalliecore`: `Event`, `CalendarSource`, `EventModel`. No UI and no QML types. |
-| `src/ui/`    | The QML module `Callie.Ui`: views, components, and `Theme.qml`.                   |
-| `src/gui/`   | `callie-gui` entry point. `main.cpp` only.                                        |
-| `src/cli/`   | `callie`, the command-line interface over the same core.                          |
-| `tests/`     | Qt Test cases run by ctest. See `tst_eventmodel.cpp` for the fake-source pattern. |
-| `scripts/`   | `format.sh`, the single formatter entry point used by CMake and CI.               |
-| `data/`      | Desktop entry and AppStream metainfo.                                             |
-| `assets/`    | Logo, also installed as the application icon.                                     |
-| `packaging/` | Hand-written `rpm/callie.spec` and `debian/`, at distro-review quality.           |
-| `www/`       | The callieapp.org site, deployed to GitHub Pages. Excluded from release tarballs. |
+| Path         | What                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------- |
+| `src/core/`  | `libcalliecore`: event model, accounts, Google OAuth and API. No UI and no QML types. |
+| `src/ui/`    | The QML module `Callie.Ui`: views, components, and `Theme.qml`.                       |
+| `src/gui/`   | `callie-gui` entry point. `main.cpp` only.                                            |
+| `src/cli/`   | `callie`, the command-line interface over the same core.                              |
+| `tests/`     | Qt Test cases run by ctest. See `tst_eventmodel.cpp` for the fake-source pattern.     |
+| `scripts/`   | `format.sh`, the single formatter entry point used by CMake and CI.                   |
+| `data/`      | Desktop entry and AppStream metainfo.                                                 |
+| `assets/`    | Logo, also installed as the application icon.                                         |
+| `packaging/` | Hand-written `rpm/callie.spec` and `debian/`, at distro-review quality.               |
+| `www/`       | The callieapp.org site, deployed to GitHub Pages. Excluded from release tarballs.     |
 
 ## Conventions
 

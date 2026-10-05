@@ -22,8 +22,19 @@ DEBIAN_DEPS := build-essential cmake ninja-build qt6-base-dev qt6-declarative-de
 	qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev clang-format entr nodejs npm
 
 # Files whose change should rebuild and restart the app under `make watch`.
-# entr -d exits when a file is added, so the watch loops re-list and pick it up.
 WATCHED := git ls-files --cached --others --exclude-standard -- src themes CMakeLists.txt
+
+# Rebuilds target $(1) and restarts $(2) on every save. Quitting the app or Ctrl-C
+# ends the watch; a failed build or a crash waits for the next save instead. entr -d
+# exits with status 2 when a file is added, so the loop re-lists and picks it up.
+define watch
+	@command -v entr >/dev/null || { echo "make $@ needs entr: run make deps" >&2; exit 1; }
+	@status=2; while [ $$status -eq 2 ]; do \
+		$(WATCHED) | entr -d -r -z -s 'cmake --build --preset $(PRESET) --target $(1) || exec sleep infinity; \
+			env $(DEV_ENV) $(2) || { echo "$(1) exited with status $$?, waiting for a change" >&2; exec sleep infinity; }'; \
+		status=$$?; \
+	done
+endef
 
 .DEFAULT_GOAL := help
 .PHONY: help deps setup configure build run cli gallery watch watch-gallery test lint format check clean
@@ -60,16 +71,10 @@ gallery: build ## Open the theme gallery; THEME=path shows a theme file live
 	@$(DEV_ENV) $(GALLERY) $(if $(THEME),--theme $(THEME))
 
 watch: $(BUILD)/build.ninja ## Rebuild and restart the app on every save
-	@command -v entr >/dev/null || { echo "make watch needs entr: run make deps" >&2; exit 1; }
-	@while true; do \
-		$(WATCHED) | entr -d -r -s 'cmake --build --preset $(PRESET) --target callie-gui && exec env $(DEV_ENV) $(GUI) $(ARGS)'; \
-	done
+	$(call watch,callie-gui,$(GUI) $(ARGS))
 
 watch-gallery: $(BUILD)/build.ninja ## Like watch, for the gallery; THEME=path optional
-	@command -v entr >/dev/null || { echo "make watch-gallery needs entr: run make deps" >&2; exit 1; }
-	@while true; do \
-		$(WATCHED) | entr -d -r -s 'cmake --build --preset $(PRESET) --target callie-gallery && exec env $(DEV_ENV) $(GALLERY) $(if $(THEME),--theme $(THEME))'; \
-	done
+	$(call watch,callie-gallery,$(GALLERY) $(if $(THEME),--theme $(THEME)))
 
 test: build ## Run the tests
 	@ctest --preset $(PRESET)

@@ -90,6 +90,7 @@ private Q_SLOTS:
     void missingRefreshTokenIsReported();
     void concurrentSyncsShareOneRun();
     void removedCalendarIsDropped();
+    void calendarListChangeIsSignalled();
 
 private:
     QStringList runSync();
@@ -158,7 +159,8 @@ void TestGoogleSync::firstSyncIsFullThenIncremental()
     QCOMPARE(m_cache->calendars(kAccount).size(), 2);
     QCOMPARE(m_cache->events(kAccount, kAccount.id).size(), 1);
     QCOMPARE(m_cache->events(kAccount, u"team"_s).size(), 1);
-    QCOMPARE(changed.size(), 2);
+    // Once for the calendar list, then once per calendar.
+    QCOMPARE(changed.size(), 3);
 
     QCOMPARE(runSync(), QStringList());
     QCOMPARE(m_google->syncTokensSent(u"calendars/me%40example.com/events"_s),
@@ -284,6 +286,16 @@ void TestGoogleSync::removedCalendarIsDropped()
 
     QCOMPARE(m_cache->calendars(kAccount).size(), 1);
     QVERIFY(m_cache->events(kAccount, u"team"_s).isEmpty());
+}
+
+void TestGoogleSync::calendarListChangeIsSignalled()
+{
+    m_google->responses[u"/v3/users/me/calendarList"_s] = {{200, R"({"items":[]})"}};
+    QSignalSpy changed(m_sync.get(), &GoogleSync::changed);
+
+    QCOMPARE(runSync(), QStringList());
+
+    QCOMPARE(changed.size(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSync)

@@ -1,3 +1,4 @@
+#include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
 #include "callie/EventModel.h"
 #include "callie/GoogleAuth.h"
@@ -122,7 +123,9 @@ int runAccountsAddGoogle(QCoreApplication &app)
     GoogleAuth auth(client);
     QNetworkAccessManager network;
     GoogleCalendarApi api(&network);
+    KeychainTokenStore tokens;
     AccountStore store(AccountStore::defaultPath());
+    AccountManager manager(tokens, store);
 
     QObject::connect(&auth, &GoogleAuth::authorizeUrlReady, [](const QUrl &url) {
         const QString link = url.toString(QUrl::FullyEncoded);
@@ -133,34 +136,13 @@ int runAccountsAddGoogle(QCoreApplication &app)
         err.flush();
         QProcess::startDetached(QStringLiteral("xdg-open"), {link});
     });
-    QObject::connect(&auth, &GoogleAuth::failed, [](const QString &message) {
+    QObject::connect(&manager, &AccountManager::connected, [](const Account &account) {
+        out << account.id << "\n";
+        finish(0);
+    });
+    QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
         err << QStringLiteral("callie: %1\n").arg(message);
         finish(1);
-    });
-    QObject::connect(&auth, &GoogleAuth::granted, [&](const GoogleTokens &tokens) {
-        api.fetchPrimaryCalendarId(tokens.accessToken, [&, tokens](const QString &id,
-                                                                   const QString &error) {
-            if (!error.isEmpty()) {
-                err << QStringLiteral("callie: %1\n").arg(error);
-                finish(1);
-                return;
-            }
-            // The keyring is written first so that a failure there never leaves
-            // an account listed without a token.
-            const Account account{kGoogle, id};
-            TokenStore::write(account, tokens.refreshToken, [&, account](const QString &keyring) {
-                if (!keyring.isEmpty()) {
-                    err << QStringLiteral("callie: could not store the token: %1\n").arg(keyring);
-                    finish(1);
-                } else if (!store.add(account)) {
-                    err << QStringLiteral("callie: %1\n").arg(store.errorString());
-                    finish(1);
-                } else {
-                    out << account.id << "\n";
-                    finish(0);
-                }
-            });
-        });
     });
 
     QTimer::singleShot(std::chrono::minutes(5), [] {
@@ -169,31 +151,23 @@ int runAccountsAddGoogle(QCoreApplication &app)
     });
 
     // Started from inside the loop: an exit() requested before exec() is ignored.
-    QTimer::singleShot(0, &auth, &GoogleAuth::authorize);
+    QTimer::singleShot(0, &manager, [&] { manager.connectGoogle(auth, api); });
     return app.exec();
 }
 
 int runAccountsRemove(QCoreApplication &app, const Account &account)
 {
+    KeychainTokenStore tokens;
     AccountStore store(AccountStore::defaultPath());
-    if (!store.contains(account)) {
-        err << QStringLiteral("callie: no %1 account '%2'\n").arg(account.provider, account.id);
-        return 1;
-    }
+    AccountManager manager(tokens, store);
 
-    QTimer::singleShot(0, &app, [&] {
-        TokenStore::remove(account, [&](const QString &error) {
-            if (!error.isEmpty()) {
-                err << QStringLiteral("callie: could not remove the token: %1\n").arg(error);
-                finish(1);
-            } else if (!store.remove(account)) {
-                err << QStringLiteral("callie: %1\n").arg(store.errorString());
-                finish(1);
-            } else {
-                finish(0);
-            }
-        });
+    QObject::connect(&manager, &AccountManager::removed, [] { finish(0); });
+    QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
+        err << QStringLiteral("callie: %1\n").arg(message);
+        finish(1);
     });
+
+    QTimer::singleShot(0, &manager, [&] { manager.remove(account); });
     return app.exec();
 }
 

@@ -1,4 +1,4 @@
-#include "FakeHttpServer.h"
+#include "GoogleAuthDriver.h"
 
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCalendarApi.h"
@@ -45,32 +45,6 @@ private Q_SLOTS:
     void refreshKeepsExistingRefreshToken();
     void primaryCalendarIdSendsBearerToken();
     void apiErrorMessageIsReported();
-
-private:
-    /// Starts authorization and returns the URL the browser would open.
-    static QUrl startAuthorization(GoogleAuth &auth, FakeHttpServer &tokenServer)
-    {
-        auth.setEndpoints(QUrl(QStringLiteral("https://accounts.example/auth")),
-                          tokenServer.url(QStringLiteral("/token")));
-        QSignalSpy ready(&auth, &GoogleAuth::authorizeUrlReady);
-        auth.authorize();
-        if (ready.isEmpty() && !ready.wait(2000))
-            return {};
-        return ready.first().first().toUrl();
-    }
-
-    /// Plays the browser's part: Google redirects to the loopback callback.
-    static void redirectBack(QNetworkAccessManager &network, const GoogleAuth &auth,
-                             const QString &state)
-    {
-        QUrl callback = auth.callbackUrl();
-        QUrlQuery query;
-        query.addQueryItem(QStringLiteral("code"), QStringLiteral("the-code"));
-        query.addQueryItem(QStringLiteral("state"), state);
-        callback.setQuery(query);
-        QNetworkReply *reply = network.get(QNetworkRequest(callback));
-        QObject::connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
-    }
 };
 
 void TestGoogleAuth::environmentReplacesBuiltInClient()
@@ -98,7 +72,7 @@ void TestGoogleAuth::authorizationUrlRequestsOfflinePkceAccess()
 {
     FakeHttpServer tokenServer;
     GoogleAuth auth(kClient);
-    const QUrl url = startAuthorization(auth, tokenServer);
+    const QUrl url = GoogleAuthDriver::startAuthorization(auth, tokenServer);
     QVERIFY(url.isValid());
 
     const QUrlQuery query(url);
@@ -122,7 +96,7 @@ void TestGoogleAuth::callbackListensOnLoopbackOnly()
 {
     FakeHttpServer tokenServer;
     GoogleAuth auth(kClient);
-    QVERIFY(startAuthorization(auth, tokenServer).isValid());
+    QVERIFY(GoogleAuthDriver::startAuthorization(auth, tokenServer).isValid());
 
     const QUrl callback = auth.callbackUrl();
     QCOMPARE(callback.host(), QStringLiteral("127.0.0.1"));
@@ -157,8 +131,8 @@ void TestGoogleAuth::codeExchangeSendsVerifierMatchingChallenge()
     QSignalSpy granted(&auth, &GoogleAuth::granted);
     QNetworkAccessManager network;
 
-    const QUrlQuery authQuery(startAuthorization(auth, tokenServer));
-    redirectBack(network, auth, formValue(authQuery, "state"));
+    const QUrlQuery authQuery(GoogleAuthDriver::startAuthorization(auth, tokenServer));
+    GoogleAuthDriver::redirectBack(network, auth, formValue(authQuery, "state"));
 
     QVERIFY(granted.wait(5000));
     const auto tokens = granted.first().first().value<GoogleTokens>();
@@ -187,8 +161,8 @@ void TestGoogleAuth::mismatchedStateIsNotExchanged()
     QSignalSpy granted(&auth, &GoogleAuth::granted);
     QNetworkAccessManager network;
 
-    QVERIFY(startAuthorization(auth, tokenServer).isValid());
-    redirectBack(network, auth, QStringLiteral("forged-state"));
+    QVERIFY(GoogleAuthDriver::startAuthorization(auth, tokenServer).isValid());
+    GoogleAuthDriver::redirectBack(network, auth, QStringLiteral("forged-state"));
 
     QTest::qWait(1000);
     QCOMPARE(tokenServer.requests.size(), 0);
@@ -204,8 +178,8 @@ void TestGoogleAuth::missingRefreshTokenFails()
     QSignalSpy failed(&auth, &GoogleAuth::failed);
     QNetworkAccessManager network;
 
-    const QUrlQuery authQuery(startAuthorization(auth, tokenServer));
-    redirectBack(network, auth, formValue(authQuery, "state"));
+    const QUrlQuery authQuery(GoogleAuthDriver::startAuthorization(auth, tokenServer));
+    GoogleAuthDriver::redirectBack(network, auth, formValue(authQuery, "state"));
 
     QVERIFY(failed.wait(5000));
     QCOMPARE(granted.size(), 0);
@@ -216,8 +190,7 @@ void TestGoogleAuth::refreshKeepsExistingRefreshToken()
     FakeHttpServer tokenServer;
     tokenServer.respond(200, R"({"access_token":"at-2","expires_in":3600,"token_type":"Bearer"})");
     GoogleAuth auth(kClient);
-    auth.setEndpoints(QUrl(QStringLiteral("https://accounts.example/auth")),
-                      tokenServer.url(QStringLiteral("/token")));
+    GoogleAuthDriver::useTokenServer(auth, tokenServer);
     QSignalSpy granted(&auth, &GoogleAuth::granted);
 
     auth.refresh(QStringLiteral("rt-1"));

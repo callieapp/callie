@@ -1,16 +1,10 @@
 #include "callie/EventModel.h"
 
-#include "callie/SampleSource.h"
-
 #include <algorithm>
 
 namespace callie {
 
-EventModel::EventModel(QObject *parent) : QAbstractListModel(parent)
-{
-    // TODO(core): replace with the real source registry once the backends land.
-    setSource(new SampleSource(this));
-}
+EventModel::EventModel(QObject *parent) : QAbstractListModel(parent) {}
 
 void EventModel::setSource(CalendarSource *source)
 {
@@ -21,6 +15,7 @@ void EventModel::setSource(CalendarSource *source)
     m_source = source;
     if (m_source)
         connect(m_source, &CalendarSource::changed, this, &EventModel::reload);
+    Q_EMIT sourceChanged();
     reload();
 }
 
@@ -52,7 +47,25 @@ void EventModel::reload()
         m_events = m_source->eventsBetween(from, to, m_tz);
         assignLanes(m_events);
     }
+    const int rows = assignAllDayRows(m_events);
     endResetModel();
+    if (rows != m_allDayRows) {
+        m_allDayRows = rows;
+        Q_EMIT allDayRowsChanged();
+    }
+
+    QVariantList calendars;
+    if (m_source) {
+        for (const CalendarInfo &calendar : m_source->calendars()) {
+            if (calendar.enabled)
+                calendars.append(QVariantMap{{QStringLiteral("name"), calendar.displayName},
+                                             {QStringLiteral("color"), calendar.color}});
+        }
+    }
+    if (calendars != m_calendars) {
+        m_calendars = calendars;
+        Q_EMIT calendarsChanged();
+    }
 }
 
 void EventModel::assignLanes(QList<Event> &events)
@@ -104,6 +117,49 @@ void EventModel::assignLanes(QList<Event> &events)
     }
 }
 
+std::pair<int, int> EventModel::visibleDays(const Event &event) const
+{
+    const auto first = static_cast<int>(m_rangeStart.daysTo(event.start.date()));
+    // An end at midnight belongs to the previous day.
+    QDate endDay = event.end.date();
+    if (event.end.time() == QTime(0, 0) && event.end > event.start)
+        endDay = endDay.addDays(-1);
+    const auto last = static_cast<int>(m_rangeStart.daysTo(endDay));
+    const int clampedFirst = std::clamp(first, 0, m_dayCount - 1);
+    const int clampedLast = std::clamp(last, clampedFirst, m_dayCount - 1);
+    return {clampedFirst, clampedLast - clampedFirst + 1};
+}
+
+int EventModel::assignAllDayRows(QList<Event> &events) const
+{
+    QList<Event *> allDay;
+    for (Event &e : events) {
+        if (e.allDay)
+            allDay.append(&e);
+    }
+    // Longer events first, so multi-day bars sit above single days.
+    std::sort(allDay.begin(), allDay.end(), [this](const Event *a, const Event *b) {
+        const auto [aFirst, aSpan] = visibleDays(*a);
+        const auto [bFirst, bSpan] = visibleDays(*b);
+        return aFirst == bFirst ? aSpan > bSpan : aFirst < bFirst;
+    });
+
+    QList<int> rowEnds;
+    for (Event *e : allDay) {
+        const auto [first, span] = visibleDays(*e);
+        int row = 0;
+        while (row < rowEnds.size() && rowEnds[row] > first)
+            ++row;
+        if (row == rowEnds.size())
+            rowEnds.append(first + span);
+        else
+            rowEnds[row] = first + span;
+        e->lane = row;
+        e->laneCount = 1;
+    }
+    return int(rowEnds.size());
+}
+
 int EventModel::rowCount(const QModelIndex &parent) const
 {
     return parent.isValid() ? 0 : m_events.size();
@@ -129,6 +185,8 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case DayIndexRole: return static_cast<int>(m_rangeStart.daysTo(e.start.date()));
     case StartMinutesRole: return e.start.time().hour() * 60 + e.start.time().minute();
     case DurationMinutesRole: return static_cast<int>(e.start.secsTo(e.end) / 60);
+    case FirstDayRole: return visibleDays(e).first;
+    case DaySpanRole: return visibleDays(e).second;
     default: return {};
     }
 }
@@ -149,6 +207,8 @@ QHash<int, QByteArray> EventModel::roleNames() const
         {EndRole, "end"},
         {LaneRole, "lane"},
         {LaneCountRole, "laneCount"},
+        {FirstDayRole, "firstDay"},
+        {DaySpanRole, "daySpan"},
     };
 }
 

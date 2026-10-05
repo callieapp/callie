@@ -44,16 +44,19 @@ if(CALLIE_BUILD_TESTS)
 endif()
 
 # Formatting is driven by one script so that CMake, CI and a local run agree.
-add_custom_target(format
-    COMMAND "${CMAKE_SOURCE_DIR}/scripts/format.sh" fix
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-    COMMENT "Formatting C++ and QML sources"
-    VERBATIM
-)
+# The script is development tooling and is left out of release tarballs.
+if(EXISTS "${CMAKE_SOURCE_DIR}/scripts/format.sh")
+    add_custom_target(format
+        COMMAND "${CMAKE_SOURCE_DIR}/scripts/format.sh" fix
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Formatting C++ and QML sources"
+        VERBATIM
+    )
 
-add_custom_target(format-check
-    COMMAND "${CMAKE_SOURCE_DIR}/scripts/format.sh" check
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-    COMMENT "Checking C++ and QML formatting"
-    VERBATIM
-)
+    add_custom_target(format-check
+        COMMAND "${CMAKE_SOURCE_DIR}/scripts/format.sh" check
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Checking C++ and QML formatting"
+        VERBATIM
+    )
+endif()

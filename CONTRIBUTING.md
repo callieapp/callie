@@ -136,3 +136,13 @@ Beyond formatting:
 - Keep date and layout arithmetic in C++ models. QML positions things, it does not
   compute them.
 - Do not add Kirigami or any dependency that imports another desktop's visual language.
+
+## Debugging
+
+- `make logs` follows the app's and the CLI's logs; `callie logs --open` opens the folder.
+- `callie status` shows each calendar's last sync and error. `callie --verbose sync` prints progress.
+- `callie doctor` prints what a bug report needs, with email addresses masked. `--report` opens a
+  new issue with it filled in, as does "Report a bug" in the app's ? menu.
+- Fedora keeps crash dumps through systemd, as does Debian once `systemd-coredump` is installed.
+  `coredumpctl list callie-gui` finds them, and `coredumpctl debug callie-gui` opens the latest in
+  gdb. A `make` build has the symbols it needs.

@@ -53,6 +53,7 @@ callie calendars                         # calendars in each account, tab-separa
 callie sync                              # fetch changes from every account
 callie logs                              # log file paths; -f follows them, --open opens the folder
 callie status                            # last sync and errors per calendar, keyring and setup
+callie doctor                            # details for a bug report; --report opens a new issue
 callie --verbose sync                    # any command, printing progress as well as warnings
 ```
 
@@ -64,7 +65,8 @@ success, 1 for an error, and 2 for a usage mistake.
 The app and the CLI each keep a log in `~/.local/state/callie/logs/`, `callie-gui.log` and
 `callie.log`, with the three previous files beside them. Logs record what Callie did, such as
 syncs and their errors, but never tokens or event details. The terminal only shows warnings unless
-`QT_LOGGING_RULES` is set.
+`QT_LOGGING_RULES` is set. To report a bug, use "Report a bug" in the app's ? menu or
+`callie doctor --report`, which fill in the details with email addresses masked.
 
 ## Development
 

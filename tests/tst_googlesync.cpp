@@ -83,6 +83,7 @@ private Q_SLOTS:
 
     void firstSyncIsFullThenIncremental();
     void expiredSyncTokenFallsBackToFullSync();
+    void fullSyncKeepsCancelledOccurrences();
     void failedCalendarDoesNotStopOthers();
     void rejectedAccessTokenIsRefreshedOnce();
     void persistentRejectionIsReported();
@@ -188,6 +189,25 @@ void TestGoogleSync::expiredSyncTokenFallsBackToFullSync()
     QCOMPARE(mine.size(), 1);
     QCOMPARE(mine.first().id, u"c"_s);
     QCOMPARE(m_cache->syncToken(kAccount, kAccount.id), u"me-2"_s);
+}
+
+void TestGoogleSync::fullSyncKeepsCancelledOccurrences()
+{
+    // Google includes cancelled occurrences of a series in a full sync, since
+    // showDeleted and singleEvents are both left false.
+    m_google->on(u"calendars/me%40example.com/events"_s, 200,
+                 events(R"({"id":"s","recurrence":["RRULE:FREQ=DAILY"]},
+                           {"id":"s_1","status":"cancelled","recurringEventId":"s",
+                            "originalStartTime":{"dateTime":"2026-10-06T10:00:00Z"}})",
+                        "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+
+    QCOMPARE(runSync(), QStringList());
+
+    const QList<GoogleEvent> mine = m_cache->events(kAccount, kAccount.id);
+    QCOMPARE(mine.size(), 2);
+    QVERIFY(mine.at(1).isCancelled());
+    QCOMPARE(mine.at(1).recurringEventId, u"s"_s);
 }
 
 void TestGoogleSync::failedCalendarDoesNotStopOthers()

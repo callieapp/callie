@@ -28,11 +28,11 @@ a `callie` CLI for those who prefer to live in the terminal 🖥️
 
 ### Building from source
 
-Requires Qt 6.6+, KCalendarCore, CMake and Ninja. On Fedora:
+Requires Qt 6.8+, QtKeychain, CMake and Ninja. On Fedora:
 
 ```sh
-sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kcalendarcore-devel \
-    qtkeychain-qt6-devel libical-devel cmake ninja-build
+sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtnetworkauth-devel \
+    qtkeychain-qt6-devel cmake ninja-build
 ```
 
 Then build and run:
@@ -43,6 +43,15 @@ cmake --build --preset dev
 
 ./build/dev/src/gui/callie-gui  # desktop app
 ./build/dev/src/cli/callie      # CLI, prints the agenda
+```
+
+To connect Google accounts, download a Desktop app OAuth client from Google Cloud and save it as
+`google-oauth-credentials.json` in the repository root, where it is git-ignored. CMake reads it at
+configure time. Without it the build still works, and `CALLIE_GOOGLE_CLIENT_ID` and
+`CALLIE_GOOGLE_CLIENT_SECRET` can supply a client at runtime instead.
+
+```sh
+./build/dev/src/cli/callie accounts add google
 ```
 
 Editing a `.qml` file needs a rebuild, since QML is compiled into the binary. To run everything

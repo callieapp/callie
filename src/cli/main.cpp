@@ -16,6 +16,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <optional>
 
 #include <unistd.h>
 
@@ -116,17 +117,25 @@ int runAccountsList()
     return 0;
 }
 
-int runAccountsAddGoogle(QCoreApplication &app)
+/// The OAuth client, or nothing after telling the user how to configure one.
+std::optional<GoogleClientConfig> googleClient()
 {
     const GoogleClientConfig client = GoogleClientConfig::resolve();
-    if (!client.isValid()) {
-        err << QObject::tr("callie: no Google OAuth client is configured. Build with one, or set "
-                           "CALLIE_GOOGLE_CLIENT_ID and CALLIE_GOOGLE_CLIENT_SECRET.")
-            << "\n";
-        return 1;
-    }
+    if (client.isValid())
+        return client;
+    err << QObject::tr("callie: no Google OAuth client is configured. Build with one, or set "
+                       "CALLIE_GOOGLE_CLIENT_ID and CALLIE_GOOGLE_CLIENT_SECRET.")
+        << "\n";
+    return std::nullopt;
+}
 
-    GoogleAuth auth(client);
+int runAccountsAddGoogle(QCoreApplication &app)
+{
+    const std::optional<GoogleClientConfig> client = googleClient();
+    if (!client)
+        return 1;
+
+    GoogleAuth auth(*client);
     QNetworkAccessManager network;
     GoogleCalendarApi api(&network);
     KeychainTokenStore tokens;
@@ -187,8 +196,11 @@ int runCalendars(QCoreApplication &app)
         return 0;
     }
 
+    const std::optional<GoogleClientConfig> client = googleClient();
+    if (!client)
+        return 1;
     KeychainTokenStore tokens;
-    GoogleTokenProvider provider(GoogleClientConfig::resolve(), tokens);
+    GoogleTokenProvider provider(*client, tokens);
     QNetworkAccessManager network;
     GoogleCalendarApi api(&network);
     int failures = 0;

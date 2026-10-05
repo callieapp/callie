@@ -79,6 +79,11 @@ QString GoogleAuth::scopes()
 void GoogleAuth::setEndpoints(const QUrl &authorization, const QUrl &token)
 {
     m_flow->setAuthorizationUrl(authorization);
+    setTokenUrl(token);
+}
+
+void GoogleAuth::setTokenUrl(const QUrl &token)
+{
     m_tokenUrl = token;
 #ifdef CALLIE_QT_OAUTH_69
     m_flow->setTokenUrl(token);

@@ -67,6 +67,8 @@ add_library(calliecore STATIC
     GoogleAuth.cpp
     callie/GoogleCalendarApi.h
     GoogleCalendarApi.cpp
+    callie/GoogleTokenProvider.h
+    GoogleTokenProvider.cpp
     callie/Color.h
     Color.cpp
     callie/ThemeSpec.h

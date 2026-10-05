@@ -56,6 +56,12 @@ private Q_SLOTS:
     void occurrencesTouchingRangeEdgesAreExcluded();
     void cancelledEventWithTimesIsHidden();
     void endlessSeriesIsBounded();
+    void allDayExceptionsMatchByDate();
+    void rdateAddsOccurrence();
+    void rdatesAloneFormASeries();
+    void utcExdateRemovesOccurrence();
+    void dateExdateRemovesOccurrence();
+    void allDayStartsAtMidnightInViewZone();
     void unreadableRuleFallsBackToFirstOccurrence();
 };
 
@@ -231,6 +237,95 @@ void TestGoogleRecurrence::unreadableRuleFallsBackToFirstOccurrence()
         "recurrence":["RRULE:FREQ=SOMETIMES"]})");
 
     QCOMPARE(expand({broken}, utc(2026, 10, 1), utc(2026, 11, 1)).size(), 1);
+}
+
+void TestGoogleRecurrence::allDayExceptionsMatchByDate()
+{
+    const GoogleEvent series = parsed(R"({"id":"gym","summary":"Gym",
+        "start":{"date":"2026-10-05"},"end":{"date":"2026-10-06"},
+        "recurrence":["RRULE:FREQ=DAILY;COUNT=4"]})");
+    const GoogleEvent cancelled = parsed(R"({"id":"gym_20261006","status":"cancelled",
+        "recurringEventId":"gym","originalStartTime":{"date":"2026-10-06"}})");
+    const GoogleEvent moved = parsed(R"json({"id":"gym_20261007","summary":"Gym (moved)",
+        "recurringEventId":"gym","originalStartTime":{"date":"2026-10-07"},
+        "start":{"date":"2026-10-10"},"end":{"date":"2026-10-11"}
+})json");
+
+    const QList<Event> events =
+        expand({series, cancelled, moved}, utc(2026, 10, 1), utc(2026, 10, 15));
+
+    QStringList days;
+    for (const Event &e : events)
+        days.append(e.start.date().toString(Qt::ISODate) + u' ' + e.summary);
+    QCOMPARE(days,
+             (QStringList{u"2026-10-05 Gym"_s, u"2026-10-08 Gym"_s, u"2026-10-10 Gym (moved)"_s}));
+}
+
+void TestGoogleRecurrence::rdateAddsOccurrence()
+{
+    const GoogleEvent series = parsed(R"({"id":"s",
+        "start":{"dateTime":"2026-10-05T12:00:00+02:00","timeZone":"Europe/Berlin"},
+        "end":{"dateTime":"2026-10-05T13:00:00+02:00","timeZone":"Europe/Berlin"},
+        "recurrence":["RRULE:FREQ=DAILY;COUNT=1","RDATE;TZID=Europe/Berlin:20261009T150000"]})");
+
+    const QList<Event> events = expand({series}, utc(2026, 10, 1), utc(2026, 10, 15));
+
+    QCOMPARE(events.size(), 2);
+    QCOMPARE(events.at(1).start.toUTC(), utc(2026, 10, 9, 13));
+}
+
+void TestGoogleRecurrence::rdatesAloneFormASeries()
+{
+    const GoogleEvent series = parsed(R"({"id":"s",
+        "start":{"dateTime":"2026-10-05T10:00:00Z"},"end":{"dateTime":"2026-10-05T11:00:00Z"},
+        "recurrence":["RDATE:20261008T100000Z,20261012T100000Z"]})");
+
+    const QList<Event> events = expand({series}, utc(2026, 10, 1), utc(2026, 10, 15));
+
+    QCOMPARE(events.size(), 3);
+    QCOMPARE(events.at(2).start, utc(2026, 10, 12, 10));
+}
+
+void TestGoogleRecurrence::utcExdateRemovesOccurrence()
+{
+    const GoogleEvent series = parsed(R"({"id":"s",
+        "start":{"dateTime":"2026-10-05T10:00:00Z"},"end":{"dateTime":"2026-10-05T11:00:00Z"},
+        "recurrence":["RRULE:FREQ=DAILY;COUNT=3","EXDATE:20261006T100000Z"]})");
+
+    const QList<Event> events = expand({series}, utc(2026, 10, 1), utc(2026, 10, 15));
+
+    QCOMPARE(events.size(), 2);
+    QCOMPARE(events.at(1).start, utc(2026, 10, 7, 10));
+}
+
+void TestGoogleRecurrence::dateExdateRemovesOccurrence()
+{
+    const GoogleEvent series = parsed(R"({"id":"s",
+        "start":{"date":"2026-10-05"},"end":{"date":"2026-10-06"},
+        "recurrence":["RRULE:FREQ=DAILY;COUNT=3","EXDATE;VALUE=DATE:20261006"]})");
+
+    const QList<Event> events = expand({series}, utc(2026, 10, 1), utc(2026, 10, 15));
+
+    QCOMPARE(events.size(), 2);
+    QCOMPARE(events.at(1).start.date(), QDate(2026, 10, 7));
+}
+
+void TestGoogleRecurrence::allDayStartsAtMidnightInViewZone()
+{
+    // Far from both UTC, which the test process uses, and New York.
+    const QTimeZone tokyo("Asia/Tokyo");
+    const GoogleEvent holiday = parsed(R"({"id":"h",
+        "start":{"date":"2026-10-12"},"end":{"date":"2026-10-13"},
+        "recurrence":["RRULE:FREQ=YEARLY"]})");
+
+    const QList<Event> events =
+        expandGoogleEvents({holiday}, QDateTime(QDate(2026, 10, 12), QTime(0, 0), tokyo),
+                           QDateTime(QDate(2026, 10, 13), QTime(0, 0), tokyo), tokyo);
+
+    QCOMPARE(events.size(), 1);
+    QCOMPARE(events.first().start, QDateTime(QDate(2026, 10, 12), QTime(0, 0), tokyo));
+    QCOMPARE(events.first().start.toUTC(), utc(2026, 10, 11, 15));
+    QCOMPARE(events.first().end, QDateTime(QDate(2026, 10, 13), QTime(0, 0), tokyo));
 }
 
 QTEST_GUILESS_MAIN(TestGoogleRecurrence)

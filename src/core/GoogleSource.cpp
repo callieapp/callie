@@ -78,12 +78,11 @@ QList<Event> GoogleSource::eventsBetween(const QDateTime &from, const QDateTime 
 
 void GoogleSource::refresh()
 {
-    if (!m_sync || m_pending > 0) {
-        if (!m_sync)
-            Q_EMIT changed();
+    if (!m_sync) {
+        Q_EMIT changed();
         return;
     }
-    m_pending = int(m_accounts.size());
+    // GoogleSync joins a sync already running, so overlapping refreshes are cheap.
     const QPointer<GoogleSource> self(this);
     for (const Account &account : std::as_const(m_accounts)) {
         m_sync->sync(account, [this, self, account](const QStringList &errors) {
@@ -91,7 +90,6 @@ void GoogleSource::refresh()
                 return;
             for (const QString &error : errors)
                 Q_EMIT errorOccurred(QStringLiteral("%1: %2").arg(account.id, error));
-            --m_pending;
         });
     }
 }

@@ -7,12 +7,14 @@
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/LogFile.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QDate>
+#include <QDir>
 #include <QNetworkAccessManager>
 #include <QProcess>
 #include <QTextStream>
@@ -216,6 +218,31 @@ int runAccountsRemove(QCoreApplication &app, const Account &account)
     return app.exec();
 }
 
+/// The log files, one path per line, newest first; or follows or opens them.
+int runLogs(bool follow, bool open)
+{
+    const QString directory = logfile::defaultDirectory();
+    if (open)
+        return QProcess::execute(QStringLiteral("xdg-open"), {directory}) == 0 ? 0 : 1;
+
+    QDir dir(directory);
+    const QStringList names = dir.entryList({QStringLiteral("*.log")}, QDir::Files, QDir::Time);
+    if (names.isEmpty()) {
+        err << QObject::tr("No logs yet in %1").arg(directory) << "\n";
+        return 0;
+    }
+    QStringList paths;
+    for (const QString &name : names)
+        paths.append(dir.filePath(name));
+    if (follow) {
+        out.flush();
+        return QProcess::execute(QStringLiteral("tail"), QStringList{QStringLiteral("-F")} + paths);
+    }
+    for (const QString &path : std::as_const(paths))
+        out << path << "\n";
+    return 0;
+}
+
 /// Quiet on success. Each failure is one line on stderr, and any failure exits 1.
 int runSync(QCoreApplication &app)
 {
@@ -351,6 +378,7 @@ int main(int argc, char *argv[])
                        "  agenda     Upcoming events (default)\n"
                        "  accounts   List, add or remove calendar accounts\n"
                        "  calendars  List the calendars in each account\n"
+                       "  logs       Show, follow (-f) or open (--open) the log files\n"
                        "  add        Create an event from natural language\n"
                        "  sync       Refresh all accounts now\n"
                        "  daemon     Run background sync and notifications\n"
@@ -366,7 +394,14 @@ int main(int argc, char *argv[])
     QCommandLineOption sampleOption(
         QStringLiteral("sample"), QStringLiteral("Show a made-up week instead of your calendars."));
     parser.addOption(sampleOption);
+    QCommandLineOption followOption({QStringLiteral("f"), QStringLiteral("follow")},
+                                    QStringLiteral("With logs: keep printing new lines."));
+    parser.addOption(followOption);
+    QCommandLineOption openOption(QStringLiteral("open"),
+                                  QStringLiteral("With logs: open the folder."));
+    parser.addOption(openOption);
     parser.process(app);
+    logfile::install(QStringLiteral("callie"));
 
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
@@ -376,6 +411,9 @@ int main(int argc, char *argv[])
 
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
+
+    if (command == QLatin1String("logs") && args.size() == 1)
+        return runLogs(parser.isSet(followOption), parser.isSet(openOption));
 
     if (command == QLatin1String("sync") && args.size() == 1)
         return runSync(app);

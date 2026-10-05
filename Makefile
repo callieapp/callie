@@ -38,7 +38,7 @@ define watch
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help deps setup configure build run cli gallery watch watch-gallery test lint format check clean
+.PHONY: help deps setup configure build run logs cli gallery watch watch-gallery test lint format check clean
 
 help: ## List commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  make %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -64,6 +64,9 @@ build: $(BUILD)/build.ninja ## Build everything
 
 run: build ## Run the app with logging on; ARGS="--theme path" passes options
 	@$(DEV_ENV) $(GUI) $(ARGS)
+
+logs: build ## Follow the app's and the CLI's log files
+	@$(CLI) logs --follow
 
 cli: build ## Run the CLI, e.g. make cli ARGS="accounts"
 	@$(DEV_ENV) $(CLI) $(ARGS)

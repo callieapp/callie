@@ -52,6 +52,8 @@ add_library(calliecore STATIC
     Logging.cpp
     callie/LogFile.h
     LogFile.cpp
+    callie/Diagnostics.h
+    Diagnostics.cpp
     callie/CalendarSource.h
     callie/SampleSource.h
     SampleSource.cpp

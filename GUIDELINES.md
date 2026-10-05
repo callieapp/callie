@@ -32,6 +32,8 @@ changing anything visual or any CLI output. In short:
 - Every visual value in QML reads from the `Theme` singleton, whose values come from
   `themes/*.toml`. `DESIGN.md` says what each token is for.
 - Date and layout arithmetic belongs in C++ models, not QML.
+- Qt 6.8 (Debian trixie) cannot add a bare `u"..."` literal to a `QString`; use `QStringLiteral` or
+  the `_s` suffix. Newer Qt accepts it, so only the Debian build catches it.
 
 ## Existing decisions
 

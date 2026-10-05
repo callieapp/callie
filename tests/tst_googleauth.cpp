@@ -43,6 +43,7 @@ private Q_SLOTS:
     void mismatchedStateIsNotExchanged();
     void missingRefreshTokenFails();
     void refreshKeepsExistingRefreshToken();
+    void authorizeAgainAfterFailure();
     void primaryCalendarIdSendsBearerToken();
     void apiErrorMessageIsReported();
 };
@@ -204,6 +205,34 @@ void TestGoogleAuth::refreshKeepsExistingRefreshToken()
     const QUrlQuery body = formBody(tokenServer.requests.first().body);
     QCOMPARE(formValue(body, "grant_type"), QStringLiteral("refresh_token"));
     QCOMPARE(formValue(body, "refresh_token"), QStringLiteral("rt-1"));
+}
+
+void TestGoogleAuth::authorizeAgainAfterFailure()
+{
+    // The first attempt fails at the token exchange, which closes the listener.
+    FakeHttpServer tokenServer;
+    tokenServer.respond(400, R"({"error":"invalid_grant","error_description":"Bad Request"})");
+    GoogleAuth auth(kClient);
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+    QSignalSpy granted(&auth, &GoogleAuth::granted);
+    QNetworkAccessManager network;
+
+    const QUrlQuery first(GoogleAuthDriver::startAuthorization(auth, tokenServer));
+    GoogleAuthDriver::redirectBack(network, auth, formValue(first, "state"));
+    QVERIFY(failed.wait(5000));
+
+    // The retry must listen again, on loopback, and complete normally.
+    tokenServer.respond(200, R"({"access_token":"at-2","refresh_token":"rt-2",)"
+                             R"("expires_in":3600,"token_type":"Bearer"})");
+    QSignalSpy ready(&auth, &GoogleAuth::authorizeUrlReady);
+    auth.authorize();
+    QVERIFY(!ready.isEmpty() || ready.wait(2000));
+    QCOMPARE(auth.callbackUrl().host(), QStringLiteral("127.0.0.1"));
+
+    const QUrlQuery second(ready.first().first().toUrl());
+    GoogleAuthDriver::redirectBack(network, auth, formValue(second, "state"));
+    QVERIFY(granted.wait(5000));
+    QCOMPARE(granted.first().first().value<GoogleTokens>().refreshToken, QStringLiteral("rt-2"));
 }
 
 void TestGoogleAuth::primaryCalendarIdSendsBearerToken()

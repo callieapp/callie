@@ -5,4 +5,5 @@ compile_commands.json
 *.user
 .qtc_clangd/
 node_modules/
+.qmlls.ini
 google-oauth-credentials.json

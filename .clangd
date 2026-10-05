@@ -1,0 +1,4 @@
+# Points clangd at the compile database `make build` writes, so editors get
+# accurate diagnostics without a symlink in the source tree.
+CompileFlags:
+  CompilationDatabase: build/dev

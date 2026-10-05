@@ -226,7 +226,8 @@ int runLogs(bool follow, bool open)
         return QProcess::execute(QStringLiteral("xdg-open"), {directory}) == 0 ? 0 : 1;
 
     QDir dir(directory);
-    const QStringList names = dir.entryList({QStringLiteral("*.log")}, QDir::Files, QDir::Time);
+    const QStringList names = dir.entryList(
+        {QStringLiteral("*.log"), QStringLiteral("*.log.[0-9]")}, QDir::Files, QDir::Time);
     if (names.isEmpty()) {
         err << QObject::tr("No logs yet in %1").arg(directory) << "\n";
         return 0;

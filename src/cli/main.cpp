@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 using namespace callie;
+using namespace Qt::StringLiterals;
 
 namespace {
 
@@ -45,6 +46,10 @@ QString dim(const QString &s)
 QString bold(const QString &s)
 {
     return useColor() ? QStringLiteral("\033[1m%1\033[0m").arg(s) : s;
+}
+QString warn(const QString &s)
+{
+    return useColor() ? QStringLiteral("\033[31m%1\033[0m").arg(s) : s;
 }
 QString accent(const QString &s)
 {
@@ -218,6 +223,86 @@ int runAccountsRemove(QCoreApplication &app, const Account &account)
     return app.exec();
 }
 
+/// How long ago `when` was, roughly, or "never".
+QString ago(const QDateTime &when)
+{
+    if (!when.isValid())
+        return QObject::tr("never");
+    const qint64 minutes = when.secsTo(QDateTime::currentDateTimeUtc()) / 60;
+    if (minutes < 1)
+        return QObject::tr("just now");
+    if (minutes < 60)
+        return QObject::tr("%1 min ago").arg(minutes);
+    if (minutes < 48 * 60)
+        return QObject::tr("%1 h ago").arg(minutes / 60);
+    return QObject::tr("%1 days ago").arg(minutes / (24 * 60));
+}
+
+QString describe(const SyncState &state)
+{
+    QString text = QObject::tr("synced %1").arg(ago(state.lastSynced));
+    if (!state.lastError.isEmpty())
+        text += u"  "_s + warn(QObject::tr("failed: %1").arg(state.lastError));
+    return text;
+}
+
+/// Everything worth checking before reporting a sync problem.
+int runStatus(QCoreApplication &app)
+{
+    const bool client = GoogleClientConfig::resolve().isValid();
+    out << bold(QObject::tr("Google OAuth client").leftJustified(21))
+        << (client ? QObject::tr("configured") : warn(QObject::tr("not configured"))) << "\n";
+    out << bold(QObject::tr("Logs").leftJustified(21)) << logfile::defaultDirectory() << "\n";
+    out << bold(QObject::tr("Cache").leftJustified(21)) << GoogleCache::defaultPath() << "\n";
+
+    AccountStore store(AccountStore::defaultPath());
+    QList<Account> accounts;
+    if (!store.load(accounts)) {
+        err << QStringLiteral("callie: %1\n").arg(store.errorString());
+        return 1;
+    }
+    accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
+    if (accounts.isEmpty()) {
+        out << "\n" << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        return 0;
+    }
+    GoogleCache cache(GoogleCache::defaultPath());
+    if (!cache.open()) {
+        err << QStringLiteral("callie: %1\n").arg(cache.errorString());
+        return 1;
+    }
+
+    // The keyring answers asynchronously, so accounts print once each read is back.
+    KeychainTokenStore tokens;
+    qsizetype next = 0;
+    std::function<void()> printNext = [&] {
+        if (next == accounts.size()) {
+            finish(0);
+            return;
+        }
+        const Account account = accounts.at(next++);
+        tokens.read(account, [&, account](const QString &secret, const QString &error) {
+            const QString token = !error.isEmpty()
+                                      ? warn(QObject::tr("keyring error: %1").arg(error))
+                                  : secret.isEmpty() ? warn(QObject::tr("no token stored"))
+                                                     : QObject::tr("token stored");
+            out << "\n"
+                << bold(account.id) << "  " << token << "  "
+                << describe(cache.accountState(account)) << "\n";
+            for (const GoogleCalendar &calendar : cache.calendars(account)) {
+                out << "  " << calendar.summary.leftJustified(28, u' ', true) << "  "
+                    << describe(cache.calendarState(account, calendar.id));
+                if (!calendar.selected)
+                    out << "  " << dim(QObject::tr("hidden"));
+                out << "\n";
+            }
+            printNext();
+        });
+    };
+    QTimer::singleShot(0, &app, [&] { printNext(); });
+    return app.exec();
+}
+
 /// The log files, one path per line, newest first; or follows or opens them.
 int runLogs(bool follow, bool open)
 {
@@ -380,6 +465,7 @@ int main(int argc, char *argv[])
                        "  accounts   List, add or remove calendar accounts\n"
                        "  calendars  List the calendars in each account\n"
                        "  logs       Show, follow (-f) or open (--open) the log files\n"
+                       "  status     Sync state, keyring and configuration, for bug reports\n"
                        "  add        Create an event from natural language\n"
                        "  sync       Refresh all accounts now\n"
                        "  daemon     Run background sync and notifications\n"
@@ -401,8 +487,13 @@ int main(int argc, char *argv[])
     QCommandLineOption openOption(QStringLiteral("open"),
                                   QStringLiteral("With logs: open the folder."));
     parser.addOption(openOption);
+    QCommandLineOption verboseOption(QStringLiteral("verbose"),
+                                     QStringLiteral("Print progress as well as warnings."));
+    parser.addOption(verboseOption);
     parser.process(app);
     logfile::install(QStringLiteral("callie"));
+    logfile::setVerboseTerminal(parser.isSet(verboseOption) ||
+                                !qEnvironmentVariableIsEmpty("QT_LOGGING_RULES"));
 
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
@@ -412,6 +503,9 @@ int main(int argc, char *argv[])
 
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
+
+    if (command == QLatin1String("status") && args.size() == 1)
+        return runStatus(app);
 
     if (command == QLatin1String("logs") && args.size() == 1)
         return runLogs(parser.isSet(followOption), parser.isSet(openOption));

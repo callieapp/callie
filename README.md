@@ -33,7 +33,7 @@ Until then, build it from source as described under [Development](#development).
 
 `callie-gui` opens the week view with the calendars you show in Google Calendar. It syncs when it
 starts and every five minutes, and shows what it has cached while offline. `--sample` shows a
-made-up week instead.
+made-up week instead, and `--screenshot file.png` saves the window once it has rendered, then exits.
 
 Choose a theme with `--theme`, passing a built-in theme's name or the path to a theme file. The
 `CALLIE_THEME` environment variable does the same. A theme loaded from a file updates the running
@@ -44,6 +44,7 @@ app as soon as you save it.
 ```sh
 callie                                   # upcoming events, same as `callie agenda`
 callie agenda --days 3                   # reads the cache; run `callie sync` to refresh it
+callie agenda --sample                   # a made-up week, for trying things out
 callie accounts                          # connected calendar accounts
 callie accounts add google               # sign in with Google in your browser
 callie accounts remove google you@example.com

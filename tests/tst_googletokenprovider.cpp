@@ -1,10 +1,9 @@
 #include "FakeHttpServer.h"
+#include "FakeTokenStore.h"
 
 #include "callie/GoogleTokenProvider.h"
-#include "callie/TokenStore.h"
 
 #include <QTest>
-#include <QTimer>
 #include <QUrlQuery>
 
 using namespace callie;
@@ -13,36 +12,6 @@ namespace {
 
 const GoogleClientConfig kClient{QStringLiteral("test-id"), QStringLiteral("test-secret")};
 const Account kAccount{QStringLiteral("google"), QStringLiteral("me@example.com")};
-
-class FakeTokenStore : public TokenStore
-{
-public:
-    void write(const Account &account, const QString &secret, Done done) override
-    {
-        QTimer::singleShot(0, [=, this] {
-            secrets.insert(account.id, secret);
-            done({});
-        });
-    }
-
-    void read(const Account &account, Loaded loaded) override
-    {
-        ++reads;
-        QTimer::singleShot(0, [=, this] { loaded(secrets.value(account.id), failWith); });
-    }
-
-    void remove(const Account &account, Done done) override
-    {
-        QTimer::singleShot(0, [=, this] {
-            secrets.remove(account.id);
-            done({});
-        });
-    }
-
-    QHash<QString, QString> secrets;
-    QString failWith;
-    int reads = 0;
-};
 
 struct Outcome
 {

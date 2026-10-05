@@ -8,6 +8,7 @@
 #include <QTcpSocket>
 #include <QUrl>
 
+#include <functional>
 #include <utility>
 
 /// A loopback HTTP/1.1 server that records each request and answers with canned
@@ -47,6 +48,12 @@ public:
     /// A response for one request, used in order before falling back to respond().
     void enqueue(int status, QByteArray json) { m_queue.append({status, std::move(json)}); }
 
+    using Response = std::pair<int, QByteArray>;
+
+    /// Answers every request instead of the queue and respond(), for requests
+    /// that arrive in no fixed order.
+    std::function<Response(const Request &)> handler;
+
     QList<Request> requests;
 
 private:
@@ -80,8 +87,9 @@ private:
             request.body = buffer->mid(headerEnd + 4, length);
             requests.append(request);
 
-            const auto [status, body] =
-                m_queue.isEmpty() ? std::pair(m_status, m_body) : m_queue.takeFirst();
+            const auto [status, body] = handler             ? handler(request)
+                                        : m_queue.isEmpty() ? Response(m_status, m_body)
+                                                            : m_queue.takeFirst();
             socket->write("HTTP/1.1 " + QByteArray::number(status) +
                           " X\r\nContent-Type: application/json\r\nContent-Length: " +
                           QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body);

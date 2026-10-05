@@ -71,6 +71,8 @@ add_library(calliecore STATIC
     GoogleTokenProvider.cpp
     callie/GoogleCache.h
     GoogleCache.cpp
+    callie/GoogleSync.h
+    GoogleSync.cpp
     callie/Color.h
     Color.cpp
     callie/ThemeSpec.h

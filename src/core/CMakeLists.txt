@@ -76,6 +76,8 @@ add_library(calliecore STATIC
     GoogleSync.cpp
     callie/GoogleRecurrence.h
     GoogleRecurrence.cpp
+    callie/GoogleSource.h
+    GoogleSource.cpp
     callie/Color.h
     Color.cpp
     callie/ThemeSpec.h

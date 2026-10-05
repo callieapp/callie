@@ -85,7 +85,9 @@ void GoogleAuth::authorize()
         m_handler->setCallbackText(tr("Callie is connected. You can close this tab."));
         m_flow->setReplyHandler(m_handler);
     }
-    if (!m_handler->isListening()) {
+    // A finished attempt closes the listener; a retry or a second account needs
+    // it reopened, on loopback again rather than the QHostAddress::Any default.
+    if (!m_handler->isListening() && !m_handler->listen(QHostAddress::LocalHost, 0)) {
         fail(tr("could not listen for the Google sign-in callback"));
         return;
     }

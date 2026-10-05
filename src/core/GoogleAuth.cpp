@@ -1,5 +1,7 @@
 #include "callie/GoogleAuth.h"
 
+#include "callie/Logging.h"
+
 #include <QHostAddress>
 #include <QOAuth2AuthorizationCodeFlow>
 #include <QOAuthHttpServerReplyHandler>
@@ -98,6 +100,7 @@ void GoogleAuth::authorize()
         fail(tr("could not listen for the Google sign-in callback"));
         return;
     }
+    qCInfo(lcAuth) << "waiting for Google sign-in at" << callbackUrl().toString();
     m_signInTimer->start();
     m_flow->grant();
 }
@@ -109,6 +112,7 @@ void GoogleAuth::setSignInTimeout(std::chrono::milliseconds timeout)
 
 void GoogleAuth::refresh(const QString &refreshToken)
 {
+    qCDebug(lcAuth) << "refreshing the access token";
     m_refreshToken = refreshToken;
     m_flow->setRefreshToken(refreshToken);
 #ifdef CALLIE_QT_OAUTH_69
@@ -126,6 +130,7 @@ QUrl GoogleAuth::callbackUrl() const
 void GoogleAuth::onGranted()
 {
     m_signInTimer->stop();
+    qCInfo(lcAuth) << "Google granted access";
     if (m_handler)
         m_handler->close();
 
@@ -143,6 +148,8 @@ void GoogleAuth::onGranted()
 void GoogleAuth::fail(const QString &message)
 {
     m_signInTimer->stop();
+    // Info, not warning: whoever started the flow reports the failure to the user.
+    qCInfo(lcAuth) << "sign-in failed:" << message;
     if (m_handler)
         m_handler->close();
     Q_EMIT failed(message);

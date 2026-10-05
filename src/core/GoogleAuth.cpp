@@ -3,9 +3,14 @@
 #include "callie/Logging.h"
 
 #include <QHostAddress>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QOAuth2AuthorizationCodeFlow>
 #include <QOAuthHttpServerReplyHandler>
 #include <QTimer>
+#include <QUrlQuery>
 
 // Qt 6.9 replaced several QtNetworkAuth calls. Debian trixie ships 6.8, which
 // lacks the replacements, while newer Qt warns on the originals.
@@ -16,8 +21,8 @@
 namespace callie {
 
 GoogleAuth::GoogleAuth(const GoogleClientConfig &client, QObject *parent)
-    : QObject(parent), m_flow(new QOAuth2AuthorizationCodeFlow(this)),
-      m_signInTimer(new QTimer(this))
+    : QObject(parent), m_client(client), m_flow(new QOAuth2AuthorizationCodeFlow(this)),
+      m_network(new QNetworkAccessManager(this)), m_signInTimer(new QTimer(this))
 {
     m_signInTimer->setSingleShot(true);
     m_signInTimer->setInterval(std::chrono::minutes(5));
@@ -74,6 +79,7 @@ QString GoogleAuth::scopes()
 void GoogleAuth::setEndpoints(const QUrl &authorization, const QUrl &token)
 {
     m_flow->setAuthorizationUrl(authorization);
+    m_tokenUrl = token;
 #ifdef CALLIE_QT_OAUTH_69
     m_flow->setTokenUrl(token);
 #else
@@ -112,14 +118,45 @@ void GoogleAuth::setSignInTimeout(std::chrono::milliseconds timeout)
 
 void GoogleAuth::refresh(const QString &refreshToken)
 {
+    // Done by hand rather than through the flow, which drops the body of an
+    // error response and with it Google's reason for refusing.
     qCDebug(lcAuth) << "refreshing the access token";
-    m_refreshToken = refreshToken;
-    m_flow->setRefreshToken(refreshToken);
-#ifdef CALLIE_QT_OAUTH_69
-    m_flow->refreshTokens();
-#else
-    m_flow->refreshAccessToken();
-#endif
+    QUrlQuery form;
+    form.addQueryItem(QStringLiteral("grant_type"), QStringLiteral("refresh_token"));
+    form.addQueryItem(QStringLiteral("refresh_token"), refreshToken);
+    form.addQueryItem(QStringLiteral("client_id"), m_client.clientId);
+    form.addQueryItem(QStringLiteral("client_secret"), m_client.clientSecret);
+    QNetworkRequest request(m_tokenUrl);
+    request.setHeader(QNetworkRequest::ContentTypeHeader,
+                      QStringLiteral("application/x-www-form-urlencoded"));
+
+    QNetworkReply *reply = m_network->post(request, form.toString(QUrl::FullyEncoded).toUtf8());
+    connect(reply, &QNetworkReply::finished, this, [this, reply, refreshToken] {
+        reply->deleteLater();
+        const QJsonObject body = QJsonDocument::fromJson(reply->readAll()).object();
+        const QString accessToken = body[u"access_token"].toString();
+        if (reply->error() == QNetworkReply::NoError && !accessToken.isEmpty()) {
+            const int expiresIn = body[u"expires_in"].toInt();
+            Q_EMIT granted(GoogleTokens{
+                accessToken,
+                body[u"refresh_token"].toString(refreshToken),
+                expiresIn > 0 ? QDateTime::currentDateTimeUtc().addSecs(expiresIn) : QDateTime(),
+            });
+            return;
+        }
+
+        const QString error = body[u"error"].toString();
+        const QString description = body[u"error_description"].toString();
+        if (error == QLatin1String("invalid_grant"))
+            fail(tr("Google no longer accepts the saved sign-in (%1). Connect the account "
+                    "again.")
+                     .arg(description.isEmpty() ? error : description));
+        else if (!error.isEmpty())
+            fail(tr("Google refused to refresh the sign-in: %1")
+                     .arg(description.isEmpty() ? error : description));
+        else
+            fail(reply->errorString());
+    });
 }
 
 QUrl GoogleAuth::callbackUrl() const
@@ -134,10 +171,7 @@ void GoogleAuth::onGranted()
     if (m_handler)
         m_handler->close();
 
-    GoogleTokens tokens{m_flow->token(), m_flow->refreshToken(), m_flow->expirationAt()};
-    // A refresh response carries no new refresh token; the old one stays valid.
-    if (tokens.refreshToken.isEmpty())
-        tokens.refreshToken = m_refreshToken;
+    const GoogleTokens tokens{m_flow->token(), m_flow->refreshToken(), m_flow->expirationAt()};
     if (tokens.refreshToken.isEmpty()) {
         fail(tr("Google did not return a refresh token"));
         return;

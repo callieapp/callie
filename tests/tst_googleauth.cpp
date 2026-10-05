@@ -43,6 +43,10 @@ private Q_SLOTS:
     void mismatchedStateIsNotExchanged();
     void missingRefreshTokenFails();
     void refreshKeepsExistingRefreshToken();
+    void refreshSendsClientAndReportsExpiry();
+    void revokedRefreshSaysToReconnect();
+    void refreshErrorCarriesGoogleReason();
+    void refreshWithoutErrorBodyStillFails();
     void authorizeAgainAfterFailure();
     void signInTimesOutWithoutAnswer();
     void timeoutStopsOnceGoogleAnswers();
@@ -207,6 +211,77 @@ void TestGoogleAuth::refreshKeepsExistingRefreshToken()
     const QUrlQuery body = formBody(tokenServer.requests.first().body);
     QCOMPARE(formValue(body, "grant_type"), QStringLiteral("refresh_token"));
     QCOMPARE(formValue(body, "refresh_token"), QStringLiteral("rt-1"));
+}
+
+void TestGoogleAuth::refreshSendsClientAndReportsExpiry()
+{
+    FakeHttpServer tokenServer;
+    tokenServer.respond(200, R"({"access_token":"at-2","expires_in":3600,"token_type":"Bearer"})");
+    GoogleAuth auth(kClient);
+    GoogleAuthDriver::useTokenServer(auth, tokenServer);
+    QSignalSpy granted(&auth, &GoogleAuth::granted);
+
+    const QDateTime before = QDateTime::currentDateTimeUtc();
+    auth.refresh(QStringLiteral("rt-1"));
+
+    QVERIFY(granted.wait(5000));
+    const auto tokens = granted.first().first().value<GoogleTokens>();
+    QVERIFY(tokens.expiresAt >= before.addSecs(3600));
+    QVERIFY(tokens.expiresAt <= QDateTime::currentDateTimeUtc().addSecs(3600));
+    const QUrlQuery body = formBody(tokenServer.requests.first().body);
+    QCOMPARE(formValue(body, "client_id"), kClient.clientId);
+    QCOMPARE(formValue(body, "client_secret"), kClient.clientSecret);
+    QCOMPARE(tokenServer.requests.first().method, QByteArray("POST"));
+}
+
+void TestGoogleAuth::revokedRefreshSaysToReconnect()
+{
+    FakeHttpServer tokenServer;
+    tokenServer.respond(400, R"({"error":"invalid_grant",
+                                 "error_description":"Token has been expired or revoked."})");
+    GoogleAuth auth(kClient);
+    GoogleAuthDriver::useTokenServer(auth, tokenServer);
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+    QSignalSpy granted(&auth, &GoogleAuth::granted);
+
+    auth.refresh(QStringLiteral("rt-1"));
+
+    QVERIFY(failed.wait(5000));
+    const QString message = failed.first().first().toString();
+    QVERIFY2(message.contains(u"Token has been expired or revoked."), qPrintable(message));
+    QVERIFY2(message.contains(u"Connect the account again"), qPrintable(message));
+    QCOMPARE(granted.size(), 0);
+}
+
+void TestGoogleAuth::refreshErrorCarriesGoogleReason()
+{
+    FakeHttpServer tokenServer;
+    tokenServer.respond(401, R"({"error":"invalid_client",
+                                 "error_description":"The OAuth client was not found."})");
+    GoogleAuth auth(kClient);
+    GoogleAuthDriver::useTokenServer(auth, tokenServer);
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+
+    auth.refresh(QStringLiteral("rt-1"));
+
+    QVERIFY(failed.wait(5000));
+    const QString message = failed.first().first().toString();
+    QVERIFY2(message.contains(u"The OAuth client was not found."), qPrintable(message));
+    QVERIFY(!message.contains(u"Connect the account again"));
+}
+
+void TestGoogleAuth::refreshWithoutErrorBodyStillFails()
+{
+    FakeHttpServer tokenServer;
+    tokenServer.respond(503, "unavailable");
+    GoogleAuth auth(kClient);
+    GoogleAuthDriver::useTokenServer(auth, tokenServer);
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+
+    auth.refresh(QStringLiteral("rt-1"));
+
+    QVERIFY(failed.wait(5000));
+    QVERIFY(!failed.first().first().toString().isEmpty());
 }
 
 void TestGoogleAuth::authorizeAgainAfterFailure()

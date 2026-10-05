@@ -76,14 +76,18 @@ QString environment(const QString &extra)
     return lines.join(u'\n');
 }
 
-QString cacheSummary(GoogleCache &cache, const QList<Account> &accounts,
+QString cacheSummary(GoogleCache &cache, bool readable, const QList<Account> &accounts,
                      const QHash<QString, QString> &tokenState)
 {
     QStringList lines;
     for (const Account &account : accounts) {
+        // The keyring state is worth reporting even when the cache is not.
         lines.append(QStringLiteral("Account %1 (%2): token %3, %4")
                          .arg(account.id, account.provider, tokenState.value(account.id),
-                              describe(cache.accountState(account))));
+                              readable ? describe(cache.accountState(account))
+                                       : QStringLiteral("sync state unavailable")));
+        if (!readable)
+            continue;
         const QList<GoogleCalendar> calendars = cache.calendars(account);
         int shown = 0;
         for (const GoogleCalendar &calendar : calendars) {
@@ -149,10 +153,13 @@ void collect(TokenStore &tokens, const QString &extra, std::function<void(QStrin
             state.append(QStringLiteral("Accounts file: %1").arg(accountsProblem));
         else if (accounts.isEmpty())
             state.append(QStringLiteral("Accounts: none"));
-        else if (!cache.open())
-            state.append(QStringLiteral("Cache error: %1").arg(cache.errorString()));
-        else
-            state.append(cacheSummary(cache, accounts, *tokenState));
+        else {
+            // Never open(), which would create or rebuild the cache being reported on.
+            const bool readable = cache.openForReading();
+            if (!readable)
+                state.append(QStringLiteral("Cache error: %1").arg(cache.errorString()));
+            state.append(cacheSummary(cache, readable, accounts, *tokenState));
+        }
         sections.append(state.join(u'\n'));
 
         const QDir logs(logfile::defaultDirectory());

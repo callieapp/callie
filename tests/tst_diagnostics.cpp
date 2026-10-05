@@ -3,9 +3,11 @@
 
 #include "callie/AccountStore.h"
 #include "callie/Diagnostics.h"
+#include "callie/GoogleCache.h"
 
 #include <QClipboard>
 #include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -101,12 +103,15 @@ void TestDiagnostics::reportCoversAccountsAndHidesThem()
 
     const QString report = collect(tokens);
 
-    QVERIFY2(report.contains(u"Account <email-1> (google): token stored, never synced"_s),
+    QVERIFY2(report.contains(u"Account <email-1> (google): token stored, sync state unavailable"_s),
              qPrintable(report));
     QVERIFY(report.contains(u"Extra: yes"_s));
     QVERIFY(report.contains(u"Qt "_s));
     QVERIFY(!report.contains(u"me@example.com"_s));
     QVERIFY(!report.contains(QDir::homePath()));
+    // Looking must not create or rebuild the cache being reported on.
+    QVERIFY(!QFileInfo::exists(GoogleCache::defaultPath()));
+    QVERIFY(report.contains(u"Cache error: no cache yet"_s));
 }
 
 void TestDiagnostics::copyPutsReportOnClipboard()

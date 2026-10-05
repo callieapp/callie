@@ -32,6 +32,10 @@ public:
 
     /// Opens or creates the database. Every other call fails until this succeeds.
     bool open();
+
+    /// Opens an existing cache without creating or migrating it, for looking
+    /// only. Fails when the file is missing or written in another schema.
+    bool openForReading();
     [[nodiscard]] QString errorString() const { return m_error; }
 
     [[nodiscard]] QList<GoogleCalendar> calendars(const Account &account);

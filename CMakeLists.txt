@@ -37,7 +37,13 @@ add_subdirectory(src/core)
 add_subdirectory(src/ui)
 add_subdirectory(src/gui)
 add_subdirectory(src/cli)
+add_subdirectory(src/gallery)
 add_subdirectory(data)
+
+# Built-in themes are compiled in; installed copies are a starting point for
+# people writing their own.
+install(DIRECTORY themes/ DESTINATION ${CMAKE_INSTALL_DATADIR}/callie/themes
+    FILES_MATCHING PATTERN "*.toml")
 
 if(CALLIE_BUILD_TESTS)
     add_subdirectory(tests)

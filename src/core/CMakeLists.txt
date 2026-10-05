@@ -1,4 +1,5 @@
 find_package(Qt6Keychain REQUIRED)
+find_package(tomlplusplus REQUIRED)
 
 # Google OAuth client. Explicit values win; otherwise the JSON downloaded from
 # Google Cloud is read. The values land in a generated header rather than in
@@ -64,6 +65,19 @@ add_library(calliecore STATIC
     GoogleAuth.cpp
     callie/GoogleCalendarApi.h
     GoogleCalendarApi.cpp
+    callie/Color.h
+    Color.cpp
+    callie/ThemeSpec.h
+    callie/ThemeLoader.h
+    ThemeLoader.cpp
+)
+
+# Built-in themes are compiled in, so the app works uninstalled and a broken
+# install can never leave it without its default look.
+qt_add_resources(calliecore "callie_themes"
+    PREFIX "/callie"
+    BASE "${PROJECT_SOURCE_DIR}"
+    FILES "${PROJECT_SOURCE_DIR}/themes/callie.toml"
 )
 
 # The QML module in src/ui exposes EventModel as a foreign type. Its registrar
@@ -84,4 +98,5 @@ target_link_libraries(calliecore
     PRIVATE
         Qt6::NetworkAuth
         Qt6Keychain::Qt6Keychain
+        tomlplusplus::tomlplusplus
 )

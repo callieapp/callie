@@ -126,11 +126,13 @@ values must pin `TZ`, as `tests/CMakeLists.txt` does.
 
 Beyond formatting:
 
-- Every visual value in QML reads a token from `Theme.qml`. Do not hard-code colors,
-  spacing, radii, or durations. `DESIGN.md` explains what each token is for and when it
-  may change.
+- Every visual value in QML reads from the `Theme` singleton, whose values come from the
+  theme files in `themes/`. Do not hard-code colors, spacing, radii, or durations.
+  `DESIGN.md` explains what each token is for and when it may change.
 - Visual and CLI-output decisions live in `DESIGN.md`. Read it before changing how
-  anything looks or prints, and add a decision-log entry when you settle something new.
+  anything looks or prints, and record what you settle there.
+- To work on a theme, run `callie-gallery --theme path/to/theme.toml`. It shows every token
+  and component, and updates as you save the file.
 - Keep date and layout arithmetic in C++ models. QML positions things, it does not
   compute them.
 - Do not add Kirigami or any dependency that imports another desktop's visual language.

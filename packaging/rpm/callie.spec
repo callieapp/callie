@@ -22,6 +22,7 @@ BuildRequires:  cmake(Qt6DBus)
 BuildRequires:  cmake(Qt6Test)
 BuildRequires:  cmake(KF6CalendarCore)
 BuildRequires:  cmake(Qt6Keychain)
+BuildRequires:  cmake(tomlplusplus)
 BuildRequires:  desktop-file-utils
 BuildRequires:  libappstream-glib
 
@@ -48,6 +49,7 @@ command-line interface is included for power users.
 desktop-file-validate %{buildroot}%{_datadir}/applications/org.callieapp.Callie.desktop
 appstream-util validate-relax --nonet \
     %{buildroot}%{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml
+%{_datadir}/callie/
 
 %files
 %license LICENSE
@@ -56,6 +58,7 @@ appstream-util validate-relax --nonet \
 %{_bindir}/callie-gui
 %{_datadir}/applications/org.callieapp.Callie.desktop
 %{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml
+%{_datadir}/callie/
 
 %changelog
 * Sat Sep 05 2026 Lara Kelley <larakelley@higharc.ai> - 0.1.0-1

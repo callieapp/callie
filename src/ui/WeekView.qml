@@ -198,7 +198,7 @@ Item {
                     y: startMinutes / 60 * Theme.hourHeight
                     height: Math.max(20, durationMinutes / 60 * Theme.hourHeight - 2)
 
-                    accent: calendarColor
+                    accent: Theme.calendarColor(calendarColor, Theme.calendar)
 
                     onMoveRequested: (deltaMinutes, deltaDays) => {
                         // TODO(core): commit the move once the model can write.
@@ -227,7 +227,7 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    color: Theme.danger
+                    color: Theme.accent
                 }
 
                 Rectangle {
@@ -238,7 +238,7 @@ Item {
                     width: 7
                     height: 7
                     radius: 3.5
-                    color: Theme.danger
+                    color: Theme.accent
                 }
 
                 Timer {

@@ -85,6 +85,7 @@ jobs:
           git gcc-c++ cmake ninja-build
           qt6-qtbase-devel qt6-qtdeclarative-devel
           qt6-qtquickcontrols2-devel qt6-qtnetworkauth-devel qtkeychain-qt6-devel
+          tomlplusplus-devel
 
       - name: Install build dependencies (Debian)
         if: matrix.name == 'debian'
@@ -94,7 +95,7 @@ jobs:
             git build-essential cmake ninja-build \
             qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools ca-certificates \
             qml6-module-qtquick-controls qml6-module-qtquick-templates \
-            qt6-networkauth-dev qtkeychain-qt6-dev
+            qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev
 
       - uses: actions/checkout@v5
 

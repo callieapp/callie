@@ -1,8 +1,3 @@
-# QT_QML_SINGLETON_TYPE must be set before the file is added to the module,
-# otherwise qmldir omits the "singleton" keyword and Theme.* silently
-# evaluates to undefined at runtime.
-set_source_files_properties(Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-
 # The QML files sit at this module's root, which is what Qt expects. Keeping
 # them in a subdirectory would require a hand-written qmldir (policy QTP0004).
 qt_add_qml_module(callieui
@@ -11,17 +6,22 @@ qt_add_qml_module(callieui
     STATIC
     # qmllint and qmlls expect the output path to mirror the module URI.
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Callie/Ui
+    # Theme exposes QColor properties; older qmllint only maps them to QML's
+    # color type when QtQuick is a declared dependency.
+    DEPENDENCIES QtQuick
     SOURCES
         EventModelForeign.h
+        ThemeController.h
+        ThemeController.cpp
     QML_FILES
         Main.qml
         WeekView.qml
         EventBlock.qml
         NavButton.qml
         PillButton.qml
-        Theme.qml
 )
 
+target_include_directories(callieui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(callieui
     PUBLIC

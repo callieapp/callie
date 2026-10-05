@@ -10,6 +10,7 @@ target_compile_definitions(callie-gui PRIVATE
 target_link_libraries(callie-gui PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
+    callieui
     callieuiplugin
 )
 

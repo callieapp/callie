@@ -1,7 +1,11 @@
+#include "ThemeController.h"
+
+#include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QTextStream>
 
 int main(int argc, char *argv[])
 {
@@ -12,7 +16,27 @@ int main(int argc, char *argv[])
     // Lets Wayland associate the window with the .desktop entry.
     app.setDesktopFileName(QStringLiteral(CALLIE_APP_ID));
 
-    // Basic style: everything visual comes from Theme.qml, not a platform style.
+    QCommandLineParser parser;
+    parser.addHelpOption();
+    parser.addVersionOption();
+    QCommandLineOption themeOption(
+        QStringLiteral("theme"),
+        QStringLiteral("Built-in theme id or path to a theme file. Defaults to $CALLIE_THEME."),
+        QStringLiteral("theme"), qEnvironmentVariable("CALLIE_THEME"));
+    parser.addOption(themeOption);
+    parser.process(app);
+
+    QTextStream err(stderr);
+    if (const QString theme = parser.value(themeOption); !theme.isEmpty()) {
+        const QStringList errors = callie::ThemeController::instance()->load(theme);
+        for (const QString &error : errors)
+            err << "callie-gui: " << theme << ": " << error << "\n";
+    }
+    for (const QString &warning : callie::ThemeController::instance()->warnings())
+        err << "callie-gui: theme: " << warning << "\n";
+    err.flush();
+
+    // Basic style: everything visual comes from the theme, not a platform style.
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QQmlApplicationEngine engine;

@@ -12,7 +12,7 @@ runtime.**
 | Layer     | What it is                                                                 | Where        |
 | --------- | -------------------------------------------------------------------------- | ------------ |
 | Core      | C++20, Qt 6. `Event`, `CalendarSource`, `EventModel`. No UI, no QML types. | `src/core/`  |
-| UI        | QML module `Callie.Ui`. Declarative views plus a `Theme.qml` singleton.    | `src/ui/`    |
+| UI        | QML module `Callie.Ui`. Declarative views plus a C++ `Theme` singleton.    | `src/ui/`    |
 | App       | `callie-gui`, a `main.cpp` that loads `Callie.Ui`.                         | `src/gui/`   |
 | CLI       | `callie`, a `QCommandLineParser` binary over the same core.                | `src/cli/`   |
 | Packaging | Hand-written rpm spec and `debian/`, kept at distro-review quality.        | `packaging/` |
@@ -84,9 +84,15 @@ Also yours: model correctness and role plumbing, the C++ and QML boundary, and c
 
 ## Seams
 
-- **`Theme.qml` is the only source of visual values.** A literal colour, spacing number, radius or
-  animation duration in any other `.qml` file is a finding. Point at the token that should have been
-  used, or say that a new token is needed.
+- **The `Theme` singleton is the only source of visual values.** A literal colour, spacing number,
+  radius or animation duration in a `.qml` file is a finding. Point at the token that should have
+  been used, or say that a new token is needed. Theme-driven values come from `themes/*.toml`;
+  spacing, type sizes and grid metrics are constants in `ThemeController`, by design.
+- **Theme bindings.** QML cannot see what a C++ call reads, so a binding that calls a `Theme`
+  function must also pass the theme state it depends on, as in
+  `Theme.calendarColor(color, Theme.calendar)`. Otherwise it goes stale on a live reload.
+- **Themes are data.** Theme files must never be able to run code or load QML. A change that lets a
+  theme reference a script, a QML file or a plugin is a blocking finding.
 - **Layering.** `src/core/` must not gain a QML or QtQuick dependency: the CLI links it, and
   `EventModel.h` was deliberately stripped of `QML_ELEMENT` for that reason. QML types belong in
   `src/ui/`, exposed through `QML_FOREIGN` as `EventModelForeign.h` does.
@@ -126,6 +132,6 @@ Also yours: model correctness and role plumbing, the C++ and QML boundary, and c
   pattern in `tst_eventmodel.cpp`. Time-dependent tests must pin `TZ`, as `tests/CMakeLists.txt`
   does, rather than reading the host zone.
 - A new QML component does not need a test, but it does need to survive `qmllint` and to read its
-  values from `Theme.qml`.
+  values from `Theme`.
 - A bug fix in date, timezone or recurrence handling needs a regression test that would have failed
   before the fix. Say so explicitly when one is missing.

@@ -6,6 +6,7 @@
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/LogFile.h"
 #include "callie/Logging.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
         QStringLiteral("file"));
     parser.addOption(screenshotOption);
     parser.process(app);
+    callie::logfile::install(QStringLiteral("callie-gui"));
 
     QTextStream err(stderr);
     if (const QString theme = parser.value(themeOption); !theme.isEmpty()) {

@@ -44,6 +44,8 @@ private Q_SLOTS:
     void missingRefreshTokenFails();
     void refreshKeepsExistingRefreshToken();
     void authorizeAgainAfterFailure();
+    void signInTimesOutWithoutAnswer();
+    void timeoutStopsOnceGoogleAnswers();
     void primaryCalendarIdSendsBearerToken();
     void apiErrorMessageIsReported();
 };
@@ -233,6 +235,40 @@ void TestGoogleAuth::authorizeAgainAfterFailure()
     GoogleAuthDriver::redirectBack(network, auth, formValue(second, "state"));
     QVERIFY(granted.wait(5000));
     QCOMPARE(granted.first().first().value<GoogleTokens>().refreshToken, QStringLiteral("rt-2"));
+}
+
+void TestGoogleAuth::signInTimesOutWithoutAnswer()
+{
+    FakeHttpServer tokenServer;
+    GoogleAuth auth(kClient);
+    auth.setSignInTimeout(std::chrono::milliseconds(200));
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+
+    QVERIFY(GoogleAuthDriver::startAuthorization(auth, tokenServer).isValid());
+
+    QVERIFY(failed.wait(2000));
+    QVERIFY(failed.first().first().toString().contains(QStringLiteral("timed out")));
+}
+
+void TestGoogleAuth::timeoutStopsOnceGoogleAnswers()
+{
+    // Whatever runs after the grant, such as a slow keyring unlock, must not be
+    // cut off by the sign-in timeout.
+    FakeHttpServer tokenServer;
+    tokenServer.respond(200, R"({"access_token":"at-1","refresh_token":"rt-1",)"
+                             R"("expires_in":3600,"token_type":"Bearer"})");
+    GoogleAuth auth(kClient);
+    auth.setSignInTimeout(std::chrono::milliseconds(400));
+    QSignalSpy granted(&auth, &GoogleAuth::granted);
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+    QNetworkAccessManager network;
+
+    const QUrlQuery query(GoogleAuthDriver::startAuthorization(auth, tokenServer));
+    GoogleAuthDriver::redirectBack(network, auth, formValue(query, "state"));
+    QVERIFY(granted.wait(2000));
+
+    QTest::qWait(800);
+    QCOMPARE(failed.size(), 0);
 }
 
 void TestGoogleAuth::primaryCalendarIdSendsBearerToken()

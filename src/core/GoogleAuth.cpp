@@ -3,6 +3,7 @@
 #include <QHostAddress>
 #include <QOAuth2AuthorizationCodeFlow>
 #include <QOAuthHttpServerReplyHandler>
+#include <QTimer>
 
 // Qt 6.9 replaced several QtNetworkAuth calls. Debian trixie ships 6.8, which
 // lacks the replacements, while newer Qt warns on the originals.
@@ -13,8 +14,14 @@
 namespace callie {
 
 GoogleAuth::GoogleAuth(const GoogleClientConfig &client, QObject *parent)
-    : QObject(parent), m_flow(new QOAuth2AuthorizationCodeFlow(this))
+    : QObject(parent), m_flow(new QOAuth2AuthorizationCodeFlow(this)),
+      m_signInTimer(new QTimer(this))
 {
+    m_signInTimer->setSingleShot(true);
+    m_signInTimer->setInterval(std::chrono::minutes(5));
+    connect(m_signInTimer, &QTimer::timeout, this,
+            [this] { fail(tr("timed out waiting for Google sign-in")); });
+
     setEndpoints(QUrl(QStringLiteral("https://accounts.google.com/o/oauth2/v2/auth")),
                  QUrl(QStringLiteral("https://oauth2.googleapis.com/token")));
     m_flow->setClientIdentifier(client.clientId);
@@ -91,7 +98,13 @@ void GoogleAuth::authorize()
         fail(tr("could not listen for the Google sign-in callback"));
         return;
     }
+    m_signInTimer->start();
     m_flow->grant();
+}
+
+void GoogleAuth::setSignInTimeout(std::chrono::milliseconds timeout)
+{
+    m_signInTimer->setInterval(timeout);
 }
 
 void GoogleAuth::refresh(const QString &refreshToken)
@@ -112,6 +125,7 @@ QUrl GoogleAuth::callbackUrl() const
 
 void GoogleAuth::onGranted()
 {
+    m_signInTimer->stop();
     if (m_handler)
         m_handler->close();
 
@@ -128,6 +142,7 @@ void GoogleAuth::onGranted()
 
 void GoogleAuth::fail(const QString &message)
 {
+    m_signInTimer->stop();
     if (m_handler)
         m_handler->close();
     Q_EMIT failed(message);

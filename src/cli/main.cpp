@@ -3,6 +3,7 @@
 #include "callie/EventModel.h"
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCalendarApi.h"
+#include "callie/GoogleTokenProvider.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
 
@@ -171,6 +172,61 @@ int runAccountsRemove(QCoreApplication &app, const Account &account)
     return app.exec();
 }
 
+/// One line per calendar, tab-separated: account, calendar id, name.
+int runCalendars(QCoreApplication &app)
+{
+    AccountStore store(AccountStore::defaultPath());
+    QList<Account> accounts;
+    if (!store.load(accounts)) {
+        err << QStringLiteral("callie: %1\n").arg(store.errorString());
+        return 1;
+    }
+    accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
+    if (accounts.isEmpty()) {
+        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        return 0;
+    }
+
+    KeychainTokenStore tokens;
+    GoogleTokenProvider provider(GoogleClientConfig::resolve(), tokens);
+    QNetworkAccessManager network;
+    GoogleCalendarApi api(&network);
+    int failures = 0;
+
+    std::function<void(qsizetype)> list = [&](qsizetype i) {
+        if (i == accounts.size()) {
+            finish(failures ? 1 : 0);
+            return;
+        }
+        const Account account = accounts.at(i);
+        const auto fail = [&, i, account](const QString &message) {
+            err << QStringLiteral("callie: %1: %2\n").arg(account.id, message);
+            ++failures;
+            list(i + 1);
+        };
+        provider.accessToken(account, [&, i, account, fail](const QString &token,
+                                                            const QString &error) {
+            if (!error.isEmpty()) {
+                fail(error);
+                return;
+            }
+            api.fetchCalendars(token, [&, i, account, fail](const QList<GoogleCalendar> &calendars,
+                                                            const GoogleApiError &apiError) {
+                if (apiError) {
+                    fail(apiError.message);
+                    return;
+                }
+                for (const GoogleCalendar &calendar : calendars)
+                    out << account.id << "\t" << calendar.id << "\t" << calendar.summary << "\n";
+                list(i + 1);
+            });
+        });
+    };
+
+    QTimer::singleShot(0, &app, [&] { list(0); });
+    return app.exec();
+}
+
 int runAccounts(QCoreApplication &app, const QStringList &args)
 {
     const QString action = args.value(1, QStringLiteral("list"));
@@ -200,12 +256,13 @@ int main(int argc, char *argv[])
         QStringLiteral("Callie: an elegant calendar for Linux.\n"
                        "\n"
                        "Commands:\n"
-                       "  agenda    Upcoming events (default)\n"
-                       "  accounts  List, add or remove calendar accounts\n"
-                       "  add       Create an event from natural language\n"
-                       "  sync      Refresh all accounts now\n"
-                       "  daemon    Run background sync and notifications\n"
-                       "  gui       Launch the desktop app"));
+                       "  agenda     Upcoming events (default)\n"
+                       "  accounts   List, add or remove calendar accounts\n"
+                       "  calendars  List the calendars in each account\n"
+                       "  add        Create an event from natural language\n"
+                       "  sync       Refresh all accounts now\n"
+                       "  daemon     Run background sync and notifications\n"
+                       "  gui        Launch the desktop app"));
     parser.addHelpOption();
     parser.addVersionOption();
     parser.addPositionalArgument(QStringLiteral("command"), QStringLiteral("Command to run."));
@@ -224,6 +281,9 @@ int main(int argc, char *argv[])
 
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
+
+    if (command == QLatin1String("calendars") && args.size() == 1)
+        return runCalendars(app);
 
     if (command == QLatin1String("gui"))
         return QProcess::execute(QStringLiteral("callie-gui"), {});

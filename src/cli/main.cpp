@@ -95,8 +95,10 @@ int runAgenda(int days, bool sample)
 
     QDate current;
     for (const Event &e : std::as_const(events)) {
-        if (e.start.date() != current) {
-            current = e.start.date();
+        // Events already under way when the range starts are listed under today.
+        const QDate day = std::max(e.start.date(), today);
+        if (day != current) {
+            current = day;
             const QString label = current == today
                                       ? QObject::tr("Today")
                                       : QLocale().toString(current, QStringLiteral("ddd d MMM"));

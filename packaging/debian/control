@@ -10,6 +10,7 @@ Build-Depends: debhelper-compat (= 13),
                qt6-networkauth-dev,
                qtkeychain-qt6-dev,
                libtomlplusplus-dev,
+               libqt6sql6-sqlite,
                qml6-module-qtquick-controls,
                libkf6calendarcore-dev,
                desktop-file-utils,
@@ -21,6 +22,7 @@ Rules-Requires-Root: no
 Package: callie
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
+         libqt6sql6-sqlite,
          qml6-module-qtquick-controls,
          qml6-module-qtquick-templates
 Description: elegant calendar for Linux

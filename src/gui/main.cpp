@@ -83,8 +83,6 @@ int main(int argc, char *argv[])
     callie::GoogleSync sync(provider, api, cache);
     callie::GoogleSource google(cache, accounts);
     google.setSync(&sync);
-    QObject::connect(&google, &callie::CalendarSource::errorOccurred,
-                     [](const QString &message) { qCWarning(lcSync) << message; });
     callie::SampleSource sample;
 
     const bool useSample = parser.isSet(sampleOption);

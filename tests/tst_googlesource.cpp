@@ -57,6 +57,7 @@ private Q_SLOTS:
     void statusStartsFromTheCache();
     void statusFollowsARefresh();
     void calendarErrorShowsAfterRestart();
+    void overlappingRefreshesReportEachErrorOnce();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -271,6 +272,22 @@ void TestGoogleSource::calendarErrorShowsAfterRestart()
     const GoogleSource source(*m_cache, {kAccount});
 
     QCOMPARE(source.lastError(), u"me@example.com: MINE: Backend Error"_s);
+}
+
+void TestGoogleSource::overlappingRefreshesReportEachErrorOnce()
+{
+    SyncHarness harness(*m_cache);
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    QSignalSpy errors(&source, &CalendarSource::errorOccurred);
+
+    // No stored token, so the shared run fails once for both refreshes.
+    source.refresh();
+    source.refresh();
+    QTRY_VERIFY_WITH_TIMEOUT(!source.syncing(), 5000);
+
+    QCOMPARE(errors.size(), 1);
+    QCOMPARE(source.lastError().count(u'\n'), 0);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSource)

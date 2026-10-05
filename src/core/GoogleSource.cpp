@@ -31,8 +31,18 @@ GoogleSource::GoogleSource(GoogleCache &cache, QList<Account> accounts, QObject 
         const SyncState state = m_cache.accountState(account);
         if (state.lastSynced > m_lastSynced)
             m_lastSynced = state.lastSynced;
-        if (m_lastError.isEmpty() && !state.lastError.isEmpty())
-            m_lastError = QStringLiteral("%1: %2").arg(account.id, state.lastError);
+        QStringList errors;
+        if (!state.lastError.isEmpty())
+            errors.append(state.lastError);
+        // A run can fail per calendar while the account itself is fine.
+        for (const GoogleCalendar &calendar : m_cache.calendars(account)) {
+            const QString error = m_cache.calendarState(account, calendar.id).lastError;
+            if (!error.isEmpty())
+                errors.append(QStringLiteral("%1: %2").arg(calendar.summary, error));
+        }
+        for (const QString &error : std::as_const(errors))
+            m_lastError += (m_lastError.isEmpty() ? QString() : QStringLiteral("\n")) +
+                           QStringLiteral("%1: %2").arg(account.id, error);
     }
 }
 

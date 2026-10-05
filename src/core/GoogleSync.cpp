@@ -31,6 +31,13 @@ QString keyFor(const Account &account)
 
 } // namespace
 
+void GoogleSync::record(bool stored)
+{
+    // Only the status display loses out, so this is logged rather than reported.
+    if (!stored)
+        qCWarning(lcSync) << "could not record the sync outcome:" << m_cache.errorString();
+}
+
 GoogleSync::GoogleSync(GoogleTokenProvider &tokens, GoogleCalendarApi &api, GoogleCache &cache,
                        QObject *parent)
     : QObject(parent), m_tokens(tokens), m_api(api), m_cache(cache)
@@ -119,10 +126,12 @@ void GoogleSync::syncCalendar(const std::shared_ptr<Run> &run, const QString &ca
                 run->unauthorized = true;
             } else if (error) {
                 run->errors.append(QStringLiteral("%1: %2").arg(name, error.message));
-                m_cache.recordCalendarError(run->account, calendarId, error.message);
+                record(m_cache.recordCalendarError(run->account, calendarId, error.message));
             } else if (!m_cache.applyChanges(run->account, calendarId, changes,
                                              syncToken.isEmpty())) {
-                run->errors.append(QStringLiteral("%1: %2").arg(name, m_cache.errorString()));
+                const QString problem = m_cache.errorString();
+                run->errors.append(QStringLiteral("%1: %2").arg(name, problem));
+                record(m_cache.recordCalendarError(run->account, calendarId, problem));
             } else {
                 qCInfo(lcSync).noquote()
                     << QStringLiteral("%1: %2 changes%3")
@@ -159,7 +168,7 @@ void GoogleSync::finish(const std::shared_ptr<Run> &run)
         run->accountError = tr("Google rejected the access token");
     if (!run->accountError.isEmpty())
         run->errors.prepend(run->accountError);
-    m_cache.recordAccountSync(run->account, run->accountError);
+    record(m_cache.recordAccountSync(run->account, run->accountError));
     // Info, so the log file keeps every failure while the caller reports them.
     for (const QString &error : std::as_const(run->errors))
         qCInfo(lcSync).noquote() << run->account.id + QStringLiteral(": ") + error;

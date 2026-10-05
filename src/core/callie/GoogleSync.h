@@ -45,6 +45,7 @@ private:
                       const QString &name, bool full);
     void calendarDone(const std::shared_ptr<Run> &run);
     void finish(const std::shared_ptr<Run> &run);
+    void record(bool stored);
 
     GoogleTokenProvider &m_tokens;
     GoogleCalendarApi &m_api;

@@ -56,6 +56,7 @@ private Q_SLOTS:
     void refreshWhileSyncingStartsNothingNew();
     void statusStartsFromTheCache();
     void statusFollowsARefresh();
+    void calendarErrorShowsAfterRestart();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -260,6 +261,16 @@ void TestGoogleSource::statusFollowsARefresh()
     QCOMPARE(source.lastError(), QString());
     QVERIFY(source.lastSynced().isValid());
     QCOMPARE(status.size(), 4);
+}
+
+void TestGoogleSource::calendarErrorShowsAfterRestart()
+{
+    QVERIFY(m_cache->recordAccountSync(kAccount, {}));
+    QVERIFY(m_cache->recordCalendarError(kAccount, u"mine"_s, u"Backend Error"_s));
+
+    const GoogleSource source(*m_cache, {kAccount});
+
+    QCOMPARE(source.lastError(), u"me@example.com: MINE: Backend Error"_s);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSource)

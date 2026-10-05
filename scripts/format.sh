@@ -25,8 +25,16 @@ if [ -z "$qmlformat_bin" ]; then
 fi
 status=0
 
-mapfile -t cxx < <(git ls-files '*.cpp' '*.h')
-mapfile -t qml < <(git ls-files '*.qml')
+# Command substitution propagates a git failure under set -e; process
+# substitution would hide it and leave the lists empty.
+cxx_list="$(git ls-files '*.cpp' '*.h')"
+qml_list="$(git ls-files '*.qml')"
+mapfile -t cxx <<<"$cxx_list"
+mapfile -t qml <<<"$qml_list"
+if [ -z "$cxx_list" ] || [ -z "$qml_list" ]; then
+    echo "format: git ls-files found no sources" >&2
+    exit 1
+fi
 
 if ! command -v clang-format >/dev/null; then
     echo "format: clang-format not found, skipping C++" >&2
@@ -42,6 +50,9 @@ if [ ! -x "$qmlformat_bin" ]; then
     [ "$mode" = check ] && status=1
 elif [ "$mode" = fix ]; then
     "$qmlformat_bin" -i "${qml[@]}"
+elif ! command -v diff >/dev/null; then
+    echo "format: diff not found, cannot check QML" >&2
+    status=1
 else
     for f in "${qml[@]}"; do
         if ! "$qmlformat_bin" "$f" | diff -q - "$f" >/dev/null; then

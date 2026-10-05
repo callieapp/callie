@@ -77,6 +77,7 @@ class ThemeController : public QObject
 
     Q_PROPERTY(int hourHeight READ hourHeight CONSTANT)
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
+    Q_PROPERTY(int allDayRowHeight READ allDayRowHeight CONSTANT)
     Q_PROPERTY(int snapMinutes READ snapMinutes CONSTANT)
 
 public:
@@ -149,6 +150,7 @@ public:
 
     int hourHeight() const { return 56; }
     int gutterWidth() const { return 64; }
+    int allDayRowHeight() const { return 22; }
     int snapMinutes() const { return 15; }
 
 Q_SIGNALS:

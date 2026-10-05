@@ -103,14 +103,14 @@ Item {
     // ---- All-day events ----------------------------------------------------
     Item {
         id: allDayStrip
-        readonly property int rowHeight: 22
 
         anchors {
             top: header.bottom
             left: parent.left
             right: parent.right
         }
-        height: root.model.allDayRows > 0 ? root.model.allDayRows * rowHeight + Theme.space2 * 2 : 0
+        height: root.model.allDayRows > 0 ? root.model.allDayRows * Theme.allDayRowHeight + Theme.space2
+                                            * 2 : 0
         visible: height > 0
         clip: true
 
@@ -129,9 +129,9 @@ Item {
 
                 visible: allDay
                 x: Theme.gutterWidth + firstDay * root.dayWidth + 3
-                y: Theme.space2 + lane * allDayStrip.rowHeight
+                y: Theme.space2 + lane * Theme.allDayRowHeight
                 width: daySpan * root.dayWidth - 6
-                height: allDayStrip.rowHeight - 3
+                height: Theme.allDayRowHeight - 3
                 radius: Theme.radiusMd
                 color: Theme.tint(accent, Theme.dark ? 0.32 : 0.18)
 

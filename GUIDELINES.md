@@ -45,20 +45,8 @@ Do not re-litigate these without being asked:
 
 ## Build
 
-CMake presets drive everything. `cmake --workflow --preset ci` runs exactly what CI runs.
+Run `make` to list the commands; `make check` runs what CI runs. The Makefile wraps CMake presets,
+which work directly too: `cmake --workflow --preset ci` is CI's build, lint and test.
 
-```sh
-cmake --preset dev              # configure into build/dev
-cmake --build --preset dev
-ctest --preset dev
-
-./build/dev/src/gui/callie-gui  # desktop app
-./build/dev/src/cli/callie agenda
-
-cmake --workflow --preset ci    # configure, build, qmllint and test, warnings as errors
-cmake --build --preset dev --target format        # rewrite formatting
-cmake --build --preset dev --target format-check  # verify formatting
-```
-
-`clang-format` comes from `clang-tools-extra` on Fedora and `clang-format` on Debian. Without it
-the format target skips C++ and reports it.
+`make run` and `make watch` enable Callie's logging categories and QML `console.log`. Log through
+`lcAuth`, `lcAccounts` or `lcTheme` from `callie/Logging.h`, never `qDebug()`, and never log tokens.

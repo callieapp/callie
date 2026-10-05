@@ -1,5 +1,6 @@
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/Diagnostics.h"
 #include "callie/EventModel.h"
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCache.h"
@@ -303,6 +304,25 @@ int runStatus(QCoreApplication &app)
     return app.exec();
 }
 
+/// The bug report details, with email addresses masked. `report` also opens a
+/// new GitHub issue with them filled in.
+int runDoctor(QCoreApplication &app, bool report)
+{
+    KeychainTokenStore tokens;
+    QTimer::singleShot(0, &app, [&] {
+        diagnostics::collect(tokens, {}, [report](const QString &text) {
+            out << text << "\n";
+            if (report) {
+                const QString url = diagnostics::issueUrl(text).toString(QUrl::FullyEncoded);
+                err << QObject::tr("Opening a new issue in your browser.") << "\n";
+                QProcess::startDetached(QStringLiteral("xdg-open"), {url});
+            }
+            finish(0);
+        });
+    });
+    return app.exec();
+}
+
 /// The log files, one path per line, newest first; or follows or opens them.
 int runLogs(bool follow, bool open)
 {
@@ -465,7 +485,8 @@ int main(int argc, char *argv[])
                        "  accounts   List, add or remove calendar accounts\n"
                        "  calendars  List the calendars in each account\n"
                        "  logs       Show, follow (-f) or open (--open) the log files\n"
-                       "  status     Sync state, keyring and configuration, for bug reports\n"
+                       "  status     Sync state, keyring and configuration\n"
+                       "  doctor     Details for a bug report; --report opens a new issue\n"
                        "  add        Create an event from natural language\n"
                        "  sync       Refresh all accounts now\n"
                        "  daemon     Run background sync and notifications\n"
@@ -490,6 +511,9 @@ int main(int argc, char *argv[])
     QCommandLineOption verboseOption(QStringLiteral("verbose"),
                                      QStringLiteral("Print progress as well as warnings."));
     parser.addOption(verboseOption);
+    QCommandLineOption reportOption(QStringLiteral("report"),
+                                    QStringLiteral("With doctor: open a new GitHub issue."));
+    parser.addOption(reportOption);
     parser.process(app);
     logfile::install(QStringLiteral("callie"));
     logfile::setVerboseTerminal(parser.isSet(verboseOption) ||
@@ -503,6 +527,9 @@ int main(int argc, char *argv[])
 
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
+
+    if (command == QLatin1String("doctor") && args.size() == 1)
+        return runDoctor(app, parser.isSet(reportOption));
 
     if (command == QLatin1String("status") && args.size() == 1)
         return runStatus(app);

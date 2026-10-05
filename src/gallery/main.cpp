@@ -1,5 +1,7 @@
 #include "ThemeController.h"
 
+#include "callie/LogFile.h"
+
 #include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -27,6 +29,7 @@ int main(int argc, char *argv[])
         QStringLiteral("Save the rendered gallery to a PNG and exit."), QStringLiteral("file"));
     parser.addOption(screenshotOption);
     parser.process(app);
+    callie::logfile::install(QStringLiteral("callie-gallery"));
 
     if (const QString theme = parser.value(themeOption); !theme.isEmpty()) {
         const QStringList errors = callie::ThemeController::instance()->load(theme);

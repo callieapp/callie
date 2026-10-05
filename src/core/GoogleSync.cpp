@@ -84,6 +84,8 @@ void GoogleSync::start(const std::shared_ptr<Run> &run)
                     finish(run);
                     return;
                 }
+                // Names, colors and the list itself can change with no event changes.
+                Q_EMIT changed(run->account);
                 run->pending = int(calendars.size());
                 if (run->pending == 0) {
                     finish(run);

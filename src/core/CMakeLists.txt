@@ -1,5 +1,6 @@
 find_package(Qt6Keychain REQUIRED)
 find_package(tomlplusplus REQUIRED)
+find_package(KF6CalendarCore REQUIRED)
 
 # Google OAuth client. Explicit values win; otherwise the JSON downloaded from
 # Google Cloud is read. The values land in a generated header rather than in
@@ -73,6 +74,8 @@ add_library(calliecore STATIC
     GoogleCache.cpp
     callie/GoogleSync.h
     GoogleSync.cpp
+    callie/GoogleRecurrence.h
+    GoogleRecurrence.cpp
     callie/Color.h
     Color.cpp
     callie/ThemeSpec.h
@@ -107,4 +110,5 @@ target_link_libraries(calliecore
         Qt6::NetworkAuth
         Qt6Keychain::Qt6Keychain
         tomlplusplus::tomlplusplus
+        KF6::CalendarCore
 )

@@ -24,7 +24,17 @@ bool canWrite(const QString &accessRole)
 
 GoogleSource::GoogleSource(GoogleCache &cache, QList<Account> accounts, QObject *parent)
     : CalendarSource(parent), m_cache(cache), m_accounts(std::move(accounts))
-{}
+{
+    // Start from what the last run recorded, so the title bar is right before
+    // the first sync of this run finishes.
+    for (const Account &account : std::as_const(m_accounts)) {
+        const SyncState state = m_cache.accountState(account);
+        if (state.lastSynced > m_lastSynced)
+            m_lastSynced = state.lastSynced;
+        if (m_lastError.isEmpty() && !state.lastError.isEmpty())
+            m_lastError = QStringLiteral("%1: %2").arg(account.id, state.lastError);
+    }
+}
 
 void GoogleSource::setSync(GoogleSync *sync)
 {
@@ -83,13 +93,26 @@ void GoogleSource::refresh()
         return;
     }
     // GoogleSync joins a sync already running, so overlapping refreshes are cheap.
+    if (m_pending == 0)
+        m_runErrors.clear();
+    m_pending += int(m_accounts.size());
+    Q_EMIT statusChanged();
     const QPointer<GoogleSource> self(this);
     for (const Account &account : std::as_const(m_accounts)) {
         m_sync->sync(account, [this, self, account](const QStringList &errors) {
             if (!self)
                 return;
-            for (const QString &error : errors)
-                Q_EMIT errorOccurred(QStringLiteral("%1: %2").arg(account.id, error));
+            for (const QString &error : errors) {
+                const QString message = QStringLiteral("%1: %2").arg(account.id, error);
+                m_runErrors.append(message);
+                Q_EMIT errorOccurred(message);
+            }
+            if (--m_pending > 0)
+                return;
+            m_lastError = m_runErrors.join(u'\n');
+            if (m_runErrors.isEmpty())
+                m_lastSynced = QDateTime::currentDateTimeUtc();
+            Q_EMIT statusChanged();
         });
     }
 }

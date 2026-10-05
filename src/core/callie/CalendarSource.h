@@ -3,6 +3,7 @@
 #include "Event.h"
 
 #include <QDate>
+#include <QDateTime>
 #include <QObject>
 #include <QString>
 #include <QTimeZone>
@@ -26,6 +27,9 @@ struct CalendarInfo
 class CalendarSource : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool syncing READ syncing NOTIFY statusChanged)
+    Q_PROPERTY(QDateTime lastSynced READ lastSynced NOTIFY statusChanged)
+    Q_PROPERTY(QString lastError READ lastError NOTIFY statusChanged)
 
 public:
     using QObject::QObject;
@@ -42,9 +46,15 @@ public:
     /// Kick off a background refresh. Emits `changed` when new data lands.
     virtual void refresh() = 0;
 
+    /// Sync status for the title bar. Sources that never sync keep the defaults.
+    [[nodiscard]] virtual bool syncing() const { return false; }
+    [[nodiscard]] virtual QDateTime lastSynced() const { return {}; }
+    [[nodiscard]] virtual QString lastError() const { return {}; }
+
 Q_SIGNALS:
     void changed();
     void errorOccurred(const QString &message);
+    void statusChanged();
 };
 
 } // namespace callie

@@ -143,6 +143,8 @@ Beyond formatting:
 - `callie status` shows each calendar's last sync and error. `callie --verbose sync` prints progress.
 - `callie doctor` prints what a bug report needs, with email addresses masked. `--report` opens a
   new issue with it filled in, as does "Report a bug" in the app's ? menu.
+- `make screenshots` renders the app with sample data at a fixed time, and the gallery, for every
+  built-in theme. CI attaches the same images to each pull request as the `screenshots` artifact.
 - Fedora keeps crash dumps through systemd, as does Debian once `systemd-coredump` is installed.
   `coredumpctl list callie-gui` finds them, and `coredumpctl debug callie-gui` opens the latest in
   gdb. A `make` build has the symbols it needs.

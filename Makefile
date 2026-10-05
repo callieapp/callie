@@ -39,7 +39,7 @@ define watch
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help deps setup configure build run logs cli gallery watch watch-gallery test lint format check clean
+.PHONY: help deps setup configure build run logs cli gallery watch watch-gallery screenshots test lint format check clean
 
 help: ## List commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  make %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -80,6 +80,20 @@ watch: $(BUILD)/build.ninja ## Reload QML on save; rebuild and restart on C++ ch
 
 watch-gallery: $(BUILD)/build.ninja ## Like watch, for the gallery; THEME=path optional
 	$(call watch,callie-gallery,$(GALLERY) --live-qml $(if $(THEME),--theme $(THEME)))
+
+# A fixed week, time and size, so the same commit always renders the same pictures.
+SHOTS := $(BUILD)/screenshots
+SHOT_APP := --sample --now 2026-03-18T10:40 --size 1280x840
+
+screenshots: build ## Render the app and gallery for every built-in theme
+	@mkdir -p $(SHOTS)
+	@for theme in $(basename $(notdir $(wildcard themes/*.toml))); do \
+		QT_QPA_PLATFORM=offscreen $(GUI) $(SHOT_APP) --theme $$theme \
+			--screenshot $(SHOTS)/week-$$theme.png && \
+		QT_QPA_PLATFORM=offscreen $(GALLERY) --theme $$theme \
+			--screenshot $(SHOTS)/gallery-$$theme.png || exit 1; \
+	done
+	@echo "Screenshots are in $(SHOTS)"
 
 test: build ## Run the tests
 	@ctest --preset $(PRESET)

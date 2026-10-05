@@ -1,3 +1,4 @@
+#include "Clock.h"
 #include "LiveQml.h"
 #include "ThemeController.h"
 
@@ -49,6 +50,15 @@ int main(int argc, char *argv[])
         QStringLiteral("Save the window to a PNG once it has rendered, then exit."),
         QStringLiteral("file"));
     parser.addOption(screenshotOption);
+    QCommandLineOption nowOption(
+        QStringLiteral("now"),
+        QStringLiteral("Pretend it is this local time, e.g. 2026-03-18T10:40, and stop the clock."),
+        QStringLiteral("time"));
+    parser.addOption(nowOption);
+    QCommandLineOption sizeOption(QStringLiteral("size"),
+                                  QStringLiteral("Window size in pixels, e.g. 1280x840."),
+                                  QStringLiteral("size"));
+    parser.addOption(sizeOption);
 #ifdef CALLIE_LIVE_QML
     QCommandLineOption liveOption(QStringLiteral("live-qml"),
                                   QStringLiteral("Load QML from the source tree and reload it on "
@@ -56,6 +66,23 @@ int main(int argc, char *argv[])
     parser.addOption(liveOption);
 #endif
     parser.process(app);
+    if (parser.isSet(nowOption)) {
+        const QDateTime now = QDateTime::fromString(parser.value(nowOption), Qt::ISODate);
+        if (!now.isValid()) {
+            QTextStream(stderr) << "callie-gui: --now wants a time like 2026-03-18T10:40\n";
+            return 2;
+        }
+        callie::Clock::instance()->freeze(now);
+    }
+    QSize windowSize;
+    if (parser.isSet(sizeOption)) {
+        const QStringList parts = parser.value(sizeOption).split(u'x');
+        windowSize = QSize(parts.value(0).toInt(), parts.value(1).toInt());
+        if (parts.size() != 2 || windowSize.isEmpty()) {
+            QTextStream(stderr) << "callie-gui: --size wants a size like 1280x840\n";
+            return 2;
+        }
+    }
     callie::logfile::install(QStringLiteral("callie-gui"));
 
     QTextStream err(stderr);
@@ -131,6 +158,11 @@ int main(int argc, char *argv[])
             &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
             [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Callie.Ui", "Main");
+
+    if (windowSize.isValid() && !engine.rootObjects().isEmpty()) {
+        if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first()))
+            window->resize(windowSize);
+    }
 
     if (!screenshot.isEmpty()) {
         auto *window = engine.rootObjects().isEmpty()

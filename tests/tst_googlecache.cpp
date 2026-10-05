@@ -67,6 +67,7 @@ private Q_SLOTS:
     void accountSyncStateIsKept();
     void eventCountCoversAllCalendars();
     void readingDoesNotCreateACache();
+    void readingSeesWhatWasWritten();
     void readingLeavesOtherSchemasAlone();
 
 private:
@@ -320,6 +321,21 @@ void TestGoogleCache::eventCountCoversAllCalendars()
 
     QCOMPARE(m_cache->eventCount(kAccount), 3);
     QCOMPARE(m_cache->eventCount(kOther), 0);
+}
+
+void TestGoogleCache::readingSeesWhatWasWritten()
+{
+    apply({parsed(R"({"id":"a"})"), parsed(R"({"id":"b"})")}, true, u"tok"_s);
+    QVERIFY(m_cache->recordAccountSync(kAccount, {}));
+
+    // While the writer is still open, as when the app is running.
+    GoogleCache reader(path());
+    QVERIFY2(reader.openForReading(), qPrintable(reader.errorString()));
+
+    QCOMPARE(reader.calendars(kAccount).size(), 1);
+    QCOMPARE(reader.eventCount(kAccount), 2);
+    QVERIFY(reader.accountState(kAccount).lastSynced.isValid());
+    QVERIFY(!reader.recordAccountSync(kAccount, u"should not write"_s));
 }
 
 void TestGoogleCache::readingDoesNotCreateACache()

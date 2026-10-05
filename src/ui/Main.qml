@@ -181,6 +181,8 @@ ApplicationWindow {
                 id: helpMenu
                 padding: Theme.space1
 
+                // TODO(ui): DESIGN.md gives menus a soft shadow; add one once the theme
+                // has a shadow token, which the styling pass decides.
                 background: Rectangle {
                     implicitWidth: 200
                     color: Theme.surface

@@ -114,7 +114,7 @@ std::optional<QColor> parseHex(QStringView text)
     if (!text.startsWith(u'#') || (text.size() != 7 && text.size() != 9))
         return std::nullopt;
     // toInt() alone would accept a sign, so check the digits first.
-    const auto isHex = [](QChar ch) { return std::isxdigit(ch.unicode()) && ch.unicode() < 128; };
+    const auto isHex = [](QChar ch) { return ch.unicode() < 128 && std::isxdigit(ch.unicode()); };
     if (!std::all_of(text.begin() + 1, text.end(), isHex))
         return std::nullopt;
     int channels[4] = {0, 0, 0, 255};

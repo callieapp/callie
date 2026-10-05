@@ -43,7 +43,7 @@ QStringList ThemeController::load(const QString &idOrPath)
     if (!m_watchedPath.isEmpty())
         m_watcher->removePath(m_watchedPath);
     m_watchedPath =
-        QFileInfo::exists(idOrPath) ? QFileInfo(idOrPath).absoluteFilePath() : QString();
+        ThemeLoader::isPath(idOrPath) ? QFileInfo(idOrPath).absoluteFilePath() : QString();
     if (!m_watchedPath.isEmpty())
         m_watcher->addPath(m_watchedPath);
 

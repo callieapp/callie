@@ -130,6 +130,13 @@ bool install(const QString &name, const QString &directory, qint64 maxBytes)
     return true;
 }
 
+void setVerboseTerminal(bool verbose)
+{
+    State &s = state();
+    const QMutexLocker lock(&s.mutex);
+    s.verboseTerminal = verbose;
+}
+
 QString path()
 {
     State &s = state();

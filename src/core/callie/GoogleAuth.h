@@ -6,8 +6,11 @@
 #include <QObject>
 #include <QUrl>
 
+#include <chrono>
+
 class QOAuth2AuthorizationCodeFlow;
 class QOAuthHttpServerReplyHandler;
+class QTimer;
 
 namespace callie {
 
@@ -42,6 +45,10 @@ public:
     /// Exchanges a stored refresh token for a new access token.
     void refresh(const QString &refreshToken);
 
+    /// How long authorize() waits for the user to finish in the browser before
+    /// failing. Stops as soon as Google answers, so later steps are never cut off.
+    void setSignInTimeout(std::chrono::milliseconds timeout);
+
     /// The redirect URI, valid once authorize() has been called.
     [[nodiscard]] QUrl callbackUrl() const;
 
@@ -56,6 +63,7 @@ private:
 
     QOAuth2AuthorizationCodeFlow *m_flow;
     QOAuthHttpServerReplyHandler *m_handler = nullptr;
+    QTimer *m_signInTimer;
     QString m_refreshToken;
 };
 

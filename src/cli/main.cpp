@@ -150,11 +150,6 @@ int runAccountsAddGoogle(QCoreApplication &app)
         finish(1);
     });
 
-    QTimer::singleShot(std::chrono::minutes(5), [] {
-        err << QObject::tr("callie: timed out waiting for Google sign-in") << "\n";
-        finish(1);
-    });
-
     // Started from inside the loop: an exit() requested before exec() is ignored.
     QTimer::singleShot(0, &manager, [&] { manager.connectGoogle(auth, api); });
     return app.exec();

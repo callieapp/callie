@@ -27,8 +27,8 @@ status=0
 
 # Command substitution propagates a git failure under set -e; process
 # substitution would hide it and leave the lists empty.
-cxx_list="$(git ls-files '*.cpp' '*.h')"
-qml_list="$(git ls-files '*.qml')"
+cxx_list="$(git ls-files --cached --others --exclude-standard '*.cpp' '*.h')"
+qml_list="$(git ls-files --cached --others --exclude-standard '*.qml')"
 mapfile -t cxx <<<"$cxx_list"
 mapfile -t qml <<<"$qml_list"
 if [ -z "$cxx_list" ] || [ -z "$qml_list" ]; then

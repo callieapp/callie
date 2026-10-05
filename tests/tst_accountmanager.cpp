@@ -69,6 +69,7 @@ private Q_SLOTS:
 
     void connectStoresTokenBeforeListingAccount();
     void keyringFailureLeavesNoAccount();
+    void listFailureRemovesStoredToken();
     void apiFailureWritesNothing();
     void signInFailureWritesNothing();
     void removeForgetsTokenThenAccount();
@@ -143,6 +144,26 @@ void TestAccountManager::keyringFailureLeavesNoAccount()
     QCOMPARE(failed.size(), 1);
     QVERIFY(failed.first().first().toString().contains(QStringLiteral("keyring is locked")));
     QVERIFY(m_store->accounts().isEmpty());
+}
+
+void TestAccountManager::listFailureRemovesStoredToken()
+{
+    // A regular file where the config directory should be makes the list
+    // unwritable after the keyring write has already succeeded.
+    const QString blocker = m_dir->filePath(QStringLiteral("blocker"));
+    QFile file(blocker);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.close();
+    m_store = std::make_unique<AccountStore>(blocker + QStringLiteral("/accounts.json"));
+    m_tokens = std::make_unique<FakeTokenStore>(*m_store);
+    m_manager = std::make_unique<AccountManager>(*m_tokens, *m_store);
+
+    QSignalSpy failed(m_manager.get(), &AccountManager::failed);
+    runConnect(200, R"({"access_token":"at-1","refresh_token":"rt-1","expires_in":3600})", 200,
+               R"({"id":"me@example.com"})");
+
+    QCOMPARE(failed.size(), 1);
+    QVERIFY2(m_tokens->secrets.isEmpty(), "token left in the keyring with no listed account");
 }
 
 void TestAccountManager::apiFailureWritesNothing()

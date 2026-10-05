@@ -23,11 +23,6 @@ public:
     /// the file exists but cannot be read or parsed.
     bool load(QList<Account> &out);
 
-    /// Lenient reads: an unreadable or corrupt file counts as empty. Use load()
-    /// wherever telling the two apart matters to the user.
-    [[nodiscard]] QList<Account> accounts() const;
-    [[nodiscard]] bool contains(const Account &account) const;
-
     /// Both return false on an I/O error, described by errorString().
     bool add(const Account &account);
     bool remove(const Account &account);

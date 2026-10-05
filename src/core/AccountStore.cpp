@@ -22,11 +22,6 @@ QString AccountStore::defaultPath()
            QStringLiteral("/callie/accounts.json");
 }
 
-QList<Account> AccountStore::accounts() const
-{
-    return read(nullptr).value_or(QList<Account>());
-}
-
 bool AccountStore::load(QList<Account> &out)
 {
     std::optional<QList<Account>> loaded = read(&m_error);
@@ -65,11 +60,6 @@ std::optional<QList<Account>> AccountStore::read(QString *error) const
             out.append(account);
     }
     return out;
-}
-
-bool AccountStore::contains(const Account &account) const
-{
-    return accounts().contains(account);
 }
 
 bool AccountStore::add(const Account &account)

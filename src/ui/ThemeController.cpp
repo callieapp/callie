@@ -1,12 +1,12 @@
 #include "ThemeController.h"
 
 #include "callie/Color.h"
+#include "callie/Logging.h"
 #include "callie/ThemeLoader.h"
 
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
-#include <QTextStream>
 #include <QTimer>
 
 namespace callie {
@@ -49,6 +49,9 @@ QStringList ThemeController::load(const QString &idOrPath)
 
     m_spec = result.theme;
     m_warnings = result.warnings;
+    qCInfo(lcTheme) << "loaded theme" << m_spec.name << "from" << idOrPath;
+    for (const QString &warning : m_warnings)
+        qCInfo(lcTheme) << "theme warning:" << warning;
     Q_EMIT changed();
     return {};
 }
@@ -64,13 +67,13 @@ void ThemeController::reloadWatchedFile()
         ThemeLoader::loadFile(m_watchedPath, ThemeLoader::defaultTheme());
     if (!result.ok()) {
         // A half-typed edit should not wipe the look; keep the last good theme.
-        QTextStream err(stderr);
         for (const QString &error : result.errors)
-            err << m_watchedPath << ": " << error << "\n";
+            qCWarning(lcTheme).noquote() << m_watchedPath << "not applied:" << error;
         return;
     }
     m_spec = result.theme;
     m_warnings = result.warnings;
+    qCInfo(lcTheme) << "reloaded theme" << m_spec.name;
     Q_EMIT changed();
 }
 

@@ -3,6 +3,7 @@
 #include "callie/AccountStore.h"
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCalendarApi.h"
+#include "callie/Logging.h"
 #include "callie/TokenStore.h"
 
 #include <QTimer>
@@ -69,8 +70,10 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
                                          : tr("%1, and the stored token could not be removed: %2")
                                                .arg(listError, cleanup));
                             });
-                        } else if (finish())
+                        } else if (finish()) {
+                            qCInfo(lcAccounts) << "connected" << account.provider << account.id;
                             Q_EMIT connected(account);
+                        }
                     });
             });
         });
@@ -97,8 +100,10 @@ void AccountManager::remove(const Account &account)
             Q_EMIT failed(tr("could not remove the token: %1").arg(keyring));
         else if (!m_store.remove(account))
             Q_EMIT failed(m_store.errorString());
-        else
+        else {
+            qCInfo(lcAccounts) << "removed" << account.provider << account.id;
             Q_EMIT removed(account);
+        }
     });
 }
 

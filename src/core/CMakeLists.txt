@@ -47,6 +47,8 @@ configure_file(GoogleBuildConfig.h.in
 # cost it startup time for no benefit. QML exposure happens in src/ui.
 add_library(calliecore STATIC
     callie/Event.h
+    callie/Logging.h
+    Logging.cpp
     callie/CalendarSource.h
     callie/SampleSource.h
     SampleSource.cpp

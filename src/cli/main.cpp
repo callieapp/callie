@@ -4,6 +4,7 @@
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
+#include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
 #include "callie/SampleSource.h"
@@ -48,15 +49,42 @@ QString accent(const QString &s)
     return useColor() ? QStringLiteral("\033[36m%1\033[0m").arg(s) : s;
 }
 
-int runAgenda(int days)
+const QString kGoogle = QStringLiteral("google");
+
+int runAgenda(int days, bool sample)
 {
-    SampleSource source;
     const QTimeZone tz = QTimeZone::systemTimeZone();
     const QDate today = QDate::currentDate();
     const QDateTime from(today, QTime(0, 0), tz);
     const QDateTime to(today.addDays(days), QTime(0, 0), tz);
 
-    QList<Event> events = source.eventsBetween(from, to, tz);
+    QList<Event> events;
+    if (sample) {
+        events = SampleSource().eventsBetween(from, to, tz);
+    } else {
+        AccountStore store(AccountStore::defaultPath());
+        QList<Account> accounts;
+        if (!store.load(accounts)) {
+            err << QStringLiteral("callie: %1\n").arg(store.errorString());
+            return 1;
+        }
+        accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
+        if (accounts.isEmpty()) {
+            err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+            return 0;
+        }
+        GoogleCache cache(GoogleCache::defaultPath());
+        if (!cache.open()) {
+            err << QStringLiteral("callie: %1\n").arg(cache.errorString());
+            return 1;
+        }
+        const GoogleSource source(cache, accounts);
+        if (source.calendars().isEmpty()) {
+            err << QObject::tr("Nothing synced yet. Run: callie sync") << "\n";
+            return 0;
+        }
+        events = source.eventsBetween(from, to, tz);
+    }
     std::sort(events.begin(), events.end(),
               [](const Event &a, const Event &b) { return a.start < b.start; });
 
@@ -90,8 +118,6 @@ int runAgenda(int days)
     out << "\n";
     return 0;
 }
-
-const QString kGoogle = QStringLiteral("google");
 
 /// Ends the event loop with `code` after flushing, since exit codes are the
 /// only signal a script gets.
@@ -335,13 +361,16 @@ int main(int argc, char *argv[])
                                   QStringLiteral("Days of agenda to show."), QStringLiteral("n"),
                                   QStringLiteral("7"));
     parser.addOption(daysOption);
+    QCommandLineOption sampleOption(
+        QStringLiteral("sample"), QStringLiteral("Show a made-up week instead of your calendars."));
+    parser.addOption(sampleOption);
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
 
     if (command == QLatin1String("agenda"))
-        return runAgenda(parser.value(daysOption).toInt());
+        return runAgenda(parser.value(daysOption).toInt(), parser.isSet(sampleOption));
 
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);

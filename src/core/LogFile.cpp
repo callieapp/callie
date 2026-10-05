@@ -21,6 +21,7 @@ struct State
     QMutex mutex;
     QFile file;
     QtMessageHandler previous = nullptr;
+    bool installed = false;
     qint64 maxBytes = 0;
     bool verboseTerminal = false;
 };
@@ -102,22 +103,30 @@ QString defaultDirectory()
 bool install(const QString &name, const QString &directory, qint64 maxBytes)
 {
     State &s = state();
+    {
+        const QMutexLocker lock(&s.mutex);
+        s.maxBytes = maxBytes;
+        s.verboseTerminal = !qEnvironmentVariableIsEmpty("QT_LOGGING_RULES");
+        s.file.close();
+    }
+    // The handler goes in even without a file, or Qt's default one would print
+    // info messages and the CLI would stop being quiet.
+    if (!s.installed) {
+        s.previous = qInstallMessageHandler(handle);
+        s.installed = true;
+    }
+
     const QMutexLocker lock(&s.mutex);
     if (!QDir().mkpath(directory))
         return false;
     const QString filePath = QDir(directory).filePath(name + QStringLiteral(".log"));
     rotate(filePath, maxBytes);
-    s.file.close();
     s.file.setFileName(filePath);
     if (!s.file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
         return false;
-    s.maxBytes = maxBytes;
-    s.verboseTerminal = !qEnvironmentVariableIsEmpty("QT_LOGGING_RULES");
-
     QTextStream(&s.file) << "--- " << name << ' ' << QCoreApplication::applicationVersion()
                          << " started, pid " << QCoreApplication::applicationPid() << " ---\n";
     s.file.flush();
-    s.previous = qInstallMessageHandler(handle);
     return true;
 }
 
@@ -131,7 +140,9 @@ QString path()
 void uninstall()
 {
     State &s = state();
-    qInstallMessageHandler(s.previous);
+    if (s.installed)
+        qInstallMessageHandler(s.previous);
+    s.installed = false;
     const QMutexLocker lock(&s.mutex);
     s.file.close();
     s.previous = nullptr;

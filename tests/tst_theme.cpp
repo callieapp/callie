@@ -34,6 +34,7 @@ private Q_SLOTS:
     void invalidColorIsAnError();
     void wrongTypeIsAnError();
     void outOfRangeIsAnError();
+    void nanIsAnError();
     void unknownKeyIsAWarning();
     void syntaxErrorReportsLine();
     void lowContrastIsAWarning();
@@ -92,6 +93,13 @@ void TestTheme::outOfRangeIsAnError()
     const ThemeLoadResult result = parse("[calendar]\nlightness = 2.0\n");
     QVERIFY(!result.ok());
     QVERIFY(anyContains(result.errors, "calendar.lightness"));
+}
+
+void TestTheme::nanIsAnError()
+{
+    const ThemeLoadResult result = parse("[calendar]\nchroma = nan\n");
+    QVERIFY(!result.ok());
+    QVERIFY(anyContains(result.errors, "calendar.chroma"));
 }
 
 void TestTheme::unknownKeyIsAWarning()

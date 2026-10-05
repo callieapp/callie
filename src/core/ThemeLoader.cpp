@@ -56,7 +56,8 @@ Setter numberSetter(Field field, double min, double max)
 {
     return [=](ThemeSpec &theme, const toml::node &node, const QString &key, QStringList &errors) {
         const auto value = node.is_boolean() ? std::nullopt : node.value<double>();
-        if (!value || *value < min || *value > max) {
+        // Written so NaN, which compares false with everything, is rejected.
+        if (!value || !(*value >= min && *value <= max)) {
             errors
                 << QStringLiteral("%1: expected a number from %2 to %3").arg(key).arg(min).arg(max);
             return;
@@ -247,9 +248,14 @@ ThemeLoadResult ThemeLoader::loadBuiltIn(const QString &id)
     return readFile(path, defaultTheme());
 }
 
+bool ThemeLoader::isPath(const QString &idOrPath)
+{
+    return idOrPath.contains(u'/') || idOrPath.endsWith(QStringLiteral(".toml"));
+}
+
 ThemeLoadResult ThemeLoader::load(const QString &idOrPath)
 {
-    if (idOrPath.contains(u'/') || idOrPath.endsWith(QStringLiteral(".toml")))
+    if (isPath(idOrPath))
         return loadFile(idOrPath, defaultTheme());
     return loadBuiltIn(idOrPath);
 }

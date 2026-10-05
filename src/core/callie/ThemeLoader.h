@@ -30,6 +30,9 @@ public:
     /// The built-in default, which every other theme is parsed over.
     [[nodiscard]] static const ThemeSpec &defaultTheme();
 
+    /// Whether `idOrPath` names a theme file rather than a built-in id.
+    [[nodiscard]] static bool isPath(const QString &idOrPath);
+
     /// Loads an installed theme by id, or a theme file by path, over the default.
     [[nodiscard]] static ThemeLoadResult load(const QString &idOrPath);
 

@@ -2,6 +2,7 @@
 
 #include "callie/ThemeLoader.h"
 
+#include <QDir>
 #include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -29,6 +30,7 @@ private Q_SLOTS:
     void loadsAFileAndReloadsOnEdit();
     void brokenEditKeepsLastGoodTheme();
     void calendarColorRespectsHarmonizeSetting();
+    void builtInIdIgnoresSameNamedFile();
 };
 
 void TestThemeController::startsWithDefaultTheme()
@@ -77,6 +79,27 @@ void TestThemeController::calendarColorRespectsHarmonizeSetting()
 
     settings[QStringLiteral("harmonize")] = false;
     QCOMPARE(theme->calendarColor(source, settings), source);
+}
+
+void TestThemeController::builtInIdIgnoresSameNamedFile()
+{
+    // A file called "callie" in the working directory must not be mistaken for
+    // the built-in theme of that name and watched in its place.
+    QTemporaryDir dir;
+    const QString previous = QDir::currentPath();
+    QDir::setCurrent(dir.path());
+    const QString impostor = dir.filePath(QStringLiteral("callie"));
+    writeFile(impostor, "not a theme");
+
+    ThemeController *theme = ThemeController::instance();
+    QVERIFY(theme->load(QStringLiteral("callie")).isEmpty());
+    QSignalSpy changed(theme, &ThemeController::changed);
+    writeFile(impostor, "[theme]\nname = \"Impostor\"\n");
+    QTest::qWait(500);
+    QCOMPARE(changed.size(), 0);
+    QCOMPARE(theme->name(), QStringLiteral("Callie"));
+
+    QDir::setCurrent(previous);
 }
 
 QTEST_MAIN(TestThemeController)

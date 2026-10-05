@@ -98,6 +98,9 @@ void TestColor::parseHex_data()
     QTest::newRow("five digits") << "#12345" << false << QColor();
     QTest::newRow("not hex") << "#zzzzzz" << false << QColor();
     QTest::newRow("signs") << "#+1+2+3" << false << QColor();
+    QTest::newRow("non-ascii") << QStringLiteral("#12345\u00e9") << false << QColor();
+    QTest::newRow("wide characters")
+        << QStringLiteral("#\u4e2d\u4e2d\u4e2d\u4e2d\u4e2d\u4e2d") << false << QColor();
 }
 
 void TestColor::parseHex()

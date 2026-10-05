@@ -25,6 +25,7 @@ private Q_SLOTS:
     void emailsAreNumberedConsistently();
     void homeFolderIsHidden();
     void issueUrlCarriesShortenedReport();
+    void shortReportIsUntouched();
     void reportCoversAccountsAndHidesThem();
     void copyPutsReportOnClipboard();
 
@@ -66,13 +67,29 @@ void TestDiagnostics::homeFolderIsHidden()
 
 void TestDiagnostics::issueUrlCarriesShortenedReport()
 {
-    const QUrl url = diagnostics::issueUrl(QString(10000, u'x'));
+    // Spaces and newlines triple when encoded, as in a real log tail.
+    QString report;
+    for (int i = 0; i < 400; ++i)
+        report += u"2026-10-05 14:30:21 callie.sync info: synced calendar number "_s +
+                  QString::number(i) + u"\n"_s;
+
+    const QUrl url = diagnostics::issueUrl(report);
+
+    QVERIFY(url.toString(QUrl::FullyEncoded).size() <= 8000);
+    QVERIFY(url.toString(QUrl::FullyEncoded).size() > 7000);
     const QUrlQuery query(url);
     QCOMPARE(url.host(), u"github.com"_s);
     QCOMPARE(query.queryItemValue(u"template"_s), u"bug_report.yml"_s);
     const QString body = query.queryItemValue(u"diagnostics"_s, QUrl::FullyDecoded);
-    QVERIFY(body.size() < 6100);
+    QVERIFY(body.startsWith(u"2026-10-05 14:30:21 callie.sync info: synced calendar number 0\n"_s));
     QVERIFY(body.endsWith(u"run `callie doctor` for the rest]"_s));
+}
+
+void TestDiagnostics::shortReportIsUntouched()
+{
+    const QUrl url = diagnostics::issueUrl(u"Callie 0.1.0\nQt 6.11"_s);
+    QCOMPARE(QUrlQuery(url).queryItemValue(u"diagnostics"_s, QUrl::FullyDecoded),
+             u"Callie 0.1.0\nQt 6.11"_s);
 }
 
 void TestDiagnostics::reportCoversAccountsAndHidesThem()

@@ -18,8 +18,8 @@ ApplicationWindow {
     /// Monday of the displayed week.
     property date weekStart: {
         const d = new Date()
-        const offset = (d.getDay() + 6) % 7
         // JS Sunday=0 -> Monday-based
+        const offset = (d.getDay() + 6) % 7
         d.setDate(d.getDate() - offset)
         d.setHours(0, 0, 0, 0)
         return d

@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     if (parser.isSet(liveOption)) {
         live = liveQml.start();
         if (!live)
-            err << "callie-gui: live QML: " << liveQml.errorString() << "\n";
+            err << "callie-gui: live QML: " << liveQml.errorString() << "\n" << Qt::flush;
     }
 #endif
     if (!live)

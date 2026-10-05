@@ -3,6 +3,8 @@
 #include <QFileSystemWatcher>
 #include <QList>
 #include <QObject>
+#include <QRect>
+#include <QStringList>
 #include <QTemporaryDir>
 #include <QTimer>
 
@@ -37,6 +39,8 @@ public:
 
 private:
     bool mirror(const Module &module);
+    [[nodiscard]] QStringList qmlFiles() const;
+    void onDirectoryChanged();
     void watchSources();
     void reload();
 
@@ -47,6 +51,9 @@ private:
     QFileSystemWatcher m_watcher;
     QTimer m_debounce;
     QString m_error;
+    QStringList m_knownFiles;
+    /// Kept here, because a failed load leaves no window to read it from.
+    QRect m_geometry;
 };
 
 } // namespace callie

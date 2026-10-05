@@ -16,10 +16,12 @@ BuildRequires:  cmake(Qt6Qml)
 BuildRequires:  cmake(Qt6Quick)
 BuildRequires:  cmake(Qt6QuickControls2)
 BuildRequires:  cmake(Qt6Network)
+BuildRequires:  cmake(Qt6NetworkAuth)
 BuildRequires:  cmake(Qt6Sql)
 BuildRequires:  cmake(Qt6DBus)
 BuildRequires:  cmake(Qt6Test)
 BuildRequires:  cmake(KF6CalendarCore)
+BuildRequires:  cmake(Qt6Keychain)
 BuildRequires:  desktop-file-utils
 BuildRequires:  libappstream-glib
 

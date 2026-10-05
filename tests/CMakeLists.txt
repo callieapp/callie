@@ -10,3 +10,5 @@ function(callie_add_test name)
 endfunction()
 
 callie_add_test(tst_eventmodel)
+callie_add_test(tst_accountstore)
+callie_add_test(tst_googleauth)

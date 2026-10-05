@@ -1,3 +1,47 @@
+find_package(Qt6Keychain REQUIRED)
+
+# Google OAuth client. Explicit values win; otherwise the JSON downloaded from
+# Google Cloud is read. The values land in a generated header rather than in
+# compile definitions, so they stay out of compile_commands.json.
+set(CALLIE_GOOGLE_CREDENTIALS_FILE "${PROJECT_SOURCE_DIR}/google-oauth-credentials.json"
+    CACHE FILEPATH "Google OAuth client JSON for a Desktop app client")
+set(CALLIE_GOOGLE_CLIENT_ID "" CACHE STRING "Google OAuth client id")
+set(CALLIE_GOOGLE_CLIENT_SECRET "" CACHE STRING "Google OAuth client secret")
+
+set(callie_google_client_id "${CALLIE_GOOGLE_CLIENT_ID}")
+set(callie_google_client_secret "${CALLIE_GOOGLE_CLIENT_SECRET}")
+if(callie_google_client_id STREQUAL "" AND EXISTS "${CALLIE_GOOGLE_CREDENTIALS_FILE}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CALLIE_GOOGLE_CREDENTIALS_FILE}")
+    file(READ "${CALLIE_GOOGLE_CREDENTIALS_FILE}" callie_google_json)
+    string(JSON callie_google_client_id ERROR_VARIABLE callie_google_error
+        GET "${callie_google_json}" installed client_id)
+    if(NOT callie_google_error)
+        string(JSON callie_google_client_secret ERROR_VARIABLE callie_google_error
+            GET "${callie_google_json}" installed client_secret)
+    endif()
+    if(callie_google_error)
+        message(FATAL_ERROR "${CALLIE_GOOGLE_CREDENTIALS_FILE} is not a Desktop app client: "
+                            "${callie_google_error}")
+    endif()
+endif()
+
+# The values are pasted into C++ string literals, so anything outside the
+# character set Google uses is rejected rather than escaped.
+foreach(value IN ITEMS "${callie_google_client_id}" "${callie_google_client_secret}")
+    if(NOT value MATCHES "^[A-Za-z0-9._-]*$")
+        message(FATAL_ERROR "Google OAuth client id or secret contains unexpected characters")
+    endif()
+endforeach()
+
+if(callie_google_client_id STREQUAL "")
+    message(STATUS "Google OAuth client: not configured, set it at runtime to use Google accounts")
+else()
+    message(STATUS "Google OAuth client: configured")
+endif()
+
+configure_file(GoogleBuildConfig.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/callie/GoogleBuildConfig.h" @ONLY)
+
 # Deliberately not a QML module. The CLI links this, and pulling QtQml in would
 # cost it startup time for no benefit. QML exposure happens in src/ui.
 add_library(calliecore STATIC
@@ -7,13 +51,27 @@ add_library(calliecore STATIC
     SampleSource.cpp
     callie/EventModel.h
     EventModel.cpp
+    callie/Account.h
+    callie/AccountStore.h
+    AccountStore.cpp
+    callie/TokenStore.h
+    TokenStore.cpp
+    callie/GoogleClientConfig.h
+    GoogleClientConfig.cpp
+    callie/GoogleAuth.h
+    GoogleAuth.cpp
+    callie/GoogleCalendarApi.h
+    GoogleCalendarApi.cpp
 )
 
 # The QML module in src/ui exposes EventModel as a foreign type. Its registrar
 # can only describe the type if this target publishes its metatypes.
 qt_extract_metatypes(calliecore)
 
-target_include_directories(calliecore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(calliecore
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
 
 target_link_libraries(calliecore
     PUBLIC
@@ -21,4 +79,7 @@ target_link_libraries(calliecore
         Qt6::Gui
         Qt6::Network
         Qt6::Sql
+    PRIVATE
+        Qt6::NetworkAuth
+        Qt6Keychain::Qt6Keychain
 )

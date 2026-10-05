@@ -8,6 +8,7 @@
 
 #include <chrono>
 
+class QNetworkAccessManager;
 class QOAuth2AuthorizationCodeFlow;
 class QOAuthHttpServerReplyHandler;
 class QTimer;
@@ -42,7 +43,8 @@ public:
     /// again after an attempt finishes, to retry or add another account.
     void authorize();
 
-    /// Exchanges a stored refresh token for a new access token.
+    /// Exchanges a stored refresh token for a new access token. A failure
+    /// carries Google's own reason, such as a revoked grant.
     void refresh(const QString &refreshToken);
 
     /// How long authorize() waits for the user to finish in the browser before
@@ -61,10 +63,12 @@ private:
     void onGranted();
     void fail(const QString &message);
 
+    GoogleClientConfig m_client;
     QOAuth2AuthorizationCodeFlow *m_flow;
+    QNetworkAccessManager *m_network;
+    QUrl m_tokenUrl;
     QOAuthHttpServerReplyHandler *m_handler = nullptr;
     QTimer *m_signInTimer;
-    QString m_refreshToken;
 };
 
 } // namespace callie

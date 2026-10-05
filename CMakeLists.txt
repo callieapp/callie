@@ -26,8 +26,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 endif()
 
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network Sql DBus)
-qt_standard_project_setup(REQUIRES 6.6)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network NetworkAuth Sql DBus)
+qt_standard_project_setup(REQUIRES 6.8)
 
 if(CALLIE_BUILD_TESTS)
     enable_testing()

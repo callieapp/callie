@@ -1,11 +1,17 @@
+#include "callie/AccountStore.h"
 #include "callie/EventModel.h"
+#include "callie/GoogleAuth.h"
+#include "callie/GoogleCalendarApi.h"
 #include "callie/SampleSource.h"
+#include "callie/TokenStore.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QDate>
+#include <QNetworkAccessManager>
 #include <QProcess>
 #include <QTextStream>
+#include <QTimer>
 
 #include <algorithm>
 
@@ -80,6 +86,133 @@ int runAgenda(int days)
     return 0;
 }
 
+const QString kGoogle = QStringLiteral("google");
+
+/// Ends the event loop with `code` after flushing, since exit codes are the
+/// only signal a script gets.
+void finish(int code)
+{
+    out.flush();
+    err.flush();
+    QCoreApplication::exit(code);
+}
+
+int runAccountsList()
+{
+    const QList<Account> accounts = AccountStore(AccountStore::defaultPath()).accounts();
+    if (accounts.isEmpty()) {
+        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        return 0;
+    }
+    for (const Account &account : accounts)
+        out << account.provider << "\t" << account.id << "\n";
+    return 0;
+}
+
+int runAccountsAddGoogle(QCoreApplication &app)
+{
+    const GoogleClientConfig client = GoogleClientConfig::resolve();
+    if (!client.isValid()) {
+        err << QObject::tr("callie: no Google OAuth client is configured. Build with one, or set "
+                           "CALLIE_GOOGLE_CLIENT_ID and CALLIE_GOOGLE_CLIENT_SECRET.")
+            << "\n";
+        return 1;
+    }
+
+    GoogleAuth auth(client);
+    QNetworkAccessManager network;
+    GoogleCalendarApi api(&network);
+    AccountStore store(AccountStore::defaultPath());
+
+    QObject::connect(&auth, &GoogleAuth::authorizeUrlReady, [](const QUrl &url) {
+        const QString link = url.toString(QUrl::FullyEncoded);
+        err << QObject::tr("Opening your browser to sign in to Google. If it does not open, "
+                           "visit:\n%1")
+                   .arg(link)
+            << "\n";
+        err.flush();
+        QProcess::startDetached(QStringLiteral("xdg-open"), {link});
+    });
+    QObject::connect(&auth, &GoogleAuth::failed, [](const QString &message) {
+        err << QStringLiteral("callie: %1\n").arg(message);
+        finish(1);
+    });
+    QObject::connect(&auth, &GoogleAuth::granted, [&](const GoogleTokens &tokens) {
+        api.fetchPrimaryCalendarId(tokens.accessToken, [&, tokens](const QString &id,
+                                                                   const QString &error) {
+            if (!error.isEmpty()) {
+                err << QStringLiteral("callie: %1\n").arg(error);
+                finish(1);
+                return;
+            }
+            // The keyring is written first so that a failure there never leaves
+            // an account listed without a token.
+            const Account account{kGoogle, id};
+            TokenStore::write(account, tokens.refreshToken, [&, account](const QString &keyring) {
+                if (!keyring.isEmpty()) {
+                    err << QStringLiteral("callie: could not store the token: %1\n").arg(keyring);
+                    finish(1);
+                } else if (!store.add(account)) {
+                    err << QStringLiteral("callie: %1\n").arg(store.errorString());
+                    finish(1);
+                } else {
+                    out << account.id << "\n";
+                    finish(0);
+                }
+            });
+        });
+    });
+
+    QTimer::singleShot(std::chrono::minutes(5), [] {
+        err << QObject::tr("callie: timed out waiting for Google sign-in") << "\n";
+        finish(1);
+    });
+
+    // Started from inside the loop: an exit() requested before exec() is ignored.
+    QTimer::singleShot(0, &auth, &GoogleAuth::authorize);
+    return app.exec();
+}
+
+int runAccountsRemove(QCoreApplication &app, const Account &account)
+{
+    AccountStore store(AccountStore::defaultPath());
+    if (!store.contains(account)) {
+        err << QStringLiteral("callie: no %1 account '%2'\n").arg(account.provider, account.id);
+        return 1;
+    }
+
+    QTimer::singleShot(0, &app, [&] {
+        TokenStore::remove(account, [&](const QString &error) {
+            if (!error.isEmpty()) {
+                err << QStringLiteral("callie: could not remove the token: %1\n").arg(error);
+                finish(1);
+            } else if (!store.remove(account)) {
+                err << QStringLiteral("callie: %1\n").arg(store.errorString());
+                finish(1);
+            } else {
+                finish(0);
+            }
+        });
+    });
+    return app.exec();
+}
+
+int runAccounts(QCoreApplication &app, const QStringList &args)
+{
+    const QString action = args.value(1, QStringLiteral("list"));
+    const QString provider = args.value(2);
+
+    if (action == QLatin1String("list") && args.size() <= 2)
+        return runAccountsList();
+    if (action == QLatin1String("add") && provider == kGoogle && args.size() == 3)
+        return runAccountsAddGoogle(app);
+    if (action == QLatin1String("remove") && provider == kGoogle && args.size() == 4)
+        return runAccountsRemove(app, Account{kGoogle, args.at(3)});
+
+    err << QObject::tr("usage: callie accounts [list | add google | remove google <id>]") << "\n";
+    return 2;
+}
+
 } // namespace
 
 int main(int argc, char *argv[])
@@ -94,6 +227,7 @@ int main(int argc, char *argv[])
                        "\n"
                        "Commands:\n"
                        "  agenda    Upcoming events (default)\n"
+                       "  accounts  List, add or remove calendar accounts\n"
                        "  add       Create an event from natural language\n"
                        "  sync      Refresh all accounts now\n"
                        "  daemon    Run background sync and notifications\n"
@@ -113,6 +247,9 @@ int main(int argc, char *argv[])
 
     if (command == QLatin1String("agenda"))
         return runAgenda(parser.value(daysOption).toInt());
+
+    if (command == QLatin1String("accounts"))
+        return runAccounts(app, args);
 
     if (command == QLatin1String("gui"))
         return QProcess::execute(QStringLiteral("callie-gui"), {});

@@ -49,7 +49,6 @@ command-line interface is included for power users.
 desktop-file-validate %{buildroot}%{_datadir}/applications/org.callieapp.Callie.desktop
 appstream-util validate-relax --nonet \
     %{buildroot}%{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml
-%{_datadir}/callie/
 
 %files
 %license LICENSE
@@ -58,6 +57,7 @@ appstream-util validate-relax --nonet \
 %{_bindir}/callie-gui
 %{_datadir}/applications/org.callieapp.Callie.desktop
 %{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/org.callieapp.Callie.svg
 %{_datadir}/callie/
 
 %changelog

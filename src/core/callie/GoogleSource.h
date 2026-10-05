@@ -30,7 +30,6 @@ private:
     GoogleCache &m_cache;
     QList<Account> m_accounts;
     GoogleSync *m_sync = nullptr;
-    int m_pending = 0;
 };
 
 } // namespace callie

@@ -1,8 +1,15 @@
+#include "FakeHttpServer.h"
+#include "FakeTokenStore.h"
+
 #include "callie/GoogleCache.h"
+#include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSource.h"
+#include "callie/GoogleSync.h"
+#include "callie/GoogleTokenProvider.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -45,6 +52,8 @@ private Q_SLOTS:
     void eventsAreInTheRequestedZone();
     void seriesAreExpanded();
     void refreshWithoutSyncRereadsCache();
+    void refreshSyncsAndReportsErrorsPerAccount();
+    void refreshWhileSyncingStartsNothingNew();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -145,6 +154,73 @@ void TestGoogleSource::refreshWithoutSyncRereadsCache()
     source.refresh();
 
     QCOMPARE(changed.size(), 1);
+}
+
+namespace {
+
+/// A GoogleSync against fake servers, for driving refresh().
+struct SyncHarness
+{
+    explicit SyncHarness(GoogleCache &cache)
+        : tokens(GoogleClientConfig{u"id"_s, u"secret"_s}, store), api(&network),
+          sync(tokens, api, cache)
+    {
+        tokenServer.respond(200,
+                            R"({"access_token":"at","expires_in":3600,"token_type":"Bearer"})");
+        apiServer.handler = [](const FakeHttpServer::Request &request) {
+            if (request.target.contains("calendarList"))
+                return FakeHttpServer::Response(200,
+                                                R"({"items":[{"id":"mine","selected":true}]})");
+            return FakeHttpServer::Response(200, R"({"items":[],"nextSyncToken":"s"})");
+        };
+        tokens.setTokenUrl(tokenServer.url(u"/token"_s));
+        api.setBaseUrl(apiServer.url(u"/v3/"_s));
+    }
+
+    FakeHttpServer tokenServer;
+    FakeHttpServer apiServer;
+    FakeTokenStore store;
+    QNetworkAccessManager network;
+    GoogleTokenProvider tokens;
+    GoogleCalendarApi api;
+    GoogleSync sync;
+};
+
+} // namespace
+
+void TestGoogleSource::refreshSyncsAndReportsErrorsPerAccount()
+{
+    const Account other{u"google"_s, u"other@example.com"_s};
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    GoogleSource source(*m_cache, {kAccount, other});
+    source.setSync(&harness.sync);
+    QSignalSpy errors(&source, &CalendarSource::errorOccurred);
+
+    source.refresh();
+
+    // The other account has no stored token, so only it fails.
+    QTRY_COMPARE_WITH_TIMEOUT(errors.size(), 1, 5000);
+    QVERIFY(errors.first().first().toString().startsWith(u"other@example.com: "_s));
+    QTRY_COMPARE_WITH_TIMEOUT(harness.tokenServer.requests.size(), 1, 5000);
+}
+
+void TestGoogleSource::refreshWhileSyncingStartsNothingNew()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    QSignalSpy changed(&source, &CalendarSource::changed);
+
+    source.refresh();
+    source.refresh();
+    QTRY_VERIFY_WITH_TIMEOUT(!changed.isEmpty(), 5000);
+    QTest::qWait(200);
+
+    // One calendar list and one events request: the second refresh was ignored.
+    QCOMPARE(harness.store.reads, 1);
+    QCOMPARE(harness.apiServer.requests.size(), 2);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSource)

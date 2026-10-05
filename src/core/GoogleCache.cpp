@@ -430,6 +430,16 @@ SyncState GoogleCache::accountState(const Account &account)
             query.value(1).toString()};
 }
 
+int GoogleCache::eventCount(const Account &account)
+{
+    if (!m_open)
+        return 0;
+    QSqlQuery query(QSqlDatabase::database(m_connection));
+    query.prepare(QStringLiteral("SELECT COUNT(*) FROM events WHERE account = ?"));
+    query.addBindValue(accountKey(account));
+    return query.exec() && query.next() ? query.value(0).toInt() : 0;
+}
+
 bool GoogleCache::removeAccount(const Account &account)
 {
     if (!m_open)

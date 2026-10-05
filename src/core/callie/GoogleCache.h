@@ -61,6 +61,9 @@ public:
     /// Every stored event in a calendar, series and their exceptions included.
     [[nodiscard]] QList<GoogleEvent> events(const Account &account, const QString &calendarId);
 
+    /// How many events the account has cached, across all its calendars.
+    [[nodiscard]] int eventCount(const Account &account);
+
     bool removeAccount(const Account &account);
 
 private:

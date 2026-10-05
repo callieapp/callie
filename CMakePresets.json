@@ -16,7 +16,10 @@
       "name": "dev",
       "inherits": "base",
       "displayName": "Development (Debug)",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "QT_QML_GENERATE_QMLLS_INI": "ON"
+      }
     },
     {
       "name": "release",

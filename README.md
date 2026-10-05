@@ -50,10 +50,18 @@ callie accounts add google               # sign in with Google in your browser
 callie accounts remove google you@example.com
 callie calendars                         # calendars in each account, tab-separated
 callie sync                              # fetch changes from every account
+callie logs                              # log file paths; -f follows them, --open opens the folder
 ```
 
 Output meant for scripts goes to stdout, and everything else to stderr. Exit codes are 0 for
 success, 1 for an error, and 2 for a usage mistake.
+
+### Logs
+
+The app and the CLI each keep a log in `~/.local/state/callie/logs/`, `callie-gui.log` and
+`callie.log`, with the three previous files beside them. Logs record what Callie did, such as
+syncs and their errors, but never tokens or event details. The terminal only shows warnings unless
+`QT_LOGGING_RULES` is set.
 
 ## Development
 
@@ -72,13 +80,15 @@ Day to day:
 | --------------------------------------- | ----------------------------------------------------- |
 | `make watch`                            | Rebuild and restart the app every time you save       |
 | `make cli ARGS="accounts"`              | Run the CLI with arguments                            |
+| `make logs`                             | Follow the app's and the CLI's log files              |
 | `make gallery THEME=themes/callie.toml` | Preview a theme; edits to the file appear immediately |
 | `make test`                             | Run the test suite                                    |
 | `make format`                           | Fix formatting                                        |
 | `make check`                            | Run everything CI runs, before you push               |
 
 `make run` and `make watch` print the app's logs with timestamps. That includes Callie's own
-`callie.auth`, `callie.accounts` and `callie.theme` categories, and `console.log` from QML.
+`callie.auth`, `callie.accounts`, `callie.sync` and `callie.theme` categories, and `console.log` from
+QML.
 
 QML is compiled into the binary, so a QML edit needs a rebuild; `make watch` takes care of it.
 Theme files are the exception and reload without one.

@@ -20,6 +20,7 @@
 #include <QTimer>
 #include <QUrlQuery>
 
+#include <algorithm>
 #include <memory>
 
 namespace callie::diagnostics {
@@ -28,7 +29,7 @@ namespace {
 
 constexpr int kLogLines = 30;
 // GitHub rejects longer new-issue URLs, and a log tail is the part to trim.
-constexpr qsizetype kMaxUrlReport = 6000;
+constexpr qsizetype kMaxUrlLength = 8000;
 
 QString lastLines(const QString &path, int count)
 {
@@ -185,15 +186,25 @@ void collect(TokenStore &tokens, const QString &extra, std::function<void(QStrin
 
 QUrl issueUrl(const QString &report)
 {
+    const auto build = [](const QString &body) {
+        QUrl url(QStringLiteral("https://github.com/callieapp/callie/issues/new"));
+        QUrlQuery query;
+        query.addQueryItem(QStringLiteral("template"), QStringLiteral("bug_report.yml"));
+        query.addQueryItem(QStringLiteral("diagnostics"), body);
+        url.setQuery(query);
+        return url;
+    };
+    const QString note = QStringLiteral("\n[shortened; run `callie doctor` for the rest]");
+
+    // The limit is on the encoded URL, where a space or newline takes three
+    // characters, so the report is cut until the encoded form fits.
+    QUrl url = build(report);
     QString body = report;
-    if (body.size() > kMaxUrlReport)
-        body = body.left(kMaxUrlReport) +
-               QStringLiteral("\n[shortened; run `callie doctor` for the rest]");
-    QUrl url(QStringLiteral("https://github.com/callieapp/callie/issues/new"));
-    QUrlQuery query;
-    query.addQueryItem(QStringLiteral("template"), QStringLiteral("bug_report.yml"));
-    query.addQueryItem(QStringLiteral("diagnostics"), body);
-    url.setQuery(query);
+    while (url.toString(QUrl::FullyEncoded).size() > kMaxUrlLength && !body.isEmpty()) {
+        const qsizetype over = url.toString(QUrl::FullyEncoded).size() - kMaxUrlLength;
+        body.chop(std::max<qsizetype>(over / 3, 64));
+        url = build(body + note);
+    }
     return url;
 }
 

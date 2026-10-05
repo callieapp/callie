@@ -54,6 +54,8 @@ private Q_SLOTS:
     void refreshWithoutSyncRereadsCache();
     void refreshSyncsAndReportsErrorsPerAccount();
     void refreshWhileSyncingStartsNothingNew();
+    void statusStartsFromTheCache();
+    void statusFollowsARefresh();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -221,6 +223,43 @@ void TestGoogleSource::refreshWhileSyncingStartsNothingNew()
     // One calendar list and one events request: the second refresh was ignored.
     QCOMPARE(harness.store.reads, 1);
     QCOMPARE(harness.apiServer.requests.size(), 2);
+}
+
+void TestGoogleSource::statusStartsFromTheCache()
+{
+    QVERIFY(m_cache->recordAccountSync(kAccount, {}));
+    QVERIFY(m_cache->recordAccountSync(kAccount, u"keyring is locked"_s));
+
+    const GoogleSource source(*m_cache, {kAccount});
+
+    QVERIFY(source.lastSynced().isValid());
+    QCOMPARE(source.lastError(), u"me@example.com: keyring is locked"_s);
+    QVERIFY(!source.syncing());
+}
+
+void TestGoogleSource::statusFollowsARefresh()
+{
+    const Account other{u"google"_s, u"other@example.com"_s};
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    GoogleSource source(*m_cache, {kAccount, other});
+    source.setSync(&harness.sync);
+    QSignalSpy status(&source, &CalendarSource::statusChanged);
+
+    source.refresh();
+    QVERIFY(source.syncing());
+    QTRY_VERIFY_WITH_TIMEOUT(!source.syncing(), 5000);
+
+    // The other account has no token, so the run failed and keeps no new time.
+    QVERIFY(source.lastError().startsWith(u"other@example.com: "_s));
+    QVERIFY(!source.lastSynced().isValid());
+
+    harness.store.secrets.insert(other.id, u"rt"_s);
+    source.refresh();
+    QTRY_VERIFY_WITH_TIMEOUT(!source.syncing(), 5000);
+    QCOMPARE(source.lastError(), QString());
+    QVERIFY(source.lastSynced().isValid());
+    QCOMPARE(status.size(), 4);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSource)

@@ -99,8 +99,37 @@ ApplicationWindow {
             }
         }
 
+        // Sync status, with the error on hover.
+        Text {
+            id: syncStatus
+            readonly property bool failed: window.source.lastError !== ""
+
+            anchors {
+                right: viewSwitcher.left
+                verticalCenter: parent.verticalCenter
+                rightMargin: Theme.space5
+            }
+            text: window.source.syncing ? qsTr("Syncing...") : failed ? qsTr("Sync failed") : isNaN(
+                                                                            window.source.lastSynced.getTime(
+                                                                                )) ? "" : qsTr(
+                                                                                         "Updated %1").arg(
+                                                                                         Qt.formatTime(
+                                                                                             window.source.lastSynced,
+                                                                                             "HH:mm"))
+            color: failed && !window.source.syncing ? Theme.danger : Theme.textFaint
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textSm
+
+            HoverHandler {
+                id: syncHover
+            }
+            ToolTip.visible: syncStatus.failed && syncHover.hovered
+            ToolTip.text: window.source.lastError
+        }
+
         // View switcher. Only Week is implemented so far.
         Row {
+            id: viewSwitcher
             anchors {
                 right: parent.right
                 verticalCenter: parent.verticalCenter

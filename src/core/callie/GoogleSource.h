@@ -26,10 +26,18 @@ public:
                                              const QTimeZone &tz) const override;
     void refresh() override;
 
+    [[nodiscard]] bool syncing() const override { return m_pending > 0; }
+    [[nodiscard]] QDateTime lastSynced() const override { return m_lastSynced; }
+    [[nodiscard]] QString lastError() const override { return m_lastError; }
+
 private:
     GoogleCache &m_cache;
     QList<Account> m_accounts;
     GoogleSync *m_sync = nullptr;
+    int m_pending = 0;
+    QDateTime m_lastSynced;
+    QString m_lastError;
+    QStringList m_runErrors;
 };
 
 } // namespace callie

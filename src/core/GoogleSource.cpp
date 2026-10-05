@@ -112,8 +112,11 @@ void GoogleSource::refresh()
         m_sync->sync(account, [this, self, account](const QStringList &errors) {
             if (!self)
                 return;
+            // Overlapping refreshes share one run, so each reports the same errors.
             for (const QString &error : errors) {
                 const QString message = QStringLiteral("%1: %2").arg(account.id, error);
+                if (m_runErrors.contains(message))
+                    continue;
                 m_runErrors.append(message);
                 Q_EMIT errorOccurred(message);
             }

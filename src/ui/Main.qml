@@ -160,8 +160,10 @@ ApplicationWindow {
             glyph: "?"
             onClicked: helpMenu.popup(helpButton, 0, helpButton.height)
 
-            ToolTip.visible: copiedTip.running
-            ToolTip.text: qsTr("Debug info copied")
+            Tip {
+                visible: copiedTip.running
+                text: qsTr("Debug info copied")
+            }
 
             Timer {
                 id: copiedTip
@@ -177,16 +179,24 @@ ApplicationWindow {
 
             Menu {
                 id: helpMenu
+                padding: Theme.space1
 
-                MenuItem {
+                background: Rectangle {
+                    implicitWidth: 200
+                    color: Theme.surface
+                    border.color: Theme.border
+                    radius: Theme.radiusLg
+                }
+
+                MenuEntry {
                     text: qsTr("Copy debug info")
                     onTriggered: Support.copyDebugInfo()
                 }
-                MenuItem {
+                MenuEntry {
                     text: qsTr("Open logs folder")
                     onTriggered: Support.openLogs()
                 }
-                MenuItem {
+                MenuEntry {
                     text: qsTr("Report a bug...")
                     onTriggered: Support.reportBug()
                 }

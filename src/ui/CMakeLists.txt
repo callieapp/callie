@@ -23,6 +23,8 @@ qt_add_qml_module(callieui
         EventBlock.qml
         NavButton.qml
         PillButton.qml
+        MenuEntry.qml
+        Tip.qml
 )
 
 target_include_directories(callieui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

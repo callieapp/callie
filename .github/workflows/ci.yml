@@ -53,12 +53,16 @@ jobs:
       - name: Install tools
         run: >-
           dnf install -y --setopt=install_weak_deps=False
-          git clang-tools-extra qt6-qtdeclarative-devel
+          git diffutils clang-tools-extra qt6-qtdeclarative-devel
 
       - uses: actions/checkout@v5
 
+      # checkout only trusts the workspace for its own step, and this container
+      # user does not own it, so git would refuse to list files.
       - name: Check C++ and QML formatting
-        run: ./scripts/format.sh check
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ./scripts/format.sh check
 
   build:
     strategy:

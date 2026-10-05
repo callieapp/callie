@@ -15,10 +15,7 @@ const QDate kMonday(2026, 3, 16);
 class FakeSource : public CalendarSource
 {
 public:
-    explicit FakeSource(QList<Event> events)
-        : m_events(std::move(events))
-    {
-    }
+    explicit FakeSource(QList<Event> events) : m_events(std::move(events)) {}
 
     QString sourceId() const override { return QStringLiteral("fake"); }
     QList<CalendarInfo> calendars() const override { return {}; }
@@ -77,7 +74,7 @@ private:
         model->setDayCount(dayCount);
         model->setRangeStart(kMonday);
         model->setSource(source.get());
-        return { std::move(model), std::move(source) };
+        return {std::move(model), std::move(source)};
     }
 
     static int intRole(const EventModel &m, int row, EventModel::Role role)
@@ -88,7 +85,7 @@ private:
 
 void TestEventModel::singleEventGetsOneLane()
 {
-    auto [model, source] = modelFor({ timed("a", kMonday, 9, 0, 60) });
+    auto [model, source] = modelFor({timed("a", kMonday, 9, 0, 60)});
 
     QCOMPARE(model->rowCount(), 1);
     QCOMPARE(intRole(*model, 0, EventModel::LaneRole), 0);
@@ -185,7 +182,7 @@ void TestEventModel::differentDaysDoNotShareLanes()
 
 void TestEventModel::positionRolesAreComputed()
 {
-    auto [model, source] = modelFor({ timed("a", kMonday.addDays(2), 9, 30, 45) });
+    auto [model, source] = modelFor({timed("a", kMonday.addDays(2), 9, 30, 45)});
 
     QCOMPARE(intRole(*model, 0, EventModel::DayIndexRole), 2);
     QCOMPARE(intRole(*model, 0, EventModel::StartMinutesRole), 9 * 60 + 30);

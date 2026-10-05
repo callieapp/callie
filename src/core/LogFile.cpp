@@ -21,6 +21,7 @@ struct State
     QMutex mutex;
     QFile file;
     QtMessageHandler previous = nullptr;
+    qint64 maxBytes = 0;
     bool verboseTerminal = false;
 };
 
@@ -42,6 +43,12 @@ const char *levelName(QtMsgType type)
     return "?";
 }
 
+// QtMsgType is not ordered by severity: QtInfoMsg comes after QtFatalMsg.
+bool isProblem(QtMsgType type)
+{
+    return type == QtWarningMsg || type == QtCriticalMsg || type == QtFatalMsg;
+}
+
 void rotate(const QString &path, qint64 maxBytes)
 {
     if (QFileInfo(path).size() <= maxBytes)
@@ -55,7 +62,9 @@ void rotate(const QString &path, qint64 maxBytes)
 void handle(QtMsgType type, const QMessageLogContext &context, const QString &message)
 {
     State &s = state();
-    {
+    // Debug output, QML's console.log included, can carry event details, so it
+    // is kept off disk unless logging was turned up on purpose.
+    if (type != QtDebugMsg || s.verboseTerminal) {
         const QMutexLocker lock(&s.mutex);
         if (s.file.isOpen()) {
             QTextStream out(&s.file);
@@ -64,11 +73,18 @@ void handle(QtMsgType type, const QMessageLogContext &context, const QString &me
                 << levelName(type) << ": " << message << '\n';
             out.flush();
             s.file.flush();
+            // The app runs for days, so rotation cannot wait for the next start.
+            if (s.file.size() > s.maxBytes) {
+                s.file.close();
+                rotate(s.file.fileName(), s.maxBytes);
+                if (!s.file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
+                    std::fprintf(stderr, "callie: could not reopen the log file\n");
+            }
         }
     }
-    // Info and debug reach the file by default, but the terminal only on request,
-    // so the CLI stays quiet.
-    if (type >= QtWarningMsg || s.verboseTerminal) {
+    // Info reaches the file by default, but the terminal only on request, so the
+    // CLI stays quiet.
+    if (isProblem(type) || s.verboseTerminal) {
         const QString line = qFormatLogMessage(type, context, message);
         std::fprintf(stderr, "%s\n", qPrintable(line));
         std::fflush(stderr);
@@ -95,6 +111,7 @@ bool install(const QString &name, const QString &directory, qint64 maxBytes)
     s.file.setFileName(filePath);
     if (!s.file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
         return false;
+    s.maxBytes = maxBytes;
     s.verboseTerminal = !qEnvironmentVariableIsEmpty("QT_LOGGING_RULES");
 
     QTextStream(&s.file) << "--- " << name << ' ' << QCoreApplication::applicationVersion()

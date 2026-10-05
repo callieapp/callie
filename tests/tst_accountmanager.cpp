@@ -5,6 +5,7 @@
 #include "callie/GoogleCalendarApi.h"
 #include "callie/TokenStore.h"
 
+#include <QFile>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
@@ -75,8 +76,12 @@ private Q_SLOTS:
     void removeForgetsTokenThenAccount();
     void removeKeepsAccountWhenKeyringFails();
     void removeUnknownAccountFails();
+    void removeReportsCorruptList();
+    void connectRefusesCorruptListBeforeSignIn();
 
 private:
+    void corruptAccountList();
+
     /// Runs connectGoogle against fake Google endpoints that answer with
     /// `tokenStatus`/`tokenBody` and `apiStatus`/`apiBody`.
     void runConnect(int tokenStatus, const QByteArray &tokenBody, int apiStatus,
@@ -223,6 +228,41 @@ void TestAccountManager::removeUnknownAccountFails()
 
     QVERIFY(failed.wait(2000));
     QCOMPARE(removed.size(), 0);
+}
+
+void TestAccountManager::corruptAccountList()
+{
+    QFile file(m_dir->filePath(QStringLiteral("accounts.json")));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{ not json");
+}
+
+void TestAccountManager::removeReportsCorruptList()
+{
+    corruptAccountList();
+    QSignalSpy failed(m_manager.get(), &AccountManager::failed);
+
+    m_manager->remove(kAccount);
+
+    QVERIFY(failed.wait(2000));
+    QVERIFY2(failed.first().first().toString().contains(QStringLiteral("not valid")),
+             qPrintable(failed.first().first().toString()));
+}
+
+void TestAccountManager::connectRefusesCorruptListBeforeSignIn()
+{
+    corruptAccountList();
+    QNetworkAccessManager network;
+    GoogleAuth auth(kClient);
+    GoogleCalendarApi api(&network);
+    QSignalSpy browser(&auth, &GoogleAuth::authorizeUrlReady);
+    QSignalSpy failed(m_manager.get(), &AccountManager::failed);
+
+    m_manager->connectGoogle(auth, api);
+
+    QVERIFY(failed.wait(2000));
+    QCOMPARE(browser.size(), 0);
+    QVERIFY(m_tokens->secrets.isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestAccountManager)

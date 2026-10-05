@@ -24,10 +24,19 @@ QString AccountStore::defaultPath()
 
 QList<Account> AccountStore::accounts() const
 {
-    return load(nullptr).value_or(QList<Account>());
+    return read(nullptr).value_or(QList<Account>());
 }
 
-std::optional<QList<Account>> AccountStore::load(QString *error) const
+bool AccountStore::load(QList<Account> &out)
+{
+    std::optional<QList<Account>> loaded = read(&m_error);
+    if (!loaded)
+        return false;
+    out = *loaded;
+    return true;
+}
+
+std::optional<QList<Account>> AccountStore::read(QString *error) const
 {
     QFile file(m_path);
     if (!file.exists())
@@ -65,7 +74,7 @@ bool AccountStore::contains(const Account &account) const
 
 bool AccountStore::add(const Account &account)
 {
-    std::optional<QList<Account>> loaded = load(&m_error);
+    std::optional<QList<Account>> loaded = read(&m_error);
     if (!loaded)
         return false;
     QList<Account> &list = *loaded;
@@ -77,7 +86,7 @@ bool AccountStore::add(const Account &account)
 
 bool AccountStore::remove(const Account &account)
 {
-    std::optional<QList<Account>> loaded = load(&m_error);
+    std::optional<QList<Account>> loaded = read(&m_error);
     if (!loaded)
         return false;
     QList<Account> &list = *loaded;

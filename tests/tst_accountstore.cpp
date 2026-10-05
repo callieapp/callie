@@ -17,6 +17,7 @@ private Q_SLOTS:
     void removeDropsOnlyThatAccount();
     void corruptFileIsEmpty();
     void corruptFileIsNeverOverwritten();
+    void loadReportsCorruptFile();
 
 private:
     QTemporaryDir m_dir;
@@ -85,6 +86,21 @@ void TestAccountStore::corruptFileIsNeverOverwritten()
 
     QVERIFY(file.open(QIODevice::ReadOnly));
     QCOMPARE(file.readAll(), corrupt);
+}
+
+void TestAccountStore::loadReportsCorruptFile()
+{
+    QList<Account> accounts;
+    QVERIFY(AccountStore(path("not-there.json")).load(accounts));
+    QVERIFY(accounts.isEmpty());
+
+    QFile file(path("broken.json"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{ not json");
+    file.close();
+    AccountStore store(file.fileName());
+    QVERIFY(!store.load(accounts));
+    QVERIFY(store.errorString().contains(QStringLiteral("not valid")));
 }
 
 QTEST_GUILESS_MAIN(TestAccountStore)

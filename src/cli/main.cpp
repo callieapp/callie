@@ -100,7 +100,12 @@ void finish(int code)
 
 int runAccountsList()
 {
-    const QList<Account> accounts = AccountStore(AccountStore::defaultPath()).accounts();
+    AccountStore store(AccountStore::defaultPath());
+    QList<Account> accounts;
+    if (!store.load(accounts)) {
+        err << QStringLiteral("callie: %1\n").arg(store.errorString());
+        return 1;
+    }
     if (accounts.isEmpty()) {
         err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
         return 0;

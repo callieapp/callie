@@ -19,8 +19,12 @@ public:
     /// `$XDG_CONFIG_HOME/callie/accounts.json`, shared by the app and the CLI.
     [[nodiscard]] static QString defaultPath();
 
-    /// Unreadable or corrupt files read as empty here, but add() and remove()
-    /// refuse to write over them, so other accounts are never silently dropped.
+    /// Reads the accounts into `out`. Returns false, with errorString() set, if
+    /// the file exists but cannot be read or parsed.
+    bool load(QList<Account> &out);
+
+    /// Lenient reads: an unreadable or corrupt file counts as empty. Use load()
+    /// wherever telling the two apart matters to the user.
     [[nodiscard]] QList<Account> accounts() const;
     [[nodiscard]] bool contains(const Account &account) const;
 
@@ -32,7 +36,7 @@ public:
 
 private:
     /// The stored accounts, or nullopt if the file exists but cannot be used.
-    std::optional<QList<Account>> load(QString *error) const;
+    std::optional<QList<Account>> read(QString *error) const;
     bool save(const QList<Account> &accounts);
 
     QString m_path;

@@ -17,6 +17,15 @@ AccountManager::AccountManager(TokenStore &tokens, AccountStore &store, QObject 
 
 void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
 {
+    // Checked before the browser opens: an account list that cannot be read
+    // would otherwise only fail after the user has already signed in.
+    QList<Account> existing;
+    if (!m_store.load(existing)) {
+        QTimer::singleShot(0, this,
+                           [this, message = m_store.errorString()] { Q_EMIT failed(message); });
+        return;
+    }
+
     // The attempt owns this call's connections, and the flag makes sure only the
     // first outcome is reported even if the flow signals more than once.
     auto *attempt = new QObject(this);
@@ -71,11 +80,15 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
 
 void AccountManager::remove(const Account &account)
 {
-    if (!m_store.contains(account)) {
+    QList<Account> accounts;
+    QString problem;
+    if (!m_store.load(accounts))
+        problem = m_store.errorString();
+    else if (!accounts.contains(account))
+        problem = tr("no %1 account '%2'").arg(account.provider, account.id);
+    if (!problem.isEmpty()) {
         // Asynchronous like every other outcome, so callers handle one shape.
-        QTimer::singleShot(0, this, [this, account] {
-            Q_EMIT failed(tr("no %1 account '%2'").arg(account.provider, account.id));
-        });
+        QTimer::singleShot(0, this, [this, problem] { Q_EMIT failed(problem); });
         return;
     }
 

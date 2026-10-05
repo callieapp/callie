@@ -47,6 +47,7 @@ private Q_SLOTS:
     void revokedRefreshSaysToReconnect();
     void refreshErrorCarriesGoogleReason();
     void refreshWithoutErrorBodyStillFails();
+    void refreshWithoutAccessTokenFails();
     void authorizeAgainAfterFailure();
     void signInTimesOutWithoutAnswer();
     void timeoutStopsOnceGoogleAnswers();
@@ -281,7 +282,22 @@ void TestGoogleAuth::refreshWithoutErrorBodyStillFails()
     auth.refresh(QStringLiteral("rt-1"));
 
     QVERIFY(failed.wait(5000));
-    QVERIFY(!failed.first().first().toString().isEmpty());
+    const QString message = failed.first().first().toString();
+    QVERIFY2(message.startsWith(u"could not refresh the Google sign-in: "), qPrintable(message));
+}
+
+void TestGoogleAuth::refreshWithoutAccessTokenFails()
+{
+    FakeHttpServer tokenServer;
+    tokenServer.respond(200, R"({"token_type":"Bearer"})");
+    GoogleAuth auth(kClient);
+    GoogleAuthDriver::useTokenServer(auth, tokenServer);
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+
+    auth.refresh(QStringLiteral("rt-1"));
+
+    QVERIFY(failed.wait(5000));
+    QCOMPARE(failed.first().first().toString(), QStringLiteral("Google returned no access token"));
 }
 
 void TestGoogleAuth::authorizeAgainAfterFailure()

@@ -154,8 +154,10 @@ void GoogleAuth::refresh(const QString &refreshToken)
         else if (!error.isEmpty())
             fail(tr("Google refused to refresh the sign-in: %1")
                      .arg(description.isEmpty() ? error : description));
+        else if (reply->error() == QNetworkReply::NoError)
+            fail(tr("Google returned no access token"));
         else
-            fail(reply->errorString());
+            fail(tr("could not refresh the Google sign-in: %1").arg(reply->errorString()));
     });
 }
 

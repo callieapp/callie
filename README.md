@@ -32,7 +32,8 @@ Until then, build it from source as described under [Development](#development).
 ### The desktop app
 
 `callie-gui` opens the week view with the calendars you show in Google Calendar. It syncs when it
-starts and every five minutes, and shows what it has cached while offline. `--sample` shows a
+starts and every five minutes, and shows what it has cached while offline. The title bar says when it
+last synced, or that a sync failed, with the reason on hover. `--sample` shows a
 made-up week instead, and `--screenshot file.png` saves the window once it has rendered, then exits.
 
 Choose a theme with `--theme`, passing a built-in theme's name or the path to a theme file. The
@@ -51,6 +52,8 @@ callie accounts remove google you@example.com
 callie calendars                         # calendars in each account, tab-separated
 callie sync                              # fetch changes from every account
 callie logs                              # log file paths; -f follows them, --open opens the folder
+callie status                            # last sync and errors per calendar, keyring and setup
+callie --verbose sync                    # any command, printing progress as well as warnings
 ```
 
 Output meant for scripts goes to stdout, and everything else to stderr. Exit codes are 0 for

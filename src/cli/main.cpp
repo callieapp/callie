@@ -2,7 +2,9 @@
 #include "callie/AccountStore.h"
 #include "callie/EventModel.h"
 #include "callie/GoogleAuth.h"
+#include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
+#include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
@@ -171,13 +173,62 @@ int runAccountsRemove(QCoreApplication &app, const Account &account)
     AccountStore store(AccountStore::defaultPath());
     AccountManager manager(tokens, store);
 
-    QObject::connect(&manager, &AccountManager::removed, [] { finish(0); });
+    QObject::connect(&manager, &AccountManager::removed, [account] {
+        // The account is gone either way; a stale cache only costs disk space.
+        GoogleCache cache(GoogleCache::defaultPath());
+        if (!cache.open() || !cache.removeAccount(account))
+            err << QStringLiteral("callie: could not clear cached events: %1\n")
+                       .arg(cache.errorString());
+        finish(0);
+    });
     QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
         err << QStringLiteral("callie: %1\n").arg(message);
         finish(1);
     });
 
     QTimer::singleShot(0, &manager, [&] { manager.remove(account); });
+    return app.exec();
+}
+
+/// Quiet on success. Each failure is one line on stderr, and any failure exits 1.
+int runSync(QCoreApplication &app)
+{
+    AccountStore store(AccountStore::defaultPath());
+    QList<Account> accounts;
+    if (!store.load(accounts)) {
+        err << QStringLiteral("callie: %1\n").arg(store.errorString());
+        return 1;
+    }
+    accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
+    if (accounts.isEmpty()) {
+        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        return 0;
+    }
+
+    GoogleCache cache(GoogleCache::defaultPath());
+    if (!cache.open()) {
+        err << QStringLiteral("callie: %1\n").arg(cache.errorString());
+        return 1;
+    }
+    KeychainTokenStore tokens;
+    GoogleTokenProvider provider(GoogleClientConfig::resolve(), tokens);
+    QNetworkAccessManager network;
+    GoogleCalendarApi api(&network);
+    GoogleSync sync(provider, api, cache);
+
+    qsizetype remaining = accounts.size();
+    bool failed = false;
+    QTimer::singleShot(0, &app, [&] {
+        for (const Account &account : std::as_const(accounts)) {
+            sync.sync(account, [&, account](const QStringList &errors) {
+                for (const QString &error : errors)
+                    err << QStringLiteral("callie: %1: %2\n").arg(account.id, error);
+                failed = failed || !errors.isEmpty();
+                if (--remaining == 0)
+                    finish(failed ? 1 : 0);
+            });
+        }
+    });
     return app.exec();
 }
 
@@ -294,14 +345,16 @@ int main(int argc, char *argv[])
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
 
+    if (command == QLatin1String("sync") && args.size() == 1)
+        return runSync(app);
+
     if (command == QLatin1String("calendars") && args.size() == 1)
         return runCalendars(app);
 
     if (command == QLatin1String("gui"))
         return QProcess::execute(QStringLiteral("callie-gui"), {});
 
-    if (command == QLatin1String("add") || command == QLatin1String("sync") ||
-        command == QLatin1String("daemon")) {
+    if (command == QLatin1String("add") || command == QLatin1String("daemon")) {
         err << QStringLiteral("callie: '%1' is not implemented yet.\n").arg(command);
         return 2;
     }

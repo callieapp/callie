@@ -6,6 +6,19 @@
 
 using namespace callie;
 
+namespace {
+
+/// The stored accounts, failing the test if the file cannot be read.
+QList<Account> listed(AccountStore &store)
+{
+    QList<Account> accounts;
+    if (!store.load(accounts))
+        qFatal("account list unreadable: %s", qPrintable(store.errorString()));
+    return accounts;
+}
+
+} // namespace
+
 class TestAccountStore : public QObject
 {
     Q_OBJECT
@@ -15,7 +28,6 @@ private Q_SLOTS:
     void addCreatesDirectoriesAndPersists();
     void addIsIdempotent();
     void removeDropsOnlyThatAccount();
-    void corruptFileIsEmpty();
     void corruptFileIsNeverOverwritten();
     void loadReportsCorruptFile();
 
@@ -26,7 +38,8 @@ private:
 
 void TestAccountStore::missingFileIsEmpty()
 {
-    QVERIFY(AccountStore(path("missing/accounts.json")).accounts().isEmpty());
+    AccountStore store(path("missing/accounts.json"));
+    QVERIFY(listed(store).isEmpty());
 }
 
 void TestAccountStore::addCreatesDirectoriesAndPersists()
@@ -34,7 +47,8 @@ void TestAccountStore::addCreatesDirectoriesAndPersists()
     const QString file = path("nested/dir/accounts.json");
     QVERIFY(AccountStore(file).add({QStringLiteral("google"), QStringLiteral("a@example.com")}));
 
-    const QList<Account> accounts = AccountStore(file).accounts();
+    AccountStore reopened(file);
+    const QList<Account> accounts = listed(reopened);
     QCOMPARE(accounts.size(), 1);
     QCOMPARE(accounts.first().provider, QStringLiteral("google"));
     QCOMPARE(accounts.first().id, QStringLiteral("a@example.com"));
@@ -46,7 +60,7 @@ void TestAccountStore::addIsIdempotent()
     const Account account{QStringLiteral("google"), QStringLiteral("a@example.com")};
     QVERIFY(store.add(account));
     QVERIFY(store.add(account));
-    QCOMPARE(store.accounts().size(), 1);
+    QCOMPARE(listed(store).size(), 1);
 }
 
 void TestAccountStore::removeDropsOnlyThatAccount()
@@ -58,17 +72,7 @@ void TestAccountStore::removeDropsOnlyThatAccount()
     QVERIFY(store.add(b));
 
     QVERIFY(store.remove(a));
-    QCOMPARE(store.accounts(), QList<Account>{b});
-    QVERIFY(!store.contains(a));
-}
-
-void TestAccountStore::corruptFileIsEmpty()
-{
-    QFile file(path("corrupt.json"));
-    QVERIFY(file.open(QIODevice::WriteOnly));
-    file.write("{ not json");
-    file.close();
-    QVERIFY(AccountStore(file.fileName()).accounts().isEmpty());
+    QCOMPARE(listed(store), QList<Account>{b});
 }
 
 void TestAccountStore::corruptFileIsNeverOverwritten()

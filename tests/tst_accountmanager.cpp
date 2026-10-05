@@ -14,6 +14,15 @@ using namespace callie;
 
 namespace {
 
+/// The stored accounts, failing the test if the file cannot be read.
+QList<Account> listed(AccountStore &store)
+{
+    QList<Account> accounts;
+    if (!store.load(accounts))
+        qFatal("account list unreadable: %s", qPrintable(store.errorString()));
+    return accounts;
+}
+
 const GoogleClientConfig kClient{QStringLiteral("test-id"), QStringLiteral("test-secret")};
 const Account kAccount{QStringLiteral("google"), QStringLiteral("me@example.com")};
 
@@ -22,11 +31,11 @@ const Account kAccount{QStringLiteral("google"), QStringLiteral("me@example.com"
 class FakeTokenStore : public TokenStore
 {
 public:
-    explicit FakeTokenStore(const AccountStore &store) : m_store(store) {}
+    explicit FakeTokenStore(AccountStore &store) : m_store(store) {}
 
     void write(const Account &account, const QString &secret, Done done) override
     {
-        listedWhenWritten = m_store.contains(account);
+        listedWhenWritten = listed(m_store).contains(account);
         complete([=, this] {
             if (failWith.isEmpty())
                 secrets.insert(account.id, secret);
@@ -56,7 +65,7 @@ private:
     // The real keyring never answers synchronously, so neither does the fake.
     static void complete(std::function<void()> callback) { QTimer::singleShot(0, callback); }
 
-    const AccountStore &m_store;
+    AccountStore &m_store;
 };
 
 } // namespace
@@ -136,7 +145,7 @@ void TestAccountManager::connectStoresTokenBeforeListingAccount()
     QCOMPARE(connected.first().first().value<Account>(), kAccount);
     QCOMPARE(m_tokens->secrets.value(kAccount.id), QStringLiteral("rt-1"));
     QVERIFY2(!m_tokens->listedWhenWritten, "account was listed before its token was stored");
-    QCOMPARE(m_store->accounts(), QList<Account>{kAccount});
+    QCOMPARE(listed(*m_store), QList<Account>{kAccount});
 }
 
 void TestAccountManager::keyringFailureLeavesNoAccount()
@@ -148,7 +157,7 @@ void TestAccountManager::keyringFailureLeavesNoAccount()
 
     QCOMPARE(failed.size(), 1);
     QVERIFY(failed.first().first().toString().contains(QStringLiteral("keyring is locked")));
-    QVERIFY(m_store->accounts().isEmpty());
+    QVERIFY(listed(*m_store).isEmpty());
 }
 
 void TestAccountManager::listFailureRemovesStoredToken()
@@ -180,7 +189,7 @@ void TestAccountManager::apiFailureWritesNothing()
     QCOMPARE(failed.size(), 1);
     QCOMPARE(failed.first().first().toString(), QStringLiteral("Invalid Credentials"));
     QVERIFY(m_tokens->secrets.isEmpty());
-    QVERIFY(m_store->accounts().isEmpty());
+    QVERIFY(listed(*m_store).isEmpty());
 }
 
 void TestAccountManager::signInFailureWritesNothing()
@@ -191,7 +200,7 @@ void TestAccountManager::signInFailureWritesNothing()
 
     QCOMPARE(failed.size(), 1);
     QVERIFY(m_tokens->secrets.isEmpty());
-    QVERIFY(m_store->accounts().isEmpty());
+    QVERIFY(listed(*m_store).isEmpty());
 }
 
 void TestAccountManager::removeForgetsTokenThenAccount()
@@ -204,7 +213,7 @@ void TestAccountManager::removeForgetsTokenThenAccount()
 
     QVERIFY(removed.wait(2000));
     QVERIFY(m_tokens->secrets.isEmpty());
-    QVERIFY(m_store->accounts().isEmpty());
+    QVERIFY(listed(*m_store).isEmpty());
 }
 
 void TestAccountManager::removeKeepsAccountWhenKeyringFails()
@@ -216,7 +225,7 @@ void TestAccountManager::removeKeepsAccountWhenKeyringFails()
     m_manager->remove(kAccount);
 
     QVERIFY(failed.wait(2000));
-    QCOMPARE(m_store->accounts(), QList<Account>{kAccount});
+    QCOMPARE(listed(*m_store), QList<Account>{kAccount});
 }
 
 void TestAccountManager::removeUnknownAccountFails()

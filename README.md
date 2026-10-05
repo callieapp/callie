@@ -46,6 +46,7 @@ callie accounts                          # connected calendar accounts
 callie accounts add google               # sign in with Google in your browser
 callie accounts remove google you@example.com
 callie calendars                         # calendars in each account, tab-separated
+callie sync                              # fetch changes from every account
 ```
 
 Output meant for scripts goes to stdout, and everything else to stderr. Exit codes are 0 for

@@ -18,7 +18,7 @@ namespace callie {
 namespace {
 
 // Bump when the tables change. Older caches are dropped and fully re-synced.
-constexpr int kSchemaVersion = 1;
+constexpr int kSchemaVersion = 2;
 
 const char *const kSchema[] = {
     R"(CREATE TABLE calendars (
@@ -28,7 +28,11 @@ const char *const kSchema[] = {
         is_primary INTEGER NOT NULL DEFAULT 0,
         selected INTEGER NOT NULL DEFAULT 0,
         sync_token TEXT,
+        last_synced TEXT, last_error TEXT,
         PRIMARY KEY (account, id)))",
+    R"(CREATE TABLE accounts (
+        account TEXT PRIMARY KEY,
+        last_synced TEXT, last_error TEXT))",
     R"(CREATE TABLE events (
         account TEXT NOT NULL,
         calendar_id TEXT NOT NULL,
@@ -119,7 +123,8 @@ bool GoogleCache::open()
         qCInfo(lcSync) << "cache schema" << found << "is outdated, starting over";
     if (!db.transaction())
         return fail(db.lastError().text());
-    bool ok = exec(QStringLiteral("DROP TABLE IF EXISTS events")) &&
+    bool ok = exec(QStringLiteral("DROP TABLE IF EXISTS accounts")) &&
+              exec(QStringLiteral("DROP TABLE IF EXISTS events")) &&
               exec(QStringLiteral("DROP TABLE IF EXISTS calendars"));
     for (const char *statement : kSchema)
         ok = ok && exec(QString::fromLatin1(statement));
@@ -307,9 +312,10 @@ bool GoogleCache::applyChanges(const Account &account, const QString &calendarId
 
     if (ok) {
         QSqlQuery token(db);
-        token.prepare(
-            QStringLiteral("UPDATE calendars SET sync_token = ? WHERE account = ? AND id = ?"));
+        token.prepare(QStringLiteral("UPDATE calendars SET sync_token = ?, last_synced = ?, "
+                                     "last_error = NULL WHERE account = ? AND id = ?"));
         token.addBindValue(changes.nextSyncToken);
+        token.addBindValue(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
         token.addBindValue(key);
         token.addBindValue(calendarId);
         ok = run(token);
@@ -360,6 +366,70 @@ QList<GoogleEvent> GoogleCache::events(const Account &account, const QString &ca
     return result;
 }
 
+bool GoogleCache::recordCalendarError(const Account &account, const QString &calendarId,
+                                      const QString &error)
+{
+    if (!m_open)
+        return fail(QObject::tr("the cache is not open"));
+    QSqlQuery query(QSqlDatabase::database(m_connection));
+    query.prepare(
+        QStringLiteral("UPDATE calendars SET last_error = ? WHERE account = ? AND id = ?"));
+    query.addBindValue(error);
+    query.addBindValue(accountKey(account));
+    query.addBindValue(calendarId);
+    return query.exec() || fail(query.lastError().text());
+}
+
+SyncState GoogleCache::calendarState(const Account &account, const QString &calendarId)
+{
+    if (!m_open)
+        return {};
+    QSqlQuery query(QSqlDatabase::database(m_connection));
+    query.prepare(QStringLiteral(
+        "SELECT last_synced, last_error FROM calendars WHERE account = ? AND id = ?"));
+    query.addBindValue(accountKey(account));
+    query.addBindValue(calendarId);
+    if (!query.exec() || !query.next())
+        return {};
+    return {QDateTime::fromString(query.value(0).toString(), Qt::ISODateWithMs),
+            query.value(1).toString()};
+}
+
+bool GoogleCache::recordAccountSync(const Account &account, const QString &error)
+{
+    if (!m_open)
+        return fail(QObject::tr("the cache is not open"));
+    QSqlQuery query(QSqlDatabase::database(m_connection));
+    // A failure keeps the time of the last success.
+    query.prepare(error.isEmpty()
+                      ? QStringLiteral("INSERT INTO accounts (account, last_synced, last_error) "
+                                       "VALUES (:account, :now, NULL) ON CONFLICT (account) DO "
+                                       "UPDATE SET last_synced = :now, last_error = NULL")
+                      : QStringLiteral("INSERT INTO accounts (account, last_error) VALUES "
+                                       "(:account, :error) ON CONFLICT (account) DO UPDATE SET "
+                                       "last_error = :error"));
+    query.bindValue(QStringLiteral(":account"), accountKey(account));
+    if (error.isEmpty())
+        query.bindValue(QStringLiteral(":now"),
+                        QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    else
+        query.bindValue(QStringLiteral(":error"), error);
+    return query.exec() || fail(query.lastError().text());
+}
+
+SyncState GoogleCache::accountState(const Account &account)
+{
+    if (!m_open)
+        return {};
+    QSqlQuery query(QSqlDatabase::database(m_connection));
+    query.prepare(QStringLiteral("SELECT last_synced, last_error FROM accounts WHERE account = ?"));
+    query.addBindValue(accountKey(account));
+    if (!query.exec() || !query.next())
+        return {};
+    return {QDateTime::fromString(query.value(0).toString(), Qt::ISODateWithMs),
+            query.value(1).toString()};
+}
+
 bool GoogleCache::removeAccount(const Account &account)
 {
     if (!m_open)
@@ -368,7 +438,8 @@ bool GoogleCache::removeAccount(const Account &account)
     if (!db.transaction())
         return fail(db.lastError().text());
     bool ok = true;
-    for (const QString &table : {QStringLiteral("events"), QStringLiteral("calendars")}) {
+    for (const QString &table :
+         {QStringLiteral("events"), QStringLiteral("calendars"), QStringLiteral("accounts")}) {
         QSqlQuery remove(db);
         remove.prepare(QStringLiteral("DELETE FROM %1 WHERE account = ?").arg(table));
         remove.addBindValue(accountKey(account));

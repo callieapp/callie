@@ -91,6 +91,7 @@ private Q_SLOTS:
     void concurrentSyncsShareOneRun();
     void removedCalendarIsDropped();
     void calendarListChangeIsSignalled();
+    void outcomesAreRecorded();
 
 private:
     QStringList runSync();
@@ -296,6 +297,29 @@ void TestGoogleSync::calendarListChangeIsSignalled()
     QCOMPARE(runSync(), QStringList());
 
     QCOMPARE(changed.size(), 1);
+}
+
+void TestGoogleSync::outcomesAreRecorded()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 500,
+                 R"({"error":{"code":500,"message":"Backend Error"}})");
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+
+    runSync();
+
+    QVERIFY(m_cache->accountState(kAccount).lastSynced.isValid());
+    QCOMPARE(m_cache->accountState(kAccount).lastError, QString());
+    QCOMPARE(m_cache->calendarState(kAccount, kAccount.id).lastError, u"Backend Error"_s);
+    QVERIFY(!m_cache->calendarState(kAccount, kAccount.id).lastSynced.isValid());
+    QVERIFY(m_cache->calendarState(kAccount, u"team"_s).lastSynced.isValid());
+
+    m_store->secrets.clear();
+    m_tokens->invalidate(kAccount);
+    const QStringList errors = runSync();
+
+    QCOMPARE(errors.size(), 1);
+    QCOMPARE(m_cache->accountState(kAccount).lastError, errors.first());
+    QVERIFY(m_cache->accountState(kAccount).lastSynced.isValid());
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSync)

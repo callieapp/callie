@@ -3,9 +3,17 @@
 #include "Account.h"
 #include "GoogleCalendarApi.h"
 
+#include <QDateTime>
 #include <QString>
 
 namespace callie {
+
+/// When something last synced, and why its latest attempt failed if it did.
+struct SyncState
+{
+    QDateTime lastSynced;
+    QString lastError;
+};
 
 /// Google calendars and events stored locally in SQLite, with the sync token
 /// that brings each calendar up to date. Everything here can be re-fetched, so
@@ -39,6 +47,16 @@ public:
     /// sync replaces every event in the calendar.
     bool applyChanges(const Account &account, const QString &calendarId,
                       const GoogleEventChanges &changes, bool full);
+
+    /// Records a failed calendar sync. Success is recorded by applyChanges().
+    bool recordCalendarError(const Account &account, const QString &calendarId,
+                             const QString &error);
+    [[nodiscard]] SyncState calendarState(const Account &account, const QString &calendarId);
+
+    /// Records an account-level attempt: listing calendars, or getting a token.
+    /// An empty `error` means it succeeded.
+    bool recordAccountSync(const Account &account, const QString &error);
+    [[nodiscard]] SyncState accountState(const Account &account);
 
     /// Every stored event in a calendar, series and their exceptions included.
     [[nodiscard]] QList<GoogleEvent> events(const Account &account, const QString &calendarId);

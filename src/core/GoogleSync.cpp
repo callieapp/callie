@@ -15,6 +15,8 @@ struct GoogleSync::Run
     QList<Done> waiting;
     QStringList errors;
     QString accessToken;
+    /// Why the account as a whole failed: no token, or no calendar list.
+    QString accountError;
     int pending = 0;
     bool unauthorized = false;
     bool retried = false;
@@ -60,7 +62,7 @@ void GoogleSync::start(const std::shared_ptr<Run> &run)
             if (!self)
                 return;
             if (!error.isEmpty()) {
-                run->errors.append(error);
+                run->accountError = error;
                 finish(run);
                 return;
             }
@@ -75,12 +77,12 @@ void GoogleSync::start(const std::shared_ptr<Run> &run)
                     return;
                 }
                 if (error) {
-                    run->errors.append(tr("could not list calendars: %1").arg(error.message));
+                    run->accountError = tr("could not list calendars: %1").arg(error.message);
                     finish(run);
                     return;
                 }
                 if (!m_cache.setCalendars(run->account, calendars)) {
-                    run->errors.append(m_cache.errorString());
+                    run->accountError = m_cache.errorString();
                     finish(run);
                     return;
                 }
@@ -117,6 +119,7 @@ void GoogleSync::syncCalendar(const std::shared_ptr<Run> &run, const QString &ca
                 run->unauthorized = true;
             } else if (error) {
                 run->errors.append(QStringLiteral("%1: %2").arg(name, error.message));
+                m_cache.recordCalendarError(run->account, calendarId, error.message);
             } else if (!m_cache.applyChanges(run->account, calendarId, changes,
                                              syncToken.isEmpty())) {
                 run->errors.append(QStringLiteral("%1: %2").arg(name, m_cache.errorString()));
@@ -147,12 +150,19 @@ void GoogleSync::finish(const std::shared_ptr<Run> &run)
         run->unauthorized = false;
         run->retried = true;
         run->errors.clear();
+        run->accountError.clear();
         m_tokens.invalidate(run->account);
         start(run);
         return;
     }
     if (run->unauthorized)
-        run->errors.append(tr("Google rejected the access token"));
+        run->accountError = tr("Google rejected the access token");
+    if (!run->accountError.isEmpty())
+        run->errors.prepend(run->accountError);
+    m_cache.recordAccountSync(run->account, run->accountError);
+    // Info, so the log file keeps every failure while the caller reports them.
+    for (const QString &error : std::as_const(run->errors))
+        qCInfo(lcSync).noquote() << run->account.id + QStringLiteral(": ") + error;
 
     m_running.remove(keyFor(run->account));
     for (const Done &done : std::as_const(run->waiting))

@@ -1,62 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="t">
   <title id="t">Callie</title>
   <defs>
-    <!-- page body, lit from the top left and deepening toward the bottom right -->
-    <linearGradient id="body" x1="0.1" y1="0" x2="0.6" y2="1">
-      <stop offset="0%" stop-color="#f9e2ee"/>
-      <stop offset="40%" stop-color="#e59cc0"/>
-      <stop offset="100%" stop-color="#c25a8e"/>
+    <!-- matte pink, lighter at the top -->
+    <linearGradient id="body" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#f7aed0"/>
+      <stop offset="1" stop-color="#d8639c"/>
     </linearGradient>
-    <!-- header band, deeper than the page so it reads as a separate plane -->
-    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#d2749f"/>
-      <stop offset="100%" stop-color="#a2426f"/>
-    </linearGradient>
-    <!-- rings, shaded to look cylindrical -->
-    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#8f3760"/>
-      <stop offset="45%" stop-color="#c0658f"/>
-      <stop offset="100%" stop-color="#8a3159"/>
-    </linearGradient>
-    <!-- specular sheen on the upper page -->
-    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fff6fb" stop-opacity="0.26"/>
-      <stop offset="100%" stop-color="#fff6fb" stop-opacity="0"/>
-    </linearGradient>
-    <!-- contact shadow cast by the band onto the page -->
-    <linearGradient id="drop" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6f2649" stop-opacity="0.26"/>
-      <stop offset="100%" stop-color="#6f2649" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="page">
-      <rect x="18" y="26" width="92" height="88" rx="17"/>
-    </clipPath>
   </defs>
 
-  <!-- binding rings, drawn behind so only the tops show -->
-  <g fill="url(#ring)">
-    <rect x="39" y="8" width="10" height="31" rx="5"/>
-    <rect x="79" y="8" width="10" height="31" rx="5"/>
+  <!-- the calendar's binding rings, worn as ears -->
+  <g fill="#a23f72">
+    <rect x="36" y="18" width="16" height="22" rx="8"/>
+    <rect x="76" y="18" width="16" height="22" rx="8"/>
   </g>
 
-  <g clip-path="url(#page)">
-    <rect x="18" y="26" width="92" height="88" fill="url(#body)"/>
-    <rect x="18" y="26" width="92" height="27" fill="url(#band)"/>
-    <rect x="18" y="26" width="92" height="1.5" fill="#fff6fb" fill-opacity="0.22"/>
-    <rect x="18" y="53" width="92" height="9" fill="url(#drop)"/>
-    <rect x="18" y="53" width="92" height="28" fill="url(#sheen)"/>
+  <rect x="14" y="28" width="100" height="88" rx="34" fill="url(#body)"/>
+
+  <g fill="#e0508e" opacity="0.55">
+    <ellipse cx="35" cy="89" rx="8.5" ry="5"/>
+    <ellipse cx="93" cy="89" rx="8.5" ry="5"/>
   </g>
 
-  <rect x="18" y="26" width="92" height="88" rx="17"
-        fill="none" stroke="#8f3760" stroke-width="1.5" stroke-opacity="0.5"/>
-
-  <!-- date grid, with today picked out -->
-  <g fill="#fff6fb">
-    <circle cx="41" cy="78" r="5" fill-opacity="0.5"/>
-    <circle cx="64" cy="78" r="6.5" fill-opacity="0.95"/>
-    <circle cx="87" cy="78" r="5" fill-opacity="0.5"/>
-    <circle cx="41" cy="99" r="5" fill-opacity="0.5"/>
-    <circle cx="64" cy="99" r="5" fill-opacity="0.5"/>
-    <circle cx="87" cy="99" r="5" fill-opacity="0.5"/>
+  <!-- happy closed eyes and a small smile -->
+  <g fill="none" stroke="#3a1630" stroke-linecap="round">
+    <path d="M39.5 80 Q46 71.5 52.5 80" stroke-width="4.5"/>
+    <path d="M75.5 80 Q82 71.5 88.5 80" stroke-width="4.5"/>
+    <path d="M58 90 Q64 96.5 70 90" stroke-width="4"/>
   </g>
 </svg>

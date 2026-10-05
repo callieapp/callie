@@ -70,7 +70,9 @@ int main(int argc, char *argv[])
     if (!store.load(accounts))
         err << "callie-gui: " << store.errorString() << "\n";
     callie::GoogleCache cache(callie::GoogleCache::defaultPath());
-    if (!accounts.isEmpty() && !cache.open())
+    // Sample data never touches the real cache.
+    const bool useSample = parser.isSet(sampleOption);
+    if (!useSample && !accounts.isEmpty() && !cache.open())
         err << "callie-gui: " << cache.errorString() << "\n";
     err.flush();
     accounts.removeIf([](const callie::Account &a) { return a.provider != u"google"; });
@@ -85,7 +87,6 @@ int main(int argc, char *argv[])
     google.setSync(&sync);
     callie::SampleSource sample;
 
-    const bool useSample = parser.isSet(sampleOption);
     callie::CalendarSource *source =
         useSample ? static_cast<callie::CalendarSource *>(&sample) : &google;
     QTimer syncTimer;

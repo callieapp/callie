@@ -76,6 +76,7 @@ private Q_SLOTS:
     void differentDaysDoNotShareLanes();
     void positionRolesAreComputed();
     void changingRangeReloads();
+    void invalidRangeStartIsIgnored();
     void allDayEventsStackInRows();
     void allDayEventIsClippedToRange();
     void allDayEndOnDayWithoutMidnight();
@@ -222,6 +223,16 @@ void TestEventModel::changingRangeReloads()
     QCOMPARE(model->rowCount(), 1);
     QCOMPARE(model->data(model->index(0, 0), EventModel::UidRole).toString(),
              QStringLiteral("nextWeek"));
+}
+
+void TestEventModel::invalidRangeStartIsIgnored()
+{
+    auto [model, source] = modelFor({timed("a", kMonday, 9, 0, 60)});
+
+    model->setRangeStart(QDate());
+
+    QCOMPARE(model->rangeStart(), kMonday);
+    QCOMPARE(model->rowCount(), 1);
 }
 
 void TestEventModel::allDayEventsStackInRows()

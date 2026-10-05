@@ -31,7 +31,9 @@ Until then, build it from source as described under [Development](#development).
 
 ### The desktop app
 
-`callie-gui` opens the week view. It shows sample events until calendar sync lands.
+`callie-gui` opens the week view with the calendars you show in Google Calendar. It syncs when it
+starts and every five minutes, and shows what it has cached while offline. `--sample` shows a
+made-up week instead.
 
 Choose a theme with `--theme`, passing a built-in theme's name or the path to a theme file. The
 `CALLIE_THEME` environment variable does the same. A theme loaded from a file updates the running
@@ -41,7 +43,7 @@ app as soon as you save it.
 
 ```sh
 callie                                   # upcoming events, same as `callie agenda`
-callie agenda --days 3
+callie agenda --days 3                   # reads the cache; run `callie sync` to refresh it
 callie accounts                          # connected calendar accounts
 callie accounts add google               # sign in with Google in your browser
 callie accounts remove google you@example.com
@@ -119,12 +121,12 @@ Nothing here is released yet. Roughly in the order it needs to happen:
 ### Calendar backends
 
 - [x] Google sign-in with PKCE and a loopback redirect, tokens in the system keyring
-- [ ] Google Calendar API v3 sync, using sync tokens for incremental updates
+- [x] Google Calendar API v3 sync, using sync tokens for incremental updates
 - [ ] Submit the OAuth consent screen for verification (unverified apps are capped at
       100 users, and review takes weeks, so this wants starting early)
 - [ ] CalDAV accounts, credentials stored in the system keyring
-- [ ] SQLite cache so the app works offline
-- [ ] Replace the placeholder sample data
+- [x] SQLite cache so the app works offline
+- [x] Replace the placeholder sample data
 
 ### The app
 
@@ -132,7 +134,7 @@ Nothing here is released yet. Roughly in the order it needs to happen:
 - [ ] Write path for drag-to-move, so edits actually persist
 - [ ] Natural language quick add
 - [ ] Desktop notifications, with one click to join a video call
-- [ ] Correct handling of recurring events and cross-timezone meetings
+- [x] Correct handling of recurring events and cross-timezone meetings
 - [ ] Custom window chrome, and a week grid that fits about 8 working hours
 
 ### Design

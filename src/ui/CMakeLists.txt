@@ -13,6 +13,8 @@ qt_add_qml_module(callieui
         EventModelForeign.h
         LiveQml.h
         LiveQml.cpp
+        SupportActions.h
+        SupportActions.cpp
         ThemeController.h
         ThemeController.cpp
     QML_FILES

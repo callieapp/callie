@@ -131,9 +131,9 @@ ApplicationWindow {
         Row {
             id: viewSwitcher
             anchors {
-                right: parent.right
+                right: helpButton.left
                 verticalCenter: parent.verticalCenter
-                rightMargin: Theme.space5
+                rightMargin: Theme.space3
             }
             spacing: 0
 
@@ -145,6 +145,50 @@ ApplicationWindow {
                     required property int index
                     label: modelData
                     selected: index === 1
+                }
+            }
+        }
+
+        // Help: debug info, logs and bug reports.
+        NavButton {
+            id: helpButton
+            anchors {
+                right: parent.right
+                verticalCenter: parent.verticalCenter
+                rightMargin: Theme.space5
+            }
+            glyph: "?"
+            onClicked: helpMenu.popup(helpButton, 0, helpButton.height)
+
+            ToolTip.visible: copiedTip.running
+            ToolTip.text: qsTr("Debug info copied")
+
+            Timer {
+                id: copiedTip
+                interval: 2000
+            }
+
+            Connections {
+                target: Support
+                function onCopied() {
+                    copiedTip.restart()
+                }
+            }
+
+            Menu {
+                id: helpMenu
+
+                MenuItem {
+                    text: qsTr("Copy debug info")
+                    onTriggered: Support.copyDebugInfo()
+                }
+                MenuItem {
+                    text: qsTr("Open logs folder")
+                    onTriggered: Support.openLogs()
+                }
+                MenuItem {
+                    text: qsTr("Report a bug...")
+                    onTriggered: Support.reportBug()
                 }
             }
         }

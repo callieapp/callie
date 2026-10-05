@@ -19,7 +19,8 @@ FEDORA_DEPS := gcc-c++ cmake ninja-build qt6-qtbase-devel qt6-qtdeclarative-deve
 	tomlplusplus-devel clang-tools-extra entr nodejs npm
 DEBIAN_DEPS := build-essential cmake ninja-build qt6-base-dev qt6-declarative-dev \
 	qt6-declarative-dev-tools qml6-module-qtquick-controls qml6-module-qtquick-templates \
-	qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev clang-format entr nodejs npm
+	qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev libqt6sql6-sqlite clang-format entr \
+	nodejs npm
 
 # Files whose change should rebuild and restart the app under `make watch`.
 WATCHED := git ls-files --cached --others --exclude-standard -- src themes CMakeLists.txt

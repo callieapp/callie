@@ -12,7 +12,7 @@ namespace callie::logfile {
 bool install(const QString &name, const QString &directory = defaultDirectory(),
              qint64 maxBytes = 1024 * 1024);
 
-/// Shows info messages in the terminal too, as `callie -v` asks.
+/// Shows info messages in the terminal too, as `callie --verbose` asks.
 void setVerboseTerminal(bool verbose);
 
 /// The file install() opened, or empty.

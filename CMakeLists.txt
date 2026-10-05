@@ -18,6 +18,8 @@ set(CALLIE_APP_ID "org.callieapp.Callie" CACHE STRING "Reverse-DNS application i
 
 option(CALLIE_BUILD_TESTS "Build the unit tests" ON)
 option(CALLIE_WERROR "Treat compiler warnings as errors" OFF)
+# Builds in the source tree's path, so it is for development builds only.
+option(CALLIE_LIVE_QML "Add --live-qml to the app and gallery to reload QML from src/" OFF)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)

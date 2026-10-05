@@ -14,4 +14,12 @@ target_link_libraries(callie-gui PRIVATE
     callieuiplugin
 )
 
+if(CALLIE_LIVE_QML)
+    target_compile_definitions(callie-gui PRIVATE
+        CALLIE_LIVE_QML
+        CALLIE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+        CALLIE_BINARY_DIR="${CMAKE_BINARY_DIR}"
+    )
+endif()
+
 install(TARGETS callie-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

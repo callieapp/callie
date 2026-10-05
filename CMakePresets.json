@@ -18,7 +18,8 @@
       "displayName": "Development (Debug)",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "QT_QML_GENERATE_QMLLS_INI": "ON"
+        "QT_QML_GENERATE_QMLLS_INI": "ON",
+        "CALLIE_LIVE_QML": "ON"
       }
     },
     {
@@ -33,7 +34,8 @@
       "displayName": "CI (warnings are errors)",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CALLIE_WERROR": "ON"
+        "CALLIE_WERROR": "ON",
+        "CALLIE_LIVE_QML": "ON"
       }
     }
   ],

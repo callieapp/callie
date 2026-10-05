@@ -78,6 +78,7 @@ private Q_SLOTS:
     void changingRangeReloads();
     void allDayEventsStackInRows();
     void allDayEventIsClippedToRange();
+    void allDayEndOnDayWithoutMidnight();
     void calendarsListShownOnly();
 
 private:
@@ -246,6 +247,26 @@ void TestEventModel::allDayEventIsClippedToRange()
     QCOMPARE(intRole(*model, 0, EventModel::FirstDayRole), 0);
     QCOMPARE(intRole(*model, 0, EventModel::DaySpanRole), 2);
     QCOMPARE(model->allDayRows(), 1);
+}
+
+void TestEventModel::allDayEndOnDayWithoutMidnight()
+{
+    // Chile springs forward at midnight on 2026-09-06, so that midnight is 01:00.
+    const QTimeZone santiago("America/Santiago");
+    Event e;
+    e.uid = QStringLiteral("saturday");
+    e.allDay = true;
+    e.start = QDateTime(QDate(2026, 9, 5), QTime(0, 0), santiago);
+    e.end = QDateTime(QDate(2026, 9, 6), QTime(0, 0), santiago);
+    QCOMPARE(e.end.time(), QTime(1, 0));
+
+    FakeSource source({e});
+    EventModel model;
+    model.setRangeStart(QDate(2026, 9, 1));
+    model.setSource(&source);
+
+    QCOMPARE(intRole(model, 0, EventModel::FirstDayRole), 4);
+    QCOMPARE(intRole(model, 0, EventModel::DaySpanRole), 1);
 }
 
 void TestEventModel::calendarsListShownOnly()

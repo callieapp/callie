@@ -120,9 +120,10 @@ void EventModel::assignLanes(QList<Event> &events)
 std::pair<int, int> EventModel::visibleDays(const Event &event) const
 {
     const auto first = static_cast<int>(m_rangeStart.daysTo(event.start.date()));
-    // An end at midnight belongs to the previous day.
+    // All-day ends are exclusive dates, checked without the time because some
+    // DST days have no midnight. A timed end at midnight belongs to the day before.
     QDate endDay = event.end.date();
-    if (event.end.time() == QTime(0, 0) && event.end > event.start)
+    if (event.end > event.start && (event.allDay || event.end.time() == QTime(0, 0)))
         endDay = endDay.addDays(-1);
     const auto last = static_cast<int>(m_rangeStart.daysTo(endDay));
     const int clampedFirst = std::clamp(first, 0, m_dayCount - 1);

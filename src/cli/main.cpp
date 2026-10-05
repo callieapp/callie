@@ -208,8 +208,11 @@ int runSync(QCoreApplication &app)
         err << QStringLiteral("callie: %1\n").arg(cache.errorString());
         return 1;
     }
+    const std::optional<GoogleClientConfig> client = googleClient();
+    if (!client)
+        return 1;
     KeychainTokenStore tokens;
-    GoogleTokenProvider provider(GoogleClientConfig::resolve(), tokens);
+    GoogleTokenProvider provider(*client, tokens);
     QNetworkAccessManager network;
     GoogleCalendarApi api(&network);
     GoogleSync sync(provider, api, cache);

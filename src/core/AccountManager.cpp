@@ -49,9 +49,9 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
         [this, &api, finish, fail](const GoogleTokens &tokens) {
             api.fetchPrimaryCalendarId(tokens.accessToken, [this, finish, fail,
                                                             tokens](const QString &id,
-                                                                    const QString &error) {
-                if (!error.isEmpty()) {
-                    fail(error);
+                                                                    const GoogleApiError &error) {
+                if (error) {
+                    fail(error.message);
                     return;
                 }
                 const Account account{QStringLiteral("google"), id};

@@ -44,7 +44,7 @@ class CalendarSource : public QObject
     Q_PROPERTY(bool syncing READ syncing NOTIFY statusChanged)
     Q_PROPERTY(QDateTime lastSynced READ lastSynced NOTIFY statusChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY statusChanged)
-    /// Per account: {account, lastSynced, error, calendars, problems}, where
+    /// Per account: {account, lastSynced, error, problems}, where
     /// problems lists the calendars whose last sync failed, with the reason.
     Q_PROPERTY(QVariantList syncReport READ syncReport NOTIFY statusChanged)
 

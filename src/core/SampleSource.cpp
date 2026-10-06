@@ -140,13 +140,9 @@ QVariantList SampleSource::syncReport() const
             accounts << calendar.account;
     }
     for (const QString &account : accounts) {
-        const auto count =
-            std::count_if(m_calendars.cbegin(), m_calendars.cend(),
-                          [&account](const CalendarInfo &c) { return c.account == account; });
         report << QVariantMap{{QStringLiteral("account"), account},
                               {QStringLiteral("lastSynced"), m_synced},
                               {QStringLiteral("error"), QString()},
-                              {QStringLiteral("calendars"), int(count)},
                               {QStringLiteral("problems"), QStringList()}};
     }
     return report;

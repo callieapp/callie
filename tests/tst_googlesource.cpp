@@ -505,7 +505,6 @@ void TestGoogleSource::reportDescribesEachAccount()
     const QVariantMap mine = report.at(0).toMap();
     QCOMPARE(mine.value(u"account"_s).toString(), kAccount.id);
     QVERIFY(mine.value(u"lastSynced"_s).toDateTime().isValid());
-    QCOMPARE(mine.value(u"calendars"_s).toInt(), 2);
     QCOMPARE(mine.value(u"problems"_s).toStringList(), QStringList{u"MINE: Rate limit"_s});
     QCOMPARE(report.at(1).toMap().value(u"error"_s).toString(), u"keyring is locked"_s);
 }

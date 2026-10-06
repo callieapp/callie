@@ -208,9 +208,8 @@ QVariantList GoogleSource::syncReport() const
     QVariantList report;
     for (const Account &account : m_accounts) {
         const SyncState state = m_cache.accountState(account);
-        const QList<GoogleCalendar> calendars = m_cache.calendars(account);
         QStringList problems;
-        for (const GoogleCalendar &calendar : calendars) {
+        for (const GoogleCalendar &calendar : m_cache.calendars(account)) {
             const QString error = m_cache.calendarState(account, calendar.id).lastError;
             if (!error.isEmpty())
                 problems << QStringLiteral("%1: %2").arg(calendar.summary, error);
@@ -218,7 +217,6 @@ QVariantList GoogleSource::syncReport() const
         report << QVariantMap{{QStringLiteral("account"), account.id},
                               {QStringLiteral("lastSynced"), state.lastSynced},
                               {QStringLiteral("error"), state.lastError},
-                              {QStringLiteral("calendars"), int(calendars.size())},
                               {QStringLiteral("problems"), problems}};
     }
     return report;

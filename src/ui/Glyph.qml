@@ -78,14 +78,17 @@ Item {
             ctx.beginPath()
             ctx.arc(width / 2, height / 2, r, -Math.PI * 0.35, Math.PI * 1.4)
             ctx.stroke()
-            // The head sits at the arc's open end, pointing along it.
-            const tipX = width / 2 + r * Math.cos(-Math.PI * 0.35)
-            const tipY = height / 2 + r * Math.sin(-Math.PI * 0.35)
+            // The head sits where the arc ends, pointing on round the circle.
+            const end = Math.PI * 1.4
+            const x = width / 2 + r * Math.cos(end)
+            const y = height / 2 + r * Math.sin(end)
+            const along = [-Math.sin(end), Math.cos(end)]
+            const out = [Math.cos(end), Math.sin(end)]
             const size = root.stroke * 2.2
             ctx.beginPath()
-            ctx.moveTo(tipX + size, tipY)
-            ctx.lineTo(tipX - size * 0.3, tipY - size)
-            ctx.lineTo(tipX - size * 0.4, tipY + size * 0.6)
+            ctx.moveTo(x + along[0] * size, y + along[1] * size)
+            ctx.lineTo(x + out[0] * size * 0.9, y + out[1] * size * 0.9)
+            ctx.lineTo(x - out[0] * size * 0.9, y - out[1] * size * 0.9)
             ctx.closePath()
             ctx.fill()
         }

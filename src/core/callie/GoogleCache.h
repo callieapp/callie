@@ -6,6 +6,8 @@
 #include <QDateTime>
 #include <QString>
 
+#include <optional>
+
 class QSqlQuery;
 
 namespace callie {
@@ -55,6 +57,10 @@ public:
     /// sync replaces every event in the calendar.
     bool applyChanges(const Account &account, const QString &calendarId,
                       const GoogleEventChanges &changes, bool full);
+
+    /// One stored event by its id; empty when there is none.
+    [[nodiscard]] std::optional<GoogleEvent> event(const Account &account,
+                                                   const QString &calendarId, const QString &id);
 
     /// Stores events made in Callie, leaving the calendar's sync token and
     /// sync status alone: the calendar itself has not been synced.

@@ -142,21 +142,61 @@ QFuture<SourceSnapshot> GoogleSource::load(const QDateTime &from, const QDateTim
     return future;
 }
 
+std::optional<std::pair<Account, QString>> GoogleSource::splitCalendarId(const QString &id) const
+{
+    for (const Account &account : m_accounts) {
+        const QString prefix = calendarKey(account, {});
+        if (id.startsWith(prefix))
+            return std::pair(account, id.mid(prefix.size()));
+    }
+    return std::nullopt;
+}
+
+GoogleSync::Target GoogleSource::target(const QString &calendarId, const Event &event,
+                                        bool wholeSeries)
+{
+    GoogleSync::Target target;
+    target.calendarId = calendarId;
+    target.seriesId = event.seriesId;
+    target.eventId = wholeSeries && !event.seriesId.isEmpty() ? event.seriesId : event.eventId;
+    if (event.allDay)
+        target.originalStart.date = event.recurrenceId.date();
+    else
+        target.originalStart.dateTime = event.recurrenceId;
+    return target;
+}
+
 void GoogleSource::createEvent(const EventDraft &draft, Created done)
 {
-    if (!m_sync) {
-        done(tr("Callie is not connected to Google right now."));
+    const auto calendar = splitCalendarId(draft.calendarId);
+    if (!m_sync || !calendar) {
+        done(m_sync ? tr("That calendar is not in any connected account.")
+                    : tr("Callie is not connected to Google right now."));
         return;
     }
-    for (const Account &account : std::as_const(m_accounts)) {
-        const QString prefix = calendarKey(account, {});
-        if (draft.calendarId.startsWith(prefix)) {
-            m_sync->createEvent(account, draft.calendarId.mid(prefix.size()), draft,
-                                std::move(done));
-            return;
-        }
+    m_sync->createEvent(calendar->first, calendar->second, draft, std::move(done));
+}
+
+void GoogleSource::respond(const Event &event, const QString &status, bool wholeSeries,
+                           Created done)
+{
+    const auto calendar = splitCalendarId(event.calendarId);
+    if (!m_sync || !calendar) {
+        done(tr("Callie is not connected to that event's account right now."));
+        return;
     }
-    done(tr("That calendar is not in any connected account."));
+    m_sync->respond(calendar->first, target(calendar->second, event, wholeSeries), status,
+                    std::move(done));
+}
+
+void GoogleSource::deleteEvent(const Event &event, bool wholeSeries, Created done)
+{
+    const auto calendar = splitCalendarId(event.calendarId);
+    if (!m_sync || !calendar) {
+        done(tr("Callie is not connected to that event's account right now."));
+        return;
+    }
+    m_sync->remove(calendar->first, target(calendar->second, event, wholeSeries), std::move(done));
 }
 
 void GoogleSource::flushChanges()

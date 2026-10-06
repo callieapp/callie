@@ -91,18 +91,36 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                 e.canRespond = true;
             }
 
-            if (e.end > from && e.start < to)
+            if (m_answers.contains(e.eventId)) {
+                e.responseStatus = m_answers.value(e.eventId);
+                e.declined = e.responseStatus == u"declined";
+            }
+            if (e.end > from && e.start < to && !m_deleted.contains(e.eventId))
                 out.append(e);
         }
     }
     for (Event e : m_created) {
-        if (e.end > from && e.start < to) {
+        if (e.end > from && e.start < to && !m_deleted.contains(e.eventId)) {
             e.start = e.start.toTimeZone(tz);
             e.end = e.end.toTimeZone(tz);
             out.append(e);
         }
     }
     return out;
+}
+
+void SampleSource::respond(const Event &event, const QString &status, bool, Created done)
+{
+    m_answers.insert(event.eventId, status);
+    done({});
+    Q_EMIT changed();
+}
+
+void SampleSource::deleteEvent(const Event &event, bool, Created done)
+{
+    m_deleted.insert(event.eventId);
+    done({});
+    Q_EMIT changed();
 }
 
 void SampleSource::createEvent(const EventDraft &draft, Created done)

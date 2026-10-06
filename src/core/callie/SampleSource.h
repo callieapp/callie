@@ -2,6 +2,9 @@
 
 #include "CalendarSource.h"
 
+#include <QHash>
+#include <QSet>
+
 namespace callie {
 
 /// Placeholder source with plausible data, so the UI can be designed before
@@ -20,9 +23,15 @@ public:
     void refresh() override { Q_EMIT changed(); }
     /// Keeps new events for as long as the app runs.
     void createEvent(const EventDraft &draft, Created done) override;
+    /// Answers and deletions last as long as the app runs.
+    void respond(const Event &event, const QString &status, bool wholeSeries,
+                 Created done) override;
+    void deleteEvent(const Event &event, bool wholeSeries, Created done) override;
 
 private:
     QList<Event> m_created;
+    QHash<QString, QString> m_answers;
+    QSet<QString> m_deleted;
     QList<CalendarInfo> m_calendars;
 };
 

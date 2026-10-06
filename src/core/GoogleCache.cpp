@@ -271,6 +271,21 @@ bool GoogleCache::setCalendars(const Account &account, const QList<GoogleCalenda
     return true;
 }
 
+std::optional<GoogleEvent> GoogleCache::event(const Account &account, const QString &calendarId,
+                                              const QString &id)
+{
+    if (!m_open)
+        return std::nullopt;
+    QSqlQuery query(QSqlDatabase::database(m_connection));
+    query.prepare(
+        QStringLiteral("SELECT * FROM events WHERE account = ? AND calendar_id = ? AND id = ?"));
+    query.addBindValue(accountKey(account));
+    query.addBindValue(calendarId);
+    query.addBindValue(id);
+    const QList<GoogleEvent> found = readEvents(query);
+    return found.isEmpty() ? std::nullopt : std::optional(found.first());
+}
+
 bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
                               const QList<GoogleEvent> &events)
 {

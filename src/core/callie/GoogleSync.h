@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Account.h"
+#include "GoogleCalendarApi.h"
 
 #include <QHash>
 #include <QObject>
@@ -45,6 +46,22 @@ public:
     void createEvent(const Account &account, const QString &calendarId, const EventDraft &draft,
                      Created done);
 
+    /// What an answer or a deletion is aimed at: one event, one occurrence of
+    /// a series (with `seriesId` and its original start), or a whole series.
+    struct Target
+    {
+        QString calendarId;
+        QString eventId;
+        QString seriesId;
+        GoogleEventTime originalStart;
+    };
+
+    /// Answers an invitation: "accepted", "tentative" or "declined".
+    void respond(const Account &account, const Target &target, const QString &status, Created done);
+
+    /// Deletes the target and drops it from the cache.
+    void remove(const Account &account, const Target &target, Created done);
+
 Q_SIGNALS:
     /// Emitted after each calendar's changes are stored.
     void changed(const callie::Account &account);
@@ -58,8 +75,11 @@ private:
     void calendarDone(const std::shared_ptr<Run> &run);
     void finish(const std::shared_ptr<Run> &run);
     void record(bool stored);
-    void insert(const Account &account, const QString &calendarId, const QJsonObject &event,
-                bool retried, Created done);
+    /// Runs `call` with an access token. If Google rejects the token, `call`
+    /// asks through `retry`, and the token is refreshed for one more try.
+    using Retry = std::function<void()>;
+    using Call = std::function<void(const QString &token, const Retry &retry)>;
+    void withToken(const Account &account, bool retried, Call call, const Created &failed);
 
     GoogleTokenProvider &m_tokens;
     GoogleCalendarApi &m_api;

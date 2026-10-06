@@ -80,6 +80,24 @@ public:
         done(tr("These calendars cannot take new events."));
     }
 
+    /// Answers an invitation with "accepted", "tentative" or "declined", for
+    /// this occurrence or, with `wholeSeries`, every occurrence.
+    virtual void respond(const Event &event, const QString &status, bool wholeSeries, Created done)
+    {
+        Q_UNUSED(event)
+        Q_UNUSED(status)
+        Q_UNUSED(wholeSeries)
+        done(tr("These calendars cannot take answers."));
+    }
+
+    /// Deletes this occurrence or, with `wholeSeries`, the whole series.
+    virtual void deleteEvent(const Event &event, bool wholeSeries, Created done)
+    {
+        Q_UNUSED(event)
+        Q_UNUSED(wholeSeries)
+        done(tr("These calendars cannot delete events."));
+    }
+
     /// Sync status for the title bar. Sources that never sync keep the defaults.
     [[nodiscard]] virtual bool syncing() const { return false; }
     [[nodiscard]] virtual QDateTime lastSynced() const { return {}; }

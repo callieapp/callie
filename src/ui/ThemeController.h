@@ -182,9 +182,9 @@ public:
     QColor todayWash() const;
     QColor dayOffWash() const;
 
-    int hourHeight() const { return 56; }
-    int gutterWidth() const { return 64; }
-    int allDayRowHeight() const { return 22; }
+    int hourHeight() const { return 62; }
+    int gutterWidth() const { return 52; }
+    int allDayRowHeight() const { return 30; }
     int snapMinutes() const { return 15; }
     int resizeBorder() const { return 6; }
 

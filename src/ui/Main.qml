@@ -59,6 +59,7 @@ ApplicationWindow {
         use24Hour: Settings.use24Hour
         showDeclined: Settings.showDeclined
         hiddenCalendars: Settings.hiddenCalendars
+        minimumMinutes: Math.ceil(Theme.minEventHeight / Theme.hourHeight * 60)
     }
 
     TodayModel {

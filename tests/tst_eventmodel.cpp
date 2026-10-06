@@ -124,6 +124,7 @@ private Q_SLOTS:
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
     void eventsOnListsADay();
+    void shortEventMakesRoomForTheNext();
     void eventsOnRespectsMidnight();
     void eventsOnSurvivesADstGap();
     void revisionMarksEachReset();
@@ -624,6 +625,18 @@ void TestEventModel::revisionMarksEachReset()
 
     QVERIFY(model->revision() > before);
     QCOMPARE(revision.size(), 1);
+}
+
+void TestEventModel::shortEventMakesRoomForTheNext()
+{
+    // Drawn 20 minutes tall, the 15-minute event would cover the next one's top.
+    auto [model, source] =
+        modelFor({timed("check", kMonday, 11, 45, 15), timed("noon", kMonday, 12, 0, 60)});
+    QCOMPARE(intRole(*model, 1, EventModel::LaneCountRole), 1);
+
+    model->setMinimumMinutes(20);
+    QCOMPARE(intRole(*model, 0, EventModel::LaneCountRole), 2);
+    QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

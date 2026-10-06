@@ -27,6 +27,11 @@ public:
     /// Without one, refresh() only re-reads the cache.
     void setSync(GoogleSync *sync);
 
+    /// Shows a changed set of accounts, as after connecting or removing one,
+    /// and syncs them.
+    void setAccounts(QList<Account> accounts);
+    [[nodiscard]] QList<Account> accounts() const { return m_accounts; }
+
     [[nodiscard]] QString sourceId() const override { return QStringLiteral("google"); }
     [[nodiscard]] QList<CalendarInfo> calendars() const override;
     [[nodiscard]] QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,

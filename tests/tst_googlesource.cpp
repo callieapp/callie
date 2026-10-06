@@ -65,6 +65,7 @@ private Q_SLOTS:
     void actionsNeedAKnownCalendar();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
+    void accountsCanChangeWhileRunning();
     void statusFollowsARefresh();
     void calendarErrorShowsAfterRestart();
     void overlappingRefreshesReportEachErrorOnce();
@@ -507,6 +508,20 @@ void TestGoogleSource::reportDescribesEachAccount()
     QVERIFY(mine.value(u"lastSynced"_s).toDateTime().isValid());
     QCOMPARE(mine.value(u"problems"_s).toStringList(), QStringList{u"MINE: Rate limit"_s});
     QCOMPARE(report.at(1).toMap().value(u"error"_s).toString(), u"keyring is locked"_s);
+}
+
+void TestGoogleSource::accountsCanChangeWhileRunning()
+{
+    GoogleSource source(*m_cache, {});
+    QVERIFY(source.calendars().isEmpty());
+    QSignalSpy changed(&source, &CalendarSource::changed);
+
+    source.setAccounts({kAccount});
+
+    QCOMPARE(source.calendars().size(), 2);
+    QVERIFY(!changed.isEmpty());
+    source.setAccounts({});
+    QVERIFY(source.calendars().isEmpty());
 }
 
 void TestGoogleSource::statusStartsFromTheCache()

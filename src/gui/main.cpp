@@ -1,3 +1,4 @@
+#include "AccountsController.h"
 #include "Clock.h"
 #include "EventModelForeign.h"
 #include "LiveQml.h"
@@ -129,8 +130,9 @@ int main(int argc, char *argv[])
     if (!store.load(accounts))
         err << "callie-gui: " << store.errorString() << "\n";
     callie::GoogleCache cache(callie::GoogleCache::defaultPath());
-    // Sample data never touches the real cache.
-    if (!useSample && !accounts.isEmpty() && !cache.open())
+    // Sample data never touches the real cache. Without accounts it is still
+    // opened, since one can be connected from settings.
+    if (!useSample && !cache.open())
         err << "callie-gui: " << cache.errorString() << "\n";
     err.flush();
     accounts.removeIf([](const callie::Account &a) { return a.provider != u"google"; });
@@ -154,10 +156,11 @@ int main(int argc, char *argv[])
         qCWarning(lcSync) << "no Google OAuth client is configured, showing cached events only."
                           << "Build with one, or set CALLIE_GOOGLE_CLIENT_ID and"
                           << "CALLIE_GOOGLE_CLIENT_SECRET.";
-    if (!useSample && !accounts.isEmpty() && canSync && screenshot.isEmpty()) {
+    if (!useSample && canSync && screenshot.isEmpty()) {
         QObject::connect(&syncTimer, &QTimer::timeout, &google, &callie::GoogleSource::refresh);
         syncTimer.start(std::chrono::minutes(5));
-        QTimer::singleShot(0, &google, &callie::GoogleSource::refresh);
+        if (!accounts.isEmpty())
+            QTimer::singleShot(0, &google, &callie::GoogleSource::refresh);
     }
 
     // Screenshots and sample data stay quiet.
@@ -171,6 +174,16 @@ int main(int argc, char *argv[])
         QObject::connect(&settings, &callie::Settings::keepRunningChanged, &app,
                          [&] { app.setQuitOnLastWindowClosed(!settings.keepRunning()); });
     }
+
+    callie::AccountsController::Setup accountSetup{&store,   &tokens, &cache, &google,
+                                                   &network, client,  {}};
+    // Sample data and screenshots never show or touch the user's accounts.
+    if (standalone) {
+        accountSetup = {};
+        accountSetup.unavailable =
+            QObject::tr("Showing sample data, so accounts cannot be changed here.");
+    }
+    callie::AccountsController::instance()->setUp(accountSetup);
 
     QQmlApplicationEngine engine;
     engine.setInitialProperties({{QStringLiteral("source"), QVariant::fromValue(source)}});

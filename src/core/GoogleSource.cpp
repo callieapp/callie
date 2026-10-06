@@ -114,6 +114,15 @@ void GoogleSource::setSync(GoogleSync *sync)
         });
 }
 
+void GoogleSource::setAccounts(QList<Account> accounts)
+{
+    if (m_accounts == accounts)
+        return;
+    m_accounts = std::move(accounts);
+    Q_EMIT statusChanged();
+    refresh();
+}
+
 QList<CalendarInfo> GoogleSource::calendars() const
 {
     return readCalendars(m_cache, m_accounts);

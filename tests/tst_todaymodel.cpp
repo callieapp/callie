@@ -70,6 +70,13 @@ public:
         return promise->future();
     }
 
+    void answer(qsizetype read)
+    {
+        auto &[promise, snapshot] = pending[read];
+        promise->addResult(snapshot);
+        promise->finish();
+    }
+
     void answerAll()
     {
         for (auto &[promise, snapshot] : pending) {
@@ -98,6 +105,8 @@ private Q_SLOTS:
     void sourceChangesRefresh();
     void declinedIsSkipped();
     void slowReadLandsLater();
+    void startedEventLeavesWhileReading();
+    void overtakenReadIsDropped();
 };
 
 void TestTodayModel::greetingFollowsTheHour()
@@ -208,6 +217,39 @@ void TestTodayModel::slowReadLandsLater()
 
     source.answerAll();
     QTRY_COMPARE(model.nextTitle(), u"Standup"_s);
+}
+
+void TestTodayModel::startedEventLeavesWhileReading()
+{
+    SlowSource source({timed(u"Standup"_s, at(11), 15), timed(u"Lunch"_s, at(12), 60)});
+    TodayModel model;
+    model.setNow(at(10, 40));
+    model.setSource(&source);
+    source.answerAll();
+    QTRY_COMPARE(model.nextTitle(), u"Standup"_s);
+
+    model.setNow(at(11, 1));
+    QVERIFY(!model.hasNext());
+    source.answerAll();
+    QTRY_COMPARE(model.nextTitle(), u"Lunch"_s);
+}
+
+void TestTodayModel::overtakenReadIsDropped()
+{
+    SlowSource source({timed(u"Standup"_s, at(11), 15)});
+    TodayModel model;
+    model.setNow(at(10, 40));
+    model.setSource(&source);
+    source.m_events = {timed(u"Lunch"_s, at(12), 60)};
+    source.refresh();
+
+    // The newer read answers first; the older one, still seeing the standup,
+    // must not replace it.
+    source.answer(1);
+    QTRY_COMPARE(model.nextTitle(), u"Lunch"_s);
+    source.answer(0);
+    QTest::qWait(50);
+    QCOMPARE(model.nextTitle(), u"Lunch"_s);
 }
 
 QTEST_GUILESS_MAIN(TestTodayModel)

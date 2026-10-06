@@ -41,7 +41,11 @@ void TodayModel::refresh()
         return;
     }
     // The greeting and date follow the clock at once; the next event follows
-    // when the read lands.
+    // when the read lands, and one that has started meanwhile is dropped.
+    if (m_next.isValid() && m_next.start <= m_now) {
+        m_next = {};
+        m_nextCalendar.clear();
+    }
     Q_EMIT changed();
     future.then(this, [this, generation](const SourceSnapshot &snapshot) {
         if (generation == m_generation)

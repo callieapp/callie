@@ -62,6 +62,8 @@ Popup {
                                                                                          qsTr("Join call")
 
     width: 320
+    // Keeps the whole card inside the window, wherever its event sits.
+    margins: Theme.space3
     padding: 0
     modal: false
     // Dims the calendar without blocking it, so a click elsewhere still lands.
@@ -198,6 +200,8 @@ Popup {
                 width: parent.width - 2 * parent.padding
                 height: 40
                 accent: true
+                glyph: "video"
+                glyphStroke: 1.8
                 text: root.callName
                 onClicked: Qt.openUrlExternally(root.conferenceUrl)
             }

@@ -58,6 +58,7 @@ AbstractButton {
         }
 
         y: root.height + Theme.space2
+        margins: Theme.space3
         width: root.width
         height: 300
         padding: Theme.space2

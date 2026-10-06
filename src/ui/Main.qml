@@ -251,6 +251,23 @@ ApplicationWindow {
                     text: qsTr("Today")
                     onClicked: window.focusDate = window.today()
                 }
+
+                // The one primary action in view, so it is the pink one.
+                StickerButton {
+                    id: newButton
+                    anchors.verticalCenter: parent.verticalCenter
+                    accent: true
+                    glyph: "plus"
+                    text: qsTr("New")
+                    Accessible.name: qsTr("New event")
+                    onClicked: quickAdd.open()
+
+                    QuickAddPopup {
+                        id: quickAdd
+                        y: newButton.height + Theme.space3
+                        source: window.source
+                    }
+                }
             }
 
             Row {
@@ -536,6 +553,11 @@ ApplicationWindow {
     ThemeEditor {
         id: themeEditor
         onFinished: settingsDialog.open()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.New]
+        onActivated: quickAdd.open()
     }
 
     Shortcut {

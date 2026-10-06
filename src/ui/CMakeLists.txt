@@ -12,6 +12,8 @@ qt_add_qml_module(callieui
     SOURCES
         Clock.h
         Clock.cpp
+        Composer.h
+        Composer.cpp
         EventModelForeign.h
         LiveQml.h
         LiveQml.cpp
@@ -30,6 +32,7 @@ qt_add_qml_module(callieui
         WeekView.qml
         MonthView.qml
         AgendaView.qml
+        QuickAddPopup.qml
         Sidebar.qml
         EventBlock.qml
         EventTip.qml

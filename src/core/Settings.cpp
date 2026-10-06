@@ -18,6 +18,7 @@ const QString kHiddenCalendars = u"calendars/hidden"_s;
 const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
 const QString kTheme = u"appearance/theme"_s;
 const QString kView = u"view/current"_s;
+const QString kNewEventCalendar = u"events/newEventCalendar"_s;
 const QStringList kViews{u"day"_s, u"week"_s, u"month"_s, u"agenda"_s};
 
 } // namespace
@@ -51,6 +52,7 @@ void Settings::load()
     m_theme = m_store.value(kTheme).toString();
     const QString view = m_store.value(kView).toString();
     m_view = kViews.contains(view) ? view : u"week"_s;
+    m_newEventCalendar = m_store.value(kNewEventCalendar).toString();
 }
 
 void Settings::setTimeFormat(TimeFormat format)
@@ -116,6 +118,15 @@ void Settings::setWidenToday(bool widen)
     m_widenToday = widen;
     m_store.setValue(kWidenToday, widen);
     Q_EMIT widenTodayChanged();
+}
+
+void Settings::setNewEventCalendar(const QString &id)
+{
+    if (m_newEventCalendar == id)
+        return;
+    m_newEventCalendar = id;
+    m_store.setValue(kNewEventCalendar, id);
+    Q_EMIT newEventCalendarChanged();
 }
 
 void Settings::setView(const QString &view)

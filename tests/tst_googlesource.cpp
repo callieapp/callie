@@ -183,13 +183,20 @@ void TestGoogleSource::readOnlyCalendarsAllowNoChanges()
     QVERIFY(m_cache->setCalendars(kAccount, {calendar(u"mine"_s, true),
                                              calendar(u"hidden"_s, false, u"reader"_s),
                                              calendar(u"shared"_s, true, u"reader"_s)}));
-    QVERIFY(m_cache->applyChanges(kAccount, u"shared"_s,
-                                  {{parsed(R"({"id":"talk","summary":"Talk",
+    QVERIFY(
+        m_cache->applyChanges(kAccount, u"shared"_s,
+                              // Organized by the user, so only the reader calendar stops changes.
+                              {{parsed(R"({"id":"talk","summary":"Talk","organizer":{"self":true},
                      "start":{"dateTime":"2026-10-06T15:00:00Z"},
                      "end":{"dateTime":"2026-10-06T16:00:00Z"},
+                     "attendees":[{"email":"me@example.com","self":true},
+                                  {"email":"pat@example.com"}]})"),
+                                parsed(R"({"id":"ask","summary":"Ask",
+                     "start":{"dateTime":"2026-10-06T17:00:00Z"},
+                     "end":{"dateTime":"2026-10-06T18:00:00Z"},
                      "attendees":[{"email":"me@example.com","self":true}]})")},
-                                   u"t"_s},
-                                  true));
+                               u"t"_s},
+                              true));
     const GoogleSource source(*m_cache, {kAccount});
     const QList<Event> events = source.eventsBetween(
         QDateTime(QDate(2026, 10, 6), QTime(0, 0), QTimeZone::UTC),
@@ -200,6 +207,7 @@ void TestGoogleSource::readOnlyCalendarsAllowNoChanges()
     for (const Event &event : events) {
         if (event.summary == u"Talk") {
             QVERIFY(!event.canEdit);
+        } else if (event.summary == u"Ask") {
             QVERIFY(!event.canRespond);
         } else if (event.summary == u"Lunch") {
             QVERIFY(event.canEdit);

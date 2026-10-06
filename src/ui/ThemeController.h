@@ -94,6 +94,9 @@ class ThemeController : public QObject
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
     Q_PROPERTY(int allDayRowHeight READ allDayRowHeight CONSTANT)
     Q_PROPERTY(int snapMinutes READ snapMinutes CONSTANT)
+    /// The grab strip along a frameless window's edges. Anything scrollable at
+    /// an edge keeps its handle clear of it.
+    Q_PROPERTY(int resizeBorder READ resizeBorder CONSTANT)
 
 public:
     /// The process-wide instance, which QML also receives.
@@ -183,6 +186,7 @@ public:
     int gutterWidth() const { return 64; }
     int allDayRowHeight() const { return 22; }
     int snapMinutes() const { return 15; }
+    int resizeBorder() const { return 6; }
 
 Q_SIGNALS:
     void changed();

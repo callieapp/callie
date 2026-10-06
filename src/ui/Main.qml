@@ -204,8 +204,9 @@ ApplicationWindow {
 
                 readonly property bool known: window.source.syncing || failed || !isNaN(
                                                   window.source.lastSynced.getTime())
+                // Pink is kept for today and actions, so a healthy sync stays neutral.
                 readonly property color ink: failed ? Theme.danger : window.source.syncing
-                                                      ? Theme.textMuted : Theme.accent
+                                                      ? Theme.textFaint : Theme.textMuted
                 readonly property string label: window.source.syncing ? qsTr("Syncing...") : failed
                                                                         ? qsTr("Sync failed") : qsTr(
                                                                               "Updated %1").arg(

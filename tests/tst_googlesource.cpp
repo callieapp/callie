@@ -57,6 +57,7 @@ private Q_SLOTS:
     void refreshWithoutSyncRereadsCache();
     void refreshSyncsAndReportsErrorsPerAccount();
     void refreshWhileSyncingStartsNothingNew();
+    void removingTheLastAccountMidSyncLeavesNoSyncTime();
     void syncReportsOneChangePerBurst();
     void createdEventShowsWithoutASync();
     void createInUnknownCalendarFails();
@@ -313,6 +314,22 @@ void TestGoogleSource::refreshSyncsAndReportsErrorsPerAccount()
     QTRY_COMPARE_WITH_TIMEOUT(errors.size(), 1, 5000);
     QVERIFY(errors.first().first().toString().startsWith(u"other@example.com: "_s));
     QTRY_COMPARE_WITH_TIMEOUT(harness.tokenServer.requests.size(), 1, 5000);
+}
+
+void TestGoogleSource::removingTheLastAccountMidSyncLeavesNoSyncTime()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+
+    source.refresh();
+    QVERIFY(source.syncing());
+    source.setAccounts({});
+
+    QTRY_VERIFY_WITH_TIMEOUT(!source.syncing(), 5000);
+    QVERIFY(!source.lastSynced().isValid());
+    QVERIFY(source.lastError().isEmpty());
 }
 
 void TestGoogleSource::refreshWhileSyncingStartsNothingNew()

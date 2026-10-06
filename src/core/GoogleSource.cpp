@@ -284,7 +284,8 @@ void GoogleSource::refresh()
                 return;
             flushChanges();
             m_lastError = m_runErrors.join(u'\n');
-            if (m_runErrors.isEmpty())
+            // A run for accounts removed meanwhile synced nothing still listed.
+            if (m_runErrors.isEmpty() && !m_accounts.isEmpty())
                 m_lastSynced = QDateTime::currentDateTimeUtc();
             Q_EMIT statusChanged();
         });

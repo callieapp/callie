@@ -11,6 +11,8 @@ namespace callie {
 
 Composer::Composer(QObject *parent) : QObject(parent)
 {
+    connect(SettingsForeign::create(nullptr, nullptr), &Settings::hiddenCalendarsChanged, this,
+            &Composer::refreshCalendars);
     reparse();
 }
 
@@ -55,8 +57,10 @@ void Composer::refreshCalendars()
     QVariantList calendars;
     QStringList ids;
     if (m_source) {
+        const QStringList hidden = SettingsForeign::create(nullptr, nullptr)->hiddenCalendars();
         for (const CalendarInfo &calendar : m_source->calendars()) {
-            if (!calendar.writable)
+            // A new event in a calendar that is not shown would seem to vanish.
+            if (!calendar.writable || !calendar.enabled || hidden.contains(calendar.id))
                 continue;
             ids << calendar.id;
             calendars << QVariantMap{{u"id"_s, calendar.id},

@@ -21,6 +21,7 @@ private Q_SLOTS:
     void typingFillsTheDraft();
     void submitCreatesInTheChosenCalendar();
     void untitledIsNotReady();
+    void hiddenCalendarsAreNotOffered();
 
 private:
     QTemporaryDir m_dir;
@@ -95,6 +96,20 @@ void TestComposer::untitledIsNotReady()
     QSignalSpy created(&composer, &Composer::created);
     composer.submit();
     QVERIFY(created.isEmpty());
+}
+
+void TestComposer::hiddenCalendarsAreNotOffered()
+{
+    SampleSource source;
+    Composer composer;
+    composer.setSource(&source);
+    QCOMPARE(composer.calendars().size(), source.calendars().size());
+
+    const QString work = source.calendars().first().id;
+    m_settings->setCalendarVisible(work, false);
+    QCOMPARE(composer.calendars().size(), source.calendars().size() - 1);
+    QVERIFY(composer.calendarId() != work);
+    m_settings->setCalendarVisible(work, true);
 }
 
 QTEST_GUILESS_MAIN(TestComposer)

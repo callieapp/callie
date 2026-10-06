@@ -56,6 +56,11 @@ public:
     bool applyChanges(const Account &account, const QString &calendarId,
                       const GoogleEventChanges &changes, bool full);
 
+    /// Stores events made in Callie, leaving the calendar's sync token and
+    /// sync status alone: the calendar itself has not been synced.
+    bool storeEvents(const Account &account, const QString &calendarId,
+                     const QList<GoogleEvent> &events);
+
     /// Records a failed calendar sync. Success is recorded by applyChanges().
     bool recordCalendarError(const Account &account, const QString &calendarId,
                              const QString &error);
@@ -81,6 +86,8 @@ public:
 
 private:
     QList<GoogleEvent> readEvents(QSqlQuery &query);
+    bool writeEvents(const QString &key, const QString &calendarId,
+                     const QList<GoogleEvent> &events);
     bool exec(const QString &statement);
     bool fail(const QString &message);
 

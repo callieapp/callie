@@ -24,7 +24,7 @@ class Composer : public QObject
     Q_PROPERTY(QDateTime start READ start NOTIFY draftChanged)
     Q_PROPERTY(QDateTime end READ end NOTIFY draftChanged)
     Q_PROPERTY(bool allDay READ allDay NOTIFY draftChanged)
-    /// {id, name, color} for each calendar that takes new events.
+    /// {id, name, color} for each shown calendar that takes new events.
     Q_PROPERTY(QVariantList calendars READ calendars NOTIFY calendarsChanged)
     /// Where the event goes; starts as the one used last.
     Q_PROPERTY(QString calendarId READ calendarId WRITE setCalendarId NOTIFY calendarIdChanged)

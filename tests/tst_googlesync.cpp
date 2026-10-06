@@ -5,6 +5,7 @@
 #include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/QuickAdd.h"
 
 #include <QNetworkAccessManager>
 #include <QSignalSpy>
@@ -87,6 +88,9 @@ private Q_SLOTS:
     void failedCalendarDoesNotStopOthers();
     void rejectedAccessTokenIsRefreshedOnce();
     void persistentRejectionIsReported();
+    void createdEventIsStoredWithoutCountingAsASync();
+    void createRetriesOnceAfterRejection();
+    void createReportsWhatGoogleSaid();
     void missingRefreshTokenIsReported();
     void concurrentSyncsShareOneRun();
     void removedCalendarIsDropped();
@@ -95,6 +99,8 @@ private Q_SLOTS:
 
 private:
     QStringList runSync();
+    QString create(const QString &calendarId);
+    void syncOnce();
 
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<FakeHttpServer> m_tokenServer;
@@ -320,6 +326,82 @@ void TestGoogleSync::outcomesAreRecorded()
     QCOMPARE(errors.size(), 1);
     QCOMPARE(m_cache->accountState(kAccount).lastError, errors.first());
     QVERIFY(m_cache->accountState(kAccount).lastSynced.isValid());
+}
+
+void TestGoogleSync::syncOnce()
+{
+    m_google->on(u"users/me/calendarList"_s, 200, kCalendarList);
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    QCOMPARE(runSync(), QStringList());
+}
+
+QString TestGoogleSync::create(const QString &calendarId)
+{
+    EventDraft draft;
+    draft.summary = u"Pottery"_s;
+    draft.start = QDateTime(QDate(2026, 10, 9), QTime(18, 0), QTimeZone::UTC);
+    draft.end = draft.start.addSecs(7200);
+    QString result = u"unset"_s;
+    m_sync->createEvent(kAccount, calendarId, draft, [&result](const QString &e) { result = e; });
+    [&] { QTRY_VERIFY_WITH_TIMEOUT(result != u"unset", 5000); }();
+    return result;
+}
+
+namespace {
+const char *const kCreated = R"({"id":"made","status":"confirmed","summary":"Pottery",
+    "start":{"dateTime":"2026-10-09T18:00:00Z"},"end":{"dateTime":"2026-10-09T20:00:00Z"}})";
+}
+
+void TestGoogleSync::createdEventIsStoredWithoutCountingAsASync()
+{
+    syncOnce();
+    QVERIFY(m_cache->recordCalendarError(kAccount, u"team"_s, u"quota"_s));
+    const SyncState before = m_cache->calendarState(kAccount, u"team"_s);
+    const QString token = m_cache->syncToken(kAccount, u"team"_s);
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events"_s, 200, kCreated);
+    QSignalSpy changed(m_sync.get(), &GoogleSync::changed);
+
+    QCOMPARE(create(u"team"_s), QString());
+
+    QCOMPARE(changed.size(), 1);
+    const QList<GoogleEvent> stored = m_cache->events(kAccount, u"team"_s);
+    QVERIFY(std::any_of(stored.cbegin(), stored.cend(),
+                        [](const GoogleEvent &e) { return e.id == u"made"; }));
+    // The calendar did not sync, so its status and token are as they were.
+    const SyncState after = m_cache->calendarState(kAccount, u"team"_s);
+    QCOMPARE(after.lastError, u"quota"_s);
+    QCOMPARE(after.lastSynced, before.lastSynced);
+    QCOMPARE(m_cache->syncToken(kAccount, u"team"_s), token);
+}
+
+void TestGoogleSync::createRetriesOnceAfterRejection()
+{
+    syncOnce();
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events"_s, 401, R"({"error":{"message":"Invalid Credentials"}})");
+    m_google->on(u"calendars/team/events"_s, 200, kCreated);
+    const qsizetype tokensBefore = m_tokenServer->requests.size();
+
+    QCOMPARE(create(u"team"_s), QString());
+    QCOMPARE(m_tokenServer->requests.size(), tokensBefore + 1);
+    // One sync, then the rejected and the accepted creation.
+    QCOMPARE(m_google->count(u"calendars/team/events"_s), 3);
+}
+
+void TestGoogleSync::createReportsWhatGoogleSaid()
+{
+    syncOnce();
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events"_s, 403,
+                 R"({"error":{"message":"You need writer access"}})");
+    const qsizetype storedBefore = m_cache->events(kAccount, u"team"_s).size();
+
+    const QString error = create(u"team"_s);
+
+    QVERIFY(error.contains(u"You need writer access"_s));
+    QCOMPARE(m_cache->events(kAccount, u"team"_s).size(), storedBefore);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSync)

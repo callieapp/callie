@@ -72,41 +72,40 @@ void GoogleSync::insert(const Account &account, const QString &calendarId, const
                         bool retried, Created done)
 {
     const QPointer<GoogleSync> self(this);
-    m_tokens.accessToken(account, [this, self, account, calendarId, event, retried,
-                                   done = std::move(done)](const QString &token,
-                                                           const QString &error) mutable {
-        if (!self)
-            return;
-        if (!error.isEmpty()) {
-            done(error);
-            return;
-        }
-        m_api.insertEvent(
-            token, calendarId, event,
-            [this, self, account, calendarId, event, retried,
-             done = std::move(done)](const GoogleEvent &created, const GoogleApiError &error) {
-                if (!self)
-                    return;
-                if (error.unauthorized() && !retried) {
-                    m_tokens.invalidate(account);
-                    insert(account, calendarId, event, true, done);
-                    return;
-                }
-                if (error) {
-                    done(tr("Google could not create the event: %1").arg(error.message));
-                    return;
-                }
-                // Stored now so it shows at once; the sync token stays as it was.
-                const GoogleEventChanges changes{{created}, m_cache.syncToken(account, calendarId)};
-                if (!m_cache.applyChanges(account, calendarId, changes, false)) {
-                    done(m_cache.errorString());
-                    return;
-                }
-                qCInfo(lcSync) << "created an event in" << calendarId;
-                Q_EMIT changed(account);
-                done({});
-            });
-    });
+    m_tokens.accessToken(
+        account, [this, self, account, calendarId, event, retried,
+                  done = std::move(done)](const QString &token, const QString &error) mutable {
+            if (!self)
+                return;
+            if (!error.isEmpty()) {
+                done(error);
+                return;
+            }
+            m_api.insertEvent(
+                token, calendarId, event,
+                [this, self, account, calendarId, event, retried,
+                 done = std::move(done)](const GoogleEvent &created, const GoogleApiError &error) {
+                    if (!self)
+                        return;
+                    if (error.unauthorized() && !retried) {
+                        m_tokens.invalidate(account);
+                        insert(account, calendarId, event, true, done);
+                        return;
+                    }
+                    if (error) {
+                        done(tr("Google could not create the event: %1").arg(error.message));
+                        return;
+                    }
+                    // Stored now so it shows at once, without counting as a sync.
+                    if (!m_cache.storeEvents(account, calendarId, {created})) {
+                        done(m_cache.errorString());
+                        return;
+                    }
+                    qCInfo(lcSync) << "created an event in" << calendarId;
+                    Q_EMIT changed(account);
+                    done({});
+                });
+        });
 }
 
 void GoogleSync::start(const std::shared_ptr<Run> &run)

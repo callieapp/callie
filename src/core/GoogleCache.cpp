@@ -268,29 +268,14 @@ bool GoogleCache::setCalendars(const Account &account, const QList<GoogleCalenda
     return true;
 }
 
-bool GoogleCache::applyChanges(const Account &account, const QString &calendarId,
-                               const GoogleEventChanges &changes, bool full)
+bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
+                              const QList<GoogleEvent> &events)
 {
-    if (!m_open)
-        return fail(QObject::tr("the cache is not open"));
     QSqlDatabase db = QSqlDatabase::database(m_connection);
-    if (!db.transaction())
-        return fail(db.lastError().text());
-
-    const QString key = accountKey(account);
     const auto run = [this](QSqlQuery &query) {
         return query.exec() || fail(query.lastError().text());
     };
-
     bool ok = true;
-    if (full) {
-        QSqlQuery clear(db);
-        clear.prepare(QStringLiteral("DELETE FROM events WHERE account = ? AND calendar_id = ?"));
-        clear.addBindValue(key);
-        clear.addBindValue(calendarId);
-        ok = run(clear);
-    }
-
     QSqlQuery upsert(db);
     upsert.prepare(QStringLiteral(
         "INSERT OR REPLACE INTO events (account, calendar_id, id, status, summary, description, "
@@ -306,7 +291,7 @@ bool GoogleCache::applyChanges(const Account &account, const QString &calendarId
                                   "calendar_id = :calendar AND (id = :id OR "
                                   "recurring_event_id = :id)"));
 
-    for (const GoogleEvent &event : changes.events) {
+    for (const GoogleEvent &event : events) {
         if (!ok)
             break;
         // A cancelled event that belongs to a series is a deleted occurrence,
@@ -336,6 +321,50 @@ bool GoogleCache::applyChanges(const Account &account, const QString &calendarId
         upsert.bindValue(QStringLiteral(":response"), event.responseStatus);
         ok = run(upsert);
     }
+
+    return ok;
+}
+
+bool GoogleCache::storeEvents(const Account &account, const QString &calendarId,
+                              const QList<GoogleEvent> &events)
+{
+    if (!m_open)
+        return fail(QObject::tr("the cache is not open"));
+    QSqlDatabase db = QSqlDatabase::database(m_connection);
+    if (!db.transaction())
+        return fail(db.lastError().text());
+    const bool ok = writeEvents(accountKey(account), calendarId, events);
+    if (!ok || !db.commit()) {
+        db.rollback();
+        return ok ? fail(db.lastError().text()) : false;
+    }
+    return true;
+}
+
+bool GoogleCache::applyChanges(const Account &account, const QString &calendarId,
+                               const GoogleEventChanges &changes, bool full)
+{
+    if (!m_open)
+        return fail(QObject::tr("the cache is not open"));
+    QSqlDatabase db = QSqlDatabase::database(m_connection);
+    if (!db.transaction())
+        return fail(db.lastError().text());
+
+    const QString key = accountKey(account);
+    const auto run = [this](QSqlQuery &query) {
+        return query.exec() || fail(query.lastError().text());
+    };
+
+    bool ok = true;
+    if (full) {
+        QSqlQuery clear(db);
+        clear.prepare(QStringLiteral("DELETE FROM events WHERE account = ? AND calendar_id = ?"));
+        clear.addBindValue(key);
+        clear.addBindValue(calendarId);
+        ok = run(clear);
+    }
+
+    ok = ok && writeEvents(key, calendarId, changes.events);
 
     if (ok) {
         QSqlQuery token(db);

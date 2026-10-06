@@ -68,6 +68,33 @@ void EventModel::setDayCount(int days)
     reloadRange();
 }
 
+void EventModel::setTimeZone(const QTimeZone &zone)
+{
+    if (m_tz == zone || !zone.isValid())
+        return;
+    m_tz = zone;
+    Q_EMIT timeZoneChanged();
+    reloadRange();
+}
+
+void EventModel::setHiddenCalendars(const QStringList &ids)
+{
+    if (m_hiddenCalendars == ids)
+        return;
+    m_hiddenCalendars = ids;
+    Q_EMIT filterChanged();
+    reload();
+}
+
+void EventModel::setShowDeclined(bool show)
+{
+    if (m_showDeclined == show)
+        return;
+    m_showDeclined = show;
+    Q_EMIT filterChanged();
+    reload();
+}
+
 void EventModel::reload()
 {
     load(false);
@@ -109,6 +136,9 @@ void EventModel::apply(SourceSnapshot snapshot)
 {
     QList<Event> &events = snapshot.events;
     QVariantList calendars;
+    events.removeIf([this](const Event &e) {
+        return m_hiddenCalendars.contains(e.calendarId) || (e.declined && !m_showDeclined);
+    });
     assignLanes(events);
     // Calendars first: rows name their calendar, and views read rows as soon as
     // the reset ends.

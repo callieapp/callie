@@ -24,12 +24,15 @@ public:
     void refresh() override { Q_EMIT changed(); }
 
     QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
-                               const QTimeZone &) const override
+                               const QTimeZone &tz) const override
     {
         QList<Event> out;
-        for (const Event &e : m_events) {
-            if (e.end > from && e.start < to)
+        for (Event e : m_events) {
+            if (e.end > from && e.start < to) {
+                e.start = e.start.toTimeZone(tz);
+                e.end = e.end.toTimeZone(tz);
                 out.append(e);
+            }
         }
         return out;
     }
@@ -123,6 +126,8 @@ private Q_SLOTS:
     void callServiceTrustsOnlyTheHost();
     void slowLoadKeepsRowsForTheSameRange();
     void overtakenLoadIsDropped();
+    void hiddenCalendarsAndDeclinedAreLeftOut();
+    void timeZoneMovesEvents();
 
 private:
     /// Builds a model over `events` starting at kMonday. Rows keep source order.
@@ -466,6 +471,43 @@ void TestEventModel::overtakenLoadIsDropped()
     QTest::qWait(50);
     QCOMPARE(model.rowCount(), 1);
     QCOMPARE(model.data(model.index(0, 0), EventModel::SummaryRole).toString(), u"b");
+}
+
+void TestEventModel::hiddenCalendarsAndDeclinedAreLeftOut()
+{
+    Event work = timed("work", kMonday, 9, 0, 60);
+    work.calendarId = QStringLiteral("work");
+    Event home = timed("home", kMonday, 11, 0, 60);
+    home.calendarId = QStringLiteral("home");
+    Event skipped = timed("skipped", kMonday, 13, 0, 60);
+    skipped.calendarId = QStringLiteral("home");
+    skipped.declined = true;
+    auto [model, source] = modelFor({work, home, skipped});
+    QCOMPARE(model->rowCount(), 3);
+
+    model->setShowDeclined(false);
+    QCOMPARE(model->rowCount(), 2);
+    model->setHiddenCalendars({QStringLiteral("work")});
+    QCOMPARE(model->rowCount(), 1);
+    QCOMPARE(model->data(model->index(0, 0), EventModel::UidRole).toString(), u"home");
+    model->setShowDeclined(true);
+    model->setHiddenCalendars({});
+    QCOMPARE(model->rowCount(), 3);
+}
+
+void TestEventModel::timeZoneMovesEvents()
+{
+    // 23:30 UTC on Monday is already Tuesday in Tokyo.
+    Event late;
+    late.uid = QStringLiteral("late");
+    late.start = QDateTime(kMonday, QTime(23, 30), QTimeZone::UTC);
+    late.end = late.start.addSecs(1800);
+    auto [model, source] = modelFor({late});
+    model->setTimeZone(QTimeZone::UTC);
+    QCOMPARE(model->data(model->index(0, 0), EventModel::DayIndexRole).toInt(), 0);
+
+    model->setTimeZone(QTimeZone("Asia/Tokyo"));
+    QCOMPARE(model->data(model->index(0, 0), EventModel::DayIndexRole).toInt(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

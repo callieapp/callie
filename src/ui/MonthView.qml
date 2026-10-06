@@ -178,6 +178,7 @@ Item {
 
     EventDetails {
         id: details
+        source: root.model.source
     }
 
     /// One event in a day cell: all-day events as stickers, timed ones as a dot,

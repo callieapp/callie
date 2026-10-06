@@ -326,15 +326,21 @@ QVariantList EventModel::eventsOn(int dayIndex, int revision) const
             return x.allDay;
         return x.start < y.start;
     });
-    const QHash<int, QByteArray> names = roleNames();
     QVariantList list;
-    for (int row : std::as_const(rows)) {
-        QVariantMap event;
-        for (auto it = names.cbegin(); it != names.cend(); ++it)
-            event.insert(QString::fromLatin1(it.value()), data(index(row), it.key()));
-        list.append(event);
-    }
+    for (int row : std::as_const(rows))
+        list.append(eventAt(row));
     return list;
+}
+
+QVariantMap EventModel::eventAt(int row) const
+{
+    QVariantMap event;
+    if (row < 0 || row >= m_events.size())
+        return event;
+    const QHash<int, QByteArray> names = roleNames();
+    for (auto it = names.cbegin(); it != names.cend(); ++it)
+        event.insert(QString::fromLatin1(it.value()), data(index(row), it.key()));
+    return event;
 }
 
 QString EventModel::timing(const QDateTime &start, const QDateTime &end, const QDateTime &now) const
@@ -382,6 +388,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case AttendeesRole: return e.attendees;
     case CanEditRole: return e.canEdit;
     case CanRespondRole: return e.canRespond;
+    case RecurrenceIdRole: return e.recurrenceId;
     case CalendarColorRole: return e.color;
     case AllDayRole: return e.allDay;
     case StartRole: return e.start;
@@ -419,6 +426,7 @@ QHash<int, QByteArray> EventModel::roleNames() const
         {AttendeesRole, "attendees"},
         {CanEditRole, "canEdit"},
         {CanRespondRole, "canRespond"},
+        {RecurrenceIdRole, "recurrenceId"},
         {CalendarColorRole, "calendarColor"},
         {AllDayRole, "allDay"},
         {DayIndexRole, "dayIndex"},

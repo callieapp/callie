@@ -14,6 +14,8 @@ qt_add_qml_module(callieui
         Clock.cpp
         Composer.h
         Composer.cpp
+        EventActions.h
+        EventActions.cpp
         EventModelForeign.h
         LiveQml.h
         LiveQml.cpp

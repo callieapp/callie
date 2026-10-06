@@ -56,6 +56,7 @@ public:
         AttendeesRole,
         CanEditRole,
         CanRespondRole,
+        RecurrenceIdRole,
         CalendarColorRole,
         AllDayRole,
         DayIndexRole,
@@ -118,6 +119,9 @@ public:
     /// `model.eventsOn(day, model.revision)`: QML cannot see what a C++ call
     /// reads, so passing the revision is what makes the binding update.
     Q_INVOKABLE QVariantList eventsOn(int dayIndex, int revision = 0) const;
+
+    /// One row as the same kind of map eventsOn() returns.
+    Q_INVOKABLE QVariantMap eventAt(int row) const;
 
     [[nodiscard]] QVariantList calendars() const { return m_calendars; }
 

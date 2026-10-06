@@ -320,8 +320,12 @@ Item {
                 id: drawer
 
                 property int column: -1
+                /// The slot first pressed, which the drawn range always keeps.
+                property int pressedMinute: 0
                 property int fromMinutes: 0
                 property int toMinutes: 0
+                /// Only a real drag draws; a plain click does nothing.
+                property bool dragged: false
                 readonly property int firstMinute: Math.min(fromMinutes, toMinutes)
                 readonly property int lastMinute: Math.max(fromMinutes, toMinutes)
 
@@ -346,24 +350,39 @@ Item {
                 cursorShape: Qt.CrossCursor
 
                 onPressed: mouse => {
-                    column = columnAt(mouse.x + x)
-                    // A press starts the slot it lands in.
-                    fromMinutes = Math.floor(mouse.y / Theme.hourHeight * 60 / Theme.snapMinutes)
+                    dragged = false
+                    pressedMinute = Math.floor(mouse.y / Theme.hourHeight * 60 / Theme.snapMinutes)
                             * Theme.snapMinutes
-                    toMinutes = fromMinutes + Theme.snapMinutes
+                    fromMinutes = pressedMinute
+                    toMinutes = pressedMinute + Theme.snapMinutes
+                    column = -1
+                    pressColumn = columnAt(mouse.x + x)
+                    pressY = mouse.y
                 }
                 onPositionChanged: mouse => {
+                    if (!dragged && Math.abs(mouse.y - pressY) < Theme.hourHeight / 8)
+                        return
+                    dragged = true
+                    column = pressColumn
                     const at = minutesAt(mouse.y)
-                    toMinutes = at > fromMinutes ? Math.max(at, fromMinutes + Theme.snapMinutes) :
-                                                   at
-
+                    // Downward from the pressed slot, or upward to include it.
+                    if (at > pressedMinute) {
+                        fromMinutes = pressedMinute
+                        toMinutes = Math.max(at, pressedMinute + Theme.snapMinutes)
+                    } else {
+                        fromMinutes = at
+                        toMinutes = pressedMinute + Theme.snapMinutes
+                    }
                 }
                 onReleased: {
-                    if (lastMinute - firstMinute >= Theme.snapMinutes && column >= 0)
+                    if (dragged && column >= 0)
                         root.rangeDrawn(root.dateForColumn(column), firstMinute, lastMinute, draft)
                     else
                         column = -1
                 }
+
+                property int pressColumn: -1
+                property real pressY: 0
             }
 
             // The new event being drawn, until its composer closes.

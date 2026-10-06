@@ -57,6 +57,7 @@ private Q_SLOTS:
     void deletedSeriesTakesExceptions();
     void rangeReadSkipsDistantEvents();
     void rangeReadKeepsEdgeCases();
+    void permissionsSurviveTheCache();
     void syncTokenIsStoredWithChanges();
     void unknownCalendarIsRejected();
     void removedCalendarLosesEvents();
@@ -253,6 +254,17 @@ void TestGoogleCache::rangeReadKeepsEdgeCases()
     QCOMPARE(ids(m_cache->events(kAccount, kCalendar, from, from.addDays(7))),
              (QStringList{u"allday-no-end"_s, u"instant"_s, u"no-end"_s, u"shift"_s,
                           u"shift-cancelled"_s, u"trip"_s, u"trip-cancelled"_s}));
+}
+
+void TestGoogleCache::permissionsSurviveTheCache()
+{
+    apply({parsed(R"({"id":"mine","organizer":{"self":true},"guestsCanModify":true,
+                    "start":{"dateTime":"2026-10-06T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T11:00:00Z"}})")},
+          true);
+    const GoogleEvent stored = m_cache->events(kAccount, kCalendar).first();
+    QVERIFY(stored.organizerSelf);
+    QVERIFY(stored.guestsCanModify);
 }
 
 void TestGoogleCache::syncTokenIsStoredWithChanges()

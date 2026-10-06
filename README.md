@@ -31,12 +31,12 @@ Until then, build it from source as described under [Development](#development).
 
 ### The desktop app
 
-`callie-gui` opens the week view with the calendars you show in Google Calendar. It syncs when it
-starts and every five minutes, and shows what it has cached while offline. The title bar says when it
-last synced, or that a sync failed, with the reason on hover. `--sample` shows a
-made-up week instead, and `--screenshot file.png` saves the window once it has rendered, then exits.
-`--now 2026-03-18T10:40` stops the clock at that time and `--size 1280x840` sets the window size, so
-a screenshot comes out the same every time.
+`callie-gui` opens the view you used last (day, week, month or agenda; the week at first) with the
+calendars you show in Google Calendar. It syncs when it starts and every five minutes, and shows
+what it has cached while offline. The title bar says when it last synced, or that a sync failed,
+with the reason on hover. `--sample` shows a made-up week instead, and `--screenshot file.png`
+saves the window once it has rendered, then exits. `--now 2026-03-18T10:40` stops the clock at that
+time and `--size 1280x840` sets the window size, so a screenshot comes out the same every time.
 
 Pick a theme in Settings, under Appearance. Customize colors copies the theme into
 `$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
@@ -155,7 +155,7 @@ Nothing here is released yet. Roughly in the order it needs to happen:
 
 ### The app
 
-- [ ] Day, month and agenda views (only week exists)
+- [x] Day, month and agenda views
 - [ ] Write path for drag-to-move, so edits actually persist
 - [ ] Natural language quick add
 - [ ] Desktop notifications, with one click to join a video call

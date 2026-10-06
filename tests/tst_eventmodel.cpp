@@ -124,6 +124,9 @@ private Q_SLOTS:
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
     void eventsOnListsADay();
+    void eventsOnRespectsMidnight();
+    void eventsOnSurvivesADstGap();
+    void revisionMarksEachReset();
     void timingFollowsZoneAndClock();
     void callServiceTrustsOnlyTheHost();
     void slowLoadKeepsRowsForTheSameRange();
@@ -562,6 +565,65 @@ void TestEventModel::eventsOnListsADay()
     const QVariantMap first = model->eventsOn(0).first().toMap();
     QVERIFY(first.value(QStringLiteral("allDay")).toBool());
     QVERIFY(first.contains(QStringLiteral("calendarColor")));
+}
+
+void TestEventModel::eventsOnRespectsMidnight()
+{
+    // Ends exactly at midnight: Monday only. Starts at midnight with no
+    // length: Tuesday only.
+    Event untilMidnight = timed("evening", kMonday, 22, 0, 120);
+    Event instant = timed("instant", kMonday.addDays(1), 0, 0, 0);
+    auto [model, source] = modelFor({untilMidnight, instant});
+
+    const auto count = [&](int day, const char *summary) {
+        int found = 0;
+        for (const QVariant &event : model->eventsOn(day))
+            found += event.toMap().value(QStringLiteral("summary")).toString() == summary;
+        return found;
+    };
+    QCOMPARE(count(0, "evening"), 1);
+    QCOMPARE(count(1, "evening"), 0);
+    QCOMPARE(count(0, "instant"), 0);
+    QCOMPARE(count(1, "instant"), 1);
+}
+
+void TestEventModel::eventsOnSurvivesADstGap()
+{
+    // Berlin skips 02:00 to 03:00 on 29 March 2026, a 23-hour Sunday.
+    const QTimeZone berlin("Europe/Berlin");
+    const QDate saturday(2026, 3, 28);
+    Event early;
+    early.uid = QStringLiteral("early");
+    early.summary = QStringLiteral("early");
+    early.start = QDateTime(saturday.addDays(1), QTime(1, 30), berlin);
+    early.end = QDateTime(saturday.addDays(1), QTime(3, 30), berlin);
+    Event monday = timed("monday", saturday.addDays(2), 0, 30, 30);
+    monday.start = QDateTime(saturday.addDays(2), QTime(0, 30), berlin);
+    monday.end = monday.start.addSecs(1800);
+
+    FakeSource source({early, monday});
+    EventModel model;
+    model.setTimeZone(berlin);
+    model.setRangeStart(saturday);
+    model.setDayCount(3);
+    model.setSource(&source);
+
+    QCOMPARE(model.eventsOn(1).size(), 1);
+    QCOMPARE(model.eventsOn(1).first().toMap().value(QStringLiteral("summary")).toString(),
+             QStringLiteral("early"));
+    QCOMPARE(model.eventsOn(2).size(), 1);
+}
+
+void TestEventModel::revisionMarksEachReset()
+{
+    auto [model, source] = modelFor({timed("a", kMonday, 9, 0, 60)});
+    QSignalSpy revision(model.get(), &EventModel::revisionChanged);
+    const int before = model->revision();
+
+    model->setRangeStart(kMonday.addDays(7));
+
+    QVERIFY(model->revision() > before);
+    QCOMPARE(revision.size(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

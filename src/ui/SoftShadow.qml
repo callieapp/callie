@@ -9,7 +9,8 @@ Item {
     id: root
 
     property real radius: Theme.radiusLg
-    readonly property int layers: 6
+    // Enough layers that their steps do not show as bands over light content.
+    readonly property int layers: 14
 
     z: -1
 
@@ -25,8 +26,9 @@ Item {
             width: root.width + Theme.shadowBlur * step
             height: root.height + Theme.shadowBlur * step
             radius: root.radius + Theme.shadowBlur * step / 2
-            // Inner layers darkest, so the edge fades out.
-            color: Theme.tint(Theme.shadowColor, Theme.shadowColor.a * (1 - step) / 3)
+            // Inner layers darkest, easing out so the edge has no visible rim.
+            color: Theme.tint(Theme.shadowColor, Theme.shadowColor.a * (1 - step) * (1 - step) * 3
+                              / root.layers)
         }
     }
 }

@@ -103,6 +103,8 @@ add_library(calliecore STATIC
     ThemeLibrary.cpp
     callie/ViewRange.h
     ViewRange.cpp
+    callie/QuickAdd.h
+    QuickAdd.cpp
 )
 
 # Built-in themes are compiled in, so the app works uninstalled and a broken

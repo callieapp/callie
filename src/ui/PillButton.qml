@@ -55,7 +55,7 @@ AbstractButton {
         verticalAlignment: Text.AlignVCenter
         color: root.selected ? Theme.accentText : Theme.textMuted
         font.family: Theme.fontFamily
-        font.pixelSize: Theme.textMd + 0.5
+        font.pixelSize: Theme.textMd
         font.weight: root.selected ? Font.ExtraBold : Font.Bold
     }
 }

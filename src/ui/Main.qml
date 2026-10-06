@@ -109,16 +109,29 @@ ApplicationWindow {
                 Accessible.ignored: true
             }
 
-            // As wide as the longest month, so the arrows stay put while paging.
+            // As wide as the longest month name in the user's language, so the
+            // arrows stay put while paging.
             Item {
                 anchors.verticalCenter: parent.verticalCenter
-                width: widestMonth.advanceWidth + yearWidth.advanceWidth + 7
+                width: monthNames.implicitWidth + Theme.space3 + yearWidth.advanceWidth
                 height: month.implicitHeight
 
-                TextMetrics {
-                    id: widestMonth
-                    font: month.font
-                    text: "September"
+                Column {
+                    id: monthNames
+                    visible: false
+
+                    // Both forms, since some languages inflect a month inside a date.
+                    Repeater {
+                        model: 24
+
+                        Text {
+                            required property int index
+                            text: index < 12 ? Qt.locale().standaloneMonthName(index,
+                                                                               Locale.LongFormat) :
+                                               Qt.locale().monthName(index - 12, Locale.LongFormat)
+                            font: month.font
+                        }
+                    }
                 }
                 TextMetrics {
                     id: yearWidth
@@ -131,20 +144,20 @@ ApplicationWindow {
                     text: Qt.formatDate(window.weekStart, "MMMM")
                     color: Theme.text
                     font.family: Theme.displayFontFamily
-                    font.pixelSize: 22
+                    font.pixelSize: Theme.textDisplay
                     font.weight: Font.Bold
                 }
                 Text {
                     id: year
                     anchors {
                         left: month.right
-                        leftMargin: 7
+                        leftMargin: Theme.space3
                         baseline: month.baseline
                     }
                     text: Qt.formatDate(window.weekStart, "yyyy")
                     color: Theme.textMuted
                     font.family: Theme.displayFontFamily
-                    font.pixelSize: 22
+                    font.pixelSize: Theme.textDisplay
                     font.weight: Font.DemiBold
                 }
             }

@@ -161,6 +161,9 @@ Rectangle {
 
                         width: root.dayCellWidth
                         height: Theme.miniDaySize
+                        // A sliver between neighbours, so the shown week reads as days.
+                        leftInset: Theme.space1
+                        rightInset: Theme.space1
                         focusPolicy: Qt.TabFocus
                         Accessible.name: Qt.formatDate(date, Qt.locale().dateFormat(
                                                            Locale.LongFormat))
@@ -194,6 +197,8 @@ Rectangle {
                             // Neighbouring months' days stay visible and clickable, since
                             // today and the shown week can fall among them.
                             text: dayCell.day
+                            // Other months' days recede, even inside the shown week.
+                            opacity: dayCell.inMonth || dayCell.isToday ? 1 : Theme.fadedOpacity
                             color: dayCell.isToday ? Theme.accentText : dayCell.inWeek ? Theme.text :
                                                                                          dayCell.inMonth
                                                                                          ? Theme.textMuted :

@@ -21,6 +21,8 @@ qt_add_qml_module(callieui
         LiveQml.cpp
         SupportActions.h
         SupportActions.cpp
+        ReleaseInfo.h
+        ReleaseInfo.cpp
         ThemeController.h
         ThemeController.cpp
         ThemesController.h
@@ -44,6 +46,8 @@ qt_add_qml_module(callieui
         StickerButton.qml
         Glyph.qml
         Logo.qml
+        AboutDialog.qml
+        WhatsNewDialog.qml
         WindowControls.qml
         ResizeFrame.qml
         MenuEntry.qml

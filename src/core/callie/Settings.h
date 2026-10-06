@@ -29,6 +29,9 @@ class Settings : public QObject
     /// The calendar new events went into last, by CalendarInfo::id.
     Q_PROPERTY(QString newEventCalendar READ newEventCalendar WRITE setNewEventCalendar NOTIFY
                    newEventCalendarChanged)
+    /// The Callie version that last ran, so the next one can say what is new.
+    Q_PROPERTY(QString lastSeenVersion READ lastSeenVersion WRITE setLastSeenVersion NOTIFY
+                   lastSeenVersionChanged)
     /// The calendar view last shown: "day", "week", "month" or "agenda".
     Q_PROPERTY(QString view READ view WRITE setView NOTIFY viewChanged)
 
@@ -77,6 +80,9 @@ public:
     [[nodiscard]] QString newEventCalendar() const { return m_newEventCalendar; }
     void setNewEventCalendar(const QString &id);
 
+    [[nodiscard]] QString lastSeenVersion() const { return m_lastSeenVersion; }
+    void setLastSeenVersion(const QString &version);
+
     [[nodiscard]] QString view() const { return m_view; }
     void setView(const QString &view);
 
@@ -97,6 +103,7 @@ Q_SIGNALS:
     void themeChanged();
     void collapsedAccountsChanged();
     void viewChanged();
+    void lastSeenVersionChanged();
     void newEventCalendarChanged();
 
 private:
@@ -114,6 +121,7 @@ private:
     QString m_theme;
     QStringList m_collapsedAccounts;
     QString m_view;
+    QString m_lastSeenVersion;
     QString m_newEventCalendar;
 };
 

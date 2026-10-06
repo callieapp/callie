@@ -531,6 +531,15 @@ ApplicationWindow {
                                 text: qsTr("Report a bug...")
                                 onTriggered: Support.reportBug()
                             }
+                            MenuSeparator {}
+                            MenuEntry {
+                                text: qsTr("What's new")
+                                onTriggered: whatsNew.open()
+                            }
+                            MenuEntry {
+                                text: qsTr("About Callie")
+                                onTriggered: about.open()
+                            }
                         }
                     }
 
@@ -617,6 +626,25 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+    }
+
+    AboutDialog {
+        id: about
+        onWhatsNewRequested: whatsNew.open()
+    }
+
+    WhatsNewDialog {
+        id: whatsNew
+    }
+
+    // The first start of a new version says what changed, once.
+    Timer {
+        running: true
+        interval: 600
+        onTriggered: {
+            if (Release.takeUpdateNotice())
+                whatsNew.open()
         }
     }
 

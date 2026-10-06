@@ -103,6 +103,8 @@ add_library(calliecore STATIC
     Times.cpp
     callie/ThemeLibrary.h
     ThemeLibrary.cpp
+    callie/ReleaseNotes.h
+    ReleaseNotes.cpp
     callie/ViewRange.h
     ViewRange.cpp
     callie/QuickAdd.h
@@ -118,6 +120,7 @@ qt_add_resources(calliecore "callie_themes"
         "${PROJECT_SOURCE_DIR}/themes/callie.toml"
         "${PROJECT_SOURCE_DIR}/themes/callie-light.toml"
         "${PROJECT_SOURCE_DIR}/assets/logo.svg"
+        "${PROJECT_SOURCE_DIR}/CHANGELOG.md"
 )
 
 # Both are under the SIL Open Font License; the license files sit beside them.

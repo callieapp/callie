@@ -56,6 +56,8 @@ private Q_SLOTS:
     void refreshSyncsAndReportsErrorsPerAccount();
     void refreshWhileSyncingStartsNothingNew();
     void syncReportsOneChangePerBurst();
+    void createdEventShowsWithoutASync();
+    void createInUnknownCalendarFails();
     void statusStartsFromTheCache();
     void statusFollowsARefresh();
     void calendarErrorShowsAfterRestart();
@@ -275,6 +277,51 @@ void TestGoogleSource::syncReportsOneChangePerBurst()
     QCOMPARE(changed.size(), 1);
     QTest::qWait(400);
     QCOMPARE(changed.size(), 1);
+}
+
+void TestGoogleSource::createdEventShowsWithoutASync()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &request) {
+        if (request.method == "POST")
+            return FakeHttpServer::Response(
+                200, R"({"id":"made","status":"confirmed","summary":"Pottery",
+                         "start":{"dateTime":"2026-10-09T18:00:00Z"},
+                         "end":{"dateTime":"2026-10-09T20:00:00Z"}})");
+        return FakeHttpServer::Response(404, "{}");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    QSignalSpy changed(&source, &CalendarSource::changed);
+
+    EventDraft draft;
+    draft.summary = u"Pottery"_s;
+    draft.start = QDateTime(QDate(2026, 10, 9), QTime(18, 0), QTimeZone::UTC);
+    draft.end = draft.start.addSecs(7200);
+    draft.calendarId = source.calendars().first().id;
+    QString error = u"unset"_s;
+    source.createEvent(draft, [&error](const QString &e) { error = e; });
+
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(!changed.isEmpty(), 5000);
+    const QList<Event> events =
+        source.eventsBetween(draft.start.addDays(-1), draft.end.addDays(1), QTimeZone::UTC);
+    QVERIFY(std::any_of(events.cbegin(), events.cend(),
+                        [](const Event &e) { return e.summary == u"Pottery"; }));
+}
+
+void TestGoogleSource::createInUnknownCalendarFails()
+{
+    SyncHarness harness(*m_cache);
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    EventDraft draft;
+    draft.calendarId = u"google/nobody@example.com/x"_s;
+    QString error;
+    source.createEvent(draft, [&error](const QString &e) { error = e; });
+    QVERIFY(!error.isEmpty());
+    QVERIFY(harness.apiServer.requests.isEmpty());
 }
 
 void TestGoogleSource::statusStartsFromTheCache()

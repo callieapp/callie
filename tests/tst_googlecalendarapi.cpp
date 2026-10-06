@@ -1,6 +1,7 @@
 #include "FakeHttpServer.h"
 
 #include "callie/GoogleCalendarApi.h"
+#include "callie/QuickAdd.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -25,6 +26,8 @@ class TestGoogleCalendarApi : public QObject
 
 private Q_SLOTS:
     void ownResponseIsKept();
+    void draftBecomesRequestBody();
+    void insertPostsAndReturnsTheEvent();
     void init();
 
     void primaryCalendarIdSendsBearerToken();
@@ -278,6 +281,59 @@ void TestGoogleCalendarApi::ownResponseIsKept()
     QCOMPARE(event.responseStatus, QStringLiteral("declined"));
 
     QVERIFY(parseGoogleEvent(json(R"({"id":"e6"})")).responseStatus.isEmpty());
+}
+
+void TestGoogleCalendarApi::draftBecomesRequestBody()
+{
+    const QTimeZone berlin("Europe/Berlin");
+    EventDraft timed;
+    timed.summary = QStringLiteral("Lunch");
+    timed.location = QStringLiteral("Cafe Sol");
+    timed.start = QDateTime(QDate(2026, 10, 8), QTime(12, 0), berlin);
+    timed.end = timed.start.addSecs(3600);
+    const QJsonObject json = googleEventJson(timed);
+    QCOMPARE(json[u"summary"].toString(), QStringLiteral("Lunch"));
+    QCOMPARE(json[u"location"].toString(), QStringLiteral("Cafe Sol"));
+    QCOMPARE(json[u"start"][u"dateTime"].toString(), QStringLiteral("2026-10-08T12:00:00+02:00"));
+    QCOMPARE(json[u"start"][u"timeZone"].toString(), QStringLiteral("Europe/Berlin"));
+    QCOMPARE(json[u"end"][u"dateTime"].toString(), QStringLiteral("2026-10-08T13:00:00+02:00"));
+
+    EventDraft allDay;
+    allDay.summary = QStringLiteral("Holiday");
+    allDay.allDay = true;
+    allDay.start = QDateTime(QDate(2026, 10, 20), QTime(0, 0), berlin);
+    allDay.end = allDay.start.addDays(1);
+    const QJsonObject day = googleEventJson(allDay);
+    QCOMPARE(day[u"start"][u"date"].toString(), QStringLiteral("2026-10-20"));
+    QCOMPARE(day[u"end"][u"date"].toString(), QStringLiteral("2026-10-21"));
+    QVERIFY(!day.contains(u"location"));
+}
+
+void TestGoogleCalendarApi::insertPostsAndReturnsTheEvent()
+{
+    m_server->respond(200, R"({"id":"new1","status":"confirmed","summary":"Lunch",
+        "start":{"dateTime":"2026-10-08T12:00:00+02:00"},
+        "end":{"dateTime":"2026-10-08T13:00:00+02:00"}})");
+
+    GoogleEvent created;
+    GoogleApiError error;
+    bool done = false;
+    m_api->insertEvent(QStringLiteral("at-1"), QStringLiteral("team@group.calendar.google.com"),
+                       QJsonObject{{QStringLiteral("summary"), QStringLiteral("Lunch")}},
+                       [&](const GoogleEvent &event, const GoogleApiError &e) {
+                           created = event;
+                           error = e;
+                           done = true;
+                       });
+    QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
+
+    QVERIFY(!error);
+    QCOMPARE(created.id, QStringLiteral("new1"));
+    const FakeHttpServer::Request &request = m_server->requests.last();
+    QCOMPARE(request.method, QByteArray("POST"));
+    QVERIFY(request.target.contains("calendars/team%40group.calendar.google.com/events"));
+    QCOMPARE(request.headers.value("authorization"), QByteArray("Bearer at-1"));
+    QVERIFY(request.body.contains("\"summary\":\"Lunch\""));
 }
 
 QTEST_GUILESS_MAIN(TestGoogleCalendarApi)

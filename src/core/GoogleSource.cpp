@@ -139,6 +139,23 @@ QFuture<SourceSnapshot> GoogleSource::load(const QDateTime &from, const QDateTim
     return future;
 }
 
+void GoogleSource::createEvent(const EventDraft &draft, Created done)
+{
+    if (!m_sync) {
+        done(tr("Callie is not connected to Google right now."));
+        return;
+    }
+    for (const Account &account : std::as_const(m_accounts)) {
+        const QString prefix = calendarKey(account, {});
+        if (draft.calendarId.startsWith(prefix)) {
+            m_sync->createEvent(account, draft.calendarId.mid(prefix.size()), draft,
+                                std::move(done));
+            return;
+        }
+    }
+    done(tr("That calendar is not in any connected account."));
+}
+
 void GoogleSource::flushChanges()
 {
     if (!m_changes.isActive())

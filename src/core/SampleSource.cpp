@@ -2,6 +2,8 @@
 
 #include <QUuid>
 
+#include <algorithm>
+
 namespace callie {
 
 namespace {
@@ -84,7 +86,37 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                 out.append(e);
         }
     }
+    for (Event e : m_created) {
+        if (e.end > from && e.start < to) {
+            e.start = e.start.toTimeZone(tz);
+            e.end = e.end.toTimeZone(tz);
+            out.append(e);
+        }
+    }
     return out;
+}
+
+void SampleSource::createEvent(const EventDraft &draft, Created done)
+{
+    const auto calendar =
+        std::find_if(m_calendars.cbegin(), m_calendars.cend(),
+                     [&draft](const CalendarInfo &c) { return c.id == draft.calendarId; });
+    if (calendar == m_calendars.cend()) {
+        done(tr("No such calendar."));
+        return;
+    }
+    Event e;
+    e.uid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    e.calendarId = calendar->id;
+    e.color = calendar->color;
+    e.summary = draft.summary;
+    e.location = draft.location;
+    e.start = draft.start;
+    e.end = draft.end;
+    e.allDay = draft.allDay;
+    m_created.append(e);
+    done({});
+    Q_EMIT changed();
 }
 
 } // namespace callie

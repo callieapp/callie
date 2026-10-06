@@ -18,8 +18,11 @@ public:
     [[nodiscard]] QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                              const QTimeZone &tz) const override;
     void refresh() override { Q_EMIT changed(); }
+    /// Keeps new events for as long as the app runs.
+    void createEvent(const EventDraft &draft, Created done) override;
 
 private:
+    QList<Event> m_created;
     QList<CalendarInfo> m_calendars;
 };
 

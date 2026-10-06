@@ -114,6 +114,10 @@ Popup {
                     Accessible.name: qsTr("Close")
                     onClicked: root.close()
 
+                    HoverHandler {
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
                     background: Rectangle {
                         radius: Theme.radiusSm
                         color: closeButton.hovered ? Theme.tint(root.ink, 0.12) : "transparent"

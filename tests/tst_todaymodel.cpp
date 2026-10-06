@@ -107,6 +107,7 @@ private Q_SLOTS:
     void slowReadLandsLater();
     void startedEventLeavesWhileReading();
     void overtakenReadIsDropped();
+    void todayFollowsTheZone();
 };
 
 void TestTodayModel::greetingFollowsTheHour()
@@ -156,6 +157,12 @@ void TestTodayModel::laterNamesTheTime()
 
     QCOMPARE(model.nextLabel(), u"Up next at 16:00"_s);
     QCOMPARE(model.nextDetail(), u"16:00 to 17:00, Clinic"_s);
+
+    QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
+    model.setUse24Hour(false);
+    QCOMPARE(model.nextLabel(), u"Up next at 4:00 PM"_s);
+    QCOMPARE(model.nextDetail(), u"4:00 PM to 5:00 PM, Clinic"_s);
+    QLocale::setDefault(QLocale::c());
 }
 
 void TestTodayModel::detailFallsBackToTheCalendar()
@@ -250,6 +257,17 @@ void TestTodayModel::overtakenReadIsDropped()
     source.answer(0);
     QTest::qWait(50);
     QCOMPARE(model.nextTitle(), u"Lunch"_s);
+}
+
+void TestTodayModel::todayFollowsTheZone()
+{
+    // 22:00 UTC on the 18th is already the 19th in Tokyo.
+    TodayModel model;
+    model.setNow(QDateTime(kDay, QTime(22, 0), QTimeZone::UTC));
+    model.setTimeZone(QTimeZone("Asia/Tokyo"));
+
+    QCOMPARE(model.now().date(), kDay.addDays(1));
+    QCOMPARE(model.greeting(), u"Good morning"_s);
 }
 
 QTEST_GUILESS_MAIN(TestTodayModel)

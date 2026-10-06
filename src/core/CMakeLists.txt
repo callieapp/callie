@@ -95,6 +95,8 @@ add_library(calliecore STATIC
     Settings.cpp
     callie/SignInPage.h
     SignInPage.cpp
+    callie/TimeFormat.h
+    TimeFormat.cpp
 )
 
 # Built-in themes are compiled in, so the app works uninstalled and a broken

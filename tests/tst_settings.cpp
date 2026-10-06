@@ -107,7 +107,13 @@ void TestSettings::timesFollowTheChosenFormat()
 
     settings.setTimeFormat(Settings::TimeFormat::TwentyFourHour);
     QCOMPARE(settings.formatTime(time), u"14:30"_s);
-    QCOMPARE(settings.formatHour(9), u"09:00"_s);
+    QCOMPARE(settings.formatHour(9), u"9:00"_s);
+
+    // The chosen zone moves both the time and the date.
+    settings.setTimeZoneId(u"Asia/Tokyo"_s);
+    QCOMPARE(settings.formatTime(time), u"23:30"_s);
+    QCOMPARE(settings.minutesIntoDay(time), 23 * 60 + 30);
+    QCOMPARE(settings.dateIn(time.addSecs(3600)), QDate(2026, 10, 7));
 
     QLocale::setDefault(QLocale(QLocale::German, QLocale::Germany));
     settings.setTimeFormat(Settings::TimeFormat::Locale);

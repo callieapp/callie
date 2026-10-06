@@ -27,6 +27,8 @@ class EventModel : public QAbstractListModel
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars WRITE setHiddenCalendars NOTIFY
                    filterChanged)
     Q_PROPERTY(bool showDeclined READ showDeclined WRITE setShowDeclined NOTIFY filterChanged)
+    /// How timing() writes clock times.
+    Q_PROPERTY(bool use24Hour MEMBER m_use24Hour NOTIFY use24HourChanged)
     /// Rows the all-day strip needs so that no two all-day events overlap.
     Q_PROPERTY(int allDayRows READ allDayRows NOTIFY allDayRowsChanged)
     /// The source's shown calendars as {name, color} maps, for the sidebar.
@@ -100,6 +102,7 @@ Q_SIGNALS:
     void rangeChanged();
     void timeZoneChanged();
     void filterChanged();
+    void use24HourChanged();
     void allDayRowsChanged();
     void calendarsChanged();
 
@@ -123,6 +126,7 @@ private:
     QTimeZone m_tz = QTimeZone::systemTimeZone();
     QStringList m_hiddenCalendars;
     bool m_showDeclined = true;
+    bool m_use24Hour = true;
     QList<Event> m_events;
     /// Counts reloads, so a slow load that a newer one overtook is dropped.
     quint64 m_generation = 0;

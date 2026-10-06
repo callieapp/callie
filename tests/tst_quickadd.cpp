@@ -40,6 +40,7 @@ private Q_SLOTS:
     void numbersInTheTitleStay();
     void tonightIsEvening();
     void versionNumbersStayInTheTitle();
+    void guessesAreMarked();
     void impossibleDatesStayInTheTitle();
 };
 
@@ -228,6 +229,16 @@ void TestQuickAdd::versionNumbersStayInTheTitle()
 
     // Nor is a time that cannot exist, even written with a dot.
     QCOMPARE(parse(u"Party at 9.99pm"_s).summary, u"Party at 9.99pm"_s);
+}
+
+void TestQuickAdd::guessesAreMarked()
+{
+    QVERIFY(parse(u"Think"_s).timeGuessed);
+    const EventDraft lengthOnly = parse(u"Think for 30 min"_s);
+    QVERIFY(lengthOnly.timeGuessed);
+    QCOMPARE(lengthOnly.lengthMinutes, 30);
+    QVERIFY(!parse(u"Think at 3pm"_s).timeGuessed);
+    QVERIFY(!parse(u"Think friday"_s).timeGuessed);
 }
 
 QTEST_GUILESS_MAIN(TestQuickAdd)

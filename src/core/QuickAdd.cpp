@@ -271,6 +271,7 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
     static const QRegularExpression dangling = pattern(uR"(\s+(on|at|from|for|in)$)"_s);
     draft.summary.remove(dangling);
     draft.location = location;
+    draft.lengthMinutes = minutes;
 
     if (start.isValid()) {
         QString assumed = start.meridiem;
@@ -304,6 +305,7 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
         draft.end = QDateTime(date.addDays(1), QTime(0, 0), zone);
     } else {
         // No time given: the next whole hour, or 9:00 on another day.
+        draft.timeGuessed = !date.isValid();
         QDateTime begin = date.isValid() && date != today
                               ? QDateTime(date, QTime(9, 0), zone)
                               : QDateTime(today, QTime(local.time().hour(), 0), zone).addSecs(3600);

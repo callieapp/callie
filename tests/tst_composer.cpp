@@ -22,6 +22,7 @@ private Q_SLOTS:
     void submitCreatesInTheChosenCalendar();
     void untitledIsNotReady();
     void hiddenCalendarsAreNotOffered();
+    void pickedTimesFillTheGaps();
 
 private:
     QTemporaryDir m_dir;
@@ -110,6 +111,28 @@ void TestComposer::hiddenCalendarsAreNotOffered()
     QCOMPARE(composer.calendars().size(), source.calendars().size() - 1);
     QVERIFY(composer.calendarId() != work);
     m_settings->setCalendarVisible(work, true);
+}
+
+void TestComposer::pickedTimesFillTheGaps()
+{
+    Composer composer;
+    const QTimeZone berlin("Europe/Berlin");
+    const QDateTime start(QDate(2026, 10, 9), QTime(15, 0), berlin);
+    composer.pickTimes(start, start.addSecs(5400));
+
+    composer.setText(u"Pottery"_s);
+    QCOMPARE(composer.start(), start);
+    QCOMPARE(composer.end(), start.addSecs(5400));
+
+    // A length keeps the picked start; a named time replaces both.
+    composer.setText(u"Pottery for 30 min"_s);
+    QCOMPARE(composer.end(), start.addSecs(1800));
+    composer.setText(u"Pottery saturday 10am"_s);
+    QCOMPARE(composer.start(), QDateTime(QDate(2026, 10, 10), QTime(10, 0), berlin));
+
+    composer.reset();
+    composer.setText(u"Pottery"_s);
+    QVERIFY(composer.start() != start);
 }
 
 QTEST_GUILESS_MAIN(TestComposer)

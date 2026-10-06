@@ -15,8 +15,34 @@ Popup {
     padding: Theme.space5
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    /// A time drawn on the grid, handed to the composer when the popup opens.
+    property var pickedStart: null
+    property var pickedEnd: null
+    /// Opened for a drawn time, so only a title is needed.
+    property bool fromGrid: false
+
+    /// Opens beside `item` with the drawn time filled in.
+    function openFor(start, end, item) {
+        pickedStart = start
+        pickedEnd = end
+        // Beside the drawn block, on whichever side the window has room for.
+        const window = Overlay.overlay
+        const right = item.mapToItem(window, item.width + Theme.space3, 0)
+        const left = item.mapToItem(window, -Theme.space3 - width, 0)
+        const spot = right.x + width <= window.width ? right : left
+        const local = window.mapToItem(parent, Math.max(0, spot.x), spot.y)
+        x = local.x
+        y = local.y
+        open()
+    }
+
     onOpened: {
         composer.reset()
+        fromGrid = pickedStart !== null
+        if (fromGrid)
+            composer.pickTimes(pickedStart, pickedEnd)
+        pickedStart = null
+        pickedEnd = null
         field.text = ""
         field.forceActiveFocus()
     }
@@ -69,7 +95,9 @@ Popup {
         TextField {
             id: field
             width: parent.width
-            placeholderText: qsTr("Lunch with Alex tomorrow 12-1pm at Cafe Sol")
+            placeholderText: root.fromGrid ? qsTr(
+                                                 "What is it? Add \"at\" and a place, if you like") :
+                                             qsTr("Lunch with Alex tomorrow 12-1pm at Cafe Sol")
             placeholderTextColor: Theme.textFaint
             color: Theme.text
             font.family: Theme.fontFamily

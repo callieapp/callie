@@ -21,6 +21,7 @@ struct Event
     Q_PROPERTY(QString location MEMBER location)
     Q_PROPERTY(QUrl conferenceUrl MEMBER conferenceUrl)
     Q_PROPERTY(QColor color MEMBER color)
+    Q_PROPERTY(bool declined MEMBER declined)
 
 public:
     QString uid;
@@ -34,6 +35,8 @@ public:
     QDateTime end;
     bool allDay = false;
     QColor color;
+    /// The user was invited and said no.
+    bool declined = false;
 
     /// Lane assignment for overlapping events, filled in by the view model.
     int lane = 0;

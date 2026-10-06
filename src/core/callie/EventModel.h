@@ -32,6 +32,7 @@ public:
         SummaryRole,
         LocationRole,
         ConferenceUrlRole,
+        DeclinedRole,
         CalendarColorRole,
         AllDayRole,
         DayIndexRole,

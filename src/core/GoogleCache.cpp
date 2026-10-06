@@ -20,7 +20,7 @@ namespace callie {
 namespace {
 
 // Bump when the tables change. Older caches are dropped and fully re-synced.
-constexpr int kSchemaVersion = 2;
+constexpr int kSchemaVersion = 3;
 
 const char *const kSchema[] = {
     R"(CREATE TABLE calendars (
@@ -46,6 +46,7 @@ const char *const kSchema[] = {
         recurring_event_id TEXT,
         original_date TEXT, original_time TEXT, original_zone TEXT,
         updated TEXT,
+        response_status TEXT,
         PRIMARY KEY (account, calendar_id, id)))",
     "CREATE INDEX events_series ON events (account, calendar_id, recurring_event_id)",
 };
@@ -295,9 +296,11 @@ bool GoogleCache::applyChanges(const Account &account, const QString &calendarId
         "INSERT OR REPLACE INTO events (account, calendar_id, id, status, summary, description, "
         "location, conference_url, start_date, start_time, start_zone, end_date, end_time, "
         "end_zone, recurrence, recurring_event_id, original_date, original_time, original_zone, "
-        "updated) VALUES (:account, :calendar, :id, :status, :summary, :description, :location, "
+        "updated, response_status) VALUES (:account, :calendar, :id, :status, :summary, "
+        ":description, :location, "
         ":conference, :start_date, :start_time, :start_zone, :end_date, :end_time, :end_zone, "
-        ":recurrence, :series, :original_date, :original_time, :original_zone, :updated)"));
+        ":recurrence, :series, :original_date, :original_time, :original_zone, :updated, "
+        ":response)"));
     QSqlQuery remove(db);
     remove.prepare(QStringLiteral("DELETE FROM events WHERE account = :account AND "
                                   "calendar_id = :calendar AND (id = :id OR "
@@ -330,6 +333,7 @@ bool GoogleCache::applyChanges(const Account &account, const QString &calendarId
         upsert.bindValue(QStringLiteral(":series"), event.recurringEventId);
         bindTime(upsert, QStringLiteral("original"), event.originalStart);
         upsert.bindValue(QStringLiteral(":updated"), event.updated.toString(Qt::ISODateWithMs));
+        upsert.bindValue(QStringLiteral(":response"), event.responseStatus);
         ok = run(upsert);
     }
 
@@ -441,6 +445,7 @@ QList<GoogleEvent> GoogleCache::readEvents(QSqlQuery &query)
         event.originalStart = readTime(query, QStringLiteral("original"));
         event.updated =
             QDateTime::fromString(query.value(u"updated"_s).toString(), Qt::ISODateWithMs);
+        event.responseStatus = query.value(u"response_status"_s).toString();
         result.append(event);
     }
     return result;

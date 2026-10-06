@@ -95,6 +95,7 @@ Event toEvent(const GoogleEvent &source, const QTimeZone &viewZone)
     event.description = source.description;
     event.location = source.location;
     event.conferenceUrl = source.conferenceUrl;
+    event.declined = source.responseStatus == u"declined";
     event.allDay = source.start.isAllDay();
     if (event.allDay) {
         event.start = QDateTime(source.start.date, QTime(0, 0), viewZone);

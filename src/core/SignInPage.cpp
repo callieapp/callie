@@ -17,7 +17,7 @@ QString font(const QString &family, const QString &fallback)
 }
 
 /// The fonts the app bundles, inlined so the page matches the app on systems
-/// without them. Empty when the app's font resources are not linked in.
+/// without them.
 QString bundledFonts()
 {
     QString faces;

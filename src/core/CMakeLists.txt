@@ -107,6 +107,16 @@ qt_add_resources(calliecore "callie_themes"
         "${PROJECT_SOURCE_DIR}/assets/logo.svg"
 )
 
+# Both are under the SIL Open Font License; the license files sit beside them.
+# They live in the core because the sign-in page inlines them too.
+qt_add_resources(calliecore "callie_fonts"
+    PREFIX "/callie/fonts"
+    BASE "${PROJECT_SOURCE_DIR}/data/fonts"
+    FILES
+        "${PROJECT_SOURCE_DIR}/data/fonts/Nunito-Variable.ttf"
+        "${PROJECT_SOURCE_DIR}/data/fonts/Fraunces-Variable.ttf"
+)
+
 # The QML module in src/ui exposes EventModel as a foreign type. Its registrar
 # can only describe the type if this target publishes its metatypes.
 qt_extract_metatypes(calliecore)

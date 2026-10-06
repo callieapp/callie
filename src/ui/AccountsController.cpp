@@ -53,8 +53,11 @@ void AccountsController::setUp(const Setup &setup)
         });
         connect(m_manager, &AccountManager::failed, this, &AccountsController::finish);
     }
-    if (m_setup.network)
+    if (m_setup.network) {
         m_api = new GoogleCalendarApi(m_setup.network, this);
+        if (m_setup.apiBaseUrl.isValid())
+            m_api->setBaseUrl(m_setup.apiBaseUrl);
+    }
     reload();
 }
 
@@ -84,6 +87,8 @@ void AccountsController::connectGoogle()
     m_error.clear();
     m_granted = false;
     m_auth = new GoogleAuth(m_setup.client, this);
+    if (m_setup.tokenUrl.isValid())
+        m_auth->setEndpoints(m_setup.authUrl, m_setup.tokenUrl);
     connect(m_auth, &GoogleAuth::granted, this, [this] {
         m_granted = true;
         m_status = tr("Saving the account...");
@@ -149,6 +154,10 @@ void AccountsController::finish(const QString &error)
         return;
     if (m_auth)
         m_auth->deleteLater();
+    // Cleared now rather than when the deferred delete runs, so busy() is
+    // already false when stateChanged() is emitted below.
+    m_auth.clear();
+    m_granted = false;
     m_removing = false;
     m_status.clear();
     m_error = error;

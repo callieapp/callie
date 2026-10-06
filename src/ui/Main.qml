@@ -222,6 +222,8 @@ ApplicationWindow {
 
                 anchors.verticalCenter: parent.verticalCenter
                 visible: known && spare >= height + Theme.space4
+                Accessible.role: Accessible.StaticText
+                Accessible.name: failed ? label + ": " + window.source.lastError : label
                 height: 28
                 width: compact ? height : fullWidth
                 radius: height / 2

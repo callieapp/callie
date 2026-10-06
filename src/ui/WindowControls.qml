@@ -50,6 +50,10 @@ Row {
                 border.width: control.visualFocus ? 2 : 0
                 border.color: Theme.text
             }
+            HoverHandler {
+                cursorShape: Qt.PointingHandCursor
+            }
+
             contentItem: Item {
                 Glyph {
                     anchors.centerIn: parent

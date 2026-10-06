@@ -135,6 +135,7 @@ void EventModel::load(bool rangeChanged)
     if (rangeChanged && !m_events.isEmpty()) {
         beginResetModel();
         m_events.clear();
+        m_plainDescriptions.clear();
         ++m_revision;
         endResetModel();
         Q_EMIT revisionChanged();
@@ -166,6 +167,7 @@ void EventModel::apply(SourceSnapshot snapshot)
                                          {QStringLiteral("account"), calendar.account}});
     }
     m_events = std::move(events);
+    m_plainDescriptions.clear();
     const int rows = assignAllDayRows(m_events);
     ++m_revision;
     endResetModel();
@@ -371,7 +373,12 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case FirstDayRole: return visibleDays(e).first;
     case DaySpanRole: return visibleDays(e).second;
     case CalendarNameRole: return m_calendarNames.value(e.calendarId);
-    case DescriptionRole: return plainDescription(e.description);
+    case DescriptionRole: {
+        auto cached = m_plainDescriptions.constFind(index.row());
+        if (cached == m_plainDescriptions.cend())
+            cached = m_plainDescriptions.insert(index.row(), plainDescription(e.description));
+        return *cached;
+    }
     default: return {};
     }
 }

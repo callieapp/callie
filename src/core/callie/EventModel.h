@@ -5,6 +5,7 @@
 
 #include <QAbstractListModel>
 #include <QDate>
+#include <QHash>
 #include <QTimeZone>
 #include <QUrl>
 
@@ -142,6 +143,9 @@ private:
     bool m_showDeclined = true;
     bool m_use24Hour = true;
     QList<Event> m_events;
+    /// Descriptions as plain text, worked out on first read: parsing HTML is
+    /// slow, and month and agenda read every row on each reset.
+    mutable QHash<int, QString> m_plainDescriptions;
     /// Counts reloads, so a slow load that a newer one overtook is dropped.
     quint64 m_generation = 0;
     int m_allDayRows = 0;

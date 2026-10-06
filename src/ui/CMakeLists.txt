@@ -22,6 +22,8 @@ qt_add_qml_module(callieui
         NotificationServer.cpp
         Reminders.h
         Reminders.cpp
+        SingleInstance.h
+        SingleInstance.cpp
         LiveQml.cpp
         SupportActions.h
         SupportActions.cpp

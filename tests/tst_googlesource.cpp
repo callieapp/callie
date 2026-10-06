@@ -59,6 +59,7 @@ private Q_SLOTS:
     void syncReportsOneChangePerBurst();
     void createdEventShowsWithoutASync();
     void createInUnknownCalendarFails();
+    void deleteAimsAtTheOccurrenceOrTheSeries();
     void statusStartsFromTheCache();
     void statusFollowsARefresh();
     void calendarErrorShowsAfterRestart();
@@ -361,6 +362,45 @@ void TestGoogleSource::createInUnknownCalendarFails()
     source.createEvent(draft, [&error](const QString &e) { error = e; });
     QVERIFY(!error.isEmpty());
     QVERIFY(harness.apiServer.requests.isEmpty());
+}
+
+void TestGoogleSource::deleteAimsAtTheOccurrenceOrTheSeries()
+{
+    // An all-day series: its occurrences are addressed by date.
+    QVERIFY(m_cache->storeEvents(
+        kAccount, u"mine"_s, {parsed(R"({"id":"bins","summary":"Bins","start":{"date":"2026-10-05"},
+                    "end":{"date":"2026-10-06"},"recurrence":["RRULE:FREQ=WEEKLY"]})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(204, "");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
+    const auto bins = [&] {
+        QList<Event> found;
+        for (const Event &e : source.eventsBetween(from, from.addDays(14), QTimeZone::UTC))
+            if (e.summary == u"Bins")
+                found.append(e);
+        return found;
+    };
+    const auto remove = [&](const Event &event, bool wholeSeries) {
+        QString error = u"unset"_s;
+        source.deleteEvent(event, wholeSeries, [&error](const QString &e) { error = e; });
+        [&] { QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000); }();
+        return QString::fromUtf8(harness.apiServer.requests.last().target);
+    };
+    QCOMPARE(bins().size(), 2);
+
+    // The second Monday alone, by its all-day instance id.
+    QVERIFY(remove(bins().at(1), false).contains("/events/bins_20261012?"));
+    QCOMPARE(bins().size(), 1);
+    QCOMPARE(bins().first().start.date(), QDate(2026, 10, 5));
+
+    // Then the whole series, by the series' own id.
+    QVERIFY(remove(bins().first(), true).contains("/events/bins?"));
+    QVERIFY(bins().isEmpty());
 }
 
 void TestGoogleSource::statusStartsFromTheCache()

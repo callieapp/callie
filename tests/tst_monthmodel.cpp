@@ -21,6 +21,7 @@ private Q_SLOTS:
     void gridStartsOnMonday();
     void rowsCoverTheWholeMonth();
     void weekAndTodayAreMarked();
+    void markingsReachNeighbouringMonths();
 };
 
 void TestMonthModel::gridStartsOnMonday()
@@ -63,6 +64,23 @@ void TestMonthModel::weekAndTodayAreMarked()
     }
     QCOMPARE(inWeek, 7);
     QCOMPARE(today, 18);
+}
+
+void TestMonthModel::markingsReachNeighbouringMonths()
+{
+    // The week of Thursday 1 October 2026 starts in September, so the September
+    // grid shows today among its trailing days.
+    MonthModel model;
+    model.setMonth(QDate(2026, 9, 28));
+    model.setWeekStart(QDate(2026, 9, 28));
+    model.setToday(QDate(2026, 10, 1));
+
+    const int last = model.rowCount() - 1;
+    QCOMPARE(cell(model, last, MonthModel::DayRole).toInt(), 4);
+    QVERIFY(!cell(model, last, MonthModel::InMonthRole).toBool());
+    QVERIFY(cell(model, last, MonthModel::InWeekRole).toBool());
+    QVERIFY(cell(model, last - 3, MonthModel::IsTodayRole).toBool());
+    QCOMPARE(cell(model, last - 3, MonthModel::DayRole).toInt(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestMonthModel)

@@ -156,7 +156,6 @@ Rectangle {
 
                         width: root.dayCellWidth
                         height: Theme.miniDaySize
-                        enabled: inMonth
                         focusPolicy: Qt.TabFocus
                         Accessible.name: Qt.formatDate(date, Qt.locale().dateFormat(
                                                            Locale.LongFormat))
@@ -178,9 +177,8 @@ Rectangle {
                                 radius: Theme.radiusSm
                                 color: dayCell.isToday ? Theme.accent : dayCell.inWeek
                                                          ? Theme.surfaceAlt : dayCell.hovered
-                                                           && dayCell.inMonth ? Theme.tint(
-                                                                                    Theme.surfaceAlt,
-                                                                                    0.5) : "transparent"
+                                                           ? Theme.tint(Theme.surfaceAlt, 0.5) :
+                                                             "transparent"
                                 border.width: dayCell.visualFocus ? 2 : 0
                                 border.color: Theme.text
                             }
@@ -188,9 +186,13 @@ Rectangle {
                         contentItem: Text {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
-                            text: dayCell.inMonth ? dayCell.day : ""
+                            // Neighbouring months' days stay visible and clickable, since
+                            // today and the shown week can fall among them.
+                            text: dayCell.day
                             color: dayCell.isToday ? Theme.accentText : dayCell.inWeek ? Theme.text :
-                                                                                         Theme.textMuted
+                                                                                         dayCell.inMonth
+                                                                                         ? Theme.textMuted :
+                                                                                           Theme.textFaint
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textSm
                             font.weight: dayCell.isToday ? Font.ExtraBold : dayCell.inWeek
@@ -201,7 +203,7 @@ Rectangle {
                         }
 
                         HoverHandler {
-                            cursorShape: dayCell.inMonth ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            cursorShape: Qt.PointingHandCursor
                         }
                     }
                 }

@@ -29,6 +29,8 @@ Popup {
     width: 320
     padding: 0
     modal: false
+    // Dims the calendar without blocking it, so a click elsewhere still lands.
+    dim: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
@@ -46,6 +48,16 @@ Popup {
             from: 0
             to: 1
             duration: Theme.durFast
+        }
+    }
+
+    Overlay.modeless: Rectangle {
+        color: Theme.tint(Theme.shadowColor, 0.35)
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.durFast
+            }
         }
     }
 

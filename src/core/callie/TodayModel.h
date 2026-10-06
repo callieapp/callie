@@ -20,6 +20,9 @@ class TodayModel : public QObject
     /// The IANA zone "today" and the times are in; empty follows the system.
     Q_PROPERTY(QString timeZoneId READ timeZoneId WRITE setTimeZoneId NOTIFY changed)
     Q_PROPERTY(bool use24Hour READ use24Hour WRITE setUse24Hour NOTIFY changed)
+    /// Calendars the user hid, whose events are never up next.
+    Q_PROPERTY(
+        QStringList hiddenCalendars READ hiddenCalendars WRITE setHiddenCalendars NOTIFY changed)
     Q_PROPERTY(QString greeting READ greeting NOTIFY changed)
     Q_PROPERTY(QString dateLabel READ dateLabel NOTIFY changed)
     Q_PROPERTY(bool hasNext READ hasNext NOTIFY changed)
@@ -41,6 +44,8 @@ public:
     void setTimeZoneId(const QString &id);
     [[nodiscard]] bool use24Hour() const { return m_use24Hour; }
     void setUse24Hour(bool use24Hour);
+    [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
+    void setHiddenCalendars(const QStringList &ids);
 
     [[nodiscard]] QString greeting() const;
     [[nodiscard]] QString dateLabel() const;
@@ -63,6 +68,7 @@ private:
     QDateTime m_now;
     QTimeZone m_zone = QTimeZone::systemTimeZone();
     bool m_use24Hour = true;
+    QStringList m_hiddenCalendars;
     Event m_next;
     QString m_nextCalendar;
     /// Counts refreshes, so a slow read that a newer one overtook is dropped.

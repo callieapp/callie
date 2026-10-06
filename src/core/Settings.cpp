@@ -15,6 +15,7 @@ const QString kShowDeclined = u"events/showDeclined"_s;
 const QString kDimPast = u"events/dimPast"_s;
 const QString kWidenToday = u"week/widenToday"_s;
 const QString kHiddenCalendars = u"calendars/hidden"_s;
+const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
 
 } // namespace
 
@@ -43,6 +44,7 @@ void Settings::load()
     m_dimPast = m_store.value(kDimPast, true).toBool();
     m_widenToday = m_store.value(kWidenToday, false).toBool();
     m_hiddenCalendars = m_store.value(kHiddenCalendars).toStringList();
+    m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
 }
 
 void Settings::setTimeFormat(TimeFormat format)
@@ -122,6 +124,18 @@ void Settings::setCalendarVisible(const QString &id, bool visible)
     Q_EMIT hiddenCalendarsChanged();
 }
 
+void Settings::setAccountCollapsed(const QString &account, bool collapsed)
+{
+    if (m_collapsedAccounts.contains(account) == collapsed)
+        return;
+    if (collapsed)
+        m_collapsedAccounts.append(account);
+    else
+        m_collapsedAccounts.removeAll(account);
+    m_store.setValue(kCollapsedAccounts, m_collapsedAccounts);
+    Q_EMIT collapsedAccountsChanged();
+}
+
 void Settings::rebuildTimes()
 {
     if (m_times && m_times->zone() == timeZone() && m_times->use24Hour() == use24Hour())
@@ -148,6 +162,7 @@ void Settings::reset()
     const QString zone = m_timeZoneId;
     const bool declined = m_showDeclined, dim = m_dimPast, widen = m_widenToday;
     const QStringList hidden = m_hiddenCalendars;
+    const QStringList collapsed = m_collapsedAccounts;
     load();
     if (format != m_timeFormat)
         Q_EMIT timeFormatChanged();
@@ -161,6 +176,8 @@ void Settings::reset()
         Q_EMIT widenTodayChanged();
     if (hidden != m_hiddenCalendars)
         Q_EMIT hiddenCalendarsChanged();
+    if (collapsed != m_collapsedAccounts)
+        Q_EMIT collapsedAccountsChanged();
     rebuildTimes();
 }
 

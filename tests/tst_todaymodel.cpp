@@ -212,6 +212,9 @@ void TestTodayModel::declinedIsSkipped()
     model.setSource(&source);
 
     QCOMPARE(model.nextTitle(), u"Going"_s);
+
+    model.setHiddenCalendars({u"focus"_s});
+    QVERIFY(!model.hasNext());
 }
 
 void TestTodayModel::slowReadLandsLater()

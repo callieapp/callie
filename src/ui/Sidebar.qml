@@ -20,8 +20,11 @@ Rectangle {
     color: Theme.surface
 
     Column {
+        id: upper
         anchors {
-            fill: parent
+            top: parent.top
+            left: parent.left
+            right: parent.right
             leftMargin: Theme.space5
             rightMargin: Theme.space5
             topMargin: Theme.space6
@@ -211,49 +214,204 @@ Rectangle {
                 }
             }
         }
+    }
 
-        // Calendars: deliberately quiet, so the event stickers draw the eye.
-        Column {
-            width: parent.width
-            spacing: Theme.space3
+    // Calendars: deliberately quiet, so the event stickers draw the eye. They
+    // fill the rest of the column and scroll, grouped by account.
+    Item {
+        id: calendars
 
-            Text {
-                text: qsTr("CALENDARS")
-                color: Theme.textFaint
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.textXs
-                font.weight: Font.ExtraBold
-                font.letterSpacing: 0.6
+        // Accounts in the order their first calendar arrives.
+        readonly property var accounts: {
+            const seen = []
+            for (const calendar of root.events.calendars) {
+                if (seen.indexOf(calendar.account) < 0)
+                    seen.push(calendar.account)
             }
+            return seen
+        }
 
-            Repeater {
-                model: root.events.calendars
+        anchors {
+            top: upper.bottom
+            topMargin: Theme.space6
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+            leftMargin: Theme.space5
+            rightMargin: Theme.space5
+        }
 
-                Row {
-                    id: calendarRow
-                    required property var modelData
-                    width: parent.width
-                    spacing: Theme.space3
+        Text {
+            id: heading
+            text: qsTr("CALENDARS")
+            color: Theme.textFaint
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textXs
+            font.weight: Font.ExtraBold
+            font.letterSpacing: 0.6
+        }
 
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Theme.textBase
-                        height: Theme.textBase
-                        radius: Theme.radiusSm
-                        color: Theme.calendarColor(calendarRow.modelData.color, Theme.calendar)
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: calendarRow.width - Theme.textBase - Theme.space3
-                        text: calendarRow.modelData.name
-                        textFormat: Text.PlainText
-                        elide: Text.ElideRight
-                        color: Theme.textMuted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.textBase
-                        font.weight: Font.DemiBold
+        Flickable {
+            anchors {
+                top: heading.bottom
+                topMargin: Theme.space3
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
+            contentHeight: groups.height + Theme.space5
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar {}
+
+            Column {
+                id: groups
+                width: parent.width
+                spacing: Theme.space3
+
+                Repeater {
+                    model: calendars.accounts
+
+                    Column {
+                        id: group
+
+                        required property string modelData
+                        readonly property bool collapsed: Settings.collapsedAccounts.indexOf(
+                                                              modelData) >= 0
+                        // One account needs no heading of its own.
+                        readonly property bool titled: calendars.accounts.length > 1
+
+                        width: parent.width
+                        spacing: Theme.space1
+
+                        AbstractButton {
+                            id: groupHeader
+                            visible: group.titled
+                            width: parent.width
+                            height: 26
+                            focusPolicy: Qt.TabFocus
+                            Accessible.name: group.modelData
+                            Accessible.role: Accessible.Button
+                            onClicked: Settings.setAccountCollapsed(group.modelData,
+                                                                    !group.collapsed)
+
+                            HoverHandler {
+                                cursorShape: Qt.PointingHandCursor
+                            }
+
+                            background: Rectangle {
+                                radius: Theme.radiusSm
+                                color: groupHeader.hovered ? Theme.surfaceAlt : "transparent"
+                                border.width: groupHeader.visualFocus ? 2 : 0
+                                border.color: Theme.text
+                            }
+                            contentItem: Row {
+                                spacing: Theme.space2
+
+                                Glyph {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 10
+                                    height: 10
+                                    stroke: 1.6
+                                    name: "chevron-right"
+                                    color: Theme.textFaint
+                                    rotation: group.collapsed ? 0 : 90
+
+                                    Behavior on rotation {
+                                        NumberAnimation {
+                                            duration: Theme.durFast
+                                        }
+                                    }
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: groupHeader.width - 10 - Theme.space2
+                                    text: group.modelData
+                                    textFormat: Text.PlainText
+                                    elide: Text.ElideMiddle
+                                    color: Theme.textFaint
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.textSm
+                                    font.weight: Font.Bold
+                                }
+                            }
+                        }
+
+                        Repeater {
+                            model: group.collapsed && group.titled ? [] : root.events.calendars.filter(c
+                                                                                                       => c.account
+                                                                                                          === group.modelData)
+
+                            CalendarRow {}
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    /// One calendar: its color as a dot that fills when shown, and a click to
+    /// show or hide it.
+    component CalendarRow: AbstractButton {
+        id: row
+
+        required property var modelData
+        readonly property bool shown: Settings.hiddenCalendars.indexOf(modelData.id) < 0
+
+        width: parent ? parent.width : 0
+        height: 28
+        focusPolicy: Qt.TabFocus
+        Accessible.role: Accessible.CheckBox
+        Accessible.checked: shown
+        Accessible.name: modelData.name
+        onClicked: Settings.setCalendarVisible(modelData.id, !shown)
+
+        HoverHandler {
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        background: Rectangle {
+            radius: Theme.radiusSm
+            color: row.hovered ? Theme.surfaceAlt : "transparent"
+            border.width: row.visualFocus ? 2 : 0
+            border.color: Theme.text
+        }
+        contentItem: Row {
+            leftPadding: Theme.space1
+            spacing: Theme.space3
+
+            Rectangle {
+                readonly property color tone: Theme.calendarColor(row.modelData.color,
+                                                                  Theme.calendar)
+
+                anchors.verticalCenter: parent.verticalCenter
+                width: Theme.textBase
+                height: Theme.textBase
+                radius: Theme.radiusSm
+                color: row.shown ? tone : "transparent"
+                border.width: 2
+                border.color: tone
+
+                Glyph {
+                    anchors.centerIn: parent
+                    visible: row.shown
+                    width: 9
+                    height: 9
+                    stroke: 1.6
+                    name: "check"
+                    color: Theme.calendarInk(row.modelData.color, Theme.calendar)
+                }
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                width: row.width - Theme.textBase - Theme.space3 - Theme.space1
+                text: row.modelData.name
+                textFormat: Text.PlainText
+                elide: Text.ElideRight
+                color: row.shown ? Theme.textMuted : Theme.textFaint
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textBase
+                font.weight: Font.DemiBold
             }
         }
     }

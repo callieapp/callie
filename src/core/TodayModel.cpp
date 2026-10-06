@@ -39,6 +39,14 @@ void TodayModel::setTimeZone(const QTimeZone &zone)
     refresh();
 }
 
+void TodayModel::setHiddenCalendars(const QStringList &ids)
+{
+    if (m_hiddenCalendars == ids)
+        return;
+    m_hiddenCalendars = ids;
+    refresh();
+}
+
 QString TodayModel::timeZoneId() const
 {
     return m_zone == QTimeZone::systemTimeZone() ? QString() : QString::fromUtf8(m_zone.id());
@@ -90,7 +98,8 @@ void TodayModel::apply(const SourceSnapshot &snapshot)
     m_nextCalendar.clear();
     for (const Event &event : snapshot.events) {
         // A declined event is not on the user's way.
-        if (event.allDay || event.declined || event.start <= m_now)
+        if (event.allDay || event.declined || event.start <= m_now ||
+            m_hiddenCalendars.contains(event.calendarId))
             continue;
         if (!m_next.isValid() || event.start < m_next.start)
             m_next = event;

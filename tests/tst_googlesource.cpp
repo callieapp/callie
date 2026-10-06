@@ -172,6 +172,7 @@ void TestGoogleSource::backgroundLoadMatchesDirectRead()
     }
     QCOMPARE(snapshot.calendars.size(), source.calendars().size());
     QCOMPARE(snapshot.calendars.first().id, source.calendars().first().id);
+    QCOMPARE(snapshot.calendars.first().account, kAccount.id);
 }
 
 void TestGoogleSource::refreshWithoutSyncRereadsCache()

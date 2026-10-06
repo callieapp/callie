@@ -62,6 +62,7 @@ ApplicationWindow {
         now: Clock.now
         timeZoneId: Settings.timeZoneId
         use24Hour: Settings.use24Hour
+        hiddenCalendars: Settings.hiddenCalendars
     }
 
     MonthModel {

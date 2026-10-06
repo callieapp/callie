@@ -31,7 +31,8 @@ class EventModel : public QAbstractListModel
     Q_PROPERTY(bool use24Hour MEMBER m_use24Hour NOTIFY use24HourChanged)
     /// Rows the all-day strip needs so that no two all-day events overlap.
     Q_PROPERTY(int allDayRows READ allDayRows NOTIFY allDayRowsChanged)
-    /// The source's shown calendars as {name, color} maps, for the sidebar.
+    /// The source's shown calendars as {id, name, color, account} maps, for the
+    /// sidebar. Hidden calendars stay listed so they can be shown again.
     Q_PROPERTY(QVariantList calendars READ calendars NOTIFY calendarsChanged)
 
 public:

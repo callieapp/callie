@@ -54,6 +54,7 @@ private Q_SLOTS:
     void refreshWithoutSyncRereadsCache();
     void refreshSyncsAndReportsErrorsPerAccount();
     void refreshWhileSyncingStartsNothingNew();
+    void syncReportsOneChangePerBurst();
     void statusStartsFromTheCache();
     void statusFollowsARefresh();
     void calendarErrorShowsAfterRestart();
@@ -225,6 +226,31 @@ void TestGoogleSource::refreshWhileSyncingStartsNothingNew()
     // One calendar list and one events request: the second refresh was ignored.
     QCOMPARE(harness.store.reads, 1);
     QCOMPARE(harness.apiServer.requests.size(), 2);
+}
+
+void TestGoogleSource::syncReportsOneChangePerBurst()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &request) {
+        if (request.target.contains("calendarList"))
+            return FakeHttpServer::Response(
+                200, R"({"items":[{"id":"a","selected":true},{"id":"b","selected":true},
+                                  {"id":"c","selected":true}]})");
+        return FakeHttpServer::Response(200, R"({"items":[],"nextSyncToken":"s"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    QSignalSpy changed(&source, &CalendarSource::changed);
+
+    source.refresh();
+
+    // The list and three calendars each change the cache, and the run's end
+    // delivers them as one change.
+    QTRY_VERIFY_WITH_TIMEOUT(!source.syncing(), 5000);
+    QCOMPARE(changed.size(), 1);
+    QTest::qWait(400);
+    QCOMPARE(changed.size(), 1);
 }
 
 void TestGoogleSource::statusStartsFromTheCache()

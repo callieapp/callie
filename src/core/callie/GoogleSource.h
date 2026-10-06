@@ -3,6 +3,8 @@
 #include "Account.h"
 #include "CalendarSource.h"
 
+#include <QTimer>
+
 namespace callie {
 
 class GoogleCache;
@@ -31,6 +33,8 @@ public:
     [[nodiscard]] QString lastError() const override { return m_lastError; }
 
 private:
+    void flushChanges();
+
     GoogleCache &m_cache;
     QList<Account> m_accounts;
     GoogleSync *m_sync = nullptr;
@@ -38,6 +42,8 @@ private:
     QDateTime m_lastSynced;
     QString m_lastError;
     QStringList m_runErrors;
+    /// Each synced calendar reports a change; views reload once per burst.
+    QTimer m_changes;
 };
 
 } // namespace callie

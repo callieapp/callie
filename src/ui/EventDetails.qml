@@ -201,7 +201,7 @@ Popup {
                 height: 40
                 accent: true
                 glyph: "video"
-                glyphStroke: 1.8
+                glyphStroke: Theme.fineGlyphStroke
                 text: root.callName
                 onClicked: Qt.openUrlExternally(root.conferenceUrl)
             }

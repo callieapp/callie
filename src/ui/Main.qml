@@ -59,7 +59,7 @@ ApplicationWindow {
         use24Hour: Settings.use24Hour
         showDeclined: Settings.showDeclined
         hiddenCalendars: Settings.hiddenCalendars
-        minimumMinutes: Math.ceil(Theme.minEventHeight / Theme.hourHeight * 60)
+        minimumMinutes: Theme.minEventMinutes
     }
 
     TodayModel {
@@ -404,7 +404,7 @@ ApplicationWindow {
                     StickerButton {
                         anchors.verticalCenter: parent.verticalCenter
                         glyph: "settings"
-                        glyphStroke: 1.5
+                        glyphStroke: Theme.fineGlyphStroke
                         Accessible.name: qsTr("Settings")
                         onClicked: settingsDialog.open()
                     }

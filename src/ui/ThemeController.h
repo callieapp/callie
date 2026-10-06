@@ -99,8 +99,12 @@ class ThemeController : public QObject
     Q_PROPERTY(int resizeBorder READ resizeBorder CONSTANT)
     /// How many ordinary columns' width today takes when it is given more room.
     Q_PROPERTY(qreal todayShare READ todayShare CONSTANT)
-    /// The shortest an event block is drawn, so its title stays readable.
+    /// The shortest an event block is drawn, so its title stays readable, and
+    /// how many minutes of the grid that covers.
     Q_PROPERTY(int minEventHeight READ minEventHeight CONSTANT)
+    Q_PROPERTY(int minEventMinutes READ minEventMinutes CONSTANT)
+    /// A lighter line for glyphs with several strokes, or beside text.
+    Q_PROPERTY(qreal fineGlyphStroke READ fineGlyphStroke CONSTANT)
     /// How far past and declined events fade.
     Q_PROPERTY(qreal fadedOpacity READ fadedOpacity CONSTANT)
     Q_PROPERTY(int sidebarWidth READ sidebarWidth CONSTANT)
@@ -204,6 +208,11 @@ public:
     int resizeBorder() const { return 6; }
     qreal fadedOpacity() const { return 0.5; }
     int minEventHeight() const { return 20; }
+    int minEventMinutes() const
+    {
+        return (minEventHeight() * 60 + hourHeight() - 1) / hourHeight();
+    }
+    qreal fineGlyphStroke() const { return 1.6; }
     qreal todayShare() const { return 1.6; }
     int sidebarWidth() const { return 240; }
     int listRowHeight() const { return 28; }

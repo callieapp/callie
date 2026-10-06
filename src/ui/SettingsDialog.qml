@@ -189,6 +189,8 @@ Popup {
             }
 
             Row {
+                // Clears the raised edge of the selected clock button above.
+                topPadding: Theme.space3
                 spacing: Theme.space4
 
                 Text {

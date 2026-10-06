@@ -154,7 +154,7 @@ Column {
             onClicked: Accounts.connectGoogle()
         }
         StickerButton {
-            visible: Accounts.busy
+            visible: Accounts.signingIn
             text: qsTr("Cancel")
             onClicked: Accounts.cancel()
         }

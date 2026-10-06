@@ -33,6 +33,8 @@ class AccountsController : public QObject
     /// Why accounts cannot be connected here, or empty when they can.
     Q_PROPERTY(QString unavailable READ unavailable CONSTANT)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
+    /// A sign-in is under way, which cancel() can stop; removals cannot be.
+    Q_PROPERTY(bool signingIn READ signingIn NOTIFY stateChanged)
     /// What is happening now, such as waiting for the browser.
     Q_PROPERTY(QString status READ status NOTIFY stateChanged)
     Q_PROPERTY(QString error READ error NOTIFY stateChanged)
@@ -57,7 +59,8 @@ public:
 
     [[nodiscard]] QVariantList accounts() const;
     [[nodiscard]] QString unavailable() const;
-    [[nodiscard]] bool busy() const { return m_auth != nullptr || m_removing; }
+    [[nodiscard]] bool busy() const { return signingIn() || m_removing; }
+    [[nodiscard]] bool signingIn() const { return m_auth != nullptr; }
     [[nodiscard]] QString status() const { return m_status; }
     [[nodiscard]] QString error() const { return m_error; }
 

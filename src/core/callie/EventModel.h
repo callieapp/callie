@@ -42,6 +42,8 @@ public:
         LaneCountRole,
         FirstDayRole,
         DaySpanRole,
+        CalendarNameRole,
+        DescriptionRole,
     };
     Q_ENUM(Role)
 
@@ -60,6 +62,12 @@ public:
 
     /// Whether the user's locale treats `date` as a day off, for shading it.
     Q_INVOKABLE bool isDayOff(QDate date) const;
+
+    /// Where an event stands at `now`: "Happening now, 50 min left", "Starts in
+    /// 20 min", "Starts at 16:00" later today, "Ended" before now, and empty on
+    /// another day, where the date says enough.
+    Q_INVOKABLE QString timing(const QDateTime &start, const QDateTime &end,
+                               const QDateTime &now) const;
     [[nodiscard]] QVariantList calendars() const { return m_calendars; }
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;
@@ -88,6 +96,7 @@ private:
     QList<Event> m_events;
     int m_allDayRows = 0;
     QVariantList m_calendars;
+    QHash<QString, QString> m_calendarNames;
 };
 
 } // namespace callie

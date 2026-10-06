@@ -1,10 +1,27 @@
 #include "callie/EventModel.h"
 
 #include <QLocale>
+#include <QTextDocumentFragment>
 
 #include <algorithm>
 
 namespace callie {
+
+namespace {
+
+/// Google sends descriptions as HTML. Plain text keeps untrusted markup, such as
+/// remote images, out of the view.
+QString plainDescription(const QString &description)
+{
+    if (!description.contains(u'<'))
+        return description.trimmed();
+    QString text = QTextDocumentFragment::fromHtml(description).toPlainText();
+    // Images become object replacement characters; there is nothing to show for them.
+    text.remove(QChar::ObjectReplacementCharacter);
+    return text.trimmed();
+}
+
+} // namespace
 
 EventModel::EventModel(QObject *parent) : QAbstractListModel(parent) {}
 
@@ -42,8 +59,20 @@ void EventModel::setDayCount(int days)
 
 void EventModel::reload()
 {
+    // Calendars first: rows name their calendar, and views read rows as soon as
+    // the reset ends.
+    QVariantList calendars;
+    const QList<CalendarInfo> infos = m_source ? m_source->calendars() : QList<CalendarInfo>();
+
     beginResetModel();
     m_events.clear();
+    m_calendarNames.clear();
+    for (const CalendarInfo &calendar : std::as_const(infos)) {
+        m_calendarNames.insert(calendar.id, calendar.displayName);
+        if (calendar.enabled)
+            calendars.append(QVariantMap{{QStringLiteral("name"), calendar.displayName},
+                                         {QStringLiteral("color"), calendar.color}});
+    }
     if (m_source) {
         const QDateTime from(m_rangeStart, QTime(0, 0), m_tz);
         const QDateTime to(m_rangeStart.addDays(m_dayCount), QTime(0, 0), m_tz);
@@ -55,15 +84,6 @@ void EventModel::reload()
     if (rows != m_allDayRows) {
         m_allDayRows = rows;
         Q_EMIT allDayRowsChanged();
-    }
-
-    QVariantList calendars;
-    if (m_source) {
-        for (const CalendarInfo &calendar : m_source->calendars()) {
-            if (calendar.enabled)
-                calendars.append(QVariantMap{{QStringLiteral("name"), calendar.displayName},
-                                             {QStringLiteral("color"), calendar.color}});
-        }
     }
     if (calendars != m_calendars) {
         m_calendars = calendars;
@@ -169,6 +189,26 @@ bool EventModel::isDayOff(QDate date) const
     return !QLocale().weekdays().contains(Qt::DayOfWeek(date.dayOfWeek()));
 }
 
+QString EventModel::timing(const QDateTime &start, const QDateTime &end, const QDateTime &now) const
+{
+    const auto span = [](qint64 seconds) {
+        const qint64 minutes = (seconds + 59) / 60;
+        if (minutes < 60)
+            return tr("%n min", nullptr, int(minutes));
+        return minutes % 60 == 0 ? tr("%n h", nullptr, int(minutes / 60))
+                                 : tr("%1 h %2 min").arg(minutes / 60).arg(minutes % 60);
+    };
+    if (end <= now)
+        return tr("Ended");
+    if (start <= now)
+        return tr("Happening now, %1 left").arg(span(now.secsTo(end)));
+    if (start.date() != now.date())
+        return {};
+    if (now.secsTo(start) < 60 * 60)
+        return tr("Starts in %1").arg(span(now.secsTo(start)));
+    return tr("Starts at %1").arg(start.toString(QStringLiteral("H:mm")));
+}
+
 int EventModel::rowCount(const QModelIndex &parent) const
 {
     return parent.isValid() ? 0 : m_events.size();
@@ -196,6 +236,8 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case DurationMinutesRole: return static_cast<int>(e.start.secsTo(e.end) / 60);
     case FirstDayRole: return visibleDays(e).first;
     case DaySpanRole: return visibleDays(e).second;
+    case CalendarNameRole: return m_calendarNames.value(e.calendarId);
+    case DescriptionRole: return plainDescription(e.description);
     default: return {};
     }
 }
@@ -218,6 +260,8 @@ QHash<int, QByteArray> EventModel::roleNames() const
         {LaneCountRole, "laneCount"},
         {FirstDayRole, "firstDay"},
         {DaySpanRole, "daySpan"},
+        {CalendarNameRole, "calendarName"},
+        {DescriptionRole, "description"},
     };
 }
 

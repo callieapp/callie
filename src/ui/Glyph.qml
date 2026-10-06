@@ -4,7 +4,7 @@ import QtQuick
 
 /// A small line icon drawn from rounded bars, so icons need no image files and
 /// take the text color: chevron-left, chevron-right, minimize, maximize,
-/// restore, close, check, plus or settings.
+/// restore, close, check, plus, settings or video.
 Item {
     id: root
 
@@ -28,6 +28,9 @@ Item {
             return [[0.74, 45, 0.5, 0.5], [0.74, -45, 0.5, 0.5]]
         case "check":
             return [[0.34, 45, 0.33, 0.6], [0.62, -50, 0.6, 0.47]]
+        case "video":
+            // The lens: a wedge opening to the right of the body.
+            return [[0.3, -38, 0.78, 0.4], [0.3, 38, 0.78, 0.6], [0.34, 90, 0.92, 0.5]]
         case "plus":
             return [[0.7, 0, 0.5, 0.5], [0.7, 90, 0.5, 0.5]]
         case "settings":
@@ -56,6 +59,20 @@ Item {
             y: root.height * modelData[3] - height / 2
             rotation: modelData[1]
         }
+    }
+
+    // The video camera's body.
+    Rectangle {
+        visible: root.name === "video"
+        x: 0
+        y: root.height * 0.24
+        width: root.width * 0.62
+        height: root.height * 0.52
+        radius: root.stroke * 1.2
+        color: "transparent"
+        border.width: root.stroke * 0.85
+        border.color: root.color
+        antialiasing: true
     }
 
     // Maximize is a rounded square; restore adds a second one behind it.

@@ -25,6 +25,10 @@ bool canWrite(const QString &accessRole)
 GoogleSource::GoogleSource(GoogleCache &cache, QList<Account> accounts, QObject *parent)
     : CalendarSource(parent), m_cache(cache), m_accounts(std::move(accounts))
 {
+    m_changes.setSingleShot(true);
+    m_changes.setInterval(250);
+    connect(&m_changes, &QTimer::timeout, this, &CalendarSource::changed);
+
     // Start from what the last run recorded, so the title bar is right before
     // the first sync of this run finishes.
     for (const Account &account : std::as_const(m_accounts)) {
@@ -52,7 +56,10 @@ void GoogleSource::setSync(GoogleSync *sync)
         disconnect(m_sync, nullptr, this, nullptr);
     m_sync = sync;
     if (m_sync)
-        connect(m_sync, &GoogleSync::changed, this, &CalendarSource::changed);
+        connect(m_sync, &GoogleSync::changed, this, [this] {
+            if (!m_changes.isActive())
+                m_changes.start();
+        });
 }
 
 QList<CalendarInfo> GoogleSource::calendars() const
@@ -96,6 +103,14 @@ QList<Event> GoogleSource::eventsBetween(const QDateTime &from, const QDateTime 
     return result;
 }
 
+void GoogleSource::flushChanges()
+{
+    if (!m_changes.isActive())
+        return;
+    m_changes.stop();
+    Q_EMIT changed();
+}
+
 void GoogleSource::refresh()
 {
     if (!m_sync) {
@@ -122,6 +137,7 @@ void GoogleSource::refresh()
             }
             if (--m_pending > 0)
                 return;
+            flushChanges();
             m_lastError = m_runErrors.join(u'\n');
             if (m_runErrors.isEmpty())
                 m_lastSynced = QDateTime::currentDateTimeUtc();

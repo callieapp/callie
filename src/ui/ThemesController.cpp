@@ -79,6 +79,16 @@ void ThemesController::restore()
     settings()->setTheme({});
 }
 
+QStringList ThemesController::applyForThisRun(const QString &idOrPath)
+{
+    const QStringList errors = ThemeController::instance()->load(idOrPath);
+    if (errors.isEmpty()) {
+        m_override = idOrPath;
+        Q_EMIT changed();
+    }
+    return errors;
+}
+
 QVariantList ThemesController::available() const
 {
     QVariantList themes;
@@ -93,6 +103,8 @@ QVariantList ThemesController::available() const
 
 QString ThemesController::current() const
 {
+    if (!m_override.isEmpty())
+        return m_override;
     const QString theme = settings()->theme();
     return theme.isEmpty() ? kDefaultTheme : theme;
 }
@@ -116,6 +128,7 @@ bool ThemesController::use(const QString &idOrPath)
     const QStringList errors = ThemeController::instance()->load(idOrPath);
     if (!errors.isEmpty())
         return fail(errors.join(u"; "_s));
+    m_override.clear();
     settings()->setTheme(idOrPath == kDefaultTheme ? QString() : idOrPath);
     clearError();
     Q_EMIT changed();

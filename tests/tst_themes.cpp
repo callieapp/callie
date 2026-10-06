@@ -23,6 +23,7 @@ private Q_SLOTS:
     void builtInsCannotBeEdited();
     void removeCurrentGoesBackToDefault();
     void restoreForgetsAThemeThatNoLongerLoads();
+    void overrideShowsWithoutBeingRemembered();
 
 private:
     QTemporaryDir m_dir;
@@ -86,6 +87,26 @@ void TestThemes::restoreForgetsAThemeThatNoLongerLoads()
     themes()->restore();
     QVERIFY(m_settings->theme().isEmpty());
     QCOMPARE(ThemeController::instance()->spec().name, ThemeLoader::defaultTheme().name);
+}
+
+void TestThemes::overrideShowsWithoutBeingRemembered()
+{
+    const QString file = m_dir.filePath(u"bright.toml"_s);
+    QFile out(file);
+    QVERIFY(out.open(QIODevice::WriteOnly));
+    out.write("[theme]\nname = \"Bright\"\n[colors]\naccent = \"#ffcc00\"\n");
+    out.close();
+
+    QVERIFY(themes()->applyForThisRun(file).isEmpty());
+
+    // The picker, Export and Customize act on what is on screen.
+    QCOMPARE(themes()->current(), file);
+    QCOMPARE(ThemeController::instance()->spec().colors.accent, QColor(u"#ffcc00"_s));
+    QVERIFY(m_settings->theme().isEmpty());
+
+    // Choosing a theme ends the override.
+    themes()->useDefault();
+    QCOMPARE(themes()->current(), u"callie"_s);
 }
 
 QTEST_MAIN(TestThemes)

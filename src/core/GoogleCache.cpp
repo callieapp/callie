@@ -11,6 +11,8 @@
 #include <QTimeZone>
 #include <QUuid>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 namespace callie {
@@ -353,6 +355,8 @@ bool GoogleCache::applyChanges(const Account &account, const QString &calendarId
 
 QList<GoogleEvent> GoogleCache::events(const Account &account, const QString &calendarId)
 {
+    if (!m_open)
+        return {};
     QSqlQuery query(QSqlDatabase::database(m_connection));
     query.prepare(QStringLiteral("SELECT * FROM events WHERE account = ? AND calendar_id = ? "
                                  "ORDER BY rowid"));
@@ -364,40 +368,58 @@ QList<GoogleEvent> GoogleCache::events(const Account &account, const QString &ca
 QList<GoogleEvent> GoogleCache::events(const Account &account, const QString &calendarId,
                                        const QDateTime &from, const QDateTime &to)
 {
-    // Instants are stored as UTC ISO strings, so they compare as text. All-day
-    // dates float, so they get a day of slack for any viewing zone; so do
-    // original times, which only need to be close enough to cancel an occurrence.
-    const QString start = from.toUTC().toString(Qt::ISODateWithMs);
-    const QString end = to.toUTC().toString(Qt::ISODateWithMs);
-    const QString looseStart = from.toUTC().addDays(-1).toString(Qt::ISODateWithMs);
-    const QString looseEnd = to.toUTC().addDays(1).toString(Qt::ISODateWithMs);
-    const QString startDate = from.date().addDays(-1).toString(Qt::ISODate);
-    const QString endDate = to.date().addDays(1).toString(Qt::ISODate);
+    if (!m_open)
+        return {};
+    QSqlDatabase db = QSqlDatabase::database(m_connection);
 
-    QSqlQuery query(QSqlDatabase::database(m_connection));
-    query.prepare(QStringLiteral(
-        "SELECT * FROM events WHERE account = :account AND calendar_id = :calendar AND ("
-        "IFNULL(recurrence, '') <> '' "
-        "OR (start_time < :end AND end_time > :start) "
-        "OR (start_date < :end_date AND end_date > :start_date) "
-        "OR (original_time >= :loose_start AND original_time < :loose_end) "
-        "OR (original_date >= :start_date AND original_date < :end_date)) ORDER BY rowid"));
-    query.bindValue(QStringLiteral(":account"), accountKey(account));
-    query.bindValue(QStringLiteral(":calendar"), calendarId);
-    query.bindValue(QStringLiteral(":start"), start);
-    query.bindValue(QStringLiteral(":end"), end);
-    query.bindValue(QStringLiteral(":loose_start"), looseStart);
-    query.bindValue(QStringLiteral(":loose_end"), looseEnd);
-    query.bindValue(QStringLiteral(":start_date"), startDate);
-    query.bindValue(QStringLiteral(":end_date"), endDate);
-    return readEvents(query);
+    // Every series can reach the range, so they are read whole.
+    QSqlQuery series(db);
+    series.prepare(QStringLiteral("SELECT * FROM events WHERE account = ? AND calendar_id = ? "
+                                  "AND IFNULL(recurrence, '') <> '' ORDER BY rowid"));
+    series.addBindValue(accountKey(account));
+    series.addBindValue(calendarId);
+    QList<GoogleEvent> result = readEvents(series);
+
+    // An exception matters while the occurrence it replaces could overlap the
+    // range, which reaches back by the longest occurrence.
+    qint64 longest = 0;
+    for (const GoogleEvent &event : std::as_const(result)) {
+        const qint64 span = event.start.isAllDay()
+                                ? event.start.date.daysTo(event.end.date) * 86400
+                                : event.start.dateTime.secsTo(event.end.dateTime);
+        longest = std::max(longest, span);
+    }
+
+    // Instants are stored as UTC ISO strings, so they compare as text.
+    // Floating all-day dates get a day of slack for any viewing zone.
+    const QDateTime start = from.toUTC();
+    const QDateTime end = to.toUTC();
+    QSqlQuery rest(db);
+    rest.prepare(QStringLiteral(
+        "SELECT * FROM events WHERE account = :account AND calendar_id = :calendar AND "
+        "IFNULL(recurrence, '') = '' AND ("
+        "(start_time < :end AND IFNULL(end_time, start_time) >= :start) "
+        "OR (start_date < :end_date AND IFNULL(end_date, start_date) >= :start_date) "
+        "OR (original_time >= :original_start AND original_time < :end) "
+        "OR (original_date >= :original_start_date AND original_date < :end_date)) "
+        "ORDER BY rowid"));
+    rest.bindValue(QStringLiteral(":account"), accountKey(account));
+    rest.bindValue(QStringLiteral(":calendar"), calendarId);
+    rest.bindValue(QStringLiteral(":start"), start.toString(Qt::ISODateWithMs));
+    rest.bindValue(QStringLiteral(":end"), end.toString(Qt::ISODateWithMs));
+    rest.bindValue(QStringLiteral(":start_date"), from.date().addDays(-1).toString(Qt::ISODate));
+    rest.bindValue(QStringLiteral(":end_date"), to.date().addDays(1).toString(Qt::ISODate));
+    rest.bindValue(QStringLiteral(":original_start"),
+                   start.addSecs(-longest).toString(Qt::ISODateWithMs));
+    rest.bindValue(QStringLiteral(":original_start_date"),
+                   from.date().addDays(-1 - (longest + 86399) / 86400).toString(Qt::ISODate));
+    result.append(readEvents(rest));
+    return result;
 }
 
 QList<GoogleEvent> GoogleCache::readEvents(QSqlQuery &query)
 {
     QList<GoogleEvent> result;
-    if (!m_open)
-        return result;
     if (!query.exec()) {
         fail(query.lastError().text());
         return result;

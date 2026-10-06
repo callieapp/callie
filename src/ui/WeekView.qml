@@ -307,6 +307,17 @@ Item {
                 }
             }
 
+            // The current time across the whole week, faint beside today's line.
+            Rectangle {
+                visible: now.visible
+                x: Theme.gutterWidth
+                y: now.y + now.height / 2 - height / 2
+                width: root.dayCount * root.dayWidth
+                height: 1
+                z: 49
+                color: Theme.tint(Theme.accent, 0.45)
+            }
+
             // Now indicator: an accent line across today, with the time in the gutter.
             Item {
                 id: now

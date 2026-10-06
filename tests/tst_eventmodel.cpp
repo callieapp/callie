@@ -123,6 +123,7 @@ private Q_SLOTS:
     void daysOffFollowTheLocale();
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
+    void timingFollowsZoneAndClock();
     void callServiceTrustsOnlyTheHost();
     void slowLoadKeepsRowsForTheSameRange();
     void overtakenLoadIsDropped();
@@ -508,6 +509,29 @@ void TestEventModel::timeZoneMovesEvents()
 
     model->setTimeZone(QTimeZone("Asia/Tokyo"));
     QCOMPARE(model->data(model->index(0, 0), EventModel::DayIndexRole).toInt(), 1);
+}
+
+void TestEventModel::timingFollowsZoneAndClock()
+{
+    EventModel model;
+    model.setTimeZoneId(QStringLiteral("Asia/Tokyo"));
+    QCOMPARE(model.timeZoneId(), QStringLiteral("Asia/Tokyo"));
+    // 10:40 UTC is 19:40 in Tokyo; 13:00 UTC is 22:00 there, the same day.
+    const QDateTime now(kMonday, QTime(10, 40), QTimeZone::UTC);
+    const QDateTime later(kMonday, QTime(13, 0), QTimeZone::UTC);
+    QCOMPARE(model.timing(later, later.addSecs(1800), now), QStringLiteral("Starts at 22:00"));
+
+    QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
+    model.setProperty("use24Hour", false);
+    QCOMPARE(model.timing(later, later.addSecs(1800), now), QStringLiteral("Starts at 10:00 PM"));
+    QLocale::setDefault(QLocale::c());
+
+    // 16:00 UTC is already tomorrow in Tokyo, where the date says enough.
+    const QDateTime tomorrow(kMonday, QTime(16, 0), QTimeZone::UTC);
+    QCOMPARE(model.timing(tomorrow, tomorrow.addSecs(1800), now), QString());
+
+    model.setTimeZoneId({});
+    QVERIFY(model.timeZoneId().isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

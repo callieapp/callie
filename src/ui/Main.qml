@@ -37,7 +37,7 @@ ApplicationWindow {
         return d
     }
 
-    Component.onCompleted: weekStart = mondayOf(Settings.dateIn(Clock.now))
+    Component.onCompleted: weekStart = mondayOf(Settings.times.date(Clock.now))
 
     function shiftWeeks(n) {
         const d = new Date(weekStart)
@@ -68,7 +68,7 @@ ApplicationWindow {
         id: monthModel
         month: window.weekStart
         weekStart: window.weekStart
-        today: Settings.dateIn(Clock.now)
+        today: Settings.times.date(Clock.now)
     }
 
     // Everything the window shows, with its corners rounded unless it fills
@@ -229,7 +229,7 @@ ApplicationWindow {
                 StickerButton {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("Today")
-                    onClicked: window.weekStart = window.mondayOf(Settings.dateIn(Clock.now))
+                    onClicked: window.weekStart = window.mondayOf(Settings.times.date(Clock.now))
                 }
             }
 
@@ -255,12 +255,13 @@ ApplicationWindow {
                     // Pink is kept for today and actions, so a healthy sync stays neutral.
                     readonly property color ink: failed ? Theme.danger : window.source.syncing
                                                           ? Theme.textFaint : Theme.textMuted
-                    readonly property string label: window.source.syncing ? qsTr("Syncing...") :
-                                                                            failed ? qsTr(
+                    readonly property string label: {
+                        return window.source.syncing ? qsTr("Syncing...") : failed ? qsTr(
                                                                                          "Sync failed") :
                                                                                      qsTr("Updated %1").arg(
-                                                                                         Settings.formatTime(
+                                                                                         Settings.times.time(
                                                                                              window.source.lastSynced))
+                    }
                     // Room between the left side and the rest of the right side.
                     readonly property real spare: titleBar.width - leading.x - leading.width
                                                   - trailingFixed.width - 3 * Theme.space4

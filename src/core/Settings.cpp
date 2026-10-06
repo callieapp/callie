@@ -1,5 +1,4 @@
 #include "callie/Settings.h"
-#include "callie/TimeFormat.h"
 
 #include <QLocale>
 #include <QStandardPaths>
@@ -23,6 +22,7 @@ Settings::Settings(const QString &path, QObject *parent)
     : QObject(parent), m_store(path, QSettings::IniFormat)
 {
     load();
+    rebuildTimes();
 }
 
 QString Settings::defaultPath()
@@ -52,6 +52,7 @@ void Settings::setTimeFormat(TimeFormat format)
     m_timeFormat = format;
     m_store.setValue(kTimeFormat, int(format));
     Q_EMIT timeFormatChanged();
+    rebuildTimes();
 }
 
 bool Settings::use24Hour() const
@@ -74,6 +75,7 @@ void Settings::setTimeZoneId(const QString &id)
     m_timeZoneId = kept;
     m_store.setValue(kTimeZone, kept);
     Q_EMIT timeZoneChanged();
+    rebuildTimes();
 }
 
 QTimeZone Settings::timeZone() const
@@ -120,24 +122,15 @@ void Settings::setCalendarVisible(const QString &id, bool visible)
     Q_EMIT hiddenCalendarsChanged();
 }
 
-QString Settings::formatTime(const QDateTime &time) const
+void Settings::rebuildTimes()
 {
-    return formatClock(time.toTimeZone(timeZone()).time(), use24Hour());
-}
-
-QDateTime Settings::dateIn(const QDateTime &time) const
-{
-    return time.toTimeZone(timeZone()).date().startOfDay();
-}
-
-int Settings::minutesIntoDay(const QDateTime &time) const
-{
-    return time.toTimeZone(timeZone()).time().msecsSinceStartOfDay() / 60000;
-}
-
-QString Settings::formatHour(int hour) const
-{
-    return formatHourLabel(hour, use24Hour());
+    if (m_times && m_times->zone() == timeZone() && m_times->use24Hour() == use24Hour())
+        return;
+    // A new object, not a mutated one, so bindings holding the old one re-run.
+    if (m_times)
+        m_times->deleteLater();
+    m_times = new Times(timeZone(), use24Hour(), this);
+    Q_EMIT timesChanged();
 }
 
 QStringList Settings::availableTimeZones()
@@ -168,6 +161,7 @@ void Settings::reset()
         Q_EMIT widenTodayChanged();
     if (hidden != m_hiddenCalendars)
         Q_EMIT hiddenCalendarsChanged();
+    rebuildTimes();
 }
 
 } // namespace callie

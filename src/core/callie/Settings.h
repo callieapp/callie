@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Times.h"
+
 #include <QDate>
 #include <QObject>
 #include <QSettings>
@@ -20,6 +22,7 @@ class Settings : public QObject
     Q_PROPERTY(bool dimPast READ dimPast WRITE setDimPast NOTIFY dimPastChanged)
     Q_PROPERTY(bool widenToday READ widenToday WRITE setWidenToday NOTIFY widenTodayChanged)
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars NOTIFY hiddenCalendarsChanged)
+    Q_PROPERTY(callie::Times *times READ times NOTIFY timesChanged)
 
 public:
     enum class TimeFormat { Locale, TwentyFourHour, TwelveHour };
@@ -53,17 +56,9 @@ public:
     [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
     Q_INVOKABLE void setCalendarVisible(const QString &id, bool visible);
 
-    /// A clock time in the chosen format: "14:30" or "2:30 PM".
-    Q_INVOKABLE QString formatTime(const QDateTime &time) const;
-    /// An hour label for the grid: "14:00" or "2 PM".
-    Q_INVOKABLE QString formatHour(int hour) const;
-
-    /// The calendar date of `time` in the chosen zone, which QML cannot work
-    /// out from a Date in the system zone. It comes back as that day's local
-    /// midnight: a QDate would reach QML as UTC midnight, a day early in the west.
-    Q_INVOKABLE QDateTime dateIn(const QDateTime &time) const;
-    /// Minutes since midnight of `time` in the chosen zone.
-    Q_INVOKABLE int minutesIntoDay(const QDateTime &time) const;
+    /// Times in the chosen zone and clock format. A JS Date only knows the
+    /// system zone, so QML formats and places times through this.
+    [[nodiscard]] Times *times() const { return m_times; }
 
     /// Every IANA zone id, for the zone picker.
     Q_INVOKABLE static QStringList availableTimeZones();
@@ -78,9 +73,11 @@ Q_SIGNALS:
     void dimPastChanged();
     void widenTodayChanged();
     void hiddenCalendarsChanged();
+    void timesChanged();
 
 private:
     void load();
+    void rebuildTimes();
 
     QSettings m_store;
     TimeFormat m_timeFormat = TimeFormat::Locale;
@@ -89,6 +86,7 @@ private:
     bool m_dimPast = true;
     bool m_widenToday = false;
     QStringList m_hiddenCalendars;
+    Times *m_times = nullptr;
 };
 
 } // namespace callie

@@ -158,17 +158,20 @@ void TestGoogleSource::backgroundLoadMatchesDirectRead()
     const QDateTime from(QDate(2026, 10, 1), QTime(0, 0), kNewYork);
     const QDateTime to(QDate(2026, 10, 31), QTime(0, 0), kNewYork);
 
-    QFuture<QList<Event>> future = source.loadEventsBetween(from, to, kNewYork);
+    QFuture<SourceSnapshot> future = source.load(from, to, kNewYork);
     future.waitForFinished();
+    const SourceSnapshot snapshot = future.result();
 
     const QList<Event> direct = source.eventsBetween(from, to, kNewYork);
     QVERIFY(!direct.isEmpty());
-    QCOMPARE(future.result().size(), direct.size());
+    QCOMPARE(snapshot.events.size(), direct.size());
     for (qsizetype i = 0; i < direct.size(); ++i) {
-        QCOMPARE(future.result().at(i).uid, direct.at(i).uid);
-        QCOMPARE(future.result().at(i).start, direct.at(i).start);
-        QCOMPARE(future.result().at(i).color, direct.at(i).color);
+        QCOMPARE(snapshot.events.at(i).uid, direct.at(i).uid);
+        QCOMPARE(snapshot.events.at(i).start, direct.at(i).start);
+        QCOMPARE(snapshot.events.at(i).color, direct.at(i).color);
     }
+    QCOMPARE(snapshot.calendars.size(), source.calendars().size());
+    QCOMPARE(snapshot.calendars.first().id, source.calendars().first().id);
 }
 
 void TestGoogleSource::refreshWithoutSyncRereadsCache()

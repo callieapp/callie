@@ -46,7 +46,7 @@ void EventModel::setSource(CalendarSource *source)
     if (m_source)
         connect(m_source, &CalendarSource::changed, this, &EventModel::reload);
     Q_EMIT sourceChanged();
-    reload();
+    reloadRange();
 }
 
 void EventModel::setRangeStart(QDate date)
@@ -56,7 +56,7 @@ void EventModel::setRangeStart(QDate date)
         return;
     m_rangeStart = date;
     Q_EMIT rangeChanged();
-    reload();
+    reloadRange();
 }
 
 void EventModel::setDayCount(int days)
@@ -65,10 +65,20 @@ void EventModel::setDayCount(int days)
         return;
     m_dayCount = days;
     Q_EMIT rangeChanged();
-    reload();
+    reloadRange();
 }
 
 void EventModel::reload()
+{
+    load(false);
+}
+
+void EventModel::reloadRange()
+{
+    load(true);
+}
+
+void EventModel::load(bool rangeChanged)
 {
     const quint64 generation = ++m_generation;
     if (!m_source) {
@@ -77,29 +87,34 @@ void EventModel::reload()
     }
     const QDateTime from(m_rangeStart, QTime(0, 0), m_tz);
     const QDateTime to(m_rangeStart.addDays(m_dayCount), QTime(0, 0), m_tz);
-    // The shown events stay until their replacement arrives.
-    QFuture<QList<Event>> future = m_source->loadEventsBetween(from, to, m_tz);
+    QFuture<SourceSnapshot> future = m_source->load(from, to, m_tz);
     if (future.isFinished()) {
         apply(future.result());
         return;
     }
-    future.then(this, [this, generation](const QList<Event> &events) {
+    // Rows place themselves relative to the range, so after a range change
+    // they would land on the wrong days while the new range loads.
+    if (rangeChanged && !m_events.isEmpty()) {
+        beginResetModel();
+        m_events.clear();
+        endResetModel();
+    }
+    future.then(this, [this, generation](const SourceSnapshot &snapshot) {
         if (generation == m_generation)
-            apply(events);
+            apply(snapshot);
     });
 }
 
-void EventModel::apply(QList<Event> events)
+void EventModel::apply(SourceSnapshot snapshot)
 {
+    QList<Event> &events = snapshot.events;
     QVariantList calendars;
-    const QList<CalendarInfo> infos = m_source ? m_source->calendars() : QList<CalendarInfo>();
-
     assignLanes(events);
     // Calendars first: rows name their calendar, and views read rows as soon as
     // the reset ends.
     beginResetModel();
     m_calendarNames.clear();
-    for (const CalendarInfo &calendar : std::as_const(infos)) {
+    for (const CalendarInfo &calendar : std::as_const(snapshot.calendars)) {
         m_calendarNames.insert(calendar.id, calendar.displayName);
         if (calendar.enabled)
             calendars.append(QVariantMap{{QStringLiteral("name"), calendar.displayName},

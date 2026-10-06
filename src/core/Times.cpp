@@ -25,7 +25,10 @@ QDateTime Times::date(const QDateTime &time) const
 
 QDateTime Times::at(const QDateTime &day, int minutes) const
 {
-    return QDateTime(day.date(), QTime(0, 0), m_zone).addSecs(qint64(minutes) * 60);
+    // Wall-clock, like the grid: on a DST day 13:00 is still 13:00, not 13 hours in.
+    const QDate date = day.date().addDays(minutes / (24 * 60));
+    const int rest = minutes % (24 * 60);
+    return QDateTime(date, QTime(rest / 60, rest % 60), m_zone);
 }
 
 int Times::minutesIntoDay(const QDateTime &time) const

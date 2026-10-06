@@ -12,6 +12,7 @@ Build-Depends: debhelper-compat (= 13),
                libtomlplusplus-dev,
                libqt6sql6-sqlite,
                qml6-module-qtquick-controls,
+               qml6-module-qtquick-effects,
                libkf6calendarcore-dev,
                desktop-file-utils,
                appstream-util
@@ -24,6 +25,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
          libqt6sql6-sqlite,
          qml6-module-qtquick-controls,
+         qml6-module-qtquick-effects,
          qml6-module-qtquick-templates
 Description: elegant calendar for Linux
  Callie is a calendar for people who live in their calendar. It connects to

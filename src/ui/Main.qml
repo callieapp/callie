@@ -365,10 +365,7 @@ ApplicationWindow {
                                                                              qsTr("synced %1").arg(
                                                                                  Settings.times.time(
                                                                                      entry.lastSynced))
-                            const count = entry.calendars === 1 ? qsTr("1 calendar") : qsTr(
-                                                                      "%1 calendars").arg(
-                                                                      entry.calendars)
-                            lines.push(qsTr("%1: %2, %3").arg(entry.account).arg(when).arg(count))
+                            lines.push(qsTr("%1: %2").arg(entry.account).arg(when))
                             if (entry.error)
                                 lines.push("    " + entry.error)
                             for (const problem of entry.problems)

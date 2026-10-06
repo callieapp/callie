@@ -104,6 +104,7 @@ private Q_SLOTS:
     void nothingLeftToday();
     void sourceChangesRefresh();
     void declinedIsSkipped();
+    void hiddenCalendarIsSkipped();
     void slowReadLandsLater();
     void startedEventLeavesWhileReading();
     void overtakenReadIsDropped();
@@ -212,9 +213,6 @@ void TestTodayModel::declinedIsSkipped()
     model.setSource(&source);
 
     QCOMPARE(model.nextTitle(), u"Going"_s);
-
-    model.setHiddenCalendars({u"focus"_s});
-    QVERIFY(!model.hasNext());
 }
 
 void TestTodayModel::slowReadLandsLater()
@@ -271,6 +269,20 @@ void TestTodayModel::todayFollowsTheZone()
 
     QCOMPARE(model.now().date(), kDay.addDays(1));
     QCOMPARE(model.greeting(), u"Good morning"_s);
+}
+
+void TestTodayModel::hiddenCalendarIsSkipped()
+{
+    Event home = timed(u"Groceries"_s, at(15), 30);
+    home.calendarId = u"home"_s;
+    FakeSource source({timed(u"Review"_s, at(11), 30), home});
+    TodayModel model;
+    model.setNow(at(10, 40));
+    model.setSource(&source);
+    QCOMPARE(model.nextTitle(), u"Review"_s);
+
+    model.setHiddenCalendars({u"focus"_s});
+    QCOMPARE(model.nextTitle(), u"Groceries"_s);
 }
 
 QTEST_GUILESS_MAIN(TestTodayModel)

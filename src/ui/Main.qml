@@ -47,6 +47,19 @@ ApplicationWindow {
         dayCount: 7
     }
 
+    TodayModel {
+        id: todayModel
+        source: window.source
+        now: Clock.now
+    }
+
+    MonthModel {
+        id: monthModel
+        month: window.weekStart
+        weekStart: window.weekStart
+        today: Clock.now
+    }
+
     // ---- Title bar, which is also the toolbar ----------------------------
     Rectangle {
         id: titleBar
@@ -376,70 +389,17 @@ ApplicationWindow {
         }
         spacing: 0
 
-        Rectangle {
-            width: 220
+        Sidebar {
+            width: 240
             height: parent.height
-            color: Theme.surfaceAlt
-
-            Rectangle {
-                anchors {
-                    right: parent.right
-                    top: parent.top
-                    bottom: parent.bottom
-                }
-                width: 1
-                color: Theme.border
-            }
-
-            Column {
-                anchors {
-                    fill: parent
-                    margins: Theme.space5
-                }
-                spacing: Theme.space4
-
-                Text {
-                    text: qsTr("Calendars")
-                    color: Theme.textFaint
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.textXs
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 0.6
-                }
-
-                Repeater {
-                    model: events.calendars
-
-                    Row {
-                        id: calendarRow
-                        required property var modelData
-                        width: parent.width
-                        spacing: Theme.space3
-
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 9
-                            height: 9
-                            radius: 2.5
-                            color: Theme.calendarColor(calendarRow.modelData.color, Theme.calendar)
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: calendarRow.width - 9 - Theme.space3
-                            text: calendarRow.modelData.name
-                            elide: Text.ElideRight
-                            color: Theme.text
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.textMd
-                        }
-                    }
-                }
-            }
+            today: todayModel
+            month: monthModel
+            events: events
+            onDayPicked: day => window.weekStart = window.mondayOf(day)
         }
 
         WeekView {
-            width: parent.width - 220
+            width: parent.width - 240
             height: parent.height
             model: events
             anchorDate: window.weekStart

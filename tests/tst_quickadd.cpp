@@ -206,6 +206,17 @@ void TestQuickAdd::versionNumbersStayInTheTitle()
     QCOMPARE(shipped.summary, u"Ship 4.15-26"_s);
     QCOMPARE(shipped.start, at(10, 9, 15));
 
+    // "to" only joins a range after a time.
+    const EventDraft upgrade = parse(u"Upgrade to 4.15 friday 3pm"_s);
+    QCOMPARE(upgrade.summary, u"Upgrade to 4.15"_s);
+    QCOMPARE(upgrade.start, at(10, 9, 15));
+    QCOMPARE(parse(u"Call friday 3 to 4.30"_s).end, at(10, 9, 16, 30));
+
+    // A place needs letters.
+    const EventDraft fee = parse(u"Fee at $50"_s);
+    QCOMPARE(fee.summary, u"Fee at $50"_s);
+    QVERIFY(fee.location.isEmpty());
+
     // Nor is a time that cannot exist, even written with a dot.
     QCOMPARE(parse(u"Party at 9.99pm"_s).summary, u"Party at 9.99pm"_s);
 }

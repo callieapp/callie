@@ -9,9 +9,11 @@ namespace callie {
 namespace {
 
 const QString kTime = uR"((?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|a|p)?|noon|midnight))"_s;
-/// A dash that ends a time-like number such as 4, 945 or 9:30, as in a range;
-/// a dash after "$5" or a year is something else.
-const QString kAfterTime = uR"((?<=\s\d|\s\d\d|\s\d\d\d|\s\d\d\d\d|\s\d:\d\d|\s\d\d:\d\d)-)"_s;
+/// Just after a time-like number such as 4, 945, 9:30 or 3pm, where a range's
+/// dash or "to" can follow; a dash after "$5" or a year is something else.
+const QString kTimeBehind =
+    uR"((?<=\s\d|\s\d\d|\s\d\d\d|\s\d\d\d\d|\s\d:\d\d|\s\d\d:\d\d|\s\d[ap]m|\s\d\d[ap]m))"_s;
+const QString kAfterTime = kTimeBehind + u"-"_s;
 const QString kWeekdays =
     uR"((mon|monday|tue|tues|tuesday|wed|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday))"_s;
 const QString kMonths =
@@ -145,7 +147,8 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
         pattern(uR"(((?:\s|)"_s + kAfterTime +
                 uR"()\d{1,2})[.]?(\d{2})(\s*(?:am|pm|a\.m\.|p\.m\.|a|p)(?=\s|-)))"_s);
     static const QRegularExpression dotted =
-        pattern(uR"(((?:\sat|\sto|)"_s + kAfterTime + uR"()\s*\d{1,2})\.(\d{2})()(?=\s|-))"_s);
+        pattern(uR"(((?:\sat|)"_s + kTimeBehind + uR"(\s+to|)"_s + kAfterTime +
+                uR"()\s*\d{1,2})\.(\d{2})()(?=\s|-))"_s);
     // A range's start once its end reads as a time: "945-1015am" needs the end's
     // colon or am/pm, so a span such as 2025-26 is left alone; "4.15-5" has its dot.
     static const QRegularExpression compactStart = pattern(
@@ -250,10 +253,10 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
                   });
     }
 
-    // Whatever follows "at" or "@" is the place, unless it is shaped like a
-    // time: "at 25" and "at 9.99pm" are times that cannot exist, not places.
+    // Whatever follows "at" or "@" is the place if it has a letter and is not
+    // shaped like a time: "at 25", "at $50" and "at 9.99pm" are not places.
     QString location;
-    static const QRegularExpression place = pattern(uR"(\s(?:at|@)\s+(.+?)\s*$)"_s);
+    static const QRegularExpression place = pattern(uR"(\s(?:at|@)\s+(.*\p{L}.*?)\s*$)"_s);
     static const QRegularExpression timeShaped =
         pattern(uR"(^\d[\d:.]*\s*(?:am|pm|a\.m\.|p\.m\.|a|p)?$)"_s);
     if (const auto m = place.match(rest);

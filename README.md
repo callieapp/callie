@@ -38,9 +38,13 @@ made-up week instead, and `--screenshot file.png` saves the window once it has r
 `--now 2026-03-18T10:40` stops the clock at that time and `--size 1280x840` sets the window size, so
 a screenshot comes out the same every time.
 
-Choose a theme with `--theme`, passing a built-in theme's name or the path to a theme file. The
-`CALLIE_THEME` environment variable does the same. A theme loaded from a file updates the running
-app as soon as you save it.
+Pick a theme in Settings, under Appearance. Customize colors copies the theme into
+`$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
+can be imported and exported there too, and Callie remembers the choice.
+
+`--theme`, given a built-in theme's name or the path to a theme file, overrides that choice for
+one run, as does the `CALLIE_THEME` environment variable. A theme loaded from a file updates the
+running app as soon as you save it.
 
 ### The `callie` CLI
 

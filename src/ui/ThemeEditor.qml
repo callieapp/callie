@@ -144,7 +144,8 @@ Popup {
                         if (/^#[0-9a-fA-F]{6}$/.test(value))
                             Themes.setColor(row.modelData, value)
                         else
-                            text = String(row.value)
+                            // Rebound, so it keeps following the theme afterwards.
+                            text = Qt.binding(() => String(row.value))
                     }
                     background: Rectangle {
                         radius: Theme.radiusMd

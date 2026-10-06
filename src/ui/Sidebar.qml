@@ -140,7 +140,7 @@ Rectangle {
 
             Grid {
                 columns: 7
-                rowSpacing: 2
+                rowSpacing: Theme.space1
 
                 Repeater {
                     model: root.month
@@ -167,8 +167,8 @@ Rectangle {
                                 visible: dayCell.isToday
                                 anchors {
                                     fill: parent
-                                    topMargin: 2
-                                    bottomMargin: -2
+                                    topMargin: Theme.stickerEdge
+                                    bottomMargin: -Theme.stickerEdge
                                 }
                                 radius: Theme.radiusSm
                                 color: Theme.accentEdge

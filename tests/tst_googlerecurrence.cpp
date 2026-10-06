@@ -389,6 +389,14 @@ void TestGoogleRecurrence::invitationsAndPermissions()
     QVERIFY(guest.canRespond);
     QVERIFY(!guest.canEdit);
 
+    // Guests may change it when the organizer allows that.
+    const GoogleEvent open = parsed(R"({"id":"open","guestsCanModify":true,
+        "start":{"dateTime":"2026-10-06T19:00:00Z"},"end":{"dateTime":"2026-10-06T20:00:00Z"},
+        "attendees":[{"email":"me@example.com","self":true}]})");
+    const QList<Event> opened = expand({open}, utc(2026, 10, 6), utc(2026, 10, 7));
+    QVERIFY(opened.first().canEdit);
+    QVERIFY(opened.first().canRespond);
+
     const Event &organizer = events.at(1);
     QVERIFY(!organizer.canRespond);
     QVERIFY(organizer.canEdit);

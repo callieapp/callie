@@ -125,6 +125,12 @@ void GoogleSource::setAccounts(QList<Account> accounts)
 {
     if (m_accounts == accounts)
         return;
+    if (m_sync) {
+        for (const Account &account : std::as_const(m_accounts)) {
+            if (!accounts.contains(account))
+                m_sync->forget(account);
+        }
+    }
     m_accounts = std::move(accounts);
     // A removed account's errors and sync time go with it; a new one starts unsynced.
     loadStatus();

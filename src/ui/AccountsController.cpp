@@ -82,7 +82,13 @@ void AccountsController::connectGoogle()
     if (busy() || !unavailable().isEmpty())
         return;
     m_error.clear();
+    m_granted = false;
     m_auth = new GoogleAuth(m_setup.client, this);
+    connect(m_auth, &GoogleAuth::granted, this, [this] {
+        m_granted = true;
+        m_status = tr("Saving the account...");
+        Q_EMIT stateChanged();
+    });
     connect(m_auth, &GoogleAuth::authorizeUrlReady, this, [this](const QUrl &url) {
         m_status = tr("Finish signing in to Google in your browser.");
         Q_EMIT stateChanged();
@@ -97,7 +103,7 @@ void AccountsController::connectGoogle()
 
 void AccountsController::cancel()
 {
-    if (!m_auth)
+    if (!signingIn())
         return;
     // Deleted now, not later, so a sign-in finishing in the browser meanwhile
     // reaches nothing and cannot add the account or end the next attempt.

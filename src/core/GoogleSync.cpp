@@ -27,6 +27,8 @@ struct GoogleSync::Run
     int pending = 0;
     bool unauthorized = false;
     bool retried = false;
+    /// The account was removed; nothing more is written for it.
+    bool forgotten = false;
 };
 
 namespace {
@@ -226,6 +228,10 @@ void GoogleSync::start(const std::shared_ptr<Run> &run)
         run->account, [this, self, run](const QString &token, const QString &error) {
             if (!self)
                 return;
+            if (run->forgotten) {
+                finish(run);
+                return;
+            }
             if (!error.isEmpty()) {
                 run->accountError = error;
                 finish(run);
@@ -236,6 +242,10 @@ void GoogleSync::start(const std::shared_ptr<Run> &run)
                                                           const GoogleApiError &error) {
                 if (!self)
                     return;
+                if (run->forgotten) {
+                    finish(run);
+                    return;
+                }
                 if (error.unauthorized() && !run->retried) {
                     run->unauthorized = true;
                     finish(run);
@@ -275,6 +285,10 @@ void GoogleSync::syncCalendar(const std::shared_ptr<Run> &run, const QString &ca
                                                        const GoogleApiError &error) {
             if (!self)
                 return;
+            if (run->forgotten) {
+                calendarDone(run);
+                return;
+            }
             if (error.syncTokenExpired() && !syncToken.isEmpty()) {
                 qCInfo(lcSync) << "sync token expired for" << calendarId << "- syncing in full";
                 syncCalendar(run, calendarId, name, true);
@@ -308,8 +322,19 @@ void GoogleSync::calendarDone(const std::shared_ptr<Run> &run)
         finish(run);
 }
 
+void GoogleSync::forget(const Account &account)
+{
+    if (const std::shared_ptr<Run> run = m_running.take(keyFor(account)))
+        run->forgotten = true;
+}
+
 void GoogleSync::finish(const std::shared_ptr<Run> &run)
 {
+    if (run->forgotten) {
+        for (const Done &done : std::as_const(run->waiting))
+            done({});
+        return;
+    }
     // A cached access token can be revoked before it expires. Refresh it and
     // go again once; calendars that already synced only fetch what is new.
     if (run->unauthorized && !run->retried) {

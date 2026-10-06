@@ -51,6 +51,7 @@ private Q_SLOTS:
     void eventsComeFromSelectedCalendarsOnly();
     void eventsAreInTheRequestedZone();
     void seriesAreExpanded();
+    void backgroundLoadMatchesDirectRead();
     void refreshWithoutSyncRereadsCache();
     void refreshSyncsAndReportsErrorsPerAccount();
     void refreshWhileSyncingStartsNothingNew();
@@ -149,6 +150,25 @@ void TestGoogleSource::seriesAreExpanded()
     const auto standups = std::count_if(events.cbegin(), events.cend(),
                                         [](const Event &e) { return e.uid == u"standup"; });
     QCOMPARE(standups, 5);
+}
+
+void TestGoogleSource::backgroundLoadMatchesDirectRead()
+{
+    const GoogleSource source(*m_cache, {kAccount});
+    const QDateTime from(QDate(2026, 10, 1), QTime(0, 0), kNewYork);
+    const QDateTime to(QDate(2026, 10, 31), QTime(0, 0), kNewYork);
+
+    QFuture<QList<Event>> future = source.loadEventsBetween(from, to, kNewYork);
+    future.waitForFinished();
+
+    const QList<Event> direct = source.eventsBetween(from, to, kNewYork);
+    QVERIFY(!direct.isEmpty());
+    QCOMPARE(future.result().size(), direct.size());
+    for (qsizetype i = 0; i < direct.size(); ++i) {
+        QCOMPARE(future.result().at(i).uid, direct.at(i).uid);
+        QCOMPARE(future.result().at(i).start, direct.at(i).start);
+        QCOMPARE(future.result().at(i).color, direct.at(i).color);
+    }
 }
 
 void TestGoogleSource::refreshWithoutSyncRereadsCache()

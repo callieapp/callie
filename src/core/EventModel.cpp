@@ -70,13 +70,34 @@ void EventModel::setDayCount(int days)
 
 void EventModel::reload()
 {
-    // Calendars first: rows name their calendar, and views read rows as soon as
-    // the reset ends.
+    const quint64 generation = ++m_generation;
+    if (!m_source) {
+        apply({});
+        return;
+    }
+    const QDateTime from(m_rangeStart, QTime(0, 0), m_tz);
+    const QDateTime to(m_rangeStart.addDays(m_dayCount), QTime(0, 0), m_tz);
+    // The shown events stay until their replacement arrives.
+    QFuture<QList<Event>> future = m_source->loadEventsBetween(from, to, m_tz);
+    if (future.isFinished()) {
+        apply(future.result());
+        return;
+    }
+    future.then(this, [this, generation](const QList<Event> &events) {
+        if (generation == m_generation)
+            apply(events);
+    });
+}
+
+void EventModel::apply(QList<Event> events)
+{
     QVariantList calendars;
     const QList<CalendarInfo> infos = m_source ? m_source->calendars() : QList<CalendarInfo>();
 
+    assignLanes(events);
+    // Calendars first: rows name their calendar, and views read rows as soon as
+    // the reset ends.
     beginResetModel();
-    m_events.clear();
     m_calendarNames.clear();
     for (const CalendarInfo &calendar : std::as_const(infos)) {
         m_calendarNames.insert(calendar.id, calendar.displayName);
@@ -84,12 +105,7 @@ void EventModel::reload()
             calendars.append(QVariantMap{{QStringLiteral("name"), calendar.displayName},
                                          {QStringLiteral("color"), calendar.color}});
     }
-    if (m_source) {
-        const QDateTime from(m_rangeStart, QTime(0, 0), m_tz);
-        const QDateTime to(m_rangeStart.addDays(m_dayCount), QTime(0, 0), m_tz);
-        m_events = m_source->eventsBetween(from, to, m_tz);
-        assignLanes(m_events);
-    }
+    m_events = std::move(events);
     const int rows = assignAllDayRows(m_events);
     endResetModel();
     if (rows != m_allDayRows) {

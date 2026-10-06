@@ -4,6 +4,7 @@
 
 #include <QDate>
 #include <QDateTime>
+#include <QFuture>
 #include <QObject>
 #include <QString>
 #include <QTimeZone>
@@ -42,6 +43,14 @@ public:
     /// converted into `tz`. Must not block on the network.
     [[nodiscard]] virtual QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                                      const QTimeZone &tz) const = 0;
+
+    /// eventsBetween() without blocking the caller. Sources that read from disk
+    /// answer from another thread; the default answers at once.
+    [[nodiscard]] virtual QFuture<QList<Event>>
+    loadEventsBetween(const QDateTime &from, const QDateTime &to, const QTimeZone &tz) const
+    {
+        return QtFuture::makeReadyValueFuture(eventsBetween(from, to, tz));
+    }
 
     /// Kick off a background refresh. Emits `changed` when new data lands.
     virtual void refresh() = 0;

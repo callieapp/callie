@@ -3,8 +3,10 @@
 #include "callie/GoogleCache.h"
 #include "callie/GoogleRecurrence.h"
 #include "callie/GoogleSync.h"
+#include "callie/Logging.h"
 
 #include <QPointer>
+#include <QPromise>
 
 namespace callie {
 
@@ -20,11 +22,35 @@ bool canWrite(const QString &accessRole)
     return accessRole == QLatin1String("owner") || accessRole == QLatin1String("writer");
 }
 
+QList<Event> readEvents(GoogleCache &cache, const QList<Account> &accounts, const QDateTime &from,
+                        const QDateTime &to, const QTimeZone &tz)
+{
+    QList<Event> result;
+    for (const Account &account : accounts) {
+        for (const GoogleCalendar &calendar : cache.calendars(account)) {
+            if (!calendar.selected)
+                continue;
+            const QColor color = QColor::fromString(calendar.color);
+            const QList<Event> events =
+                expandGoogleEvents(cache.events(account, calendar.id, from, to), from, to, tz);
+            for (Event event : events) {
+                event.calendarId = calendarKey(account, calendar.id);
+                event.color = color;
+                event.start = event.start.toTimeZone(tz);
+                event.end = event.end.toTimeZone(tz);
+                result.append(event);
+            }
+        }
+    }
+    return result;
+}
+
 } // namespace
 
 GoogleSource::GoogleSource(GoogleCache &cache, QList<Account> accounts, QObject *parent)
     : CalendarSource(parent), m_cache(cache), m_accounts(std::move(accounts))
 {
+    m_readers.setMaxThreadCount(1);
     m_changes.setSingleShot(true);
     m_changes.setInterval(250);
     connect(&m_changes, &QTimer::timeout, this, &CalendarSource::changed);
@@ -83,24 +109,26 @@ QList<CalendarInfo> GoogleSource::calendars() const
 QList<Event> GoogleSource::eventsBetween(const QDateTime &from, const QDateTime &to,
                                          const QTimeZone &tz) const
 {
-    QList<Event> result;
-    for (const Account &account : m_accounts) {
-        for (const GoogleCalendar &calendar : m_cache.calendars(account)) {
-            if (!calendar.selected)
-                continue;
-            const QColor color = QColor::fromString(calendar.color);
-            const QList<Event> events =
-                expandGoogleEvents(m_cache.events(account, calendar.id, from, to), from, to, tz);
-            for (Event event : events) {
-                event.calendarId = calendarKey(account, calendar.id);
-                event.color = color;
-                event.start = event.start.toTimeZone(tz);
-                event.end = event.end.toTimeZone(tz);
-                result.append(event);
-            }
-        }
-    }
-    return result;
+    return readEvents(m_cache, m_accounts, from, to, tz);
+}
+
+QFuture<QList<Event>> GoogleSource::loadEventsBetween(const QDateTime &from, const QDateTime &to,
+                                                      const QTimeZone &tz) const
+{
+    auto promise = std::make_shared<QPromise<QList<Event>>>();
+    QFuture<QList<Event>> future = promise->future();
+    promise->start();
+    m_readers.start([path = m_cache.path(), accounts = m_accounts, from, to, tz, promise] {
+        GoogleCache reader(path);
+        QList<Event> events;
+        if (reader.openForReading())
+            events = readEvents(reader, accounts, from, to, tz);
+        else
+            qCWarning(lcSync) << "could not read the cache:" << reader.errorString();
+        promise->addResult(events);
+        promise->finish();
+    });
+    return future;
 }
 
 void GoogleSource::flushChanges()

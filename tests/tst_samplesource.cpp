@@ -13,6 +13,7 @@ class TestSampleSource : public QObject
 private Q_SLOTS:
     void countsAsSyncedFromTheStart();
     void reportListsEachAccount();
+    void syncTimeFollowsTheClock();
 };
 
 void TestSampleSource::countsAsSyncedFromTheStart()
@@ -39,6 +40,18 @@ void TestSampleSource::reportListsEachAccount()
     const QVariantMap work = report.at(0).toMap();
     QCOMPARE(work.value(u"account"_s).toString(), u"sam@work.example"_s);
     QCOMPARE(work.value(u"lastSynced"_s).toDateTime(), source.lastSynced());
+}
+
+void TestSampleSource::syncTimeFollowsTheClock()
+{
+    SampleSource source;
+    QDateTime now(QDate(2026, 10, 7), QTime(13, 40), QTimeZone::UTC);
+    source.setNow([&now] { return now; });
+    QCOMPARE(source.lastSynced(), now);
+
+    now = now.addSecs(60);
+    source.refresh();
+    QCOMPARE(source.lastSynced(), now);
 }
 
 QTEST_GUILESS_MAIN(TestSampleSource)

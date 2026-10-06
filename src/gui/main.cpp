@@ -146,6 +146,7 @@ int main(int argc, char *argv[])
     callie::GoogleSource google(cache, accounts);
     google.setSync(&sync);
     callie::SampleSource sample;
+    sample.setNow([] { return callie::Clock::instance()->now(); });
 
     callie::CalendarSource *source =
         useSample ? static_cast<callie::CalendarSource *>(&sample) : &google;

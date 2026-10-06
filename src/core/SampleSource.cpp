@@ -47,9 +47,10 @@ constexpr Seed kSeeds[] = {
 
 } // namespace
 
-SampleSource::SampleSource(QObject *parent) : CalendarSource(parent)
+SampleSource::SampleSource(QObject *parent)
+    : CalendarSource(parent), m_now([] { return QDateTime::currentDateTimeUtc(); })
 {
-    m_synced = QDateTime::currentDateTimeUtc();
+    m_synced = m_now();
     m_calendars = {
         {QStringLiteral("work"), QStringLiteral("Work"), QColor(QStringLiteral("#5B8DEF")), true,
          true, QStringLiteral("sam@work.example")},
@@ -124,9 +125,16 @@ void SampleSource::deleteEvent(const Event &event, bool, Created done)
     Q_EMIT changed();
 }
 
+void SampleSource::setNow(std::function<QDateTime()> now)
+{
+    m_now = std::move(now);
+    m_synced = m_now();
+    Q_EMIT statusChanged();
+}
+
 void SampleSource::refresh()
 {
-    m_synced = QDateTime::currentDateTimeUtc();
+    m_synced = m_now();
     Q_EMIT statusChanged();
     Q_EMIT changed();
 }

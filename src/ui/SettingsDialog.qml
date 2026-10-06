@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import Callie.Ui
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 
 /// Callie's preferences. Every change applies and saves at once, so there is
 /// nothing to confirm; reset puts everything back.
@@ -14,6 +15,9 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+    /// The user wants to edit the theme's colors, which needs the calendar in view.
+    signal editColorsRequested
 
     Overlay.modal: Rectangle {
         // The attached Window type is not the QML Window type, so this stays untyped.
@@ -76,6 +80,62 @@ Popup {
                 glyph: "close"
                 Accessible.name: qsTr("Close")
                 onClicked: root.close()
+            }
+        }
+
+        Section {
+            title: qsTr("Appearance")
+
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+
+                Repeater {
+                    model: Themes.available
+
+                    PillButton {
+                        required property var modelData
+                        label: modelData.name
+                        selected: Themes.current === modelData.id
+                        onClicked: Themes.use(modelData.id)
+                    }
+                }
+            }
+
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+
+                StickerButton {
+                    text: Themes.editable ? qsTr("Edit colors") : qsTr("Customize colors")
+                    onClicked: {
+                        if (Themes.customize())
+                            root.editColorsRequested()
+                    }
+                }
+                StickerButton {
+                    text: qsTr("Import...")
+                    onClicked: importDialog.open()
+                }
+                StickerButton {
+                    text: qsTr("Export...")
+                    onClicked: exportDialog.open()
+                }
+                StickerButton {
+                    visible: Themes.editable
+                    text: qsTr("Delete theme")
+                    onClicked: Themes.removeCurrent()
+                }
+            }
+
+            Text {
+                visible: Themes.error !== ""
+                width: parent.width
+                text: Themes.error
+                wrapMode: Text.Wrap
+                color: Theme.danger
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
             }
         }
 
@@ -159,8 +219,28 @@ Popup {
 
         StickerButton {
             text: qsTr("Reset to defaults")
-            onClicked: Settings.reset()
+            // Settings forget the theme too, so the default one comes back.
+            onClicked: {
+                Settings.reset()
+                Themes.useDefault()
+            }
         }
+    }
+
+    FileDialog {
+        id: importDialog
+        title: qsTr("Import a theme")
+        nameFilters: [qsTr("Callie themes (*.toml)")]
+        onAccepted: Themes.importFrom(selectedFile)
+    }
+
+    FileDialog {
+        id: exportDialog
+        title: qsTr("Export this theme")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "toml"
+        nameFilters: [qsTr("Callie themes (*.toml)")]
+        onAccepted: Themes.exportTo(selectedFile)
     }
 
     /// A small heading over a group of related settings.

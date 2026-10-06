@@ -19,6 +19,8 @@ qt_add_qml_module(callieui
         SupportActions.cpp
         ThemeController.h
         ThemeController.cpp
+        ThemesController.h
+        ThemesController.cpp
         WindowButtons.h
         WindowButtons.cpp
     QML_FILES
@@ -39,6 +41,7 @@ qt_add_qml_module(callieui
         Toggle.qml
         ZonePicker.qml
         SettingsDialog.qml
+        ThemeEditor.qml
 )
 
 qt_add_resources(callieui "callie_logo"

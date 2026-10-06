@@ -456,6 +456,15 @@ ApplicationWindow {
 
     SettingsDialog {
         id: settingsDialog
+        onEditColorsRequested: {
+            close()
+            themeEditor.open()
+        }
+    }
+
+    ThemeEditor {
+        id: themeEditor
+        onFinished: settingsDialog.open()
     }
 
     Shortcut {

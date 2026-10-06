@@ -56,6 +56,7 @@ void TestSettings::choicesSurviveARestart()
         settings.setWidenToday(true);
         settings.setCalendarVisible(u"google/me/work"_s, false);
         settings.setAccountCollapsed(u"me@example.com"_s, true);
+        settings.setTheme(u"/home/me/.config/callie/themes/mine.toml"_s);
     }
     const Settings settings(path());
     QCOMPARE(settings.timeFormat(), Settings::TimeFormat::TwelveHour);
@@ -65,6 +66,7 @@ void TestSettings::choicesSurviveARestart()
     QVERIFY(settings.widenToday());
     QCOMPARE(settings.hiddenCalendars(), QStringList{u"google/me/work"_s});
     QCOMPARE(settings.collapsedAccounts(), QStringList{u"me@example.com"_s});
+    QCOMPARE(settings.theme(), u"/home/me/.config/callie/themes/mine.toml"_s);
 }
 
 void TestSettings::unchangedValueEmitsNothing()

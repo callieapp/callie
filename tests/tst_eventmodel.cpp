@@ -82,6 +82,8 @@ private Q_SLOTS:
     void allDayEndOnDayWithoutMidnight();
     void calendarsListShownOnly();
     void daysOffFollowTheLocale();
+    void rowsNameTheirCalendar();
+    void timingDescribesWhereAnEventStands();
 
 private:
     /// Builds a model over `events` starting at kMonday. Rows keep source order.
@@ -316,6 +318,46 @@ void TestEventModel::daysOffFollowTheLocale()
     QVERIFY(!model.isDayOff(QDate(2026, 3, 22)));
 
     QLocale::setDefault(previous);
+}
+
+void TestEventModel::rowsNameTheirCalendar()
+{
+    Event e = timed("a", kMonday, 9, 0, 60);
+    e.calendarId = QStringLiteral("work");
+    e.description =
+        QStringLiteral("<b>Agenda</b> in the <a href=\"https://x.test\">doc</a><br><img "
+                       "src=\"https://x.test/i.png\">");
+    auto source = std::make_unique<FakeSource>(QList<Event>{e});
+    source->calendarList = {CalendarInfo{
+        .id = QStringLiteral("work"), .displayName = QStringLiteral("Work"), .color = QColor()}};
+    EventModel model;
+    model.setRangeStart(kMonday);
+    model.setSource(source.get());
+
+    QCOMPARE(model.data(model.index(0, 0), EventModel::CalendarNameRole).toString(),
+             QStringLiteral("Work"));
+    QCOMPARE(model.data(model.index(0, 0), EventModel::DescriptionRole).toString(),
+             QStringLiteral("Agenda in the doc"));
+}
+
+void TestEventModel::timingDescribesWhereAnEventStands()
+{
+    EventModel model;
+    const QTimeZone zone = QTimeZone::systemTimeZone();
+    const QDateTime now(kMonday, QTime(10, 40), zone);
+    const auto at = [&](int hour, int minute, int day = 0) {
+        return QDateTime(kMonday.addDays(day), QTime(hour, minute), zone);
+    };
+
+    QCOMPARE(model.timing(at(10, 30), at(11, 30), now),
+             QStringLiteral("Happening now, 50 min left"));
+    QCOMPARE(model.timing(at(9, 0), at(12, 40), now), QStringLiteral("Happening now, 2 h left"));
+    QCOMPARE(model.timing(at(11, 0), at(11, 30), now), QStringLiteral("Starts in 20 min"));
+    QCOMPARE(model.timing(at(16, 0), at(17, 0), now), QStringLiteral("Starts at 16:00"));
+    QCOMPARE(model.timing(at(8, 0), at(9, 0), now), QStringLiteral("Ended"));
+    QCOMPARE(model.timing(at(9, 0, 1), at(10, 0, 1), now), QString());
+    QCOMPARE(model.timing(at(10, 0), at(12, 15), now),
+             QStringLiteral("Happening now, 1 h 35 min left"));
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

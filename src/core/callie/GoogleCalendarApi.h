@@ -72,6 +72,13 @@ struct GoogleEvent
     /// The user's own answer as an attendee: "accepted", "declined",
     /// "tentative" or "needsAction". Empty for events without attendees.
     QString responseStatus;
+    /// The attendee list exactly as Google sent it, compact JSON, so an answer
+    /// can be sent back without losing fields Callie does not use.
+    QByteArray attendees;
+    /// The user organizes the event, so can change it for everyone.
+    bool organizerSelf = false;
+    /// Guests may change the event too.
+    bool guestsCanModify = false;
 
     /// Deleted events, and cancelled instances of a series, arrive with only
     /// an id and this status.

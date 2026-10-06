@@ -20,7 +20,7 @@ namespace callie {
 namespace {
 
 // Bump when the tables change. Older caches are dropped and fully re-synced.
-constexpr int kSchemaVersion = 3;
+constexpr int kSchemaVersion = 4;
 
 const char *const kSchema[] = {
     R"(CREATE TABLE calendars (
@@ -47,6 +47,9 @@ const char *const kSchema[] = {
         original_date TEXT, original_time TEXT, original_zone TEXT,
         updated TEXT,
         response_status TEXT,
+        attendees TEXT,
+        organizer_self INTEGER NOT NULL DEFAULT 0,
+        guests_can_modify INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (account, calendar_id, id)))",
     "CREATE INDEX events_series ON events (account, calendar_id, recurring_event_id)",
 };
@@ -281,11 +284,12 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         "INSERT OR REPLACE INTO events (account, calendar_id, id, status, summary, description, "
         "location, conference_url, start_date, start_time, start_zone, end_date, end_time, "
         "end_zone, recurrence, recurring_event_id, original_date, original_time, original_zone, "
-        "updated, response_status) VALUES (:account, :calendar, :id, :status, :summary, "
+        "updated, response_status, attendees, organizer_self, guests_can_modify) VALUES (:account, "
+        ":calendar, :id, :status, :summary, "
         ":description, :location, "
         ":conference, :start_date, :start_time, :start_zone, :end_date, :end_time, :end_zone, "
         ":recurrence, :series, :original_date, :original_time, :original_zone, :updated, "
-        ":response)"));
+        ":response, :attendees, :organizer_self, :guests_can_modify)"));
     QSqlQuery remove(db);
     remove.prepare(QStringLiteral("DELETE FROM events WHERE account = :account AND "
                                   "calendar_id = :calendar AND (id = :id OR "
@@ -319,6 +323,9 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         bindTime(upsert, QStringLiteral("original"), event.originalStart);
         upsert.bindValue(QStringLiteral(":updated"), event.updated.toString(Qt::ISODateWithMs));
         upsert.bindValue(QStringLiteral(":response"), event.responseStatus);
+        upsert.bindValue(QStringLiteral(":attendees"), QString::fromUtf8(event.attendees));
+        upsert.bindValue(QStringLiteral(":organizer_self"), event.organizerSelf);
+        upsert.bindValue(QStringLiteral(":guests_can_modify"), event.guestsCanModify);
         ok = run(upsert);
     }
 
@@ -475,6 +482,9 @@ QList<GoogleEvent> GoogleCache::readEvents(QSqlQuery &query)
         event.updated =
             QDateTime::fromString(query.value(u"updated"_s).toString(), Qt::ISODateWithMs);
         event.responseStatus = query.value(u"response_status"_s).toString();
+        event.attendees = query.value(u"attendees"_s).toString().toUtf8();
+        event.organizerSelf = query.value(u"organizer_self"_s).toBool();
+        event.guestsCanModify = query.value(u"guests_can_modify"_s).toBool();
         result.append(event);
     }
     return result;

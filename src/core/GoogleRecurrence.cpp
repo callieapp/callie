@@ -6,7 +6,12 @@
 #include <KCalendarCore/Recurrence>
 #include <KCalendarCore/RecurrenceRule>
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSet>
+
+using namespace Qt::StringLiterals;
 
 namespace callie {
 
@@ -19,6 +24,15 @@ QString occurrenceKey(const QString &seriesId, const GoogleEventTime &time)
     return seriesId + u'|' +
            (time.isAllDay() ? time.date.toString(Qt::ISODate)
                             : time.dateTime.toUTC().toString(Qt::ISODate));
+}
+
+/// Google's id for one occurrence of a series: the series id and the
+/// occurrence's original start, as a UTC basic time or a date.
+QString instanceId(const QString &seriesId, const QDateTime &start, bool allDay)
+{
+    return seriesId + u'_' +
+           (allDay ? start.date().toString(u"yyyyMMdd"_s)
+                   : start.toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s));
 }
 
 QString occurrenceKey(const QString &seriesId, const QDateTime &start, bool allDay)
@@ -96,6 +110,19 @@ Event toEvent(const GoogleEvent &source, const QTimeZone &viewZone)
     event.location = source.location;
     event.conferenceUrl = source.conferenceUrl;
     event.declined = source.responseStatus == u"declined";
+    event.responseStatus = source.responseStatus;
+    event.eventId = source.id;
+    event.seriesId = source.recurringEventId;
+    bool invited = false;
+    for (const QJsonValue &attendee : QJsonDocument::fromJson(source.attendees).array()) {
+        if (attendee[u"self"].toBool())
+            invited = true;
+        else if (const QString email = attendee[u"email"].toString(); !email.isEmpty())
+            event.attendees.append(email);
+    }
+    // Calendar access is checked by the source; this is what the event allows.
+    event.canEdit = source.attendees.isEmpty() || source.organizerSelf || source.guestsCanModify;
+    event.canRespond = invited && !source.organizerSelf;
     event.allDay = source.start.isAllDay();
     if (event.allDay) {
         event.start = QDateTime(source.start.date, QTime(0, 0), viewZone);
@@ -169,6 +196,8 @@ QList<Event> expandGoogleEvents(const QList<GoogleEvent> &events, const QDateTim
                                              QTime(0, 0), viewZone)
                                  : start.addSecs(duration);
             occurrence.recurrenceId = occurrence.start;
+            occurrence.seriesId = source.id;
+            occurrence.eventId = instanceId(source.id, start, base.allDay);
             if (overlaps(occurrence, from, to))
                 result.append(occurrence);
         }

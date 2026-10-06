@@ -361,6 +361,13 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case LocationRole: return e.location;
     case ConferenceUrlRole: return e.conferenceUrl;
     case DeclinedRole: return e.declined;
+    case CalendarIdRole: return e.calendarId;
+    case EventIdRole: return e.eventId;
+    case SeriesIdRole: return e.seriesId;
+    case ResponseRole: return e.responseStatus;
+    case AttendeesRole: return e.attendees;
+    case CanEditRole: return e.canEdit;
+    case CanRespondRole: return e.canRespond;
     case CalendarColorRole: return e.color;
     case AllDayRole: return e.allDay;
     case StartRole: return e.start;
@@ -391,6 +398,13 @@ QHash<int, QByteArray> EventModel::roleNames() const
         {LocationRole, "location"},
         {ConferenceUrlRole, "conferenceUrl"},
         {DeclinedRole, "declined"},
+        {CalendarIdRole, "calendarId"},
+        {EventIdRole, "eventId"},
+        {SeriesIdRole, "seriesId"},
+        {ResponseRole, "response"},
+        {AttendeesRole, "attendees"},
+        {CanEditRole, "canEdit"},
+        {CanRespondRole, "canRespond"},
         {CalendarColorRole, "calendarColor"},
         {AllDayRole, "allDay"},
         {DayIndexRole, "dayIndex"},

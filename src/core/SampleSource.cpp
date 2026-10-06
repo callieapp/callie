@@ -81,6 +81,15 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                 e.conferenceUrl = QUrl(QString::fromUtf8(s.conference));
             e.start = QDateTime(date, QTime(s.startHour, s.startMinute), tz);
             e.end = e.start.addSecs(s.durationMinutes * 60);
+            e.eventId = e.uid;
+            e.canEdit = true;
+            // Calls are invitations, so their answers can be tried out.
+            if (!e.conferenceUrl.isEmpty()) {
+                e.attendees = {QStringLiteral("priya@example.com"),
+                               QStringLiteral("sam@example.com")};
+                e.responseStatus = QStringLiteral("needsAction");
+                e.canRespond = true;
+            }
 
             if (e.end > from && e.start < to)
                 out.append(e);
@@ -114,6 +123,8 @@ void SampleSource::createEvent(const EventDraft &draft, Created done)
     e.start = draft.start;
     e.end = draft.end;
     e.allDay = draft.allDay;
+    e.eventId = e.uid;
+    e.canEdit = true;
     m_created.append(e);
     done({});
     Q_EMIT changed();

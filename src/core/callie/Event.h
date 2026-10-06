@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QMetaType>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 
 namespace callie {
@@ -37,6 +38,18 @@ public:
     QColor color;
     /// The user was invited and said no.
     bool declined = false;
+    /// The user's answer: "accepted", "tentative", "declined", "needsAction",
+    /// or empty when they are not an invited guest.
+    QString responseStatus;
+    /// The other guests' email addresses.
+    QStringList attendees;
+    /// The source's id for this one occurrence, and for the series it belongs
+    /// to (empty for a one-off event), which actions on it need.
+    QString eventId;
+    QString seriesId;
+    /// Whether the user may change or delete it, and answer the invitation.
+    bool canEdit = false;
+    bool canRespond = false;
 
     /// Lane assignment for overlapping events, filled in by the view model.
     int lane = 0;

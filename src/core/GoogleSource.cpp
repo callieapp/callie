@@ -52,8 +52,11 @@ QList<Event> readEvents(GoogleCache &cache, const QList<Account> &accounts, cons
             const QColor color = QColor::fromString(calendar.color);
             const QList<Event> events =
                 expandGoogleEvents(cache.events(account, calendar.id, from, to), from, to, tz);
+            const bool writable = canWrite(calendar.accessRole);
             for (Event event : events) {
                 event.calendarId = calendarKey(account, calendar.id);
+                event.canEdit = event.canEdit && writable;
+                event.canRespond = event.canRespond && writable;
                 event.color = color;
                 event.start = event.start.toTimeZone(tz);
                 event.end = event.end.toTimeZone(tz);

@@ -134,6 +134,8 @@ void TestGoogleCache::eventsRoundTrip()
     QCOMPARE(timed.updated, QDateTime(QDate(2026, 10, 1), QTime(12, 0), QTimeZone::UTC));
     QVERIFY(!timed.start.isAllDay());
     QCOMPARE(timed.responseStatus, u"tentative"_s);
+    QVERIFY(timed.attendees.contains("\"self\":true"));
+    QVERIFY(!timed.organizerSelf);
 
     const GoogleEvent &allDay = stored.at(1);
     QVERIFY(allDay.start.isAllDay());

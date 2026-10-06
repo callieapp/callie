@@ -115,6 +115,7 @@ private Q_SLOTS:
     void allDayEventsStackInRows();
     void allDayEventIsClippedToRange();
     void allDayEndOnDayWithoutMidnight();
+    void declinedIsARole();
     void calendarsListShownOnly();
     void daysOffFollowTheLocale();
     void rowsNameTheirCalendar();
@@ -319,6 +320,17 @@ void TestEventModel::allDayEndOnDayWithoutMidnight()
 
     QCOMPARE(intRole(model, 0, EventModel::FirstDayRole), 4);
     QCOMPARE(intRole(model, 0, EventModel::DaySpanRole), 1);
+}
+
+void TestEventModel::declinedIsARole()
+{
+    Event skipped = timed("skipped", kMonday, 9, 0, 60);
+    skipped.declined = true;
+    auto [model, source] = modelFor({skipped, timed("going", kMonday, 11, 0, 60)});
+
+    QVERIFY(model->roleNames().value(EventModel::DeclinedRole) == "declined");
+    QVERIFY(model->data(model->index(0, 0), EventModel::DeclinedRole).toBool());
+    QVERIFY(!model->data(model->index(1, 0), EventModel::DeclinedRole).toBool());
 }
 
 void TestEventModel::calendarsListShownOnly()

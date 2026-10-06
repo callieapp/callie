@@ -78,9 +78,11 @@ Rectangle {
         Text {
             width: parent.width
             visible: !root.compact
-            text: (root.location ? qsTr("%1 to %2, %3") : qsTr("%1 to %2")).arg(Qt.formatTime(root.start,
-                                                                                              "h:mm")).arg(
-                      Qt.formatTime(root.end, "h:mm")).arg(root.location)
+            text: {
+                const span = qsTr("%1 to %2").arg(Qt.formatTime(root.start, "h:mm")).arg(Qt.formatTime(
+                                                                                             root.end, "h:mm"))
+                return root.location ? qsTr("%1, %2").arg(span).arg(root.location) : span
+            }
             // Full-strength ink, lighter weight: the theme's contrast check covers it.
             color: root.ink
             font.family: Theme.fontFamily

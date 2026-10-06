@@ -118,11 +118,14 @@ void TestComposer::pickedTimesFillTheGaps()
     Composer composer;
     const QTimeZone berlin("Europe/Berlin");
     const QDateTime start(QDate(2026, 10, 9), QTime(15, 0), berlin);
-    composer.pickTimes(start, start.addSecs(5400));
+    // As QML hands them over: the same moments, in the system zone.
+    composer.pickTimes(start.toLocalTime(), start.addSecs(5400).toLocalTime());
 
     composer.setText(u"Pottery"_s);
     QCOMPARE(composer.start(), start);
     QCOMPARE(composer.end(), start.addSecs(5400));
+    // Kept in the chosen zone, so the request to Google names it.
+    QCOMPARE(composer.start().timeZone(), berlin);
 
     // A length keeps the picked start; a named time replaces both.
     composer.setText(u"Pottery for 30 min"_s);

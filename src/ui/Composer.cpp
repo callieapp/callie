@@ -49,8 +49,11 @@ void Composer::reset()
 
 void Composer::pickTimes(const QDateTime &start, const QDateTime &end)
 {
-    m_pickedStart = start;
-    m_pickedEnd = end;
+    // From QML these arrive in the system zone; the event belongs in the chosen
+    // one, which Google is then told.
+    const QTimeZone zone = SettingsForeign::create(nullptr, nullptr)->timeZone();
+    m_pickedStart = start.isValid() ? start.toTimeZone(zone) : QDateTime();
+    m_pickedEnd = end.isValid() ? end.toTimeZone(zone) : QDateTime();
     reparse();
 }
 

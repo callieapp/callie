@@ -114,6 +114,7 @@ qt_add_resources(calliecore "callie_themes"
     BASE "${PROJECT_SOURCE_DIR}"
     FILES
         "${PROJECT_SOURCE_DIR}/themes/callie.toml"
+        "${PROJECT_SOURCE_DIR}/themes/callie-light.toml"
         "${PROJECT_SOURCE_DIR}/assets/logo.svg"
 )
 

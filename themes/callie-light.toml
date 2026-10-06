@@ -1,0 +1,36 @@
+# Callie Light: the default theme's pinks, stickers and type on warm, light
+# backgrounds. Anything not set here comes from callie.toml.
+
+[theme]
+name = "Callie Light"
+variant = "light"
+
+[colors]
+background = "#fbf5f8"
+surface = "#fffafc"
+surface-alt = "#f3e7ee"
+hairline = "#efe2e9"
+border = "#e0ccd7"
+text = "#2b1a26"
+text-muted = "#6b5562"
+text-faint = "#8f7a87"
+accent = "#e45f97"
+accent-text = "#2e0f20"
+danger = "#c93c45"
+edge = "#dcc8d3"
+accent-edge = "#a83a6d"
+
+# Stickers keep their pastel fill, with ink and edge tuned for a light page.
+[calendar]
+lightness = 0.88
+chroma = 0.07
+ink-lightness = 0.3
+ink-chroma = 0.07
+edge-lightness = 0.72
+edge-chroma = 0.08
+
+[shadow]
+color = "#5c2a47"
+opacity = 0.18
+blur = 30
+offset = 10

@@ -30,6 +30,7 @@ class TestTheme : public QObject
 private Q_SLOTS:
     void defaultThemeIsCompleteAndClean();
     void builtInIdsIncludeDefault();
+    void lightThemeIsClean();
     void partialThemeInheritsDefault();
     void integerAcceptedForNumber();
     void invalidColorIsAnError();
@@ -58,6 +59,19 @@ void TestTheme::defaultThemeIsCompleteAndClean()
 void TestTheme::builtInIdsIncludeDefault()
 {
     QVERIFY(ThemeLoader::builtInIds().contains(QStringLiteral("callie")));
+}
+
+void TestTheme::lightThemeIsClean()
+{
+    QVERIFY(ThemeLoader::builtInIds().contains(QStringLiteral("callie-light")));
+    const ThemeLoadResult light = ThemeLoader::loadBuiltIn(QStringLiteral("callie-light"));
+    QVERIFY2(light.ok(), qPrintable(light.errors.join(u'\n')));
+    QVERIFY2(light.warnings.isEmpty(), qPrintable(light.warnings.join(u'\n')));
+    QCOMPARE(light.theme.name, QStringLiteral("Callie Light"));
+    QVERIFY(!light.theme.dark);
+    QVERIFY(light.theme.colors.background.lightness() > 200);
+    // Everything not set keeps the default's identity.
+    QCOMPARE(light.theme.type.displayFamily, ThemeLoader::defaultTheme().type.displayFamily);
 }
 
 void TestTheme::partialThemeInheritsDefault()

@@ -53,14 +53,21 @@ setup: ## Install dev tooling, enable git hooks, and configure
 	@npm ci
 	@git config core.hooksPath .githooks
 	@cmake --preset $(PRESET)
+	@touch $(PRESET_STAMP)
 
-$(BUILD)/build.ninja:
+# CMake re-runs itself with the cached settings, so a changed preset only reaches
+# an existing build directory through this stamp.
+PRESET_STAMP := $(BUILD)/.preset-applied
+
+$(PRESET_STAMP): CMakePresets.json
 	@cmake --preset $(PRESET)
+	@touch $@
 
 configure: ## Re-run CMake, e.g. after adding google-oauth-credentials.json
 	@cmake --preset $(PRESET)
+	@touch $(PRESET_STAMP)
 
-build: $(BUILD)/build.ninja ## Build everything
+build: $(PRESET_STAMP) ## Build everything
 	@cmake --build --preset $(PRESET)
 
 run: build ## Run the app with logging on; ARGS="--theme path" passes options
@@ -75,10 +82,10 @@ cli: build ## Run the CLI, e.g. make cli ARGS="accounts"
 gallery: build ## Open the theme gallery; THEME=path shows a theme file live
 	@$(DEV_ENV) $(GALLERY) $(if $(THEME),--theme $(THEME))
 
-watch: $(BUILD)/build.ninja ## Reload QML on save; rebuild and restart on C++ changes
+watch: $(PRESET_STAMP) ## Reload QML on save; rebuild and restart on C++ changes
 	$(call watch,callie-gui,$(GUI) --live-qml $(ARGS))
 
-watch-gallery: $(BUILD)/build.ninja ## Like watch, for the gallery; THEME=path optional
+watch-gallery: $(PRESET_STAMP) ## Like watch, for the gallery; THEME=path optional
 	$(call watch,callie-gallery,$(GALLERY) --live-qml $(if $(THEME),--theme $(THEME)))
 
 # A fixed week, time and size, so the same commit always renders the same pictures.

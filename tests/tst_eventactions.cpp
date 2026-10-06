@@ -37,6 +37,20 @@ QString answerOf(SampleSource &source, const QString &eventId)
     return u"(gone)"_s;
 }
 
+/// Refuses every change, as a calendar Google will not let us edit would.
+class RefusingSource : public SampleSource
+{
+public:
+    void respond(const Event &, const QString &, bool, Created done) override
+    {
+        done(u"Google could not save the answer: Forbidden"_s);
+    }
+    void deleteEvent(const Event &, bool, Created done) override
+    {
+        done(u"Google could not delete the event: Forbidden"_s);
+    }
+};
+
 } // namespace
 
 class TestEventActions : public QObject
@@ -47,6 +61,7 @@ private Q_SLOTS:
     void answerReachesTheSource();
     void removeTakesItAway();
     void mailGoesToTheOtherGuests();
+    void failureIsReportedForItsEvent();
 };
 
 void TestEventActions::answerReachesTheSource()
@@ -90,6 +105,30 @@ void TestEventActions::mailGoesToTheOtherGuests()
     QCOMPARE(QUrlQuery(url).queryItemValue(u"subject"_s, QUrl::FullyDecoded), u"Plan & ship"_s);
 
     QVERIFY(EventActions::mailGuests({{u"summary"_s, u"Alone"_s}}).isEmpty());
+}
+
+void TestEventActions::failureIsReportedForItsEvent()
+{
+    RefusingSource source;
+    EventActions actions;
+    actions.setProperty("source", QVariant::fromValue(static_cast<CalendarSource *>(&source)));
+    const QVariantMap event = invitation(source);
+    QSignalSpy responded(&actions, &EventActions::responded);
+    QSignalSpy removed(&actions, &EventActions::removed);
+
+    actions.respond(event, u"accepted"_s, false);
+    QVERIFY(!actions.busy());
+    QVERIFY(actions.error().contains(u"Forbidden"_s));
+    QCOMPARE(actions.errorEventId(), event.value(u"eventId"_s).toString());
+    QVERIFY(responded.isEmpty());
+
+    actions.remove(event, false);
+    QVERIFY(actions.error().contains(u"delete"_s));
+    QVERIFY(removed.isEmpty());
+
+    actions.clearError();
+    QVERIFY(actions.error().isEmpty());
+    QVERIFY(actions.errorEventId().isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestEventActions)

@@ -18,7 +18,8 @@ Item {
         return -1
     }
     // Today's column can take a larger share of the width.
-    readonly property real todayShare: Settings.widenToday && todayColumn >= 0 ? 1.6 : 1
+    readonly property real todayShare: Settings.widenToday && todayColumn >= 0 ? Theme.todayShare :
+                                                                                 1
     /// The width of an ordinary day column.
     readonly property real dayWidth: (width - Theme.gutterWidth) / (dayCount - 1 + todayShare)
 
@@ -39,7 +40,7 @@ Item {
 
     function isToday(d) {
         // Today in the chosen zone, which can differ from the system's.
-        const now = Settings.dateIn(Clock.now)
+        const now = Settings.times.date(Clock.now)
         if (d.getFullYear() !== now.getFullYear())
             return false
         if (d.getMonth() !== now.getMonth())
@@ -260,7 +261,7 @@ Item {
                         anchors.rightMargin: -Theme.gutterWidth + Theme.space3
                         anchors.topMargin: -7
                         visible: hourRow.index > 0
-                        text: Settings.formatHour(hourRow.index)
+                        text: Settings.times.hour(hourRow.index)
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
@@ -349,7 +350,7 @@ Item {
                 readonly property int columnIndex: root.todayColumn
 
                 visible: columnIndex >= 0
-                y: Settings.minutesIntoDay(current) / 60 * Theme.hourHeight
+                y: Settings.times.minutesIntoDay(current) / 60 * Theme.hourHeight
                 x: root.columnX(columnIndex) + 2
                 width: root.columnWidth(columnIndex) - 4
                 height: 3
@@ -388,7 +389,7 @@ Item {
                 Text {
                     id: nowLabel
                     anchors.centerIn: parent
-                    text: Settings.formatTime(now.current)
+                    text: Settings.times.time(now.current)
                     color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs
@@ -403,7 +404,7 @@ Item {
 
     // ---- Event tooltip and details -----------------------------------------
     function whenText(block) {
-        return qsTr("%1 to %2").arg(Settings.formatTime(block.start)).arg(Settings.formatTime(
+        return qsTr("%1 to %2").arg(Settings.times.time(block.start)).arg(Settings.times.time(
                                                                               block.end))
     }
 
@@ -441,7 +442,7 @@ Item {
         tipDelay.stop()
         tip.visible = false
         details.summary = block.summary
-        details.when = qsTr("%1, %2").arg(Qt.formatDate(Settings.dateIn(block.start),
+        details.when = qsTr("%1, %2").arg(Qt.formatDate(Settings.times.date(block.start),
                                                         "dddd, MMMM d")).arg(whenText(block))
         details.location = block.location
         details.conferenceUrl = block.conferenceUrl

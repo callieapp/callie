@@ -21,6 +21,7 @@ private Q_SLOTS:
     void timesFollowTheChosenFormat();
     void calendarsHideAndShow();
     void resetForgetsEverything();
+    void timesAreReplacedOnChange();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -102,18 +103,18 @@ void TestSettings::timesFollowTheChosenFormat()
     const QDateTime time(QDate(2026, 10, 6), QTime(14, 30), QTimeZone::UTC);
 
     QVERIFY(!settings.use24Hour()); // en_US uses a 12-hour clock
-    QCOMPARE(settings.formatTime(time), u"2:30 PM"_s);
-    QCOMPARE(settings.formatHour(9), u"9 AM"_s);
+    QCOMPARE(settings.times()->time(time), u"2:30 PM"_s);
+    QCOMPARE(settings.times()->hour(9), u"9 AM"_s);
 
     settings.setTimeFormat(Settings::TimeFormat::TwentyFourHour);
-    QCOMPARE(settings.formatTime(time), u"14:30"_s);
-    QCOMPARE(settings.formatHour(9), u"9:00"_s);
+    QCOMPARE(settings.times()->time(time), u"14:30"_s);
+    QCOMPARE(settings.times()->hour(9), u"9:00"_s);
 
     // The chosen zone moves both the time and the date.
     settings.setTimeZoneId(u"Asia/Tokyo"_s);
-    QCOMPARE(settings.formatTime(time), u"23:30"_s);
-    QCOMPARE(settings.minutesIntoDay(time), 23 * 60 + 30);
-    QCOMPARE(settings.dateIn(time.addSecs(3600)), QDate(2026, 10, 7).startOfDay());
+    QCOMPARE(settings.times()->time(time), u"23:30"_s);
+    QCOMPARE(settings.times()->minutesIntoDay(time), 23 * 60 + 30);
+    QCOMPARE(settings.times()->date(time.addSecs(3600)), QDate(2026, 10, 7).startOfDay());
 
     QLocale::setDefault(QLocale(QLocale::German, QLocale::Germany));
     settings.setTimeFormat(Settings::TimeFormat::Locale);
@@ -148,6 +149,20 @@ void TestSettings::resetForgetsEverything()
     QCOMPARE(widen.size(), 1);
     QCOMPARE(declined.size(), 0);
     QVERIFY(!Settings(path()).widenToday());
+}
+
+void TestSettings::timesAreReplacedOnChange()
+{
+    Settings settings(path());
+    QSignalSpy times(&settings, &Settings::timesChanged);
+    const Times *before = settings.times();
+
+    settings.setDimPast(false);
+    QCOMPARE(times.size(), 0);
+    settings.setTimeZoneId(u"Asia/Tokyo"_s);
+    QCOMPARE(times.size(), 1);
+    QVERIFY(settings.times() != before);
+    QCOMPARE(settings.times()->zone(), QTimeZone("Asia/Tokyo"));
 }
 
 QTEST_GUILESS_MAIN(TestSettings)

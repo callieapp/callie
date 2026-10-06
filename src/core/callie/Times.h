@@ -1,0 +1,37 @@
+#pragma once
+
+#include <QDateTime>
+#include <QObject>
+#include <QTimeZone>
+
+namespace callie {
+
+/// Formats and places times for one zone and clock format. Settings swaps in
+/// a new one whenever either changes, so a QML binding that calls these
+/// re-evaluates through Settings.times instead of going stale.
+class Times : public QObject
+{
+    Q_OBJECT
+
+public:
+    Times(const QTimeZone &zone, bool use24Hour, QObject *parent = nullptr);
+
+    [[nodiscard]] QTimeZone zone() const { return m_zone; }
+    [[nodiscard]] bool use24Hour() const { return m_use24Hour; }
+
+    /// A clock time: "14:30" or "2:30 PM".
+    Q_INVOKABLE QString time(const QDateTime &time) const;
+    /// An hour label for the grid: "14:00" or "2 PM".
+    Q_INVOKABLE QString hour(int hour) const;
+    /// The calendar date of `time` in the zone, as that day's local midnight:
+    /// a QDate would reach QML as UTC midnight, a day early in the west.
+    Q_INVOKABLE QDateTime date(const QDateTime &time) const;
+    /// Minutes since midnight of `time` in the zone.
+    Q_INVOKABLE int minutesIntoDay(const QDateTime &time) const;
+
+private:
+    QTimeZone m_zone;
+    bool m_use24Hour;
+};
+
+} // namespace callie

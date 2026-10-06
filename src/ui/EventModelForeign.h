@@ -56,6 +56,14 @@ public:
     static inline callie::Settings *s_instance = nullptr;
 };
 
+struct TimesForeign
+{
+    Q_GADGET
+    QML_FOREIGN(callie::Times)
+    QML_NAMED_ELEMENT(Times)
+    QML_UNCREATABLE("Times come from Settings.times.")
+};
+
 /// Lets QML name the source type; sources are created in C++ only.
 struct CalendarSourceForeign
 {

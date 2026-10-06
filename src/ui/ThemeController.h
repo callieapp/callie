@@ -97,6 +97,8 @@ class ThemeController : public QObject
     /// The grab strip along a frameless window's edges. Anything scrollable at
     /// an edge keeps its handle clear of it.
     Q_PROPERTY(int resizeBorder READ resizeBorder CONSTANT)
+    /// How many ordinary columns' width today takes when it is given more room.
+    Q_PROPERTY(qreal todayShare READ todayShare CONSTANT)
     /// How far past and declined events fade.
     Q_PROPERTY(qreal fadedOpacity READ fadedOpacity CONSTANT)
     Q_PROPERTY(int sidebarWidth READ sidebarWidth CONSTANT)
@@ -192,6 +194,7 @@ public:
     int snapMinutes() const { return 15; }
     int resizeBorder() const { return 6; }
     qreal fadedOpacity() const { return 0.5; }
+    qreal todayShare() const { return 1.6; }
     int sidebarWidth() const { return 240; }
     int miniDaySize() const { return 26; }
 

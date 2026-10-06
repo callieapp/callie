@@ -91,8 +91,8 @@ Rectangle {
             visible: !root.compact
             textFormat: Text.PlainText
             text: {
-                const span = qsTr("%1 to %2").arg(Settings.formatTime(root.start)).arg(
-                          Settings.formatTime(root.end))
+                const span = qsTr("%1 to %2").arg(Settings.times.time(root.start)).arg(
+                          Settings.times.time(root.end))
                 return root.location ? qsTr("%1, %2").arg(span).arg(root.location) : span
             }
             // Full-strength ink, lighter weight: the theme's contrast check covers it.

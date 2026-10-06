@@ -21,6 +21,12 @@ class EventModel : public QAbstractListModel
     Q_PROPERTY(callie::CalendarSource *source READ source WRITE setSource NOTIFY sourceChanged)
     Q_PROPERTY(QDate rangeStart READ rangeStart WRITE setRangeStart NOTIFY rangeChanged)
     Q_PROPERTY(int dayCount READ dayCount WRITE setDayCount NOTIFY rangeChanged)
+    /// The zone days and times are shown in.
+    Q_PROPERTY(QTimeZone timeZone READ timeZone WRITE setTimeZone NOTIFY timeZoneChanged)
+    /// Calendars left out, by CalendarInfo::id.
+    Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars WRITE setHiddenCalendars NOTIFY
+                   filterChanged)
+    Q_PROPERTY(bool showDeclined READ showDeclined WRITE setShowDeclined NOTIFY filterChanged)
     /// Rows the all-day strip needs so that no two all-day events overlap.
     Q_PROPERTY(int allDayRows READ allDayRows NOTIFY allDayRowsChanged)
     /// The source's shown calendars as {name, color} maps, for the sidebar.
@@ -60,6 +66,15 @@ public:
     [[nodiscard]] int dayCount() const { return m_dayCount; }
     void setDayCount(int days);
 
+    [[nodiscard]] QTimeZone timeZone() const { return m_tz; }
+    void setTimeZone(const QTimeZone &zone);
+
+    [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
+    void setHiddenCalendars(const QStringList &ids);
+
+    [[nodiscard]] bool showDeclined() const { return m_showDeclined; }
+    void setShowDeclined(bool show);
+
     [[nodiscard]] int allDayRows() const { return m_allDayRows; }
 
     /// Whether the user's locale treats `date` as a day off, for shading it.
@@ -83,6 +98,8 @@ public:
 Q_SIGNALS:
     void sourceChanged();
     void rangeChanged();
+    void timeZoneChanged();
+    void filterChanged();
     void allDayRowsChanged();
     void calendarsChanged();
 
@@ -104,6 +121,8 @@ private:
     QDate m_rangeStart = QDate::currentDate();
     int m_dayCount = 7;
     QTimeZone m_tz = QTimeZone::systemTimeZone();
+    QStringList m_hiddenCalendars;
+    bool m_showDeclined = true;
     QList<Event> m_events;
     /// Counts reloads, so a slow load that a newer one overtook is dropped.
     quint64 m_generation = 0;

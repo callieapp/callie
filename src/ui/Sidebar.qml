@@ -15,16 +15,18 @@ Rectangle {
     /// A day was picked in the mini month.
     signal dayPicked(date day)
 
+    readonly property real dayCellWidth: (width - 2 * Theme.space5) / 7
+
     color: Theme.surface
 
     Column {
         anchors {
             fill: parent
-            leftMargin: 18
-            rightMargin: 18
-            topMargin: 22
+            leftMargin: Theme.space5
+            rightMargin: Theme.space5
+            topMargin: Theme.space6
         }
-        spacing: 20
+        spacing: Theme.space6
 
         Column {
             width: parent.width
@@ -34,7 +36,7 @@ Rectangle {
                 text: root.today.greeting
                 color: Theme.text
                 font.family: Theme.displayFontFamily
-                font.pixelSize: 21
+                font.pixelSize: Theme.textDisplay
                 font.weight: Font.Bold
             }
             Text {
@@ -54,7 +56,7 @@ Rectangle {
 
             visible: root.today.hasNext
             width: parent.width
-            height: nextColumn.implicitHeight + 24
+            height: nextColumn.implicitHeight + 2 * Theme.space4
 
             Rectangle {
                 anchors {
@@ -77,8 +79,8 @@ Rectangle {
                     left: parent.left
                     right: parent.right
                     verticalCenter: parent.verticalCenter
-                    leftMargin: 14
-                    rightMargin: 14
+                    leftMargin: Theme.space4
+                    rightMargin: Theme.space4
                 }
                 spacing: Theme.space2
 
@@ -86,7 +88,6 @@ Rectangle {
                     width: parent.width
                     text: root.today.nextLabel.toUpperCase()
                     color: upNext.ink
-                    opacity: 0.75
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs
                     font.weight: Font.ExtraBold
@@ -106,7 +107,6 @@ Rectangle {
                     width: parent.width
                     text: root.today.nextDetail
                     color: upNext.ink
-                    opacity: 0.8
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
                     font.weight: Font.DemiBold
@@ -115,7 +115,7 @@ Rectangle {
             }
         }
 
-        // Mini month: the shown week is shaded, today is a pink sticker.
+        // Mini month: the shown week is shaded, today is an accent sticker.
         Column {
             width: parent.width
             spacing: Theme.space3
@@ -127,12 +127,12 @@ Rectangle {
 
                     Text {
                         required property int modelData
-                        width: (root.width - 36) / 7
+                        width: root.dayCellWidth
                         horizontalAlignment: Text.AlignHCenter
                         text: Qt.locale().dayName(modelData, Locale.NarrowFormat)
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: Theme.textXs
                         font.weight: Font.ExtraBold
                     }
                 }
@@ -154,8 +154,8 @@ Rectangle {
                         required property bool inWeek
                         required property bool isToday
 
-                        width: (root.width - 36) / 7
-                        height: 26
+                        width: root.dayCellWidth
+                        height: Theme.miniDaySize
                         enabled: inMonth
                         focusPolicy: Qt.TabFocus
                         Accessible.name: Qt.formatDate(date, Qt.locale().dateFormat(
@@ -170,12 +170,12 @@ Rectangle {
                                     topMargin: 2
                                     bottomMargin: -2
                                 }
-                                radius: 9
+                                radius: Theme.radiusSm
                                 color: Theme.accentEdge
                             }
                             Rectangle {
                                 anchors.fill: parent
-                                radius: 9
+                                radius: Theme.radiusSm
                                 color: dayCell.isToday ? Theme.accent : dayCell.inWeek
                                                          ? Theme.surfaceAlt : dayCell.hovered
                                                            && dayCell.inMonth ? Theme.tint(
@@ -211,7 +211,7 @@ Rectangle {
         // Calendars: deliberately quiet, so the event stickers draw the eye.
         Column {
             width: parent.width
-            spacing: 10
+            spacing: Theme.space3
 
             Text {
                 text: qsTr("CALENDARS")
@@ -229,23 +229,23 @@ Rectangle {
                     id: calendarRow
                     required property var modelData
                     width: parent.width
-                    spacing: 10
+                    spacing: Theme.space3
 
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 14
-                        height: 14
-                        radius: 5
+                        width: Theme.textBase
+                        height: Theme.textBase
+                        radius: Theme.radiusSm
                         color: Theme.calendarColor(calendarRow.modelData.color, Theme.calendar)
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: calendarRow.width - 14 - 10
+                        width: calendarRow.width - Theme.textBase - Theme.space3
                         text: calendarRow.modelData.name
                         elide: Text.ElideRight
                         color: Theme.textMuted
                         font.family: Theme.fontFamily
-                        font.pixelSize: 14
+                        font.pixelSize: Theme.textBase
                         font.weight: Font.DemiBold
                     }
                 }

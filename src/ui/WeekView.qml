@@ -388,6 +388,14 @@ Item {
 
     property EventBlock hoveredBlock: null
 
+    // A sync rebuilds the blocks, which clears this without a hover change.
+    onHoveredBlockChanged: {
+        if (!hoveredBlock) {
+            tipDelay.stop()
+            tip.visible = false
+        }
+    }
+
     function blockHovered(block, hovered) {
         if (hovered) {
             hoveredBlock = block

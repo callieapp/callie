@@ -60,6 +60,8 @@ private Q_SLOTS:
     void createdEventShowsWithoutASync();
     void createInUnknownCalendarFails();
     void deleteAimsAtTheOccurrenceOrTheSeries();
+    void answerAimsAtTheTimedOccurrence();
+    void actionsNeedAKnownCalendar();
     void statusStartsFromTheCache();
     void statusFollowsARefresh();
     void calendarErrorShowsAfterRestart();
@@ -401,6 +403,57 @@ void TestGoogleSource::deleteAimsAtTheOccurrenceOrTheSeries()
     // Then the whole series, by the series' own id.
     QVERIFY(remove(bins().first(), true).contains("/events/bins?"));
     QVERIFY(bins().isEmpty());
+}
+
+void TestGoogleSource::answerAimsAtTheTimedOccurrence()
+{
+    // The daily standup from init, as an invitation.
+    QVERIFY(
+        m_cache->storeEvents(kAccount, u"mine"_s, {parsed(R"({"id":"standup","summary":"Standup",
+                    "start":{"dateTime":"2026-10-05T09:30:00-04:00","timeZone":"America/New_York"},
+                    "end":{"dateTime":"2026-10-05T09:45:00-04:00","timeZone":"America/New_York"},
+                    "recurrence":["RRULE:FREQ=DAILY;COUNT=5"],
+                    "attendees":[{"email":"me@example.com","self":true}]})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"standup_20261006T133000Z",
+            "recurringEventId":"standup","status":"confirmed","summary":"Standup",
+            "originalStartTime":{"dateTime":"2026-10-06T13:30:00Z"},
+            "start":{"dateTime":"2026-10-06T13:30:00Z"},"end":{"dateTime":"2026-10-06T13:45:00Z"},
+            "attendees":[{"email":"me@example.com","self":true,"responseStatus":"accepted"}]})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 6), QTime(0, 0), kNewYork);
+    const QList<Event> tuesday = source.eventsBetween(from, from.addDays(1), kNewYork);
+    QCOMPARE(tuesday.size(), 2); // the standup and lunch
+    const Event standup = tuesday.at(0).summary == u"Standup" ? tuesday.at(0) : tuesday.at(1);
+
+    QString error = u"unset"_s;
+    source.respond(standup, u"accepted"_s, false, [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+
+    // Addressed by the occurrence's UTC start, not the series or the local time.
+    QVERIFY(harness.apiServer.requests.last().target.contains("/events/standup_20261006T133000Z?"));
+    QCOMPARE(harness.apiServer.requests.last().method, QByteArray("PATCH"));
+}
+
+void TestGoogleSource::actionsNeedAKnownCalendar()
+{
+    SyncHarness harness(*m_cache);
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    Event stranger;
+    stranger.calendarId = u"google/nobody@example.com/x"_s;
+    stranger.eventId = u"e"_s;
+    QString answered;
+    QString deleted;
+    source.respond(stranger, u"accepted"_s, false, [&answered](const QString &e) { answered = e; });
+    source.deleteEvent(stranger, false, [&deleted](const QString &e) { deleted = e; });
+    QVERIFY(!answered.isEmpty());
+    QVERIFY(!deleted.isEmpty());
+    QVERIFY(harness.apiServer.requests.isEmpty());
 }
 
 void TestGoogleSource::statusStartsFromTheCache()

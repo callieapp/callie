@@ -35,7 +35,9 @@ void Settings::load()
     const int format = m_store.value(kTimeFormat, 0).toInt();
     m_timeFormat = format >= 0 && format <= int(TimeFormat::TwelveHour) ? TimeFormat(format)
                                                                         : TimeFormat::Locale;
-    m_timeZoneId = m_store.value(kTimeZone).toString();
+    // A hand edit or a tzdata update can leave an id this system lacks.
+    const QString zone = m_store.value(kTimeZone).toString();
+    m_timeZoneId = QTimeZone::isTimeZoneIdAvailable(zone.toUtf8()) ? zone : QString();
     m_showDeclined = m_store.value(kShowDeclined, true).toBool();
     m_dimPast = m_store.value(kDimPast, true).toBool();
     m_widenToday = m_store.value(kWidenToday, false).toBool();

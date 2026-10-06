@@ -17,6 +17,7 @@ private Q_SLOTS:
     void choicesSurviveARestart();
     void unchangedValueEmitsNothing();
     void unknownZoneFollowsTheSystem();
+    void unknownStoredZoneFollowsTheSystem();
     void timesFollowTheChosenFormat();
     void calendarsHideAndShow();
     void resetForgetsEverything();
@@ -80,6 +81,17 @@ void TestSettings::unknownZoneFollowsTheSystem()
     settings.setTimeZoneId(u"Mars/Olympus_Mons"_s);
     QVERIFY(settings.timeZoneId().isEmpty());
     QCOMPARE(settings.timeZone(), QTimeZone::systemTimeZone());
+}
+
+void TestSettings::unknownStoredZoneFollowsTheSystem()
+{
+    {
+        QSettings file(path(), QSettings::IniFormat);
+        file.setValue(u"time/zone"_s, u"Mars/Olympus_Mons"_s);
+    }
+    const Settings settings(path());
+    QVERIFY(settings.timeZoneId().isEmpty());
+    QVERIFY(settings.timeZone().isValid());
 }
 
 void TestSettings::timesFollowTheChosenFormat()

@@ -14,6 +14,8 @@ ApplicationWindow {
     visible: true
     title: qsTr("Callie")
     color: Theme.bg
+    // Callie draws its own title bar; see the title bar below and ResizeFrame.
+    flags: Qt.Window | Qt.FramelessWindowHint
 
     /// Where events come from; set by main.cpp.
     required property CalendarSource source
@@ -45,10 +47,31 @@ ApplicationWindow {
         dayCount: 7
     }
 
-    // ---- Header ------------------------------------------------------------
-    header: Rectangle {
-        height: 56
+    // ---- Title bar, which is also the toolbar ----------------------------
+    Rectangle {
+        id: titleBar
+
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
+        height: 58
         color: Theme.surface
+
+        // Behind the controls: dragging the bar moves the window, double-clicking
+        // maximizes it, as a desktop title bar would.
+        DragHandler {
+            target: null
+            onActiveChanged: {
+                if (active)
+                    window.startSystemMove()
+            }
+        }
+        TapHandler {
+            onDoubleTapped: window.visibility === Window.Maximized ? window.showNormal() :
+                                                                     window.showMaximized()
+        }
 
         Rectangle {
             anchors {
@@ -61,153 +84,254 @@ ApplicationWindow {
         }
 
         Row {
+            id: leading
             anchors {
                 left: parent.left
                 verticalCenter: parent.verticalCenter
-                leftMargin: Theme.space5
+                leftMargin: WindowButtons.left.length > 0 ? Theme.space4 : Theme.space5
             }
             spacing: Theme.space4
 
-            Text {
+            WindowControls {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Qt.formatDate(window.weekStart, "MMMM yyyy")
-                color: Theme.text
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.textXl
-                font.weight: Font.DemiBold
+                visible: buttons.length > 0
+                buttons: WindowButtons.left
+            }
+
+            Image {
+                anchors.verticalCenter: parent.verticalCenter
+                source: "qrc:/callie/assets/logo.png"
+                sourceSize: Qt.size(56, 56)
+                width: 28
+                height: 28
+                smooth: true
+                mipmap: true
+                Accessible.ignored: true
+            }
+
+            // As wide as the longest month, so the arrows stay put while paging.
+            Item {
+                anchors.verticalCenter: parent.verticalCenter
+                width: widestMonth.advanceWidth + yearWidth.advanceWidth + 7
+                height: month.implicitHeight
+
+                TextMetrics {
+                    id: widestMonth
+                    font: month.font
+                    text: "September"
+                }
+                TextMetrics {
+                    id: yearWidth
+                    font: year.font
+                    text: "0000"
+                }
+
+                Text {
+                    id: month
+                    text: Qt.formatDate(window.weekStart, "MMMM")
+                    color: Theme.text
+                    font.family: Theme.displayFontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.Bold
+                }
+                Text {
+                    id: year
+                    anchors {
+                        left: month.right
+                        leftMargin: 7
+                        baseline: month.baseline
+                    }
+                    text: Qt.formatDate(window.weekStart, "yyyy")
+                    color: Theme.textMuted
+                    font.family: Theme.displayFontFamily
+                    font.pixelSize: 22
+                    font.weight: Font.DemiBold
+                }
             }
 
             Row {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.space1
+                spacing: Theme.space2
 
-                NavButton {
-                    glyph: "‹"
+                StickerButton {
+                    glyph: "chevron-left"
+                    Accessible.name: qsTr("Previous week")
                     onClicked: window.shiftWeeks(-1)
                 }
-                NavButton {
-                    glyph: "›"
+                StickerButton {
+                    glyph: "chevron-right"
+                    Accessible.name: qsTr("Next week")
                     onClicked: window.shiftWeeks(1)
                 }
             }
 
-            PillButton {
+            StickerButton {
                 anchors.verticalCenter: parent.verticalCenter
-                label: qsTr("Today")
+                text: qsTr("Today")
                 onClicked: window.weekStart = window.mondayOf(Clock.now)
             }
         }
 
-        // Sync status, with the error on hover.
-        Text {
-            id: syncStatus
-            readonly property bool failed: window.source.lastError !== ""
-
-            anchors {
-                right: viewSwitcher.left
-                verticalCenter: parent.verticalCenter
-                rightMargin: Theme.space5
-            }
-            text: window.source.syncing ? qsTr("Syncing...") : failed ? qsTr("Sync failed") : isNaN(
-                                                                            window.source.lastSynced.getTime(
-                                                                                )) ? "" : qsTr(
-                                                                                         "Updated %1").arg(
-                                                                                         Qt.formatTime(
-                                                                                             window.source.lastSynced,
-                                                                                             "HH:mm"))
-            color: failed && !window.source.syncing ? Theme.danger : Theme.textFaint
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textSm
-
-            HoverHandler {
-                id: syncHover
-            }
-            ToolTip.visible: syncStatus.failed && syncHover.hovered
-            ToolTip.text: window.source.lastError
-        }
-
-        // View switcher. Only Week is implemented so far.
         Row {
-            id: viewSwitcher
-            anchors {
-                right: helpButton.left
-                verticalCenter: parent.verticalCenter
-                rightMargin: Theme.space3
-            }
-            spacing: 0
-
-            Repeater {
-                model: [qsTr("Day"), qsTr("Week"), qsTr("Month"), qsTr("Agenda")]
-
-                PillButton {
-                    required property string modelData
-                    required property int index
-                    label: modelData
-                    selected: index === 1
-                }
-            }
-        }
-
-        // Help: debug info, logs and bug reports.
-        NavButton {
-            id: helpButton
+            id: trailing
             anchors {
                 right: parent.right
                 verticalCenter: parent.verticalCenter
-                rightMargin: Theme.space5
+                rightMargin: Theme.space4
             }
-            glyph: "?"
-            onClicked: helpMenu.popup(helpButton, 0, helpButton.height)
+            spacing: Theme.space4
 
-            Tip {
-                visible: copiedTip.running
-                text: qsTr("Debug info copied")
-            }
+            // Sync status, with the error on hover.
+            Rectangle {
+                id: syncStatus
 
-            Timer {
-                id: copiedTip
-                interval: 2000
-            }
+                readonly property bool failed: window.source.lastError !== "" &&
+                                               !window.source.syncing
 
-            Connections {
-                target: Support
-                function onCopied() {
-                    copiedTip.restart()
+                readonly property bool known: window.source.syncing || failed || !isNaN(
+                                                  window.source.lastSynced.getTime())
+                readonly property color ink: failed ? Theme.danger : window.source.syncing
+                                                      ? Theme.textMuted : Theme.accent
+
+                anchors.verticalCenter: parent.verticalCenter
+                visible: known
+                height: 28
+                width: syncRow.implicitWidth + 22
+                radius: height / 2
+                color: Theme.tint(ink, 0.16)
+
+                Row {
+                    id: syncRow
+                    anchors.centerIn: parent
+                    spacing: Theme.space3
+
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !window.source.syncing && !syncStatus.failed
+                        name: "check"
+                        width: 12
+                        height: 12
+                        stroke: 1.8
+                        color: syncStatus.ink
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: window.source.syncing ? qsTr("Syncing...") : syncStatus.failed ? qsTr(
+                                                                                                   "Sync failed") :
+                                                                                               qsTr("Updated %1").arg(
+                                                                                                   Qt.formatTime(
+                                                                                                       window.source.lastSynced,
+                                                                                                       "HH:mm"))
+                        color: syncStatus.ink
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textSm
+                        font.weight: Font.ExtraBold
+                    }
+                }
+
+                HoverHandler {
+                    id: syncHover
+                }
+                Tip {
+                    visible: syncStatus.failed && syncHover.hovered
+                    text: window.source.lastError
                 }
             }
 
-            Menu {
-                id: helpMenu
-                padding: Theme.space1
+            // View switcher. Only Week is implemented so far.
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Theme.space2
 
-                // TODO(ui): DESIGN.md gives menus a soft shadow; add one once the theme
-                // has a shadow token, which the styling pass decides.
-                background: Rectangle {
-                    implicitWidth: 200
-                    color: Theme.surface
-                    border.color: Theme.border
-                    radius: Theme.radiusLg
+                Repeater {
+                    model: [qsTr("Day"), qsTr("Week"), qsTr("Month"), qsTr("Agenda")]
+
+                    PillButton {
+                        required property string modelData
+                        required property int index
+                        label: modelData
+                        selected: index === 1
+                    }
+                }
+            }
+
+            // Help: debug info, logs and bug reports.
+            StickerButton {
+                id: helpButton
+                anchors.verticalCenter: parent.verticalCenter
+                text: "?"
+                Accessible.name: qsTr("Help")
+                onClicked: helpMenu.popup(helpButton, 0, helpButton.height + Theme.space3)
+
+                Tip {
+                    visible: copiedTip.running
+                    text: qsTr("Debug info copied")
                 }
 
-                MenuEntry {
-                    text: qsTr("Copy debug info")
-                    onTriggered: Support.copyDebugInfo()
+                Timer {
+                    id: copiedTip
+                    interval: 2000
                 }
-                MenuEntry {
-                    text: qsTr("Open logs folder")
-                    onTriggered: Support.openLogs()
+
+                Connections {
+                    target: Support
+                    function onCopied() {
+                        copiedTip.restart()
+                    }
                 }
-                MenuEntry {
-                    text: qsTr("Report a bug...")
-                    onTriggered: Support.reportBug()
+
+                Menu {
+                    id: helpMenu
+                    padding: Theme.space1
+
+                    // TODO(ui): DESIGN.md gives menus a soft shadow; the theme has the token,
+                    // and the menus pass draws it.
+                    background: Rectangle {
+                        implicitWidth: 200
+                        color: Theme.surface
+                        border.color: Theme.border
+                        radius: Theme.radiusLg
+                    }
+
+                    MenuEntry {
+                        text: qsTr("Copy debug info")
+                        onTriggered: Support.copyDebugInfo()
+                    }
+                    MenuEntry {
+                        text: qsTr("Open logs folder")
+                        onTriggered: Support.openLogs()
+                    }
+                    MenuEntry {
+                        text: qsTr("Report a bug...")
+                        onTriggered: Support.reportBug()
+                    }
                 }
+            }
+
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: WindowButtons.right.length > 0
+                width: 1
+                height: 26
+                color: Theme.border
+            }
+
+            WindowControls {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: buttons.length > 0
+                buttons: WindowButtons.right
             }
         }
     }
 
     // ---- Sidebar + grid ----------------------------------------------------
     Row {
-        anchors.fill: parent
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: titleBar.bottom
+            bottom: parent.bottom
+        }
         spacing: 0
 
         Rectangle {
@@ -278,5 +402,10 @@ ApplicationWindow {
             model: events
             anchorDate: window.weekStart
         }
+    }
+
+    ResizeFrame {
+        anchors.fill: parent
+        z: 1000
     }
 }

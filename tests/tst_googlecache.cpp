@@ -234,13 +234,21 @@ void TestGoogleCache::rangeReadKeepsEdgeCases()
            parsed(R"({"id":"trip-cancelled","status":"cancelled","recurringEventId":"trip",
                     "originalStartTime":{"date":"2026-10-02"}})"),
            parsed(R"({"id":"trip-old","status":"cancelled","recurringEventId":"trip",
-                    "originalStartTime":{"date":"2026-08-02"}})")},
+                    "originalStartTime":{"date":"2026-08-02"}})"),
+           // Three-day timed shifts every week; the one that started two days
+           // before the range is cancelled.
+           parsed(R"({"id":"shift","start":{"dateTime":"2026-01-03T08:00:00Z"},
+                    "end":{"dateTime":"2026-01-06T08:00:00Z"},"recurrence":["RRULE:FREQ=WEEKLY"]})"),
+           parsed(R"({"id":"shift-cancelled","status":"cancelled","recurringEventId":"shift",
+                    "originalStartTime":{"dateTime":"2026-10-03T08:00:00Z"}})"),
+           parsed(R"({"id":"shift-old","status":"cancelled","recurringEventId":"shift",
+                    "originalStartTime":{"dateTime":"2026-09-26T08:00:00Z"}})")},
           true);
 
     const QDateTime from(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
     QCOMPARE(ids(m_cache->events(kAccount, kCalendar, from, from.addDays(7))),
-             (QStringList{u"allday-no-end"_s, u"instant"_s, u"no-end"_s, u"trip"_s,
-                          u"trip-cancelled"_s}));
+             (QStringList{u"allday-no-end"_s, u"instant"_s, u"no-end"_s, u"shift"_s,
+                          u"shift-cancelled"_s, u"trip"_s, u"trip-cancelled"_s}));
 }
 
 void TestGoogleCache::syncTokenIsStoredWithChanges()

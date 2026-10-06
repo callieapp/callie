@@ -133,6 +133,17 @@ QVariantMap ThemeController::calendar() const
             {QStringLiteral("edgeChroma"), c.edgeChroma}};
 }
 
+QColor ThemeController::todayWash() const
+{
+    return tint(m_spec.colors.accent, 0.04);
+}
+
+QColor ThemeController::dayOffWash() const
+{
+    // Darker on a dark theme and on a light one alike.
+    return tint(m_spec.colors.edge, m_spec.dark ? 0.35 : 0.06);
+}
+
 QColor ThemeController::shadowColor() const
 {
     QColor shadow = m_spec.shadow.color;

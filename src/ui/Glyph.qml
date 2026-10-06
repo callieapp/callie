@@ -56,7 +56,7 @@ Item {
         anchors.centerIn: parent
         width: root.width * (root.name === "restore" ? 0.48 : 0.6)
         height: width
-        radius: 2
+        radius: root.stroke
         color: "transparent"
         border.width: root.stroke * 0.85
         border.color: root.color
@@ -68,7 +68,7 @@ Item {
         y: root.height * 0.14
         width: root.width * 0.48
         height: width
-        radius: 2
+        radius: root.stroke
         color: "transparent"
         border.width: root.stroke * 0.85
         border.color: root.color

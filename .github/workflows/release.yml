@@ -1,0 +1,132 @@
+name: Release
+
+# A pushed vX.Y.Z tag publishes a release: the source tarball, .deb and .rpm
+# packages, and the notes from CHANGELOG.md. Pull requests that touch packaging,
+# and runs started by hand, build the same files without publishing.
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - packaging/**
+      - scripts/check-version.sh
+      - scripts/release-notes.sh
+      - CHANGELOG.md
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Work out the version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(sed -n 's/^ *VERSION \([0-9][0-9.]*\)$/\1/p' CMakeLists.txt | head -1)"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check every file names that version
+        run: scripts/check-version.sh "${{ steps.version.outputs.version }}"
+
+      - name: Write the notes and the source tarball
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          scripts/release-notes.sh "$version" > notes.md
+          git archive --prefix="callie-$version/" HEAD | xz -9 > "callie-$version.tar.xz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: |
+            notes.md
+            callie-*.tar.xz
+          if-no-files-found: error
+
+  rpm:
+    needs: source
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: source
+
+      - name: Build the package
+        run: |
+          version="${{ needs.source.outputs.version }}"
+          dnf install -y --setopt=install_weak_deps=False rpm-build dnf-plugins-core xz tar
+          tar -xf "callie-$version.tar.xz"
+          dnf builddep -y "callie-$version/packaging/rpm/callie.spec"
+          mkdir -p rpmbuild/SOURCES
+          cp "callie-$version.tar.xz" rpmbuild/SOURCES/
+          rpmbuild -ba --define "_topdir $PWD/rpmbuild" "callie-$version/packaging/rpm/callie.spec"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: |
+            rpmbuild/RPMS/*/*.rpm
+            rpmbuild/SRPMS/*.rpm
+          if-no-files-found: error
+
+  deb:
+    needs: source
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: source
+
+      - name: Build the package
+        run: |
+          version="${{ needs.source.outputs.version }}"
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential devscripts equivs xz-utils
+          tar -xf "callie-$version.tar.xz"
+          cp "callie-$version.tar.xz" "callie_$version.orig.tar.xz"
+          cd "callie-$version"
+          cp -r packaging/debian debian
+          mk-build-deps --install --remove \
+            --tool "apt-get -y --no-install-recommends" debian/control
+          dpkg-buildpackage -us -uc -b
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: "*.deb"
+          if-no-files-found: error
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: [source, rpm, deb]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "Callie ${{ needs.source.outputs.version }}" \
+            --notes-file dist/notes.md \
+            dist/callie-*.tar.xz $(find dist -name '*.deb' -o -name '*.rpm')

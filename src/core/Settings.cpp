@@ -24,7 +24,6 @@ const QString kLastSeenVersion = u"app/lastSeenVersion"_s;
 const QString kNewEventCalendar = u"events/newEventCalendar"_s;
 const QString kNotify = u"reminders/notify"_s;
 const QString kReminderMinutes = u"reminders/defaultMinutes"_s;
-const QString kKeepRunning = u"reminders/keepRunning"_s;
 const QStringList kViews{u"day"_s, u"week"_s, u"month"_s, u"agenda"_s};
 
 } // namespace
@@ -62,7 +61,6 @@ void Settings::load()
     m_newEventCalendar = m_store.value(kNewEventCalendar).toString();
     m_notify = m_store.value(kNotify, true).toBool();
     m_reminderMinutes = std::max(-1, m_store.value(kReminderMinutes, 10).toInt());
-    m_keepRunning = m_store.value(kKeepRunning, false).toBool();
 }
 
 void Settings::setTimeFormat(TimeFormat format)
@@ -220,15 +218,6 @@ void Settings::setReminderMinutes(int minutes)
     Q_EMIT reminderMinutesChanged();
 }
 
-void Settings::setKeepRunning(bool keep)
-{
-    if (m_keepRunning == keep)
-        return;
-    m_keepRunning = keep;
-    m_store.setValue(kKeepRunning, keep);
-    Q_EMIT keepRunningChanged();
-}
-
 QStringList Settings::availableTimeZones()
 {
     QStringList ids;
@@ -247,7 +236,7 @@ void Settings::reset()
     const QStringList collapsed = m_collapsedAccounts;
     const QString theme = m_theme;
     const QString view = m_view;
-    const bool notify = m_notify, keep = m_keepRunning;
+    const bool notify = m_notify;
     const int minutes = m_reminderMinutes;
     load();
     if (format != m_timeFormat)
@@ -272,8 +261,6 @@ void Settings::reset()
         Q_EMIT notifyChanged();
     if (minutes != m_reminderMinutes)
         Q_EMIT reminderMinutesChanged();
-    if (keep != m_keepRunning)
-        Q_EMIT keepRunningChanged();
     rebuildTimes();
 }
 

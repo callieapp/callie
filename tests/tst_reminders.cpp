@@ -129,6 +129,13 @@ void TestReminders::sayHowSoon()
              u"In 1 min, 10:00 to 11:00\nRoom 4"_s);
     standup.summary.clear();
     QCOMPARE(Reminders::describe(standup, at(9, 59), times).title, u"(No title)"_s);
+
+    // An all-day event's day is its date in the chosen zone.
+    Event holiday = eventAt(u"Holiday"_s, at(0, 0, 8));
+    holiday.allDay = true;
+    holiday.end = at(0, 0, 9);
+    QCOMPARE(Reminders::describe(holiday, at(1, 0, 8), times).body, u"Today"_s);
+    QCOMPARE(Reminders::describe(holiday, at(23, 30, 7), times).body, u"Thursday, October 8"_s);
 }
 
 void TestReminders::buttonsFollowTheEvent()
@@ -146,7 +153,6 @@ void TestReminders::buttonsFollowTheEvent()
     QVERIFY(!m_server.shown.at(1).actions.contains(u"join"_s));
     for (const FakeServer::Shown &shown : std::as_const(m_server.shown)) {
         QVERIFY(shown.actions.contains(u"snooze"_s));
-        QVERIFY(shown.actions.contains(u"open"_s));
         QVERIFY(shown.actions.contains(u"default"_s));
     }
 }

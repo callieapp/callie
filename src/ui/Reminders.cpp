@@ -101,11 +101,12 @@ void Reminders::notify(const Event &event)
     if (!m_server || !m_settings || !m_scheduler)
         return;
     const Text text = describe(event, m_scheduler->now(), *m_settings->times());
+    // "default" is a click on the notification; daemons show it as that, not
+    // as one more button.
     QStringList actions{u"default"_s, tr("Open in Callie")};
     if (canJoin(event.conferenceUrl))
         actions << u"join"_s << tr("Join call");
     actions << u"snooze"_s << tr("Snooze %n min", nullptr, kSnoozeMinutes);
-    actions << u"open"_s << tr("Open in Callie");
     m_server->show(text.title, text.body, actions, [guard = QPointer(this), event](uint id) {
         if (guard && id != 0)
             guard->m_shown.insert(id, event);
@@ -122,7 +123,7 @@ void Reminders::onAction(uint id, const QString &key)
         QDesktopServices::openUrl(event.conferenceUrl);
     } else if (key == u"snooze"_s) {
         m_scheduler->snooze(event, kSnoozeMinutes);
-    } else if (key == u"default"_s || key == u"open"_s) {
+    } else if (key == u"default"_s) {
         const Times &times = *m_settings->times();
         Q_EMIT openRequested(times.date(event.start), event.uid, event.start);
     } else {

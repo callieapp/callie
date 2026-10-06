@@ -60,7 +60,9 @@ ApplicationWindow {
         const row = events.rowOf(revealUid, revealStart)
         if (row < 0)
             return
-        revealUid = ""(weekLoader.item as WeekView).showRow(row)
+        const view = weekLoader.item as WeekView
+        revealUid = ""
+        view.showRow(row)
     }
 
     Connections {

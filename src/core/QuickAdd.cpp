@@ -12,7 +12,7 @@ const QString kTime = uR"((?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|a|p)?
 /// Just after a time-like number such as 4, 945, 9:30 or 3pm, where a range's
 /// dash or "to" can follow; a dash after "$5" or a year is something else.
 const QString kTimeBehind =
-    uR"((?<=\s\d|\s\d\d|\s\d\d\d|\s\d\d\d\d|\s\d:\d\d|\s\d\d:\d\d|\s\d[ap]m|\s\d\d[ap]m))"_s;
+    uR"((?<=\s\d|\s\d\d|\s\d\d\d|\s\d\d\d\d|\s\d[:.]\d\d|\s\d\d[:.]\d\d|\s\d[ap]m|\s\d\d[ap]m))"_s;
 const QString kAfterTime = kTimeBehind + u"-"_s;
 const QString kWeekdays =
     uR"((mon|monday|tue|tues|tuesday|wed|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday))"_s;
@@ -145,7 +145,7 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
     // "at" or in a range, so a number like 4.15 in a title stays as it is.
     static const QRegularExpression compact =
         pattern(uR"(((?:\s|)"_s + kAfterTime +
-                uR"()\d{1,2})[.]?(\d{2})(\s*(?:am|pm|a\.m\.|p\.m\.|a|p)(?=\s|-)))"_s);
+                uR"()\d{1,2})[.]?(\d{2})(\s*(?:am|pm|a\.m\.|p\.m\.)(?=\s|-)))"_s);
     static const QRegularExpression dotted =
         pattern(uR"(((?:\sat|)"_s + kTimeBehind + uR"(\s+to|)"_s + kAfterTime +
                 uR"()\s*\d{1,2})\.(\d{2})()(?=\s|-))"_s);

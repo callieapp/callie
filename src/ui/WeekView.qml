@@ -329,8 +329,8 @@ Item {
                     x: root.columnX(dayIndex) + 3 + lane * laneWidth
                     width: laneWidth - (laneCount > 1 ? 3 : 0)
                     y: startMinutes / 60 * Theme.hourHeight
-                    height: Math.max(20, durationMinutes / 60 * Theme.hourHeight - 2
-                                     - Theme.stickerEdge)
+                    height: Math.max(Theme.minEventHeight, durationMinutes / 60 * Theme.hourHeight
+                                     - 2 - Theme.stickerEdge)
 
                     onActivated: root.showDetails(block)
                     onHoveredChanged: root.blockHovered(block, hovered)

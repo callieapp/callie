@@ -182,7 +182,16 @@ void EventModel::apply(SourceSnapshot snapshot)
     }
 }
 
-void EventModel::assignLanes(QList<Event> &events)
+void EventModel::setMinimumMinutes(int minutes)
+{
+    if (m_minimumMinutes == minutes)
+        return;
+    m_minimumMinutes = minutes;
+    Q_EMIT minimumMinutesChanged();
+    reload();
+}
+
+void EventModel::assignLanes(QList<Event> &events) const
 {
     // Sweep each day assigning the lowest free lane. A cluster ends at the first
     // gap, and every event in it then learns the cluster's final lane count.
@@ -198,6 +207,11 @@ void EventModel::assignLanes(QList<Event> &events)
             return a->start == b->start ? a->end > b->end : a->start < b->start;
         });
 
+        // Where each event's block ends on screen, which for a short event is
+        // later than the event itself.
+        const auto drawnEnd = [this](const Event *e) {
+            return std::max(e->end, e->start.addSecs(qint64(m_minimumMinutes) * 60));
+        };
         QList<Event *> cluster;
         QList<QDateTime> laneEnds;
         auto flush = [&] {
@@ -220,9 +234,9 @@ void EventModel::assignLanes(QList<Event> &events)
                     break;
             }
             if (lane == laneEnds.size())
-                laneEnds.append(e->end);
+                laneEnds.append(drawnEnd(e));
             else
-                laneEnds[lane] = e->end;
+                laneEnds[lane] = drawnEnd(e);
 
             e->lane = lane;
             cluster.append(e);

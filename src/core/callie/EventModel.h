@@ -28,6 +28,10 @@ class EventModel : public QAbstractListModel
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars WRITE setHiddenCalendars NOTIFY
                    filterChanged)
     Q_PROPERTY(bool showDeclined READ showDeclined WRITE setShowDeclined NOTIFY filterChanged)
+    /// Short events are drawn at least this long, so lanes treat them as
+    /// lasting this long; a 15-minute event then sits beside the next one.
+    Q_PROPERTY(
+        int minimumMinutes READ minimumMinutes WRITE setMinimumMinutes NOTIFY minimumMinutesChanged)
     /// How timing() writes clock times.
     Q_PROPERTY(bool use24Hour MEMBER m_use24Hour NOTIFY use24HourChanged)
     /// Rows the all-day strip needs so that no two all-day events overlap.
@@ -80,6 +84,9 @@ public:
     [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
     void setHiddenCalendars(const QStringList &ids);
 
+    [[nodiscard]] int minimumMinutes() const { return m_minimumMinutes; }
+    void setMinimumMinutes(int minutes);
+
     [[nodiscard]] bool showDeclined() const { return m_showDeclined; }
     void setShowDeclined(bool show);
 
@@ -118,6 +125,7 @@ Q_SIGNALS:
     void filterChanged();
     void revisionChanged();
     void use24HourChanged();
+    void minimumMinutesChanged();
     void allDayRowsChanged();
     void calendarsChanged();
 
@@ -129,7 +137,7 @@ private:
     void load(bool rangeChanged);
     void apply(SourceSnapshot snapshot);
     /// Assigns lane/laneCount to every timed event in `events`, per day.
-    static void assignLanes(QList<Event> &events);
+    void assignLanes(QList<Event> &events) const;
     /// Gives each all-day event a row in `lane` and returns the rows used.
     int assignAllDayRows(QList<Event> &events) const;
     /// The visible columns an event covers, as [first, first + span).
@@ -142,6 +150,7 @@ private:
     QStringList m_hiddenCalendars;
     bool m_showDeclined = true;
     bool m_use24Hour = true;
+    int m_minimumMinutes = 0;
     QList<Event> m_events;
     /// Descriptions as plain text, worked out on first read: parsing HTML is
     /// slow, and month and agenda read every row on each reset.

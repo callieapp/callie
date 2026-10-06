@@ -39,6 +39,7 @@ private Q_SLOTS:
     void nothingGivenStartsNextHour();
     void numbersInTheTitleStay();
     void tonightIsEvening();
+    void versionNumbersStayInTheTitle();
     void impossibleDatesStayInTheTitle();
 };
 
@@ -71,6 +72,12 @@ void TestQuickAdd::times_data()
     QTest::newRow("from to") << u"Workshop friday from 2 to 4:30"_s << at(10, 9, 14)
                              << at(10, 9, 16, 30);
     QTest::newRow("words") << u"Gig friday 9pm to 11pm"_s << at(10, 9, 21) << at(10, 9, 23);
+    QTest::newRow("compact") << u"Test event friday 4pm to 415pm"_s << at(10, 9, 16)
+                             << at(10, 9, 16, 15);
+    QTest::newRow("compact range")
+        << u"Call friday 945-1015am"_s << at(10, 9, 9, 45) << at(10, 9, 10, 15);
+    QTest::newRow("dotted") << u"Call friday at 4.30pm"_s << at(10, 9, 16, 30) << at(10, 9, 17, 30);
+    QTest::newRow("dotted range") << u"Call friday 4.15-5"_s << at(10, 9, 16, 15) << at(10, 9, 17);
     QTest::newRow("past midnight") << u"Party friday 10pm-1am"_s << at(10, 9, 22) << at(10, 10, 1);
 }
 
@@ -180,6 +187,13 @@ void TestQuickAdd::impossibleDatesStayInTheTitle()
     }
     // February 29 exists only in leap years; 2027 is not one.
     QCOMPARE(parse(u"Leap feb 29"_s).summary, u"Leap feb 29"_s);
+}
+
+void TestQuickAdd::versionNumbersStayInTheTitle()
+{
+    const EventDraft draft = parse(u"Ship 4.15 friday 3pm"_s);
+    QCOMPARE(draft.summary, u"Ship 4.15"_s);
+    QCOMPARE(draft.start, at(10, 9, 15));
 }
 
 QTEST_GUILESS_MAIN(TestQuickAdd)

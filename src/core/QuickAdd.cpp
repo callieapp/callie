@@ -116,6 +116,18 @@ QRegularExpressionMatch take(QString &text, const QRegularExpression &re)
 EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTimeZone &zone)
 {
     QString rest = u' ' + text + u' ';
+    // "415pm" and "4.15pm" are 4:15pm. Without am or pm a dot only counts after
+    // "at" or in a range, so a number like 4.15 in a title stays as it is.
+    static const QRegularExpression compact =
+        pattern(uR"(((?:\s|-)\d{1,2})[.]?(\d{2})(\s*(?:am|pm|a\.m\.|p\.m\.|a|p)(?=\s|-)))"_s);
+    rest.replace(compact, u"\\1:\\2\\3"_s);
+    static const QRegularExpression dotted =
+        pattern(uR"(((?:\sat|-|\sto)\s*\d{1,2})\.(\d{2})(?=\s|-))"_s);
+    rest.replace(dotted, u"\\1:\\2"_s);
+    // The start of a range, "945-1015am" or "4.15-5", once its end reads as a time.
+    static const QRegularExpression rangeStart = pattern(
+        uR"((\s\d{1,2})[.]?(\d{2})(?=\s*(?:-|to\s)\s*\d{1,2}(?::\d{2}|\s*(?:am|pm|a|p)|(?=\s))))"_s);
+    rest.replace(rangeStart, u"\\1:\\2"_s);
     const QDateTime local = now.toTimeZone(zone);
     const QDate today = local.date();
 

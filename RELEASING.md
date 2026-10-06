@@ -1,7 +1,8 @@
 # Releasing Callie
 
 1. Set the new version in `CMakeLists.txt`, `packaging/rpm/callie.spec` (with a `%changelog`
-   entry) and `packaging/debian/changelog`.
+   entry), `packaging/debian/changelog` and a new `<release>` in
+   `data/org.callieapp.Callie.metainfo.xml`, dated as in `CHANGELOG.md`.
 2. Draft the notes with `git cliff --unreleased --tag vX.Y.Z`, then write them up at the top of
    `CHANGELOG.md` under `## X.Y.Z - YYYY-MM-DD`, in words for the people using Callie. The app shows
    this section in "What's new?".

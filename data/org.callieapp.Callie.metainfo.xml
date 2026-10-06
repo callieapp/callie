@@ -41,9 +41,11 @@
   </categories>
 
   <releases>
-    <release version="0.1.0" date="2026-09-05" type="development">
+    <release version="0.1.0" date="2026-10-06">
       <description>
-        <p>Initial scaffold: week view, design system, and the callie CLI.</p>
+        <p>The first release: a cozy calendar for Linux that keeps up with your Google
+          calendars, with day, week, month and agenda views, quick add, invitations, themes
+          and settings.</p>
       </description>
     </release>
   </releases>

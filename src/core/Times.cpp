@@ -23,6 +23,11 @@ QDateTime Times::date(const QDateTime &time) const
     return time.toTimeZone(m_zone).date().startOfDay();
 }
 
+QDateTime Times::at(const QDateTime &day, int minutes) const
+{
+    return QDateTime(day.date(), QTime(0, 0), m_zone).addSecs(qint64(minutes) * 60);
+}
+
 int Times::minutesIntoDay(const QDateTime &time) const
 {
     return time.toTimeZone(m_zone).time().msecsSinceStartOfDay() / 60000;

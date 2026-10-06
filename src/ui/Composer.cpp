@@ -41,7 +41,16 @@ void Composer::setText(const QString &text)
 void Composer::reset()
 {
     m_text.clear();
+    m_pickedStart = {};
+    m_pickedEnd = {};
     setError({});
+    reparse();
+}
+
+void Composer::pickTimes(const QDateTime &start, const QDateTime &end)
+{
+    m_pickedStart = start;
+    m_pickedEnd = end;
     reparse();
 }
 
@@ -49,6 +58,12 @@ void Composer::reparse()
 {
     Settings *settings = SettingsForeign::create(nullptr, nullptr);
     m_draft = QuickAdd::parse(m_text, Clock::instance()->now(), settings->timeZone());
+    if (m_draft.timeGuessed && m_pickedStart.isValid()) {
+        m_draft.start = m_pickedStart;
+        m_draft.end = m_draft.lengthMinutes > 0
+                          ? m_pickedStart.addSecs(qint64(m_draft.lengthMinutes) * 60)
+                          : m_pickedEnd;
+    }
     Q_EMIT draftChanged();
 }
 

@@ -11,6 +11,14 @@ Item {
 
     /// A day's heading was clicked, to look at that day on its own.
     signal dayClicked(date day)
+    /// A time was drawn on the grid for a new event: minutes into `day`, with
+    /// the drawn block to open the composer beside.
+    signal rangeDrawn(date day, int fromMinutes, int toMinutes, Item block)
+
+    /// Forgets the drawn block, once its composer has closed.
+    function clearDraft() {
+        drawer.column = -1
+    }
     property date anchorDate: Clock.now
     property int dayCount: 7
 
@@ -304,6 +312,92 @@ Item {
                         height: parent.height
                         color: Theme.hairline
                     }
+                }
+            }
+
+            // Dragging across empty time draws a new event, in snapped steps.
+            MouseArea {
+                id: drawer
+
+                property int column: -1
+                property int fromMinutes: 0
+                property int toMinutes: 0
+                readonly property int firstMinute: Math.min(fromMinutes, toMinutes)
+                readonly property int lastMinute: Math.max(fromMinutes, toMinutes)
+
+                function minutesAt(y) {
+                    const snapped = Math.round(y / Theme.hourHeight * 60 / Theme.snapMinutes)
+                          * Theme.snapMinutes
+                    return Math.max(0, Math.min(24 * 60, snapped))
+                }
+
+                function columnAt(x) {
+                    for (let i = root.dayCount - 1; i >= 0; --i)
+                        if (x >= root.columnX(i))
+                            return i
+                    return 0
+                }
+
+                x: Theme.gutterWidth
+                width: root.columnX(root.dayCount) - Theme.gutterWidth
+                height: grid.contentHeight
+                // Keeps the drag from scrolling the grid instead; the wheel still scrolls.
+                preventStealing: true
+                cursorShape: Qt.CrossCursor
+
+                onPressed: mouse => {
+                    column = columnAt(mouse.x + x)
+                    // A press starts the slot it lands in.
+                    fromMinutes = Math.floor(mouse.y / Theme.hourHeight * 60 / Theme.snapMinutes)
+                            * Theme.snapMinutes
+                    toMinutes = fromMinutes + Theme.snapMinutes
+                }
+                onPositionChanged: mouse => {
+                    const at = minutesAt(mouse.y)
+                    toMinutes = at > fromMinutes ? Math.max(at, fromMinutes + Theme.snapMinutes) :
+                                                   at
+
+                }
+                onReleased: {
+                    if (lastMinute - firstMinute >= Theme.snapMinutes && column >= 0)
+                        root.rangeDrawn(root.dateForColumn(column), firstMinute, lastMinute, draft)
+                    else
+                        column = -1
+                }
+            }
+
+            // The new event being drawn, until its composer closes.
+            Rectangle {
+                id: draft
+
+                readonly property date day: root.dateForColumn(Math.max(0, drawer.column))
+
+                visible: drawer.column >= 0
+                z: 60
+                x: root.columnX(Math.max(0, drawer.column)) + 3
+                y: drawer.firstMinute / 60 * Theme.hourHeight
+                width: root.columnWidth(Math.max(0, drawer.column)) - 6
+                height: (drawer.lastMinute - drawer.firstMinute) / 60 * Theme.hourHeight - 2
+                radius: Theme.radiusMd
+                color: Theme.tint(Theme.accent, 0.35)
+                border.width: 2
+                border.color: Theme.accent
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: parent.top
+                        margins: Theme.space2
+                    }
+                    text: qsTr("%1 to %2").arg(Settings.times.time(Settings.times.at(draft.day,
+                                                                                     drawer.firstMinute))).arg(
+                              Settings.times.time(Settings.times.at(draft.day, drawer.lastMinute)))
+                    elide: Text.ElideRight
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textXs
+                    font.weight: Font.ExtraBold
                 }
             }
 

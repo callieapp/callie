@@ -26,6 +26,9 @@ public:
     /// The calendar date of `time` in the zone, as that day's local midnight:
     /// a QDate would reach QML as UTC midnight, a day early in the west.
     Q_INVOKABLE QDateTime date(const QDateTime &time) const;
+    /// The moment `minutes` past midnight on `day` (a local midnight, as
+    /// date() returns) in the zone.
+    Q_INVOKABLE QDateTime at(const QDateTime &day, int minutes) const;
     /// Minutes since midnight of `time` in the zone.
     Q_INVOKABLE int minutesIntoDay(const QDateTime &time) const;
 

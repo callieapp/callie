@@ -54,6 +54,9 @@ public:
 
     /// Reads the text again against the current time, for a reopened composer.
     Q_INVOKABLE void reset();
+    /// Starts from a time picked on the grid, which the text's own day or time
+    /// replaces if it names one. An invalid start clears it.
+    Q_INVOKABLE void pickTimes(const QDateTime &start, const QDateTime &end);
     Q_INVOKABLE void submit();
 
 Q_SIGNALS:
@@ -74,6 +77,8 @@ private:
     QPointer<CalendarSource> m_source;
     QString m_text;
     EventDraft m_draft;
+    QDateTime m_pickedStart;
+    QDateTime m_pickedEnd;
     QVariantList m_calendars;
     QString m_calendarId;
     bool m_busy = false;

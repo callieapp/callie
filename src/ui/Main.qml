@@ -268,6 +268,14 @@ ApplicationWindow {
                         id: quickAdd
                         y: newButton.height + Theme.space3
                         source: window.source
+                        onClosed: {
+                            // The New button opens it below itself; a drawn time opens it beside.
+                            x = 0
+                            y = newButton.height + Theme.space3
+                            const view = weekLoader.item as WeekView
+                            if (view)
+                                view.clearDraft()
+                        }
                     }
                 }
             }
@@ -506,6 +514,7 @@ ApplicationWindow {
 
                 // Only the view on screen exists, so hidden ones cost nothing.
                 Loader {
+                    id: weekLoader
                     anchors.fill: parent
                     active: window.view === "day" || window.view === "week"
                     sourceComponent: Component {
@@ -514,6 +523,10 @@ ApplicationWindow {
                             anchorDate: window.rangeStart
                             dayCount: window.view === "day" ? 1 : 7
                             onDayClicked: day => window.showDay(day)
+                            onRangeDrawn: (day, from, to, block) => quickAdd.openFor(
+                                                                        Settings.times.at(day, from),
+                                                                        Settings.times.at(day, to),
+                                                                        block)
                         }
                     }
                 }

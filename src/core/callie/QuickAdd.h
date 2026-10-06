@@ -14,6 +14,11 @@ struct EventDraft
     QDateTime start;
     QDateTime end;
     bool allDay = false;
+    /// The text named no day or time, so start and end are a guess that a
+    /// time picked some other way, such as dragging on the grid, should replace.
+    bool timeGuessed = false;
+    /// A length the text gave ("for 30 min"), in minutes, or 0.
+    int lengthMinutes = 0;
     /// CalendarInfo::id of the calendar to create it in.
     QString calendarId;
 

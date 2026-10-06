@@ -32,6 +32,8 @@ public:
     /// $XDG_CACHE_HOME/callie/google.sqlite
     [[nodiscard]] static QString defaultPath();
 
+    [[nodiscard]] QString path() const { return m_path; }
+
     /// Opens or creates the database. Every other call fails until this succeeds.
     bool open();
 

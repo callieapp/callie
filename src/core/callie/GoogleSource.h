@@ -3,6 +3,7 @@
 #include "Account.h"
 #include "CalendarSource.h"
 
+#include <QThreadPool>
 #include <QTimer>
 
 namespace callie {
@@ -26,6 +27,10 @@ public:
     [[nodiscard]] QList<CalendarInfo> calendars() const override;
     [[nodiscard]] QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                              const QTimeZone &tz) const override;
+    /// Reads through a connection of its own on a background thread.
+    [[nodiscard]] QFuture<QList<Event>> loadEventsBetween(const QDateTime &from,
+                                                          const QDateTime &to,
+                                                          const QTimeZone &tz) const override;
     void refresh() override;
 
     [[nodiscard]] bool syncing() const override { return m_pending > 0; }
@@ -44,6 +49,8 @@ private:
     QStringList m_runErrors;
     /// Each synced calendar reports a change; views reload once per burst.
     QTimer m_changes;
+    /// One reader at a time, so loads finish in the order they were asked for.
+    mutable QThreadPool m_readers;
 };
 
 } // namespace callie

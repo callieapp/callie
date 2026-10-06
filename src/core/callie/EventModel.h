@@ -87,6 +87,7 @@ Q_SIGNALS:
 
 private:
     void reload();
+    void apply(QList<Event> events);
     /// Assigns lane/laneCount to every timed event in `events`, per day.
     static void assignLanes(QList<Event> &events);
     /// Gives each all-day event a row in `lane` and returns the rows used.
@@ -99,6 +100,8 @@ private:
     int m_dayCount = 7;
     QTimeZone m_tz = QTimeZone::systemTimeZone();
     QList<Event> m_events;
+    /// Counts reloads, so a slow load that a newer one overtook is dropped.
+    quint64 m_generation = 0;
     int m_allDayRows = 0;
     QVariantList m_calendars;
     QHash<QString, QString> m_calendarNames;

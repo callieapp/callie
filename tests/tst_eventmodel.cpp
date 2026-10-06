@@ -1,6 +1,7 @@
 #include "callie/CalendarSource.h"
 #include "callie/EventModel.h"
 
+#include <QPromise>
 #include <QSignalSpy>
 #include <QTest>
 
@@ -37,6 +38,37 @@ public:
 
 private:
     QList<Event> m_events;
+};
+
+/// Answers each load only when the test says so, like a source reading on
+/// another thread.
+class SlowSource : public CalendarSource
+{
+public:
+    QString sourceId() const override { return QStringLiteral("slow"); }
+    void refresh() override {}
+    QList<CalendarInfo> calendars() const override { return {}; }
+    QList<Event> eventsBetween(const QDateTime &, const QDateTime &,
+                               const QTimeZone &) const override
+    {
+        return {};
+    }
+    QFuture<QList<Event>> loadEventsBetween(const QDateTime &, const QDateTime &,
+                                            const QTimeZone &) const override
+    {
+        auto promise = std::make_shared<QPromise<QList<Event>>>();
+        promise->start();
+        loads.append(promise);
+        return promise->future();
+    }
+
+    void answer(int load, const QList<Event> &events)
+    {
+        loads.at(load)->addResult(events);
+        loads.at(load)->finish();
+    }
+
+    mutable QList<std::shared_ptr<QPromise<QList<Event>>>> loads;
 };
 
 Event timed(const QString &uid, const QDate &date, int startHour, int startMinute,
@@ -86,6 +118,8 @@ private Q_SLOTS:
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
     void callServiceTrustsOnlyTheHost();
+    void slowLoadKeepsRowsUntilItArrives();
+    void overtakenLoadIsDropped();
 
 private:
     /// Builds a model over `events` starting at kMonday. Rows keep source order.
@@ -379,6 +413,39 @@ void TestEventModel::callServiceTrustsOnlyTheHost()
     QVERIFY(model.callService(QUrl(u"file:///etc/passwd"_s)).isEmpty());
     QVERIFY(model.callService(QUrl(u"javascript:alert(1)"_s)).isEmpty());
     QVERIFY(model.callService(QUrl()).isEmpty());
+}
+
+void TestEventModel::slowLoadKeepsRowsUntilItArrives()
+{
+    SlowSource source;
+    EventModel model;
+    model.setRangeStart(kMonday);
+    model.setSource(&source);
+    source.answer(0, {timed("a", kMonday, 9, 0, 60)});
+    QTRY_COMPARE(model.rowCount(), 1);
+
+    model.setRangeStart(kMonday.addDays(7));
+    QCoreApplication::processEvents();
+    QCOMPARE(model.rowCount(), 1);
+
+    source.answer(1, {});
+    QTRY_COMPARE(model.rowCount(), 0);
+}
+
+void TestEventModel::overtakenLoadIsDropped()
+{
+    SlowSource source;
+    EventModel model;
+    model.setRangeStart(kMonday);
+    model.setSource(&source);
+    model.setRangeStart(kMonday.addDays(7));
+
+    source.answer(1, {timed("b", kMonday.addDays(7), 9, 0, 60)});
+    QTRY_COMPARE(model.rowCount(), 1);
+    source.answer(0, {timed("a", kMonday, 9, 0, 60), timed("c", kMonday, 11, 0, 60)});
+    QTest::qWait(50);
+    QCOMPARE(model.rowCount(), 1);
+    QCOMPARE(model.data(model.index(0, 0), EventModel::SummaryRole).toString(), u"b");
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

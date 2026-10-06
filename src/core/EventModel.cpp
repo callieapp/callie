@@ -135,7 +135,9 @@ void EventModel::load(bool rangeChanged)
     if (rangeChanged && !m_events.isEmpty()) {
         beginResetModel();
         m_events.clear();
+        ++m_revision;
         endResetModel();
+        Q_EMIT revisionChanged();
     }
     future.then(this, [this, generation](const SourceSnapshot &snapshot) {
         if (generation == m_generation)
@@ -165,7 +167,9 @@ void EventModel::apply(SourceSnapshot snapshot)
     }
     m_events = std::move(events);
     const int rows = assignAllDayRows(m_events);
+    ++m_revision;
     endResetModel();
+    Q_EMIT revisionChanged();
     if (rows != m_allDayRows) {
         m_allDayRows = rows;
         Q_EMIT allDayRowsChanged();
@@ -285,6 +289,36 @@ QString EventModel::callService(const QUrl &url) const
     if (host == u"meet.google.com"_s)
         return u"meet"_s;
     return u"web"_s;
+}
+
+QVariantList EventModel::eventsOn(int dayIndex, int revision) const
+{
+    Q_UNUSED(revision)
+    const QDateTime dayStart(m_rangeStart.addDays(dayIndex), QTime(0, 0), m_tz);
+    const QDateTime dayEnd(m_rangeStart.addDays(dayIndex + 1), QTime(0, 0), m_tz);
+    QList<int> rows;
+    for (int row = 0; row < m_events.size(); ++row) {
+        const Event &e = m_events.at(row);
+        // A zero-length event still belongs to the day it sits on.
+        if (e.start < dayEnd && (e.end > dayStart || e.start >= dayStart))
+            rows.append(row);
+    }
+    std::stable_sort(rows.begin(), rows.end(), [this](int a, int b) {
+        const Event &x = m_events.at(a);
+        const Event &y = m_events.at(b);
+        if (x.allDay != y.allDay)
+            return x.allDay;
+        return x.start < y.start;
+    });
+    const QHash<int, QByteArray> names = roleNames();
+    QVariantList list;
+    for (int row : std::as_const(rows)) {
+        QVariantMap event;
+        for (auto it = names.cbegin(); it != names.cend(); ++it)
+            event.insert(QString::fromLatin1(it.value()), data(index(row), it.key()));
+        list.append(event);
+    }
+    return list;
 }
 
 QString EventModel::timing(const QDateTime &start, const QDateTime &end, const QDateTime &now) const

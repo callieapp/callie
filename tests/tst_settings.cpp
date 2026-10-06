@@ -43,6 +43,7 @@ void TestSettings::defaultsWithoutAFile()
     QVERIFY(settings.dimPast());
     QVERIFY(!settings.widenToday());
     QVERIFY(settings.hiddenCalendars().isEmpty());
+    QCOMPARE(settings.view(), u"week"_s);
 }
 
 void TestSettings::choicesSurviveARestart()
@@ -57,6 +58,8 @@ void TestSettings::choicesSurviveARestart()
         settings.setCalendarVisible(u"google/me/work"_s, false);
         settings.setAccountCollapsed(u"me@example.com"_s, true);
         settings.setTheme(u"/home/me/.config/callie/themes/mine.toml"_s);
+        settings.setView(u"month"_s);
+        settings.setView(u"year"_s);
     }
     const Settings settings(path());
     QCOMPARE(settings.timeFormat(), Settings::TimeFormat::TwelveHour);
@@ -67,6 +70,7 @@ void TestSettings::choicesSurviveARestart()
     QCOMPARE(settings.hiddenCalendars(), QStringList{u"google/me/work"_s});
     QCOMPARE(settings.collapsedAccounts(), QStringList{u"me@example.com"_s});
     QCOMPARE(settings.theme(), u"/home/me/.config/callie/themes/mine.toml"_s);
+    QCOMPARE(settings.view(), u"month"_s);
 }
 
 void TestSettings::unchangedValueEmitsNothing()

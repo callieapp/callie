@@ -28,21 +28,41 @@ void TodayModel::setNow(const QDateTime &now)
 
 void TodayModel::refresh()
 {
+    const quint64 generation = ++m_generation;
+    if (!m_source || !m_now.isValid()) {
+        apply({});
+        return;
+    }
+    const QTimeZone zone = m_now.timeZone();
+    const QDateTime endOfDay(m_now.date().addDays(1), QTime(0, 0), zone);
+    QFuture<SourceSnapshot> future = m_source->load(m_now, endOfDay, zone);
+    if (future.isFinished()) {
+        apply(future.result());
+        return;
+    }
+    // The greeting and date follow the clock at once; the next event follows
+    // when the read lands.
+    Q_EMIT changed();
+    future.then(this, [this, generation](const SourceSnapshot &snapshot) {
+        if (generation == m_generation)
+            apply(snapshot);
+    });
+}
+
+void TodayModel::apply(const SourceSnapshot &snapshot)
+{
     m_next = {};
     m_nextCalendar.clear();
-    if (m_source && m_now.isValid()) {
-        const QTimeZone zone = m_now.timeZone();
-        const QDateTime endOfDay(m_now.date().addDays(1), QTime(0, 0), zone);
-        for (const Event &event : m_source->eventsBetween(m_now, endOfDay, zone)) {
-            if (event.allDay || event.start <= m_now)
-                continue;
-            if (!m_next.isValid() || event.start < m_next.start)
-                m_next = event;
-        }
-        for (const CalendarInfo &calendar : m_source->calendars()) {
-            if (calendar.id == m_next.calendarId)
-                m_nextCalendar = calendar.displayName;
-        }
+    for (const Event &event : snapshot.events) {
+        // A declined event is not on the user's way.
+        if (event.allDay || event.declined || event.start <= m_now)
+            continue;
+        if (!m_next.isValid() || event.start < m_next.start)
+            m_next = event;
+    }
+    for (const CalendarInfo &calendar : snapshot.calendars) {
+        if (calendar.id == m_next.calendarId)
+            m_nextCalendar = calendar.displayName;
     }
     Q_EMIT changed();
 }

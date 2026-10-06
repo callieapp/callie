@@ -1,6 +1,7 @@
 #include "callie/CalendarSource.h"
 #include "callie/TodayModel.h"
 
+#include <QPromise>
 #include <QSignalSpy>
 #include <QTest>
 
@@ -54,6 +55,33 @@ public:
     QList<Event> m_events;
 };
 
+/// Answers only when told to, like a source reading on another thread.
+class SlowSource : public FakeSource
+{
+public:
+    using FakeSource::FakeSource;
+
+    QFuture<SourceSnapshot> load(const QDateTime &from, const QDateTime &to,
+                                 const QTimeZone &tz) const override
+    {
+        auto promise = std::make_shared<QPromise<SourceSnapshot>>();
+        promise->start();
+        pending.append({promise, SourceSnapshot{eventsBetween(from, to, tz), calendars()}});
+        return promise->future();
+    }
+
+    void answerAll()
+    {
+        for (auto &[promise, snapshot] : pending) {
+            promise->addResult(snapshot);
+            promise->finish();
+        }
+        pending.clear();
+    }
+
+    mutable QList<std::pair<std::shared_ptr<QPromise<SourceSnapshot>>, SourceSnapshot>> pending;
+};
+
 } // namespace
 
 class TestTodayModel : public QObject
@@ -68,6 +96,8 @@ private Q_SLOTS:
     void detailFallsBackToTheCalendar();
     void nothingLeftToday();
     void sourceChangesRefresh();
+    void declinedIsSkipped();
+    void slowReadLandsLater();
 };
 
 void TestTodayModel::greetingFollowsTheHour()
@@ -154,6 +184,30 @@ void TestTodayModel::sourceChangesRefresh()
 
     QCOMPARE(changed.size(), 1);
     QVERIFY(model.hasNext());
+}
+
+void TestTodayModel::declinedIsSkipped()
+{
+    Event skipped = timed(u"Skipped"_s, at(11), 30);
+    skipped.declined = true;
+    FakeSource source({skipped, timed(u"Going"_s, at(14), 30)});
+    TodayModel model;
+    model.setNow(at(10, 40));
+    model.setSource(&source);
+
+    QCOMPARE(model.nextTitle(), u"Going"_s);
+}
+
+void TestTodayModel::slowReadLandsLater()
+{
+    SlowSource source({timed(u"Standup"_s, at(11), 15)});
+    TodayModel model;
+    model.setNow(at(10, 40));
+    model.setSource(&source);
+    QVERIFY(!model.hasNext());
+
+    source.answerAll();
+    QTRY_COMPARE(model.nextTitle(), u"Standup"_s);
 }
 
 QTEST_GUILESS_MAIN(TestTodayModel)

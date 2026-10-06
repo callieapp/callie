@@ -47,11 +47,14 @@ Q_SIGNALS:
 
 private:
     void refresh();
+    void apply(const SourceSnapshot &snapshot);
 
     QPointer<CalendarSource> m_source;
     QDateTime m_now;
     Event m_next;
     QString m_nextCalendar;
+    /// Counts refreshes, so a slow read that a newer one overtook is dropped.
+    quint64 m_generation = 0;
 };
 
 } // namespace callie

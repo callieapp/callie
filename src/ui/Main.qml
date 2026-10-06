@@ -155,8 +155,7 @@ ApplicationWindow {
 
                 Image {
                     anchors.verticalCenter: parent.verticalCenter
-                    // The ears sit above the face; lifting it centres the face on the title.
-                    anchors.verticalCenterOffset: -2
+                    anchors.verticalCenterOffset: -Theme.logoLift
                     source: "qrc:/callie/assets/logo.png"
                     sourceSize: Qt.size(56, 56)
                     width: 28

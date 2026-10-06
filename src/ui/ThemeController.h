@@ -103,6 +103,9 @@ class ThemeController : public QObject
     /// how many minutes of the grid that covers.
     Q_PROPERTY(int minEventHeight READ minEventHeight CONSTANT)
     Q_PROPERTY(int minEventMinutes READ minEventMinutes CONSTANT)
+    /// How far the logo sits above centre, so its face, not its ears, lines up
+    /// with the title beside it.
+    Q_PROPERTY(int logoLift READ logoLift CONSTANT)
     /// A lighter line for glyphs with several strokes, or beside text.
     Q_PROPERTY(qreal fineGlyphStroke READ fineGlyphStroke CONSTANT)
     /// How far past and declined events fade.
@@ -213,6 +216,7 @@ public:
         return (minEventHeight() * 60 + hourHeight() - 1) / hourHeight();
     }
     qreal fineGlyphStroke() const { return 1.6; }
+    int logoLift() const { return 2; }
     qreal todayShare() const { return 1.6; }
     int sidebarWidth() const { return 240; }
     int listRowHeight() const { return 28; }

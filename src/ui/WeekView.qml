@@ -196,7 +196,10 @@ Item {
         // Open on the working day, a little above 8:00 so its label shows.
         Component.onCompleted: contentY = 8 * Theme.hourHeight - Theme.space4
 
-        ScrollBar.vertical: ScrollBar {}
+        // Inset so the window's resize strip does not cover the handle.
+        ScrollBar.vertical: ScrollBar {
+            rightPadding: Theme.resizeBorder + Theme.space1
+        }
 
         Item {
             width: grid.width

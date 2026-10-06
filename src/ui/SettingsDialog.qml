@@ -19,6 +19,11 @@ Popup {
     /// The user wants to edit the theme's colors, which needs the calendar in view.
     signal editColorsRequested
 
+    /// Which group of settings shows: "general", "appearance" or "accounts".
+    property string tab: "general"
+    /// The source's syncReport, for the accounts tab.
+    property var syncReport: []
+
     Overlay.modal: Rectangle {
         // The attached Window type is not the QML Window type, so this stays untyped.
         readonly property var appWindow: Window.window
@@ -83,8 +88,44 @@ Popup {
             }
         }
 
+        Row {
+            spacing: Theme.space2
+
+            Repeater {
+                model: [
+                    {
+                        "id": "general",
+                        "label": qsTr("General")
+                    },
+                    {
+                        "id": "appearance",
+                        "label": qsTr("Appearance")
+                    },
+                    {
+                        "id": "accounts",
+                        "label": qsTr("Accounts")
+                    }
+                ]
+
+                PillButton {
+                    id: tabButton
+                    required property var modelData
+                    label: tabButton.modelData.label
+                    selected: root.tab === tabButton.modelData.id
+                    onClicked: root.tab = tabButton.modelData.id
+                }
+            }
+        }
+
+        AccountsSection {
+            visible: root.tab === "accounts"
+            width: 480 - 2 * Theme.space6
+            report: root.syncReport
+        }
+
         Section {
             title: qsTr("Appearance")
+            visible: root.tab === "appearance"
 
             Flow {
                 width: parent.width
@@ -158,6 +199,7 @@ Popup {
 
         Section {
             title: qsTr("Time")
+            visible: root.tab === "general"
 
             Row {
                 spacing: Theme.space2
@@ -210,6 +252,7 @@ Popup {
 
         Section {
             title: qsTr("Events")
+            visible: root.tab === "general"
 
             Toggle {
                 width: parent.width
@@ -227,6 +270,7 @@ Popup {
 
         Section {
             title: qsTr("Week")
+            visible: root.tab === "general"
 
             Toggle {
                 width: parent.width
@@ -237,6 +281,7 @@ Popup {
         }
 
         StickerButton {
+            visible: root.tab === "general"
             text: qsTr("Reset to defaults")
             // Settings forget the theme too, so the default one comes back.
             onClicked: {

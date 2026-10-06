@@ -10,6 +10,8 @@ qt_add_qml_module(callieui
     # color type when QtQuick is a declared dependency.
     DEPENDENCIES QtQuick
     SOURCES
+        AccountsController.h
+        AccountsController.cpp
         Clock.h
         Clock.cpp
         Composer.h
@@ -61,6 +63,7 @@ qt_add_qml_module(callieui
         Toggle.qml
         ZonePicker.qml
         SettingsDialog.qml
+        AccountsSection.qml
         ThemeEditor.qml
 )
 

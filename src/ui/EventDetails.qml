@@ -12,21 +12,19 @@ Popup {
     property string when
     property string location
     property url conferenceUrl
+    /// From EventModel.callService: empty when the link should not be opened.
+    property string callService
     property string calendarName
     property color calendarColor
     property string description
 
     readonly property color fill: Theme.calendarColor(calendarColor, Theme.calendar)
     readonly property color ink: Theme.calendarInk(calendarColor, Theme.calendar)
-    readonly property bool hasCall: conferenceUrl.toString() !== ""
-    readonly property string callName: {
-        const host = conferenceUrl.toString()
-        if (host.indexOf("zoom.us") >= 0)
-            return qsTr("Join Zoom call")
-        if (host.indexOf("meet.google.com") >= 0)
-            return qsTr("Join Google Meet")
-        return qsTr("Join call")
-    }
+    readonly property bool hasCall: callService !== ""
+    readonly property string callName: callService === "zoom" ? qsTr("Join Zoom call") :
+                                                                callService === "meet" ? qsTr(
+                                                                                             "Join Google Meet") :
+                                                                                         qsTr("Join call")
 
     width: 320
     padding: 0
@@ -89,6 +87,7 @@ Popup {
                     Text {
                         width: parent.width
                         text: root.summary
+                        textFormat: Text.PlainText
                         wrapMode: Text.Wrap
                         maximumLineCount: 3
                         elide: Text.ElideRight

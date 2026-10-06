@@ -5,6 +5,7 @@
 #include <QTest>
 
 using namespace callie;
+using namespace Qt::StringLiterals;
 
 namespace {
 
@@ -84,6 +85,7 @@ private Q_SLOTS:
     void daysOffFollowTheLocale();
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
+    void callServiceTrustsOnlyTheHost();
 
 private:
     /// Builds a model over `events` starting at kMonday. Rows keep source order.
@@ -358,6 +360,19 @@ void TestEventModel::timingDescribesWhereAnEventStands()
     QCOMPARE(model.timing(at(9, 0, 1), at(10, 0, 1), now), QString());
     QCOMPARE(model.timing(at(10, 0), at(12, 15), now),
              QStringLiteral("Happening now, 1 h 35 min left"));
+}
+
+void TestEventModel::callServiceTrustsOnlyTheHost()
+{
+    EventModel model;
+    QCOMPARE(model.callService(QUrl(u"https://acme.zoom.us/j/123"_s)), u"zoom"_s);
+    QCOMPARE(model.callService(QUrl(u"https://meet.google.com/abc-defg-hij"_s)), u"meet"_s);
+    QCOMPARE(model.callService(QUrl(u"https://evil.example/?r=meet.google.com"_s)), u"web"_s);
+    QCOMPARE(model.callService(QUrl(u"https://meet.google.com.evil.example/"_s)), u"web"_s);
+    QCOMPARE(model.callService(QUrl(u"https://notzoom.us/j/1"_s)), u"web"_s);
+    QVERIFY(model.callService(QUrl(u"file:///etc/passwd"_s)).isEmpty());
+    QVERIFY(model.callService(QUrl(u"javascript:alert(1)"_s)).isEmpty());
+    QVERIFY(model.callService(QUrl()).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

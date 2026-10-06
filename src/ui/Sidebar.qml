@@ -97,6 +97,7 @@ Rectangle {
                 Text {
                     width: parent.width
                     text: root.today.nextTitle
+                    textFormat: Text.PlainText
                     color: upNext.ink
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textLg
@@ -106,6 +107,7 @@ Rectangle {
                 Text {
                     width: parent.width
                     text: root.today.nextDetail
+                    textFormat: Text.PlainText
                     color: upNext.ink
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
@@ -244,6 +246,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: calendarRow.width - Theme.textBase - Theme.space3
                         text: calendarRow.modelData.name
+                        textFormat: Text.PlainText
                         elide: Text.ElideRight
                         color: Theme.textMuted
                         font.family: Theme.fontFamily

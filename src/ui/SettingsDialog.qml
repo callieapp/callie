@@ -121,10 +121,27 @@ Popup {
                     text: qsTr("Export...")
                     onClicked: exportDialog.open()
                 }
+                // Deleting takes a second click, since the file is gone for good.
                 StickerButton {
+                    id: deleteTheme
+                    property bool armed: false
                     visible: Themes.editable
-                    text: qsTr("Delete theme")
-                    onClicked: Themes.removeCurrent()
+                    text: armed ? qsTr("Click again to delete") : qsTr("Delete theme")
+                    onClicked: {
+                        if (armed) {
+                            armed = false
+                            Themes.removeCurrent()
+                        } else {
+                            armed = true
+                            disarm.restart()
+                        }
+                    }
+
+                    Timer {
+                        id: disarm
+                        interval: 4000
+                        onTriggered: deleteTheme.armed = false
+                    }
                 }
             }
 

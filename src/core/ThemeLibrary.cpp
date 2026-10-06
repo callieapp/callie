@@ -20,6 +20,15 @@ QString sourceFile(const QString &idOrPath)
     return ThemeLoader::isPath(idOrPath) ? idOrPath : u":/callie/themes/"_s + idOrPath + u".toml"_s;
 }
 
+/// The [theme] name a file sets itself, or empty, unlike a load over the
+/// default theme, which fills a missing name in with the default's.
+QString ownName(const QByteArray &toml)
+{
+    ThemeSpec unnamed = ThemeLoader::defaultTheme();
+    unnamed.name.clear();
+    return ThemeLoader::parse(toml, unnamed).theme.name;
+}
+
 QByteArray read(const QString &path, QString *error)
 {
     QFile file(path);
@@ -117,11 +126,9 @@ QStringList ThemeLibrary::colorKeys()
 
 QString ThemeLibrary::displayName(const QString &idOrPath)
 {
-    const ThemeLoadResult result = ThemeLoader::load(idOrPath);
-    if (result.ok() && !result.theme.name.isEmpty() &&
-        (result.theme.name != ThemeLoader::defaultTheme().name || !ThemeLoader::isPath(idOrPath)))
-        return result.theme.name;
-    return QFileInfo(idOrPath).completeBaseName();
+    QString ignored;
+    const QString name = ownName(read(sourceFile(idOrPath), &ignored));
+    return name.isEmpty() ? QFileInfo(idOrPath).completeBaseName() : name;
 }
 
 QString ThemeLibrary::copy(const QString &idOrPath, const QString &name)
@@ -183,8 +190,8 @@ QString ThemeLibrary::importTheme(const QString &source)
         fail(QObject::tr("could not create %1").arg(m_folder));
         return {};
     }
-    const QString name =
-        result.theme.name.isEmpty() ? QFileInfo(source).completeBaseName() : result.theme.name;
+    const QString own = ownName(data);
+    const QString name = own.isEmpty() ? QFileInfo(source).completeBaseName() : own;
     const QString path = freshPath(name);
     if (!write(path, data, &problem)) {
         fail(problem);

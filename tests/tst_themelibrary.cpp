@@ -131,6 +131,13 @@ void TestThemeLibrary::importChecksTheTheme()
     QVERIFY2(!path.isEmpty(), qPrintable(m_library->error()));
     QVERIFY(path.endsWith(u"/good-one.toml"_s));
 
+    // With no name of its own, the file name names it, not the default theme.
+    const QString unnamed = writeFile(u"sunset.toml"_s, "[colors]\naccent = \"#ff8844\"\n");
+    const QString unnamedPath = m_library->importTheme(unnamed);
+    QVERIFY(unnamedPath.endsWith(u"/sunset.toml"_s));
+    QCOMPARE(ThemeLibrary::displayName(unnamedPath), u"sunset"_s);
+    QVERIFY(m_library->remove(unnamedPath));
+
     const QString bad = writeFile(u"bad.toml"_s, "[colors\naccent = \n");
     QVERIFY(m_library->importTheme(bad).isEmpty());
     QVERIFY(!m_library->error().isEmpty());

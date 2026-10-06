@@ -17,8 +17,8 @@ class TodayModel : public QObject
     Q_OBJECT
     Q_PROPERTY(callie::CalendarSource *source READ source WRITE setSource NOTIFY changed)
     Q_PROPERTY(QDateTime now READ now WRITE setNow NOTIFY changed)
-    /// The zone "today" and the times are in.
-    Q_PROPERTY(QTimeZone timeZone READ timeZone WRITE setTimeZone NOTIFY changed)
+    /// The IANA zone "today" and the times are in; empty follows the system.
+    Q_PROPERTY(QString timeZoneId READ timeZoneId WRITE setTimeZoneId NOTIFY changed)
     Q_PROPERTY(bool use24Hour READ use24Hour WRITE setUse24Hour NOTIFY changed)
     Q_PROPERTY(QString greeting READ greeting NOTIFY changed)
     Q_PROPERTY(QString dateLabel READ dateLabel NOTIFY changed)
@@ -37,6 +37,8 @@ public:
     void setNow(const QDateTime &now);
     [[nodiscard]] QTimeZone timeZone() const { return m_zone; }
     void setTimeZone(const QTimeZone &zone);
+    [[nodiscard]] QString timeZoneId() const;
+    void setTimeZoneId(const QString &id);
     [[nodiscard]] bool use24Hour() const { return m_use24Hour; }
     void setUse24Hour(bool use24Hour);
 

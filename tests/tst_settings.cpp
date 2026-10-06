@@ -113,7 +113,7 @@ void TestSettings::timesFollowTheChosenFormat()
     settings.setTimeZoneId(u"Asia/Tokyo"_s);
     QCOMPARE(settings.formatTime(time), u"23:30"_s);
     QCOMPARE(settings.minutesIntoDay(time), 23 * 60 + 30);
-    QCOMPARE(settings.dateIn(time.addSecs(3600)), QDate(2026, 10, 7));
+    QCOMPARE(settings.dateIn(time.addSecs(3600)), QDate(2026, 10, 7).startOfDay());
 
     QLocale::setDefault(QLocale(QLocale::German, QLocale::Germany));
     settings.setTimeFormat(Settings::TimeFormat::Locale);

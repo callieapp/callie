@@ -11,7 +11,25 @@ Item {
     property date anchorDate: Clock.now
     property int dayCount: 7
 
-    readonly property real dayWidth: (width - Theme.gutterWidth) / dayCount
+    readonly property int todayColumn: {
+        for (let i = 0; i < dayCount; ++i)
+            if (isToday(dateForColumn(i)))
+                return i
+        return -1
+    }
+    // Today's column can take a larger share of the width.
+    readonly property real todayShare: Settings.widenToday && todayColumn >= 0 ? 1.6 : 1
+    /// The width of an ordinary day column.
+    readonly property real dayWidth: (width - Theme.gutterWidth) / (dayCount - 1 + todayShare)
+
+    function columnX(i) {
+        const wider = todayColumn >= 0 && i > todayColumn ? (todayShare - 1) * dayWidth : 0
+        return Theme.gutterWidth + i * dayWidth + wider
+    }
+
+    function columnWidth(i) {
+        return i === todayColumn ? todayShare * dayWidth : dayWidth
+    }
 
     function dateForColumn(i) {
         const d = new Date(root.anchorDate)
@@ -20,7 +38,8 @@ Item {
     }
 
     function isToday(d) {
-        const now = Clock.now
+        // Today in the chosen zone, which can differ from the system's.
+        const now = Settings.dateIn(Clock.now)
         if (d.getFullYear() !== now.getFullYear())
             return false
         if (d.getMonth() !== now.getMonth())
@@ -51,7 +70,7 @@ Item {
                     readonly property date date: root.dateForColumn(index)
                     readonly property bool today: root.isToday(date)
 
-                    width: root.dayWidth
+                    width: root.columnWidth(index)
                     height: header.height
 
                     Column {
@@ -132,11 +151,15 @@ Item {
                 required property int daySpan
                 required property int lane
                 required property color calendarColor
+                required property bool declined
+                required property date end
 
                 visible: allDay
-                x: Theme.gutterWidth + firstDay * root.dayWidth + 3
+                opacity: declined || (Settings.dimPast && end < Clock.now) ? Theme.fadedOpacity : 1
+                layer.enabled: opacity < 1
+                x: root.columnX(firstDay) + 3
                 y: Theme.space1 + lane * Theme.allDayRowHeight
-                width: daySpan * root.dayWidth - 6
+                width: root.columnX(firstDay + daySpan) - root.columnX(firstDay) - 6
                 height: Theme.allDayRowHeight - 3 - Theme.stickerEdge
                 radius: height / 2
                 color: Theme.calendarColor(calendarColor, Theme.calendar)
@@ -166,6 +189,7 @@ Item {
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
                     font.weight: Font.ExtraBold
+                    font.strikeout: chip.declined
                 }
             }
         }
@@ -236,7 +260,7 @@ Item {
                         anchors.rightMargin: -Theme.gutterWidth + Theme.space3
                         anchors.topMargin: -7
                         visible: hourRow.index > 0
-                        text: Qt.formatTime(new Date(2000, 0, 1, hourRow.index, 0), "h:mm")
+                        text: Settings.formatHour(hourRow.index)
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
@@ -258,8 +282,8 @@ Item {
                     readonly property date date: root.dateForColumn(index)
                     readonly property bool dayOff: root.model.isDayOff(date)
 
-                    x: Theme.gutterWidth + index * root.dayWidth
-                    width: root.dayWidth
+                    x: root.columnX(index)
+                    width: root.columnWidth(index)
                     height: grid.contentHeight
                     color: root.isToday(date) ? Theme.todayWash : dayOff ? Theme.dayOffWash :
                                                                            "transparent"
@@ -287,11 +311,11 @@ Item {
                     required property int laneCount
                     required property bool allDay
 
-                    readonly property real laneWidth: (root.dayWidth - 6) / laneCount
+                    readonly property real laneWidth: (root.columnWidth(dayIndex) - 6) / laneCount
 
                     visible: !allDay && dayIndex >= 0 && dayIndex < root.dayCount
 
-                    x: Theme.gutterWidth + dayIndex * root.dayWidth + 3 + lane * laneWidth
+                    x: root.columnX(dayIndex) + 3 + lane * laneWidth
                     width: laneWidth - (laneCount > 1 ? 3 : 0)
                     y: startMinutes / 60 * Theme.hourHeight
                     height: Math.max(20, durationMinutes / 60 * Theme.hourHeight - 2
@@ -312,7 +336,7 @@ Item {
                 visible: now.visible
                 x: Theme.gutterWidth
                 y: now.y + now.height / 2 - height / 2
-                width: root.dayCount * root.dayWidth
+                width: root.columnX(root.dayCount) - Theme.gutterWidth
                 height: 1
                 z: 49
                 color: Theme.tint(Theme.accent, 0.45)
@@ -322,17 +346,12 @@ Item {
             Item {
                 id: now
                 readonly property date current: Clock.now
-                readonly property int columnIndex: {
-                    for (let i = 0; i < root.dayCount; ++i)
-                        if (root.isToday(root.dateForColumn(i)))
-                            return i
-                    return -1
-                }
+                readonly property int columnIndex: root.todayColumn
 
                 visible: columnIndex >= 0
-                y: (current.getHours() * 60 + current.getMinutes()) / 60 * Theme.hourHeight
-                x: Theme.gutterWidth + columnIndex * root.dayWidth + 2
-                width: root.dayWidth - 4
+                y: Settings.minutesIntoDay(current) / 60 * Theme.hourHeight
+                x: root.columnX(columnIndex) + 2
+                width: root.columnWidth(columnIndex) - 4
                 height: 3
                 z: 50
 
@@ -369,7 +388,7 @@ Item {
                 Text {
                     id: nowLabel
                     anchors.centerIn: parent
-                    text: Qt.formatTime(now.current, "h:mm")
+                    text: Settings.formatTime(now.current)
                     color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs
@@ -384,8 +403,8 @@ Item {
 
     // ---- Event tooltip and details -----------------------------------------
     function whenText(block) {
-        return qsTr("%1 to %2").arg(Qt.formatTime(block.start, "h:mm")).arg(Qt.formatTime(block.end,
-                                                                                          "h:mm"))
+        return qsTr("%1 to %2").arg(Settings.formatTime(block.start)).arg(Settings.formatTime(
+                                                                              block.end))
     }
 
     // Beside the event, on whichever side has room, kept inside the view.
@@ -422,8 +441,8 @@ Item {
         tipDelay.stop()
         tip.visible = false
         details.summary = block.summary
-        details.when = qsTr("%1, %2").arg(Qt.formatDate(block.start, "dddd, MMMM d")).arg(whenText(
-                                                                                              block))
+        details.when = qsTr("%1, %2").arg(Qt.formatDate(Settings.dateIn(block.start),
+                                                        "dddd, MMMM d")).arg(whenText(block))
         details.location = block.location
         details.conferenceUrl = block.conferenceUrl
         details.callService = root.model.callService(block.conferenceUrl)

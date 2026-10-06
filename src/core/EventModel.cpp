@@ -78,6 +78,16 @@ void EventModel::setTimeZone(const QTimeZone &zone)
     reloadRange();
 }
 
+QString EventModel::timeZoneId() const
+{
+    return m_tz == QTimeZone::systemTimeZone() ? QString() : QString::fromUtf8(m_tz.id());
+}
+
+void EventModel::setTimeZoneId(const QString &id)
+{
+    setTimeZone(id.isEmpty() ? QTimeZone::systemTimeZone() : QTimeZone(id.toUtf8()));
+}
+
 void EventModel::setHiddenCalendars(const QStringList &ids)
 {
     if (m_hiddenCalendars == ids)

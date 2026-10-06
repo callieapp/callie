@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Event.h"
+#include "QuickAdd.h"
 
 #include <QDate>
 #include <QDateTime>
@@ -8,6 +9,8 @@
 #include <QObject>
 #include <QString>
 #include <QTimeZone>
+
+#include <functional>
 
 namespace callie {
 
@@ -66,6 +69,16 @@ public:
 
     /// Kick off a background refresh. Emits `changed` when new data lands.
     virtual void refresh() = 0;
+
+    /// Called once a creation finishes; `error` is empty on success.
+    using Created = std::function<void(const QString &error)>;
+
+    /// Creates `draft` in its calendar and emits `changed` once it shows.
+    virtual void createEvent(const EventDraft &draft, Created done)
+    {
+        Q_UNUSED(draft)
+        done(tr("These calendars cannot take new events."));
+    }
 
     /// Sync status for the title bar. Sources that never sync keep the defaults.
     [[nodiscard]] virtual bool syncing() const { return false; }

@@ -14,6 +14,8 @@ class QJsonObject;
 
 namespace callie {
 
+struct EventDraft;
+
 /// A failed call. `status` is the HTTP status, or 0 when no response arrived.
 struct GoogleApiError
 {
@@ -94,6 +96,7 @@ public:
         std::function<void(const QList<GoogleCalendar> &calendars, const GoogleApiError &error)>;
     using EventsResult =
         std::function<void(const GoogleEventChanges &changes, const GoogleApiError &error)>;
+    using EventResult = std::function<void(const GoogleEvent &event, const GoogleApiError &error)>;
 
     explicit GoogleCalendarApi(QNetworkAccessManager *network, QObject *parent = nullptr);
 
@@ -112,11 +115,16 @@ public:
     void fetchEvents(const QString &accessToken, const QString &calendarId,
                      const QString &syncToken, EventsResult result);
 
+    /// Creates an event from googleEventJson() and returns it as Google stored it.
+    void insertEvent(const QString &accessToken, const QString &calendarId,
+                     const QJsonObject &event, EventResult result);
+
 private:
     using Page = std::function<void(const QJsonObject &body, const GoogleApiError &error)>;
 
     void get(const QString &accessToken, const QString &path,
              const QList<QPair<QString, QString>> &query, Page page);
+    void send(QNetworkReply *reply, Page page);
     void fetchCalendarPage(const QString &accessToken, const QString &pageToken,
                            QList<GoogleCalendar> calendars, CalendarsResult result);
     void fetchEventPage(const QString &accessToken, const QString &calendarId,
@@ -129,5 +137,9 @@ private:
 
 /// Parses one item of an events list. Exposed for tests.
 [[nodiscard]] GoogleEvent parseGoogleEvent(const QJsonObject &item);
+
+/// The request body that creates `draft`: dates for all-day events, otherwise
+/// times in the draft's own zone.
+[[nodiscard]] QJsonObject googleEventJson(const EventDraft &draft);
 
 } // namespace callie

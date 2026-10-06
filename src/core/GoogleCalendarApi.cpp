@@ -1,6 +1,7 @@
 #include "callie/GoogleCalendarApi.h"
 
 #include "callie/Logging.h"
+#include "callie/QuickAdd.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -9,6 +10,8 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimeZone>
+
+using namespace Qt::StringLiterals;
 
 namespace callie {
 
@@ -88,6 +91,24 @@ GoogleEvent parseGoogleEvent(const QJsonObject &item)
     return event;
 }
 
+QJsonObject googleEventJson(const EventDraft &draft)
+{
+    const auto time = [&draft](const QDateTime &moment) {
+        if (draft.allDay)
+            return QJsonObject{{u"date"_s, moment.date().toString(Qt::ISODate)}};
+        QJsonObject json{{u"dateTime"_s, moment.toString(Qt::ISODate)}};
+        if (moment.timeSpec() == Qt::TimeZone)
+            json.insert(u"timeZone"_s, QString::fromUtf8(moment.timeZone().id()));
+        return json;
+    };
+    QJsonObject json{{u"summary"_s, draft.summary},
+                     {u"start"_s, time(draft.start)},
+                     {u"end"_s, time(draft.end)}};
+    if (!draft.location.isEmpty())
+        json.insert(u"location"_s, draft.location);
+    return json;
+}
+
 GoogleCalendarApi::GoogleCalendarApi(QNetworkAccessManager *network, QObject *parent)
     : QObject(parent), m_network(network)
 {}
@@ -106,7 +127,11 @@ void GoogleCalendarApi::get(const QString &accessToken, const QString &path,
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
 
-    QNetworkReply *reply = m_network->get(request);
+    send(m_network->get(request), std::move(page));
+}
+
+void GoogleCalendarApi::send(QNetworkReply *reply, Page page)
+{
     connect(reply, &QNetworkReply::finished, this, [reply, page = std::move(page)] {
         reply->deleteLater();
         const QJsonObject body = QJsonDocument::fromJson(reply->readAll()).object();
@@ -119,6 +144,23 @@ void GoogleCalendarApi::get(const QString &accessToken, const QString &path,
         qCInfo(lcSync) << "Google API request failed with status" << status;
         page({}, {status, message.isEmpty() ? reply->errorString() : message});
     });
+}
+
+void GoogleCalendarApi::insertEvent(const QString &accessToken, const QString &calendarId,
+                                    const QJsonObject &event, EventResult result)
+{
+    QNetworkRequest request(m_baseUrl.resolved(
+        QUrl(QStringLiteral("calendars/%1/events").arg(encoded(calendarId)), QUrl::StrictMode)));
+    request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    send(m_network->post(request, QJsonDocument(event).toJson(QJsonDocument::Compact)),
+         [result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) {
+             const GoogleEvent created = parseGoogleEvent(body);
+             if (!error && created.id.isEmpty())
+                 result({}, {200, tr("Google returned no event")});
+             else
+                 result(created, error);
+         });
 }
 
 void GoogleCalendarApi::fetchPrimaryCalendarId(const QString &accessToken, IdResult result)

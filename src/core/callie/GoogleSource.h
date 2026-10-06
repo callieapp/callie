@@ -31,6 +31,7 @@ public:
     [[nodiscard]] QFuture<SourceSnapshot> load(const QDateTime &from, const QDateTime &to,
                                                const QTimeZone &tz) const override;
     void refresh() override;
+    void createEvent(const EventDraft &draft, Created done) override;
 
     [[nodiscard]] bool syncing() const override { return m_pending > 0; }
     [[nodiscard]] QDateTime lastSynced() const override { return m_lastSynced; }

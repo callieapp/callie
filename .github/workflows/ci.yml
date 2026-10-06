@@ -45,6 +45,9 @@ jobs:
       - name: Check formatting of docs and config
         run: npm run format:md:check
 
+      - name: Check that every file names the same version
+        run: scripts/check-version.sh
+
   format:
     # Needs clang-format and qmlformat, so it runs where Qt is packaged.
     runs-on: ubuntu-latest

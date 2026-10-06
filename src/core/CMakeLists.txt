@@ -57,6 +57,8 @@ add_library(calliecore STATIC
     callie/CalendarSource.h
     callie/SampleSource.h
     SampleSource.cpp
+    callie/ReminderScheduler.h
+    ReminderScheduler.cpp
     callie/EventModel.h
     EventModel.cpp
     callie/TodayModel.h

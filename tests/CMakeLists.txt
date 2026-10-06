@@ -11,6 +11,7 @@ endfunction()
 
 callie_add_test(tst_eventmodel)
 callie_add_test(tst_todaymodel)
+callie_add_test(tst_reminderscheduler)
 callie_add_test(tst_monthmodel)
 callie_add_test(tst_accountstore)
 callie_add_test(tst_googleauth)

@@ -96,6 +96,16 @@ GoogleEvent parseGoogleEvent(const QJsonObject &item)
     return event;
 }
 
+/// The address of one event, with guests told about any change made to it.
+QUrl GoogleCalendarApi::eventUrl(const QString &calendarId, const QString &eventId) const
+{
+    QUrl url = m_baseUrl.resolved(
+        QUrl(QStringLiteral("calendars/%1/events/%2").arg(encoded(calendarId), encoded(eventId)),
+             QUrl::StrictMode));
+    url.setQuery(QStringLiteral("sendUpdates=all"));
+    return url;
+}
+
 QJsonObject googleEventJson(const EventDraft &draft)
 {
     const auto time = [&draft](const QDateTime &moment) {
@@ -165,6 +175,32 @@ void GoogleCalendarApi::insertEvent(const QString &accessToken, const QString &c
                  result({}, {200, tr("Google returned no event")});
              else
                  result(created, error);
+         });
+}
+
+void GoogleCalendarApi::patchEvent(const QString &accessToken, const QString &calendarId,
+                                   const QString &eventId, const QJsonObject &fields,
+                                   EventResult result)
+{
+    QNetworkRequest request(eventUrl(calendarId, eventId));
+    request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    send(m_network->sendCustomRequest(request, "PATCH",
+                                      QJsonDocument(fields).toJson(QJsonDocument::Compact)),
+         [result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) {
+             result(error ? GoogleEvent() : parseGoogleEvent(body), error);
+         });
+}
+
+void GoogleCalendarApi::deleteEvent(const QString &accessToken, const QString &calendarId,
+                                    const QString &eventId, DoneResult result)
+{
+    QNetworkRequest request(eventUrl(calendarId, eventId));
+    request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
+    send(m_network->deleteResource(request),
+         [result = std::move(result)](const QJsonObject &, const GoogleApiError &error) {
+             // Already gone is as good as deleted.
+             result(error.status == 410 ? GoogleApiError() : error);
          });
 }
 

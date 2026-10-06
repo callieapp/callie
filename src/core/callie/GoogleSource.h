@@ -2,9 +2,13 @@
 
 #include "Account.h"
 #include "CalendarSource.h"
+#include "GoogleSync.h"
 
 #include <QThreadPool>
 #include <QTimer>
+
+#include <optional>
+#include <utility>
 
 namespace callie {
 
@@ -32,6 +36,9 @@ public:
                                                const QTimeZone &tz) const override;
     void refresh() override;
     void createEvent(const EventDraft &draft, Created done) override;
+    void respond(const Event &event, const QString &status, bool wholeSeries,
+                 Created done) override;
+    void deleteEvent(const Event &event, bool wholeSeries, Created done) override;
 
     [[nodiscard]] bool syncing() const override { return m_pending > 0; }
     [[nodiscard]] QDateTime lastSynced() const override { return m_lastSynced; }
@@ -39,6 +46,12 @@ public:
 
 private:
     void flushChanges();
+    /// The account a CalendarInfo::id belongs to, and the calendar's own id.
+    [[nodiscard]] std::optional<std::pair<Account, QString>>
+    splitCalendarId(const QString &id) const;
+    /// What an action on `event` aims at in Google's terms.
+    [[nodiscard]] static GoogleSync::Target target(const QString &calendarId, const Event &event,
+                                                   bool wholeSeries);
 
     GoogleCache &m_cache;
     QList<Account> m_accounts;

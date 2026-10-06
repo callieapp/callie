@@ -126,12 +126,23 @@ public:
     void insertEvent(const QString &accessToken, const QString &calendarId,
                      const QJsonObject &event, EventResult result);
 
+    /// Changes the given fields of one event or occurrence, telling its guests.
+    void patchEvent(const QString &accessToken, const QString &calendarId, const QString &eventId,
+                    const QJsonObject &fields, EventResult result);
+
+    using DoneResult = std::function<void(const GoogleApiError &error)>;
+
+    /// Deletes an event, a whole series, or one occurrence, telling its guests.
+    void deleteEvent(const QString &accessToken, const QString &calendarId, const QString &eventId,
+                     DoneResult result);
+
 private:
     using Page = std::function<void(const QJsonObject &body, const GoogleApiError &error)>;
 
     void get(const QString &accessToken, const QString &path,
              const QList<QPair<QString, QString>> &query, Page page);
     void send(QNetworkReply *reply, Page page);
+    [[nodiscard]] QUrl eventUrl(const QString &calendarId, const QString &eventId) const;
     void fetchCalendarPage(const QString &accessToken, const QString &pageToken,
                            QList<GoogleCalendar> calendars, CalendarsResult result);
     void fetchEventPage(const QString &accessToken, const QString &calendarId,

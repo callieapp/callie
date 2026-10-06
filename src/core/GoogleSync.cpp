@@ -6,9 +6,13 @@
 #include "callie/Logging.h"
 #include "callie/QuickAdd.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 
 #include <QPointer>
+
+using namespace Qt::StringLiterals;
 
 namespace callie {
 
@@ -65,31 +69,19 @@ void GoogleSync::sync(const Account &account, Done done)
 void GoogleSync::createEvent(const Account &account, const QString &calendarId,
                              const EventDraft &draft, Created done)
 {
-    insert(account, calendarId, googleEventJson(draft), false, std::move(done));
-}
-
-void GoogleSync::insert(const Account &account, const QString &calendarId, const QJsonObject &event,
-                        bool retried, Created done)
-{
+    const QJsonObject event = googleEventJson(draft);
     const QPointer<GoogleSync> self(this);
-    m_tokens.accessToken(
-        account, [this, self, account, calendarId, event, retried,
-                  done = std::move(done)](const QString &token, const QString &error) mutable {
-            if (!self)
-                return;
-            if (!error.isEmpty()) {
-                done(error);
-                return;
-            }
+    withToken(
+        account, false,
+        [this, self, account, calendarId, event, done](const QString &token, const Retry &retry) {
             m_api.insertEvent(
                 token, calendarId, event,
-                [this, self, account, calendarId, event, retried,
-                 done = std::move(done)](const GoogleEvent &created, const GoogleApiError &error) {
+                [this, self, account, calendarId, done, retry](const GoogleEvent &created,
+                                                               const GoogleApiError &error) {
                     if (!self)
                         return;
-                    if (error.unauthorized() && !retried) {
-                        m_tokens.invalidate(account);
-                        insert(account, calendarId, event, true, done);
+                    if (error.unauthorized()) {
+                        retry();
                         return;
                     }
                     if (error) {
@@ -105,7 +97,124 @@ void GoogleSync::insert(const Account &account, const QString &calendarId, const
                     Q_EMIT changed(account);
                     done({});
                 });
-        });
+        },
+        done);
+}
+
+void GoogleSync::withToken(const Account &account, bool retried, Call call, const Created &failed)
+{
+    const QPointer<GoogleSync> self(this);
+    m_tokens.accessToken(account, [this, self, account, retried, call,
+                                   failed](const QString &token, const QString &error) {
+        if (!self)
+            return;
+        if (!error.isEmpty()) {
+            failed(error);
+            return;
+        }
+        const Retry retry = [this, self, account, retried, call, failed] {
+            if (!self)
+                return;
+            if (retried) {
+                failed(tr("Google rejected the access token"));
+                return;
+            }
+            m_tokens.invalidate(account);
+            withToken(account, true, call, failed);
+        };
+        call(token, retry);
+    });
+}
+
+void GoogleSync::respond(const Account &account, const Target &target, const QString &status,
+                         Created done)
+{
+    // An occurrence that was never changed is stored only as its series.
+    std::optional<GoogleEvent> stored = m_cache.event(account, target.calendarId, target.eventId);
+    if (!stored && !target.seriesId.isEmpty())
+        stored = m_cache.event(account, target.calendarId, target.seriesId);
+    QJsonArray attendees =
+        QJsonDocument::fromJson(stored ? stored->attendees : QByteArray()).array();
+    bool invited = false;
+    for (QJsonValueRef attendee : attendees) {
+        QJsonObject guest = attendee.toObject();
+        if (guest[u"self"].toBool()) {
+            guest[u"responseStatus"_s] = status;
+            attendee = guest;
+            invited = true;
+        }
+    }
+    if (!invited) {
+        done(tr("You are not a guest of this event."));
+        return;
+    }
+    const QJsonObject fields{{u"attendees"_s, attendees}};
+    const QPointer<GoogleSync> self(this);
+    withToken(
+        account, false,
+        [this, self, account, target, fields, done](const QString &token, const Retry &retry) {
+            m_api.patchEvent(
+                token, target.calendarId, target.eventId, fields,
+                [this, self, account, target, done, retry](const GoogleEvent &changedEvent,
+                                                           const GoogleApiError &error) {
+                    if (!self)
+                        return;
+                    if (error.unauthorized()) {
+                        retry();
+                        return;
+                    }
+                    if (error) {
+                        done(tr("Google could not save the answer: %1").arg(error.message));
+                        return;
+                    }
+                    if (!m_cache.storeEvents(account, target.calendarId, {changedEvent})) {
+                        done(m_cache.errorString());
+                        return;
+                    }
+                    Q_EMIT changed(account);
+                    done({});
+                });
+        },
+        done);
+}
+
+void GoogleSync::remove(const Account &account, const Target &target, Created done)
+{
+    const QPointer<GoogleSync> self(this);
+    withToken(
+        account, false,
+        [this, self, account, target, done](const QString &token, const Retry &retry) {
+            m_api.deleteEvent(
+                token, target.calendarId, target.eventId,
+                [this, self, account, target, done, retry](const GoogleApiError &error) {
+                    if (!self)
+                        return;
+                    if (error.unauthorized()) {
+                        retry();
+                        return;
+                    }
+                    if (error) {
+                        done(tr("Google could not delete the event: %1").arg(error.message));
+                        return;
+                    }
+                    // A cancelled occurrence hides just that one; a cancelled
+                    // event or series takes the whole of it away.
+                    GoogleEvent gone;
+                    gone.id = target.eventId;
+                    gone.status = u"cancelled"_s;
+                    if (!target.seriesId.isEmpty() && target.eventId != target.seriesId) {
+                        gone.recurringEventId = target.seriesId;
+                        gone.originalStart = target.originalStart;
+                    }
+                    if (!m_cache.storeEvents(account, target.calendarId, {gone})) {
+                        done(m_cache.errorString());
+                        return;
+                    }
+                    Q_EMIT changed(account);
+                    done({});
+                });
+        },
+        done);
 }
 
 void GoogleSync::start(const std::shared_ptr<Run> &run)

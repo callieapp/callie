@@ -3,6 +3,7 @@
 #include "callie/GoogleCalendarApi.h"
 #include "callie/QuickAdd.h"
 
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -28,6 +29,7 @@ private Q_SLOTS:
     void ownResponseIsKept();
     void draftBecomesRequestBody();
     void insertPostsAndReturnsTheEvent();
+    void patchAndDeleteTellGuests();
     void init();
 
     void primaryCalendarIdSendsBearerToken();
@@ -334,6 +336,39 @@ void TestGoogleCalendarApi::insertPostsAndReturnsTheEvent()
     QVERIFY(request.target.contains("calendars/team%40group.calendar.google.com/events"));
     QCOMPARE(request.headers.value("authorization"), QByteArray("Bearer at-1"));
     QVERIFY(request.body.contains("\"summary\":\"Lunch\""));
+}
+
+void TestGoogleCalendarApi::patchAndDeleteTellGuests()
+{
+    m_server->respond(200, R"({"id":"ev_20261009T100000Z","recurringEventId":"ev",
+        "status":"confirmed","start":{"dateTime":"2026-10-09T10:00:00Z"}})");
+    GoogleEvent patched;
+    bool done = false;
+    m_api->patchEvent(QStringLiteral("at-1"), QStringLiteral("team"),
+                      QStringLiteral("ev_20261009T100000Z"),
+                      QJsonObject{{QStringLiteral("attendees"), QJsonArray()}},
+                      [&](const GoogleEvent &event, const GoogleApiError &) {
+                          patched = event;
+                          done = true;
+                      });
+    QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
+    QCOMPARE(patched.recurringEventId, QStringLiteral("ev"));
+    QCOMPARE(m_server->requests.last().method, QByteArray("PATCH"));
+    QVERIFY(m_server->requests.last().target.endsWith(
+        "calendars/team/events/ev_20261009T100000Z?sendUpdates=all"));
+
+    // Deleting something already gone counts as done.
+    m_server->respond(410, R"({"error":{"message":"Resource has been deleted"}})");
+    GoogleApiError error{1, QStringLiteral("unset")};
+    done = false;
+    m_api->deleteEvent(QStringLiteral("at-1"), QStringLiteral("team"), QStringLiteral("ev"),
+                       [&](const GoogleApiError &e) {
+                           error = e;
+                           done = true;
+                       });
+    QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
+    QVERIFY(!error);
+    QCOMPARE(m_server->requests.last().method, QByteArray("DELETE"));
 }
 
 QTEST_GUILESS_MAIN(TestGoogleCalendarApi)

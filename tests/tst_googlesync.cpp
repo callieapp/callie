@@ -3,10 +3,13 @@
 
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
+#include "callie/GoogleRecurrence.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
 #include "callie/QuickAdd.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -91,6 +94,10 @@ private Q_SLOTS:
     void createdEventIsStoredWithoutCountingAsASync();
     void createRetriesOnceAfterRejection();
     void createReportsWhatGoogleSaid();
+    void answerKeepsOtherGuestsIntact();
+    void answerNeedsAnInvitation();
+    void deletingAnOccurrenceKeepsTheRest();
+    void deletingASeriesRemovesIt();
     void missingRefreshTokenIsReported();
     void concurrentSyncsShareOneRun();
     void removedCalendarIsDropped();
@@ -101,6 +108,8 @@ private:
     QStringList runSync();
     QString create(const QString &calendarId);
     void syncOnce();
+    QString act(const std::function<void(GoogleSync::Created)> &action);
+    void storeSeries();
 
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<FakeHttpServer> m_tokenServer;
@@ -402,6 +411,111 @@ void TestGoogleSync::createReportsWhatGoogleSaid()
 
     QVERIFY(error.contains(u"You need writer access"_s));
     QCOMPARE(m_cache->events(kAccount, u"team"_s).size(), storedBefore);
+}
+
+QString TestGoogleSync::act(const std::function<void(GoogleSync::Created)> &action)
+{
+    QString result = u"unset"_s;
+    action([&result](const QString &e) { result = e; });
+    [&] { QTRY_VERIFY_WITH_TIMEOUT(result != u"unset", 5000); }();
+    return result;
+}
+
+void TestGoogleSync::storeSeries()
+{
+    syncOnce();
+    QVERIFY(m_cache->storeEvents(
+        kAccount, u"team"_s,
+        {parseGoogleEvent(QJsonDocument::fromJson(R"({"id":"weekly","summary":"Weekly",
+            "start":{"dateTime":"2026-10-05T10:00:00Z"},"end":{"dateTime":"2026-10-05T11:00:00Z"},
+            "recurrence":["RRULE:FREQ=WEEKLY"],
+            "attendees":[{"email":"boss@example.com","organizer":true,"comment":"keep me"},
+                         {"email":"me@example.com","self":true,"responseStatus":"needsAction"}]})")
+                              .object())}));
+    m_google->responses.clear();
+}
+
+namespace {
+GoogleSync::Target occurrence()
+{
+    GoogleSync::Target target;
+    target.calendarId = u"team"_s;
+    target.eventId = u"weekly_20261012T100000Z"_s;
+    target.seriesId = u"weekly"_s;
+    target.originalStart.dateTime = QDateTime(QDate(2026, 10, 12), QTime(10, 0), QTimeZone::UTC);
+    return target;
+}
+
+QList<Event> week(GoogleCache &cache, const Account &account)
+{
+    const QDateTime from(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
+    return expandGoogleEvents(cache.events(account, u"team"_s), from, from.addDays(14),
+                              QTimeZone::UTC);
+}
+} // namespace
+
+void TestGoogleSync::answerKeepsOtherGuestsIntact()
+{
+    storeSeries();
+    m_google->on(u"calendars/team/events/weekly_20261012T100000Z"_s, 200,
+                 R"({"id":"weekly_20261012T100000Z","recurringEventId":"weekly",
+                     "status":"confirmed","summary":"Weekly",
+                     "originalStartTime":{"dateTime":"2026-10-12T10:00:00Z"},
+                     "start":{"dateTime":"2026-10-12T10:00:00Z"},
+                     "end":{"dateTime":"2026-10-12T11:00:00Z"},
+                     "attendees":[{"email":"me@example.com","self":true,
+                                   "responseStatus":"accepted"}]})");
+
+    QCOMPARE(act([&](GoogleSync::Created done) {
+                 m_sync->respond(kAccount, occurrence(), u"accepted"_s, done);
+             }),
+             QString());
+
+    // Only our own answer changed; the organizer's entry went back as it was.
+    const QByteArray body = m_apiServer->requests.last().body;
+    QVERIFY(body.contains(R"("responseStatus":"accepted")"));
+    QVERIFY(body.contains(R"("comment":"keep me")"));
+    const QList<Event> events = week(*m_cache, kAccount);
+    QCOMPARE(events.size(), 2);
+    QCOMPARE(events.at(0).responseStatus, u"needsAction"_s);
+    QCOMPARE(events.at(1).responseStatus, u"accepted"_s);
+}
+
+void TestGoogleSync::answerNeedsAnInvitation()
+{
+    syncOnce();
+    GoogleSync::Target target;
+    target.calendarId = u"team"_s;
+    target.eventId = u"nothing"_s;
+    QVERIFY(!act([&](GoogleSync::Created done) {
+                 m_sync->respond(kAccount, target, u"accepted"_s, done);
+             }).isEmpty());
+}
+
+void TestGoogleSync::deletingAnOccurrenceKeepsTheRest()
+{
+    storeSeries();
+    m_google->on(u"calendars/team/events/weekly_20261012T100000Z"_s, 204, "");
+
+    QCOMPARE(act([&](GoogleSync::Created done) { m_sync->remove(kAccount, occurrence(), done); }),
+             QString());
+
+    QCOMPARE(m_apiServer->requests.last().method, QByteArray("DELETE"));
+    const QList<Event> events = week(*m_cache, kAccount);
+    QCOMPARE(events.size(), 1);
+    QCOMPARE(events.first().start.date(), QDate(2026, 10, 5));
+}
+
+void TestGoogleSync::deletingASeriesRemovesIt()
+{
+    storeSeries();
+    m_google->on(u"calendars/team/events/weekly"_s, 204, "");
+    GoogleSync::Target whole = occurrence();
+    whole.eventId = whole.seriesId;
+
+    QCOMPARE(act([&](GoogleSync::Created done) { m_sync->remove(kAccount, whole, done); }),
+             QString());
+    QVERIFY(week(*m_cache, kAccount).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestGoogleSync)

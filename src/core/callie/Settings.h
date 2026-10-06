@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QDate>
 #include <QObject>
 #include <QSettings>
 #include <QStringList>
@@ -57,6 +58,12 @@ public:
     Q_INVOKABLE QString formatTime(const QDateTime &time) const;
     /// An hour label for the grid: "14:00" or "2 PM".
     Q_INVOKABLE QString formatHour(int hour) const;
+
+    /// The calendar date of `time` in the chosen zone, which QML cannot work
+    /// out from a Date in the system zone.
+    Q_INVOKABLE QDate dateIn(const QDateTime &time) const;
+    /// Minutes since midnight of `time` in the chosen zone.
+    Q_INVOKABLE int minutesIntoDay(const QDateTime &time) const;
 
     /// Every IANA zone id, for the zone picker.
     Q_INVOKABLE static QStringList availableTimeZones();

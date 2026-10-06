@@ -1,5 +1,7 @@
 #include "callie/TodayModel.h"
 
+#include "callie/TimeFormat.h"
+
 #include <QLocale>
 
 namespace callie {
@@ -20,10 +22,29 @@ void TodayModel::setSource(CalendarSource *source)
 
 void TodayModel::setNow(const QDateTime &now)
 {
-    if (m_now == now)
+    const QDateTime local = now.toTimeZone(m_zone);
+    if (m_now == local && m_now.timeZone() == m_zone)
         return;
-    m_now = now;
+    m_now = local;
     refresh();
+}
+
+void TodayModel::setTimeZone(const QTimeZone &zone)
+{
+    if (m_zone == zone || !zone.isValid())
+        return;
+    m_zone = zone;
+    if (m_now.isValid())
+        m_now = m_now.toTimeZone(zone);
+    refresh();
+}
+
+void TodayModel::setUse24Hour(bool use24Hour)
+{
+    if (m_use24Hour == use24Hour)
+        return;
+    m_use24Hour = use24Hour;
+    Q_EMIT changed();
 }
 
 void TodayModel::refresh()
@@ -93,7 +114,8 @@ QString TodayModel::nextLabel() const
     const qint64 minutes = (m_now.secsTo(m_next.start) + 59) / 60;
     if (minutes <= 60)
         return tr("Up next, in %n min", nullptr, int(minutes));
-    return tr("Up next at %1").arg(m_next.start.toString(QStringLiteral("H:mm")));
+    return tr("Up next at %1")
+        .arg(formatClock(m_next.start.toTimeZone(m_zone).time(), m_use24Hour));
 }
 
 QString TodayModel::nextDetail() const
@@ -101,8 +123,8 @@ QString TodayModel::nextDetail() const
     if (!hasNext())
         return {};
     const QString when = tr("%1 to %2")
-                             .arg(m_next.start.toString(QStringLiteral("H:mm")),
-                                  m_next.end.toString(QStringLiteral("H:mm")));
+                             .arg(formatClock(m_next.start.toTimeZone(m_zone).time(), m_use24Hour),
+                                  formatClock(m_next.end.toTimeZone(m_zone).time(), m_use24Hour));
     const QString where = !m_next.location.isEmpty() ? m_next.location : m_nextCalendar;
     return where.isEmpty() ? when : tr("%1, %2").arg(when, where);
 }

@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QObject>
 #include <QPointer>
+#include <QTimeZone>
 
 namespace callie {
 
@@ -16,6 +17,9 @@ class TodayModel : public QObject
     Q_OBJECT
     Q_PROPERTY(callie::CalendarSource *source READ source WRITE setSource NOTIFY changed)
     Q_PROPERTY(QDateTime now READ now WRITE setNow NOTIFY changed)
+    /// The zone "today" and the times are in.
+    Q_PROPERTY(QTimeZone timeZone READ timeZone WRITE setTimeZone NOTIFY changed)
+    Q_PROPERTY(bool use24Hour READ use24Hour WRITE setUse24Hour NOTIFY changed)
     Q_PROPERTY(QString greeting READ greeting NOTIFY changed)
     Q_PROPERTY(QString dateLabel READ dateLabel NOTIFY changed)
     Q_PROPERTY(bool hasNext READ hasNext NOTIFY changed)
@@ -31,6 +35,10 @@ public:
     void setSource(CalendarSource *source);
     [[nodiscard]] QDateTime now() const { return m_now; }
     void setNow(const QDateTime &now);
+    [[nodiscard]] QTimeZone timeZone() const { return m_zone; }
+    void setTimeZone(const QTimeZone &zone);
+    [[nodiscard]] bool use24Hour() const { return m_use24Hour; }
+    void setUse24Hour(bool use24Hour);
 
     [[nodiscard]] QString greeting() const;
     [[nodiscard]] QString dateLabel() const;
@@ -51,6 +59,8 @@ private:
 
     QPointer<CalendarSource> m_source;
     QDateTime m_now;
+    QTimeZone m_zone = QTimeZone::systemTimeZone();
+    bool m_use24Hour = true;
     Event m_next;
     QString m_nextCalendar;
     /// Counts refreshes, so a slow read that a newer one overtook is dropped.

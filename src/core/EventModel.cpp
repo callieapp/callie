@@ -1,4 +1,5 @@
 #include "callie/EventModel.h"
+#include "callie/TimeFormat.h"
 
 #include <QLocale>
 #include <QTextDocumentFragment>
@@ -287,11 +288,12 @@ QString EventModel::timing(const QDateTime &start, const QDateTime &end, const Q
         return tr("Ended");
     if (start <= now)
         return tr("Happening now, %1 left").arg(span(now.secsTo(end)));
-    if (start.date() != now.date())
+    const QDateTime local = start.toTimeZone(m_tz);
+    if (local.date() != now.toTimeZone(m_tz).date())
         return {};
     if (now.secsTo(start) < 60 * 60)
         return tr("Starts in %1").arg(span(now.secsTo(start)));
-    return tr("Starts at %1").arg(start.toString(QStringLiteral("H:mm")));
+    return tr("Starts at %1").arg(formatClock(local.time(), m_use24Hour));
 }
 
 int EventModel::rowCount(const QModelIndex &parent) const

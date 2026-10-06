@@ -1,4 +1,5 @@
 #include "callie/Settings.h"
+#include "callie/TimeFormat.h"
 
 #include <QLocale>
 #include <QStandardPaths>
@@ -121,14 +122,22 @@ void Settings::setCalendarVisible(const QString &id, bool visible)
 
 QString Settings::formatTime(const QDateTime &time) const
 {
-    const QDateTime local = time.toTimeZone(timeZone());
-    return use24Hour() ? local.toString(u"HH:mm"_s) : QLocale().toString(local, u"h:mm AP"_s);
+    return formatClock(time.toTimeZone(timeZone()).time(), use24Hour());
+}
+
+QDate Settings::dateIn(const QDateTime &time) const
+{
+    return time.toTimeZone(timeZone()).date();
+}
+
+int Settings::minutesIntoDay(const QDateTime &time) const
+{
+    return time.toTimeZone(timeZone()).time().msecsSinceStartOfDay() / 60000;
 }
 
 QString Settings::formatHour(int hour) const
 {
-    const QTime time(hour % 24, 0);
-    return use24Hour() ? time.toString(u"HH:mm"_s) : QLocale().toString(time, u"h AP"_s);
+    return formatHourLabel(hour, use24Hour());
 }
 
 QStringList Settings::availableTimeZones()

@@ -79,6 +79,12 @@ GoogleEvent parseGoogleEvent(const QJsonObject &item)
     event.recurringEventId = item[u"recurringEventId"].toString();
     event.originalStart = parseTime(item[u"originalStartTime"].toObject());
     event.updated = QDateTime::fromString(item[u"updated"].toString(), Qt::ISODateWithMs);
+    for (const QJsonValue &attendee : item[u"attendees"].toArray()) {
+        if (attendee[u"self"].toBool()) {
+            event.responseStatus = attendee[u"responseStatus"].toString();
+            break;
+        }
+    }
     return event;
 }
 

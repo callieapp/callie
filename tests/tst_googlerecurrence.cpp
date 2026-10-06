@@ -44,6 +44,7 @@ class TestGoogleRecurrence : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void declinedOccurrenceIsMarked();
     void singleEventOverlapsRange();
     void weeklySeriesKeepsWallClockAcrossDst();
     void countLimitsSeries();
@@ -326,6 +327,22 @@ void TestGoogleRecurrence::allDayStartsAtMidnightInViewZone()
     QCOMPARE(events.first().start, QDateTime(QDate(2026, 10, 12), QTime(0, 0), tokyo));
     QCOMPARE(events.first().start.toUTC(), utc(2026, 10, 11, 15));
     QCOMPARE(events.first().end, QDateTime(QDate(2026, 10, 13), QTime(0, 0), tokyo));
+}
+
+void TestGoogleRecurrence::declinedOccurrenceIsMarked()
+{
+    // Declining one Monday arrives as an exception with the user's answer.
+    const GoogleEvent declined = parsed(R"({"id":"standup_1","recurringEventId":"standup",
+        "originalStartTime":{"dateTime":"2026-10-12T09:30:00-04:00","timeZone":"America/New_York"},
+        "start":{"dateTime":"2026-10-12T09:30:00-04:00"},"end":{"dateTime":"2026-10-12T09:45:00-04:00"},
+        "attendees":[{"email":"me@example.com","self":true,"responseStatus":"declined"}]})");
+    const QList<Event> events =
+        expand({parsed(kStandup), declined}, utc(2026, 10, 5), utc(2026, 10, 20));
+
+    QCOMPARE(events.size(), 3);
+    QVERIFY(!events.at(0).declined);
+    QVERIFY(events.at(1).declined);
+    QVERIFY(!events.at(2).declined);
 }
 
 QTEST_GUILESS_MAIN(TestGoogleRecurrence)

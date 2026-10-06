@@ -109,7 +109,8 @@ void TestGoogleCache::eventsRoundTrip()
                     "start":{"dateTime":"2026-10-05T09:30:00-04:00","timeZone":"America/New_York"},
                     "end":{"dateTime":"2026-10-05T09:45:00-04:00","timeZone":"America/New_York"},
                     "recurrence":["RRULE:FREQ=WEEKLY;BYDAY=MO","EXDATE:20261012T133000Z"],
-                    "updated":"2026-10-01T12:00:00.000Z"})"),
+                    "updated":"2026-10-01T12:00:00.000Z",
+                    "attendees":[{"self":true,"responseStatus":"tentative"}]})"),
            parsed(R"({"id":"allday","start":{"date":"2026-10-12"},"end":{"date":"2026-10-13"}})"),
            parsed(R"({"id":"timed_20261019T133000Z","recurringEventId":"timed",
                     "originalStartTime":{"dateTime":"2026-10-19T09:30:00-04:00",
@@ -132,6 +133,7 @@ void TestGoogleCache::eventsRoundTrip()
     QCOMPARE(timed.recurrence.size(), 2);
     QCOMPARE(timed.updated, QDateTime(QDate(2026, 10, 1), QTime(12, 0), QTimeZone::UTC));
     QVERIFY(!timed.start.isAllDay());
+    QCOMPARE(timed.responseStatus, u"tentative"_s);
 
     const GoogleEvent &allDay = stored.at(1);
     QVERIFY(allDay.start.isAllDay());

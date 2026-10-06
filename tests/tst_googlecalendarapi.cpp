@@ -24,6 +24,7 @@ class TestGoogleCalendarApi : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void ownResponseIsKept();
     void init();
 
     void primaryCalendarIdSendsBearerToken();
@@ -267,6 +268,16 @@ void TestGoogleCalendarApi::videoEntryPointWinsOverHangoutLink()
     const GoogleEvent meetOnly = parseGoogleEvent(
         json(R"({"id":"e4","hangoutLink":"https://meet.google.com/aaa-bbbb-ccc"})"));
     QCOMPARE(meetOnly.conferenceUrl, QUrl(QStringLiteral("https://meet.google.com/aaa-bbbb-ccc")));
+}
+
+void TestGoogleCalendarApi::ownResponseIsKept()
+{
+    const GoogleEvent event = parseGoogleEvent(json(R"({"id":"e5","attendees":[
+        {"email":"boss@example.com","organizer":true,"responseStatus":"accepted"},
+        {"email":"me@example.com","self":true,"responseStatus":"declined"}]})"));
+    QCOMPARE(event.responseStatus, QStringLiteral("declined"));
+
+    QVERIFY(parseGoogleEvent(json(R"({"id":"e6"})")).responseStatus.isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestGoogleCalendarApi)

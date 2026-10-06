@@ -67,6 +67,9 @@ struct GoogleEvent
     QString recurringEventId;
     GoogleEventTime originalStart;
     QDateTime updated;
+    /// The user's own answer as an attendee: "accepted", "declined",
+    /// "tentative" or "needsAction". Empty for events without attendees.
+    QString responseStatus;
 
     /// Deleted events, and cancelled instances of a series, arrive with only
     /// an id and this status.

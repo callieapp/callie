@@ -8,6 +8,9 @@ Item {
     id: root
 
     required property EventModel model
+
+    /// A day's heading was clicked, to look at that day on its own.
+    signal dayClicked(date day)
     property date anchorDate: Clock.now
     property int dayCount: 7
 
@@ -73,6 +76,13 @@ Item {
 
                     width: root.columnWidth(index)
                     height: header.height
+
+                    TapHandler {
+                        onTapped: root.dayClicked(dayHeader.date)
+                    }
+                    HoverHandler {
+                        cursorShape: root.dayCount > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    }
 
                     Column {
                         anchors.centerIn: parent

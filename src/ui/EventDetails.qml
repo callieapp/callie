@@ -20,6 +20,22 @@ Popup {
 
     readonly property color fill: Theme.calendarColor(calendarColor, Theme.calendar)
     readonly property color ink: Theme.calendarInk(calendarColor, Theme.calendar)
+    /// Fills the card from one of EventModel.eventsOn()'s maps and opens it.
+    function show(event, service) {
+        const day = Qt.formatDate(Settings.times.date(event.start), "dddd, MMMM d")
+        summary = event.summary
+        when = event.allDay ? day : qsTr("%1, %2").arg(day).arg(qsTr("%1 to %2").arg(Settings.times.time(
+                                                                                         event.start)).arg(
+                                                                    Settings.times.time(event.end)))
+        location = event.location
+        conferenceUrl = event.conferenceUrl
+        callService = service
+        calendarName = event.calendarName
+        calendarColor = event.calendarColor
+        description = event.description
+        open()
+    }
+
     readonly property bool hasCall: callService !== ""
     readonly property string callName: callService === "zoom" ? qsTr("Join Zoom call") :
                                                                 callService === "meet" ? qsTr(

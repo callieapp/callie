@@ -25,9 +25,28 @@ ApplicationWindow {
     /// Where events come from; set by main.cpp.
     required property CalendarSource source
 
-    /// Monday of the displayed week. Set once rather than bound to the clock,
-    /// which would pull the view back to this week on every tick.
-    property date weekStart
+    /// The day the views are on; each shows the range around it. Set once
+    /// rather than bound to the clock, which would pull it back on every tick.
+    property date focusDate
+    readonly property string view: Settings.view
+
+    /// The first day the current view shows, and how many days it shows.
+    readonly property date rangeStart: view === "week" ? mondayOf(focusDate) : view === "month"
+                                                         ? mondayOf(firstOfMonth(focusDate)) :
+                                                           focusDate
+    readonly property int rangeDays: {
+        if (view === "day")
+            return 1
+        if (view === "week")
+            return 7
+        if (view === "agenda")
+            return 30
+        // Whole weeks covering the month.
+        const first = firstOfMonth(focusDate)
+        const lead = (first.getDay() + 6) % 7
+        const length = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
+        return Math.ceil((lead + length) / 7) * 7
+    }
 
     function mondayOf(day) {
         const d = new Date(day)
@@ -37,19 +56,36 @@ ApplicationWindow {
         return d
     }
 
-    Component.onCompleted: weekStart = mondayOf(Settings.times.date(Clock.now))
+    function firstOfMonth(day) {
+        return new Date(day.getFullYear(), day.getMonth(), 1)
+    }
 
-    function shiftWeeks(n) {
-        const d = new Date(weekStart)
-        d.setDate(d.getDate() + n * 7)
-        weekStart = d
+    function today() {
+        return Settings.times.date(Clock.now)
+    }
+
+    Component.onCompleted: focusDate = today()
+
+    /// Moves a view's worth of days: a day, a week, a month or the agenda's span.
+    function step(n) {
+        const d = new Date(focusDate)
+        if (view === "month")
+            d.setMonth(d.getMonth() + n, 1)
+        else
+            d.setDate(d.getDate() + n * (view === "day" ? 1 : view === "week" ? 7 : rangeDays))
+        focusDate = d
+    }
+
+    function showDay(day) {
+        focusDate = day
+        Settings.view = "day"
     }
 
     EventModel {
         id: events
         source: window.source
-        rangeStart: window.weekStart
-        dayCount: 7
+        rangeStart: window.rangeStart
+        dayCount: window.rangeDays
         timeZoneId: Settings.timeZoneId
         use24Hour: Settings.use24Hour
         showDeclined: Settings.showDeclined
@@ -67,8 +103,9 @@ ApplicationWindow {
 
     MonthModel {
         id: monthModel
-        month: window.weekStart
-        weekStart: window.weekStart
+        month: window.focusDate
+        // Only the week view is a run of seven days to mark.
+        weekStart: window.view === "week" ? window.rangeStart : new Date(NaN)
         today: Settings.times.date(Clock.now)
     }
 
@@ -190,7 +227,8 @@ ApplicationWindow {
 
                     Text {
                         id: month
-                        text: Qt.formatDate(window.weekStart, "MMMM")
+                        text: Qt.formatDate(window.view === "week" ? window.rangeStart :
+                                                                     window.focusDate, "MMMM")
                         color: Theme.text
                         font.family: Theme.displayFontFamily
                         font.pixelSize: Theme.textDisplay
@@ -203,7 +241,8 @@ ApplicationWindow {
                             leftMargin: Theme.space3
                             baseline: month.baseline
                         }
-                        text: Qt.formatDate(window.weekStart, "yyyy")
+                        text: Qt.formatDate(window.view === "week" ? window.rangeStart :
+                                                                     window.focusDate, "yyyy")
                         color: Theme.textMuted
                         font.family: Theme.displayFontFamily
                         font.pixelSize: Theme.textDisplay
@@ -217,20 +256,25 @@ ApplicationWindow {
 
                     StickerButton {
                         glyph: "chevron-left"
-                        Accessible.name: qsTr("Previous week")
-                        onClicked: window.shiftWeeks(-1)
+                        Accessible.name: window.view === "day" ? qsTr("Previous day") : window.view
+                                                                 === "month" ? qsTr(
+                                                                                   "Previous month") :
+                                                                               qsTr("Previous week")
+                        onClicked: window.step(-1)
                     }
                     StickerButton {
                         glyph: "chevron-right"
-                        Accessible.name: qsTr("Next week")
-                        onClicked: window.shiftWeeks(1)
+                        Accessible.name: window.view === "day" ? qsTr("Next day") : window.view
+                                                                 === "month" ? qsTr("Next month") :
+                                                                               qsTr("Next week")
+                        onClicked: window.step(1)
                     }
                 }
 
                 StickerButton {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("Today")
-                    onClicked: window.weekStart = window.mondayOf(Settings.times.date(Clock.now))
+                    onClicked: window.focusDate = window.today()
                 }
             }
 
@@ -329,19 +373,35 @@ ApplicationWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Theme.space4
 
-                    // View switcher. Only Week is implemented so far.
                     Row {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: Theme.space2
 
                         Repeater {
-                            model: [qsTr("Day"), qsTr("Week"), qsTr("Month"), qsTr("Agenda")]
+                            model: [
+                                {
+                                    "id": "day",
+                                    "label": qsTr("Day")
+                                },
+                                {
+                                    "id": "week",
+                                    "label": qsTr("Week")
+                                },
+                                {
+                                    "id": "month",
+                                    "label": qsTr("Month")
+                                },
+                                {
+                                    "id": "agenda",
+                                    "label": qsTr("Agenda")
+                                }
+                            ]
 
                             PillButton {
-                                required property string modelData
-                                required property int index
-                                label: modelData
-                                selected: index === 1
+                                required property var modelData
+                                label: modelData.label
+                                selected: window.view === modelData.id
+                                onClicked: Settings.view = modelData.id
                             }
                         }
                     }
@@ -442,14 +502,37 @@ ApplicationWindow {
                 today: todayModel
                 month: monthModel
                 events: events
-                onDayPicked: day => window.weekStart = window.mondayOf(day)
+                onDayPicked: day => window.focusDate = day
             }
 
-            WeekView {
+            Item {
                 width: parent.width - Theme.sidebarWidth
                 height: parent.height
-                model: events
-                anchorDate: window.weekStart
+
+                WeekView {
+                    anchors.fill: parent
+                    visible: window.view === "day" || window.view === "week"
+                    model: events
+                    anchorDate: window.rangeStart
+                    dayCount: window.view === "day" ? 1 : 7
+                    onDayClicked: day => window.showDay(day)
+                }
+                MonthView {
+                    anchors.fill: parent
+                    visible: window.view === "month"
+                    model: events
+                    rangeStart: window.rangeStart
+                    dayCount: window.rangeDays
+                    month: window.focusDate.getMonth()
+                    onDayClicked: day => window.showDay(day)
+                }
+                AgendaView {
+                    anchors.fill: parent
+                    visible: window.view === "agenda"
+                    model: events
+                    rangeStart: window.rangeStart
+                    dayCount: window.rangeDays
+                }
             }
         }
     }

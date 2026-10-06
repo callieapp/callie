@@ -48,6 +48,7 @@ void TestSettings::defaultsWithoutAFile()
     QVERIFY(settings.lastSeenVersion().isEmpty());
     QVERIFY(settings.notify());
     QCOMPARE(settings.reminderMinutes(), 10);
+    QVERIFY(!settings.keepRunning());
 }
 
 void TestSettings::choicesSurviveARestart()
@@ -67,6 +68,7 @@ void TestSettings::choicesSurviveARestart()
         settings.setLastSeenVersion(u"0.1.0"_s);
         settings.setNotify(false);
         settings.setReminderMinutes(-5);
+        settings.setKeepRunning(true);
     }
     const Settings settings(path());
     QCOMPARE(settings.timeFormat(), Settings::TimeFormat::TwelveHour);
@@ -81,6 +83,7 @@ void TestSettings::choicesSurviveARestart()
     QCOMPARE(settings.lastSeenVersion(), u"0.1.0"_s);
     QVERIFY(!settings.notify());
     QCOMPARE(settings.reminderMinutes(), -1);
+    QVERIFY(settings.keepRunning());
 }
 
 void TestSettings::unchangedValueEmitsNothing()

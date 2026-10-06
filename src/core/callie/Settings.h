@@ -39,6 +39,8 @@ class Settings : public QObject
     /// Minutes before events that bring no reminders of their own; -1 for none.
     Q_PROPERTY(int reminderMinutes READ reminderMinutes WRITE setReminderMinutes NOTIFY
                    reminderMinutesChanged)
+    /// Closing the window leaves Callie running so reminders still come.
+    Q_PROPERTY(bool keepRunning READ keepRunning WRITE setKeepRunning NOTIFY keepRunningChanged)
 
 public:
     enum class TimeFormat { Locale, TwentyFourHour, TwelveHour };
@@ -97,6 +99,9 @@ public:
     [[nodiscard]] int reminderMinutes() const { return m_reminderMinutes; }
     void setReminderMinutes(int minutes);
 
+    [[nodiscard]] bool keepRunning() const { return m_keepRunning; }
+    void setKeepRunning(bool keep);
+
     /// Every IANA zone id, for the zone picker.
     Q_INVOKABLE static QStringList availableTimeZones();
 
@@ -118,6 +123,7 @@ Q_SIGNALS:
     void newEventCalendarChanged();
     void notifyChanged();
     void reminderMinutesChanged();
+    void keepRunningChanged();
 
 private:
     void load();
@@ -138,6 +144,7 @@ private:
     QString m_newEventCalendar;
     bool m_notify = true;
     int m_reminderMinutes = 10;
+    bool m_keepRunning = false;
 };
 
 } // namespace callie

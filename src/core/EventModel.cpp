@@ -158,8 +158,10 @@ void EventModel::apply(SourceSnapshot snapshot)
     for (const CalendarInfo &calendar : std::as_const(snapshot.calendars)) {
         m_calendarNames.insert(calendar.id, calendar.displayName);
         if (calendar.enabled)
-            calendars.append(QVariantMap{{QStringLiteral("name"), calendar.displayName},
-                                         {QStringLiteral("color"), calendar.color}});
+            calendars.append(QVariantMap{{QStringLiteral("id"), calendar.id},
+                                         {QStringLiteral("name"), calendar.displayName},
+                                         {QStringLiteral("color"), calendar.color},
+                                         {QStringLiteral("account"), calendar.account}});
     }
     m_events = std::move(events);
     const int rows = assignAllDayRows(m_events);

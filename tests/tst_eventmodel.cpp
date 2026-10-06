@@ -343,7 +343,10 @@ void TestEventModel::calendarsListShownOnly()
 {
     auto source = std::make_unique<FakeSource>(QList<Event>{});
     source->calendarList = {
-        CalendarInfo{.id = "a", .displayName = "Shown", .color = QColor("#ff0000")},
+        CalendarInfo{.id = "a",
+                     .displayName = "Shown",
+                     .color = QColor("#ff0000"),
+                     .account = QStringLiteral("me@example.com")},
         CalendarInfo{
             .id = "b", .displayName = "Hidden", .color = {}, .writable = false, .enabled = false},
     };
@@ -356,6 +359,8 @@ void TestEventModel::calendarsListShownOnly()
     const QVariantMap shown = model.calendars().first().toMap();
     QCOMPARE(shown.value("name").toString(), QStringLiteral("Shown"));
     QCOMPARE(shown.value("color").value<QColor>(), QColor("#ff0000"));
+    QCOMPARE(shown.value("id").toString(), QStringLiteral("a"));
+    QCOMPARE(shown.value("account").toString(), QStringLiteral("me@example.com"));
 }
 
 void TestEventModel::daysOffFollowTheLocale()

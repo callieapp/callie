@@ -23,6 +23,7 @@ class Settings : public QObject
     Q_PROPERTY(bool widenToday READ widenToday WRITE setWidenToday NOTIFY widenTodayChanged)
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars NOTIFY hiddenCalendarsChanged)
     Q_PROPERTY(callie::Times *times READ times NOTIFY timesChanged)
+    Q_PROPERTY(QStringList collapsedAccounts READ collapsedAccounts NOTIFY collapsedAccountsChanged)
 
 public:
     enum class TimeFormat { Locale, TwentyFourHour, TwelveHour };
@@ -59,6 +60,9 @@ public:
     /// Times in the chosen zone and clock format. A JS Date only knows the
     /// system zone, so QML formats and places times through this.
     [[nodiscard]] Times *times() const { return m_times; }
+    /// Accounts whose calendars the sidebar folds away.
+    [[nodiscard]] QStringList collapsedAccounts() const { return m_collapsedAccounts; }
+    Q_INVOKABLE void setAccountCollapsed(const QString &account, bool collapsed);
 
     /// Every IANA zone id, for the zone picker.
     Q_INVOKABLE static QStringList availableTimeZones();
@@ -74,6 +78,7 @@ Q_SIGNALS:
     void widenTodayChanged();
     void hiddenCalendarsChanged();
     void timesChanged();
+    void collapsedAccountsChanged();
 
 private:
     void load();
@@ -87,6 +92,7 @@ private:
     bool m_widenToday = false;
     QStringList m_hiddenCalendars;
     Times *m_times = nullptr;
+    QStringList m_collapsedAccounts;
 };
 
 } // namespace callie

@@ -20,6 +20,8 @@ struct CalendarInfo
     QColor color;
     bool writable = false;
     bool enabled = true;
+    /// The account the calendar belongs to, for grouping; empty if there is one.
+    QString account = {};
 };
 
 /// What a source holds for a range, read at one moment: its calendars and the

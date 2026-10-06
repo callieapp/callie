@@ -49,11 +49,11 @@ SampleSource::SampleSource(QObject *parent) : CalendarSource(parent)
 {
     m_calendars = {
         {QStringLiteral("work"), QStringLiteral("Work"), QColor(QStringLiteral("#5B8DEF")), true,
-         true},
+         true, QStringLiteral("sam@work.example")},
         {QStringLiteral("focus"), QStringLiteral("Focus"), QColor(QStringLiteral("#7C6BD6")), true,
-         true},
+         true, QStringLiteral("sam@work.example")},
         {QStringLiteral("personal"), QStringLiteral("Personal"), QColor(QStringLiteral("#2FA98C")),
-         true, true},
+         true, true, QStringLiteral("sam@home.example")},
     };
 }
 

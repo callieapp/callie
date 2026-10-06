@@ -34,6 +34,7 @@ QList<CalendarInfo> readCalendars(GoogleCache &cache, const QList<Account> &acco
                 .writable = canWrite(calendar.accessRole),
                 // Google's own "show in list" choice, until Callie has its own.
                 .enabled = calendar.selected,
+                .account = account.id,
             });
         }
     }

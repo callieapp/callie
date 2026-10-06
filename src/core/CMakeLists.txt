@@ -59,6 +59,10 @@ add_library(calliecore STATIC
     SampleSource.cpp
     callie/EventModel.h
     EventModel.cpp
+    callie/TodayModel.h
+    TodayModel.cpp
+    callie/MonthModel.h
+    MonthModel.cpp
     callie/Account.h
     callie/AccountStore.h
     AccountStore.cpp

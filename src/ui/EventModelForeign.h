@@ -2,6 +2,8 @@
 
 #include "callie/CalendarSource.h"
 #include "callie/EventModel.h"
+#include "callie/MonthModel.h"
+#include "callie/TodayModel.h"
 
 #include <QQmlEngine>
 
@@ -14,6 +16,20 @@ struct EventModelForeign
     Q_GADGET
     QML_FOREIGN(callie::EventModel)
     QML_NAMED_ELEMENT(EventModel)
+};
+
+struct TodayModelForeign
+{
+    Q_GADGET
+    QML_FOREIGN(callie::TodayModel)
+    QML_NAMED_ELEMENT(TodayModel)
+};
+
+struct MonthModelForeign
+{
+    Q_GADGET
+    QML_FOREIGN(callie::MonthModel)
+    QML_NAMED_ELEMENT(MonthModel)
 };
 
 /// Lets QML name the source type; sources are created in C++ only.

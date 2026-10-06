@@ -40,6 +40,9 @@ struct GoogleCalendar
     QString accessRole;
     bool primary = false;
     bool selected = false;
+    /// Minutes before an event that the calendar reminds by default, for events
+    /// that use its defaults. Only on-screen ("popup") reminders count.
+    QList<int> defaultReminders;
 };
 
 /// Either a date for all-day events or a date-time. `timeZone` is the IANA zone
@@ -79,6 +82,10 @@ struct GoogleEvent
     bool organizerSelf = false;
     /// Guests may change the event too.
     bool guestsCanModify = false;
+    /// The event uses its calendar's default reminders, or else its own below.
+    bool remindersUseDefault = true;
+    /// Minutes before the event for each of its own on-screen reminders.
+    QList<int> reminders;
 
     /// Deleted events, and cancelled instances of a series, arrive with only
     /// an id and this status.

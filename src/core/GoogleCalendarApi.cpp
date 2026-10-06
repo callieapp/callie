@@ -51,6 +51,17 @@ QUrl conferenceUrl(const QJsonObject &item)
     return hangout.isEmpty() ? QUrl() : QUrl(hangout);
 }
 
+/// The minutes of each on-screen ("popup") reminder in a reminders list.
+QList<int> popupMinutes(const QJsonArray &reminders)
+{
+    QList<int> minutes;
+    for (const QJsonValue &reminder : reminders) {
+        if (reminder[u"method"].toString() == u"popup")
+            minutes.append(reminder[u"minutes"].toInt());
+    }
+    return minutes;
+}
+
 GoogleCalendar parseCalendar(const QJsonObject &item)
 {
     return GoogleCalendar{
@@ -61,6 +72,7 @@ GoogleCalendar parseCalendar(const QJsonObject &item)
         .accessRole = item[u"accessRole"].toString(),
         .primary = item[u"primary"].toBool(),
         .selected = item[u"selected"].toBool(),
+        .defaultReminders = popupMinutes(item[u"defaultReminders"].toArray()),
     };
 }
 
@@ -87,6 +99,9 @@ GoogleEvent parseGoogleEvent(const QJsonObject &item)
         event.attendees = QJsonDocument(attendees).toJson(QJsonDocument::Compact);
     event.organizerSelf = item[u"organizer"][u"self"].toBool();
     event.guestsCanModify = item[u"guestsCanModify"].toBool();
+    const QJsonObject reminders = item[u"reminders"].toObject();
+    event.remindersUseDefault = reminders[u"useDefault"].toBool(true);
+    event.reminders = popupMinutes(reminders[u"overrides"].toArray());
     for (const QJsonValue &attendee : attendees) {
         if (attendee[u"self"].toBool()) {
             event.responseStatus = attendee[u"responseStatus"].toString();

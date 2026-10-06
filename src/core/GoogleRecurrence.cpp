@@ -123,6 +123,8 @@ Event toEvent(const GoogleEvent &source, const QTimeZone &viewZone)
     // Calendar access is checked by the source; this is what the event allows.
     event.canEdit = source.attendees.isEmpty() || source.organizerSelf || source.guestsCanModify;
     event.canRespond = invited && !source.organizerSelf;
+    event.reminders = source.reminders;
+    event.remindersKnown = true;
     event.allDay = source.start.isAllDay();
     if (event.allDay) {
         event.start = QDateTime(source.start.date, QTime(0, 0), viewZone);

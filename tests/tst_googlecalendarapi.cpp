@@ -27,6 +27,7 @@ class TestGoogleCalendarApi : public QObject
 
 private Q_SLOTS:
     void ownResponseIsKept();
+    void onScreenRemindersAreKept();
     void draftBecomesRequestBody();
     void insertPostsAndReturnsTheEvent();
     void patchAndDeleteTellGuests();
@@ -122,7 +123,9 @@ void TestGoogleCalendarApi::calendarsFollowPages()
 {
     m_server->enqueue(200, R"({"items":[{"id":"me@example.com","summary":"Me","primary":true,
                                "backgroundColor":"#9fe1e7","timeZone":"America/New_York",
-                               "accessRole":"owner","selected":true}],
+                               "accessRole":"owner","selected":true,
+                               "defaultReminders":[{"method":"popup","minutes":10},
+                                                   {"method":"email","minutes":60}]}],
                                "nextPageToken":"p+2"})");
     m_server->enqueue(200, R"({"items":[{"id":"team@group.calendar.google.com",
                                "summary":"Team","summaryOverride":"Work",
@@ -152,6 +155,8 @@ void TestGoogleCalendarApi::calendarsFollowPages()
     QCOMPARE(calendars.at(1).summary, QStringLiteral("Work"));
     QCOMPARE(calendars.at(1).accessRole, QStringLiteral("reader"));
     QVERIFY(!calendars.at(1).primary);
+    QCOMPARE(calendars.at(0).defaultReminders, QList<int>{10});
+    QVERIFY(calendars.at(1).defaultReminders.isEmpty());
 }
 
 void TestGoogleCalendarApi::fullSyncSendsNoSyncToken()
@@ -283,6 +288,22 @@ void TestGoogleCalendarApi::ownResponseIsKept()
     QCOMPARE(event.responseStatus, QStringLiteral("declined"));
 
     QVERIFY(parseGoogleEvent(json(R"({"id":"e6"})")).responseStatus.isEmpty());
+}
+
+void TestGoogleCalendarApi::onScreenRemindersAreKept()
+{
+    const GoogleEvent own = parseGoogleEvent(json(R"({"id":"e7","reminders":{"useDefault":false,
+        "overrides":[{"method":"email","minutes":1440},{"method":"popup","minutes":30},
+                     {"method":"popup","minutes":5}]}})"));
+    QVERIFY(!own.remindersUseDefault);
+    QCOMPARE(own.reminders, (QList<int>{30, 5}));
+
+    const GoogleEvent byDefault =
+        parseGoogleEvent(json(R"({"id":"e8","reminders":{"useDefault":true}})"));
+    QVERIFY(byDefault.remindersUseDefault);
+    QVERIFY(byDefault.reminders.isEmpty());
+
+    QVERIFY(parseGoogleEvent(json(R"({"id":"e9"})")).remindersUseDefault);
 }
 
 void TestGoogleCalendarApi::draftBecomesRequestBody()

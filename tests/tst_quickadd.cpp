@@ -212,6 +212,15 @@ void TestQuickAdd::versionNumbersStayInTheTitle()
     QCOMPARE(upgrade.start, at(10, 9, 15));
     QCOMPARE(parse(u"Call friday 3 to 4.30"_s).end, at(10, 9, 16, 30));
 
+    // Dotted times make ranges too, and a bare "a" is just a word.
+    const EventDraft dotted = parse(u"Call friday 4.15-5.30"_s);
+    QCOMPARE(dotted.summary, u"Call"_s);
+    QCOMPARE(dotted.start, at(10, 9, 16, 15));
+    QCOMPARE(dotted.end, at(10, 9, 17, 30));
+    const EventDraft rent = parse(u"Rent 250 a month friday"_s);
+    QCOMPARE(rent.summary, u"Rent 250 a month"_s);
+    QVERIFY(rent.allDay);
+
     // A place needs letters.
     const EventDraft fee = parse(u"Fee at $50"_s);
     QCOMPARE(fee.summary, u"Fee at $50"_s);

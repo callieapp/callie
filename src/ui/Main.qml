@@ -31,34 +31,8 @@ ApplicationWindow {
     readonly property string view: Settings.view
 
     /// The first day the current view shows, and how many days it shows.
-    readonly property date rangeStart: view === "week" ? mondayOf(focusDate) : view === "month"
-                                                         ? mondayOf(firstOfMonth(focusDate)) :
-                                                           focusDate
-    readonly property int rangeDays: {
-        if (view === "day")
-            return 1
-        if (view === "week")
-            return 7
-        if (view === "agenda")
-            return 30
-        // Whole weeks covering the month.
-        const first = firstOfMonth(focusDate)
-        const lead = (first.getDay() + 6) % 7
-        const length = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
-        return Math.ceil((lead + length) / 7) * 7
-    }
-
-    function mondayOf(day) {
-        const d = new Date(day)
-        // JS Sunday=0 -> Monday-based
-        d.setDate(d.getDate() - (d.getDay() + 6) % 7)
-        d.setHours(0, 0, 0, 0)
-        return d
-    }
-
-    function firstOfMonth(day) {
-        return new Date(day.getFullYear(), day.getMonth(), 1)
-    }
+    readonly property date rangeStart: Views.start(view, focusDate)
+    readonly property int rangeDays: Views.days(view, focusDate)
 
     function today() {
         return Settings.times.date(Clock.now)
@@ -68,12 +42,7 @@ ApplicationWindow {
 
     /// Moves a view's worth of days: a day, a week, a month or the agenda's span.
     function step(n) {
-        const d = new Date(focusDate)
-        if (view === "month")
-            d.setMonth(d.getMonth() + n, 1)
-        else
-            d.setDate(d.getDate() + n * (view === "day" ? 1 : view === "week" ? 7 : rangeDays))
-        focusDate = d
+        focusDate = Views.step(view, focusDate, n)
     }
 
     function showDay(day) {
@@ -256,17 +225,23 @@ ApplicationWindow {
 
                     StickerButton {
                         glyph: "chevron-left"
-                        Accessible.name: window.view === "day" ? qsTr("Previous day") : window.view
-                                                                 === "month" ? qsTr(
-                                                                                   "Previous month") :
-                                                                               qsTr("Previous week")
+                        Accessible.name: ({
+                                              "day": qsTr("Previous day"),
+                                              "week": qsTr("Previous week"),
+                                              "month": qsTr("Previous month"),
+                                              "agenda": qsTr("Previous %n days", "",
+                                                             window.rangeDays)
+                                          })[window.view]
                         onClicked: window.step(-1)
                     }
                     StickerButton {
                         glyph: "chevron-right"
-                        Accessible.name: window.view === "day" ? qsTr("Next day") : window.view
-                                                                 === "month" ? qsTr("Next month") :
-                                                                               qsTr("Next week")
+                        Accessible.name: ({
+                                              "day": qsTr("Next day"),
+                                              "week": qsTr("Next week"),
+                                              "month": qsTr("Next month"),
+                                              "agenda": qsTr("Next %n days", "", window.rangeDays)
+                                          })[window.view]
                         onClicked: window.step(1)
                     }
                 }

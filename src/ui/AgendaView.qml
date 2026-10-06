@@ -29,25 +29,8 @@ Item {
         return list
     }
 
-    function heading(d) {
-        const today = Settings.times.date(Clock.now)
-        const days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(
-                                     today.getFullYear(), today.getMonth(), today.getDate()))
-                                / 86400000)
-        if (days === 0)
-            return qsTr("Today")
-        if (days === 1)
-            return qsTr("Tomorrow")
-        return Qt.formatDate(d, "dddd, MMMM d")
-    }
-
     function showEvent(event, item) {
-        details.show(event, root.model.callService(event.conferenceUrl))
-        const below = item.mapToItem(root, Theme.space7, item.height + Theme.space2)
-        details.x = Math.min(below.x, root.width - details.width - Theme.space3)
-        details.y = below.y + details.height <= root.height ? below.y : Math.max(0, below.y - item.height
-                                                                                 - details.height
-                                                                                 - Theme.space4)
+        details.showNear(event, root.model.callService(event.conferenceUrl), item)
     }
 
     Text {
@@ -83,7 +66,7 @@ Item {
             spacing: Theme.space2
 
             Text {
-                text: root.heading(day.modelData.date)
+                text: Views.heading(day.modelData.date, Settings.times.date(Clock.now))
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.textLg

@@ -36,6 +36,25 @@ Popup {
         open()
     }
 
+    /// show(), then places the card by `item`: to its right if there is room,
+    /// else to its left, else below it, always inside the parent view.
+    function showNear(event, service, item) {
+        show(event, service)
+        const area = parent
+        const gap = Theme.space3
+        const right = item.mapToItem(area, item.width + gap, 0)
+        const left = item.mapToItem(area, -gap - width, 0)
+        if (right.x + width <= area.width || left.x >= 0) {
+            x = right.x + width <= area.width ? right.x : left.x
+            y = Math.min(Math.max(0, right.y), area.height - height - gap)
+            return
+        }
+        const below = item.mapToItem(area, 0, item.height + gap)
+        x = Math.min(Math.max(0, below.x + Theme.space7), area.width - width - gap)
+        y = below.y + height <= area.height ? below.y : Math.max(0, below.y - item.height - height
+                                                                 - 2 * gap)
+    }
+
     readonly property bool hasCall: callService !== ""
     readonly property string callName: callService === "zoom" ? qsTr("Join Zoom call") :
                                                                 callService === "meet" ? qsTr(

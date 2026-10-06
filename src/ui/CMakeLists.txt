@@ -23,6 +23,8 @@ qt_add_qml_module(callieui
         ThemesController.cpp
         WindowButtons.h
         WindowButtons.cpp
+        Views.h
+        Views.cpp
     QML_FILES
         Main.qml
         WeekView.qml

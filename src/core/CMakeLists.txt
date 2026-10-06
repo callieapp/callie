@@ -101,6 +101,8 @@ add_library(calliecore STATIC
     Times.cpp
     callie/ThemeLibrary.h
     ThemeLibrary.cpp
+    callie/ViewRange.h
+    ViewRange.cpp
 )
 
 # Built-in themes are compiled in, so the app works uninstalled and a broken

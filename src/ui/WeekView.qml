@@ -451,18 +451,17 @@ Item {
     function showDetails(block) {
         tipDelay.stop()
         tip.visible = false
-        details.summary = block.summary
-        details.when = qsTr("%1, %2").arg(Qt.formatDate(Settings.times.date(block.start),
-                                                        "dddd, MMMM d")).arg(whenText(block))
-        details.location = block.location
-        details.conferenceUrl = block.conferenceUrl
-        details.callService = root.model.callService(block.conferenceUrl)
-        details.calendarName = block.calendarName
-        details.calendarColor = block.calendarColor
-        details.description = block.description
-        details.open()
-        // Placed once its height reflects the new content.
-        placeBeside(block, details)
+        details.showNear({
+                             "summary": block.summary,
+                             "start": block.start,
+                             "end": block.end,
+                             "allDay": false,
+                             "location": block.location,
+                             "conferenceUrl": block.conferenceUrl,
+                             "calendarName": block.calendarName,
+                             "calendarColor": block.calendarColor,
+                             "description": block.description
+                         }, root.model.callService(block.conferenceUrl), block)
     }
 
     Timer {

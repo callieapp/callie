@@ -34,11 +34,7 @@ Item {
     }
 
     function showEvent(event, item) {
-        details.show(event, root.model.callService(event.conferenceUrl))
-        const right = item.mapToItem(root, item.width + Theme.space3, 0)
-        const left = item.mapToItem(root, -Theme.space3 - details.width, 0)
-        details.x = right.x + details.width <= root.width ? right.x : Math.max(0, left.x)
-        details.y = Math.min(Math.max(0, right.y), root.height - details.height - Theme.space3)
+        details.showNear(event, root.model.callService(event.conferenceUrl), item)
     }
 
     Row {

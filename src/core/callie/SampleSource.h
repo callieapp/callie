@@ -5,6 +5,8 @@
 #include <QHash>
 #include <QSet>
 
+#include <functional>
+
 namespace callie {
 
 /// Placeholder source with plausible data, so the UI can be designed before
@@ -15,6 +17,10 @@ class SampleSource : public CalendarSource
 
 public:
     explicit SampleSource(QObject *parent = nullptr);
+
+    /// Replaces the wall clock that sync times come from, so a frozen `--now`
+    /// gives the same screenshot every time.
+    void setNow(std::function<QDateTime()> now);
 
     [[nodiscard]] QString sourceId() const override { return QStringLiteral("sample"); }
     [[nodiscard]] QList<CalendarInfo> calendars() const override { return m_calendars; }
@@ -35,6 +41,7 @@ private:
     QList<Event> m_created;
     QHash<QString, QString> m_answers;
     QSet<QString> m_deleted;
+    std::function<QDateTime()> m_now;
     QDateTime m_synced;
     QList<CalendarInfo> m_calendars;
 };

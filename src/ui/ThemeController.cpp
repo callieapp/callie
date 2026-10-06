@@ -7,6 +7,7 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
+#include <QFontDatabase>
 #include <QTimer>
 
 namespace callie {
@@ -14,6 +15,13 @@ namespace callie {
 ThemeController::ThemeController(QObject *parent)
     : QObject(parent), m_spec(ThemeLoader::defaultTheme()), m_watcher(new QFileSystemWatcher(this))
 {
+    // Bundled so the default theme looks the same everywhere; a theme may still
+    // name any installed family.
+    for (const char *font :
+         {":/callie/fonts/Nunito-Variable.ttf", ":/callie/fonts/Fraunces-Variable.ttf"}) {
+        if (QFontDatabase::addApplicationFont(QString::fromLatin1(font)) < 0)
+            qCWarning(lcTheme) << "could not load the bundled font" << font;
+    }
     connect(m_watcher, &QFileSystemWatcher::fileChanged, this, [this] {
         // Editors often save by writing a new file and renaming it, which briefly
         // removes the watched path, so reload a moment later and re-watch.
@@ -92,11 +100,44 @@ QColor ThemeController::calendarColor(const QColor &source, const QVariantMap &c
                             calendar.value(QStringLiteral("chroma")).toDouble());
 }
 
+QColor ThemeController::calendarInk(const QColor &source, const QVariantMap &calendar) const
+{
+    if (!calendar.value(QStringLiteral("harmonize")).toBool()) {
+        // An unfitted color can be anything, so pick whichever of black and
+        // white reads better on it.
+        const QColor black(0, 0, 0), white(255, 255, 255);
+        return color::contrastRatio(black, source) >= color::contrastRatio(white, source) ? black
+                                                                                          : white;
+    }
+    return color::harmonize(source, calendar.value(QStringLiteral("inkLightness")).toDouble(),
+                            calendar.value(QStringLiteral("inkChroma")).toDouble());
+}
+
+QColor ThemeController::calendarEdge(const QColor &source, const QVariantMap &calendar) const
+{
+    if (!calendar.value(QStringLiteral("harmonize")).toBool())
+        return source.darker(150);
+    return color::harmonize(source, calendar.value(QStringLiteral("edgeLightness")).toDouble(),
+                            calendar.value(QStringLiteral("edgeChroma")).toDouble());
+}
+
 QVariantMap ThemeController::calendar() const
 {
-    return {{QStringLiteral("harmonize"), m_spec.calendar.harmonize},
-            {QStringLiteral("lightness"), m_spec.calendar.lightness},
-            {QStringLiteral("chroma"), m_spec.calendar.chroma}};
+    const ThemeSpec::Calendar &c = m_spec.calendar;
+    return {{QStringLiteral("harmonize"), c.harmonize},
+            {QStringLiteral("lightness"), c.lightness},
+            {QStringLiteral("chroma"), c.chroma},
+            {QStringLiteral("inkLightness"), c.inkLightness},
+            {QStringLiteral("inkChroma"), c.inkChroma},
+            {QStringLiteral("edgeLightness"), c.edgeLightness},
+            {QStringLiteral("edgeChroma"), c.edgeChroma}};
+}
+
+QColor ThemeController::shadowColor() const
+{
+    QColor shadow = m_spec.shadow.color;
+    shadow.setAlphaF(float(m_spec.shadow.opacity));
+    return shadow;
 }
 
 double ThemeController::contrast(const QColor &a, const QColor &b) const
@@ -111,7 +152,8 @@ QVariantList ThemeController::swatches() const
         {"background", c.background},  {"surface", c.surface},      {"surface-alt", c.surfaceAlt},
         {"hairline", c.hairline},      {"border", c.border},        {"text", c.text},
         {"text-muted", c.textMuted},   {"text-faint", c.textFaint}, {"accent", c.accent},
-        {"accent-text", c.accentText}, {"danger", c.danger},
+        {"accent-text", c.accentText}, {"danger", c.danger},        {"edge", c.edge},
+        {"accent-edge", c.accentEdge},
     };
     QVariantList list;
     for (const auto &[name, color] : tokens)

@@ -1,5 +1,6 @@
 #include "callie/ThemeLoader.h"
 
+#include <QColor>
 #include <QTest>
 
 using namespace callie;
@@ -40,6 +41,9 @@ private Q_SLOTS:
     void lowContrastIsAWarning();
     void unknownBuiltInIsAnError();
     void incompleteBaseIsAnError();
+    void stickerAndShadowSettingsAreRead();
+    void lowInkContrastIsAWarning();
+    void shadowOpacityIsBounded();
 };
 
 void TestTheme::defaultThemeIsCompleteAndClean()
@@ -135,6 +139,41 @@ void TestTheme::incompleteBaseIsAnError()
     const ThemeLoadResult result = ThemeLoader::parse(QByteArrayView("[colors]\n"), ThemeSpec{});
     QVERIFY(!result.ok());
     QVERIFY(anyContains(result.errors, "colors.background: missing"));
+}
+
+void TestTheme::stickerAndShadowSettingsAreRead()
+{
+    const ThemeLoadResult result = parse("[colors]\nedge = \"#010203\"\naccent-edge = \"#040506\"\n"
+                                         "[calendar]\nink-lightness = 0.2\nedge-chroma = 0.1\n"
+                                         "[shape]\nsticker-edge = 0\n"
+                                         "[shadow]\nopacity = 0.3\nblur = 20\noffset = 6\n");
+    QVERIFY2(result.ok(), qPrintable(result.errors.join(u'\n')));
+    QCOMPARE(result.theme.colors.edge, QColor(1, 2, 3));
+    QCOMPARE(result.theme.colors.accentEdge, QColor(4, 5, 6));
+    QCOMPARE(result.theme.calendar.inkLightness, 0.2);
+    QCOMPARE(result.theme.calendar.edgeChroma, 0.1);
+    QCOMPARE(result.theme.shape.stickerEdge, 0);
+    QCOMPARE(result.theme.shadow.opacity, 0.3);
+    QCOMPARE(result.theme.shadow.blur, 20);
+    QCOMPARE(result.theme.shadow.offset, 6);
+    // Unset keys keep the default theme's values.
+    QCOMPARE(result.theme.calendar.edgeLightness,
+             ThemeLoader::defaultTheme().calendar.edgeLightness);
+}
+
+void TestTheme::lowInkContrastIsAWarning()
+{
+    // Ink nearly as light as the fill it sits on.
+    const ThemeLoadResult result = parse("[calendar]\nink-lightness = 0.75\n");
+    QVERIFY(result.ok());
+    QVERIFY(anyContains(result.warnings, "calendar ink on its fill"));
+}
+
+void TestTheme::shadowOpacityIsBounded()
+{
+    const ThemeLoadResult result = parse("[shadow]\nopacity = 1.5\n");
+    QVERIFY(!result.ok());
+    QVERIFY(anyContains(result.errors, "shadow.opacity"));
 }
 
 QTEST_GUILESS_MAIN(TestTheme)

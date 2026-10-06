@@ -1,12 +1,16 @@
 #include "ThemeController.h"
 
+#include "callie/Color.h"
 #include "callie/ThemeLoader.h"
 
 #include <QDir>
 #include <QFile>
+#include <QFontDatabase>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+
+#include <cmath>
 
 using namespace callie;
 
@@ -31,6 +35,9 @@ private Q_SLOTS:
     void brokenEditKeepsLastGoodTheme();
     void calendarColorRespectsHarmonizeSetting();
     void builtInIdIgnoresSameNamedFile();
+    void stickerColorsShareTheCalendarHue();
+    void unfittedInkPicksTheReadableOne();
+    void bundledFontsAreAvailable();
 };
 
 void TestThemeController::startsWithDefaultTheme()
@@ -100,6 +107,44 @@ void TestThemeController::builtInIdIgnoresSameNamedFile()
     QCOMPARE(theme->name(), QStringLiteral("Callie"));
 
     QDir::setCurrent(previous);
+}
+
+void TestThemeController::stickerColorsShareTheCalendarHue()
+{
+    ThemeController *theme = ThemeController::instance();
+    const QColor source(QStringLiteral("#5B8DEF"));
+    const QVariantMap calendar = theme->calendar();
+    const color::Oklch fill = color::toOklch(theme->calendarColor(source, calendar));
+    const color::Oklch ink = color::toOklch(theme->calendarInk(source, calendar));
+    const color::Oklch edge = color::toOklch(theme->calendarEdge(source, calendar));
+
+    QVERIFY(ink.lightness < edge.lightness);
+    QVERIFY(edge.lightness < fill.lightness);
+    QVERIFY(std::abs(ink.hue - fill.hue) < 6);
+    QVERIFY(std::abs(edge.hue - fill.hue) < 6);
+    QVERIFY(color::contrastRatio(theme->calendarInk(source, calendar),
+                                 theme->calendarColor(source, calendar)) >= 4.5);
+}
+
+void TestThemeController::unfittedInkPicksTheReadableOne()
+{
+    ThemeController *theme = ThemeController::instance();
+    QVariantMap calendar = theme->calendar();
+    calendar.insert(QStringLiteral("harmonize"), false);
+
+    QCOMPARE(theme->calendarInk(QColor(QStringLiteral("#ffe680")), calendar), QColor(0, 0, 0));
+    QCOMPARE(theme->calendarInk(QColor(QStringLiteral("#202060")), calendar),
+             QColor(255, 255, 255));
+    QVERIFY(theme->calendarEdge(QColor(QStringLiteral("#ffe680")), calendar).lightness() <
+            QColor(QStringLiteral("#ffe680")).lightness());
+}
+
+void TestThemeController::bundledFontsAreAvailable()
+{
+    ThemeController::instance();
+    const QStringList families = QFontDatabase::families();
+    QVERIFY(families.contains(QStringLiteral("Nunito")));
+    QVERIFY(families.contains(QStringLiteral("Fraunces")));
 }
 
 QTEST_MAIN(TestThemeController)

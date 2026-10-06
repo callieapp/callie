@@ -40,7 +40,12 @@ void AccountsController::setUp(const Setup &setup)
         m_manager = new AccountManager(*m_setup.tokens, *m_setup.store, m_setup.cache, this);
         connect(m_manager, &AccountManager::connected, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "connected" << account.id;
+            const bool current = !m_auth.isNull();
             finish({});
+            // Signing in again leaves the list as it was, so nothing else syncs
+            // the account with its new token.
+            if (current && m_setup.source)
+                m_setup.source->refresh();
         });
         connect(m_manager, &AccountManager::removed, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "removed" << account.id;

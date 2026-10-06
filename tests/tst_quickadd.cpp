@@ -173,6 +173,11 @@ void TestQuickAdd::impossibleDatesStayInTheTitle()
         QCOMPARE(draft.summary, text);
         QVERIFY(!draft.allDay);
     }
+    for (const QString &text : {u"Party at 25"_s, u"Party at 9:99"_s, u"Party 23-26"_s}) {
+        const EventDraft draft = parse(text);
+        QCOMPARE(draft.summary, text);
+        QCOMPARE(draft.start, at(10, 7, 14)); // the next whole hour, as with no time
+    }
     // February 29 exists only in leap years; 2027 is not one.
     QCOMPARE(parse(u"Leap feb 29"_s).summary, u"Leap feb 29"_s);
 }

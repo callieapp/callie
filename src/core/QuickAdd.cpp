@@ -131,23 +131,26 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
             m.captured(2).startsWith(u'h', Qt::CaseInsensitive) ? int(amount * 60) : int(amount);
     }
 
-    // A range: "3-4pm", "3pm to 5pm", "from 3 to 4:30".
+    // A range: "3-4pm", "3pm to 5pm", "from 3 to 4:30". Times that cannot
+    // exist, such as 25:00, stay in the title like impossible dates do.
     ClockTime start;
     ClockTime end;
-    if (const auto m =
-            take(rest, pattern(uR"(\s(?:from\s+|at\s+)?()"_s + kTime +
-                               uR"()\s*(?:-|to|until|till)\s*()"_s + kTime + uR"()(?=\s))"_s));
-        m.hasMatch()) {
-        start = clockTime(m, 2);
-        end = clockTime(m, 6);
-    } else {
+    const QRegularExpressionMatch range =
+        pattern(uR"(\s(?:from\s+|at\s+)?()"_s + kTime + uR"()\s*(?:-|to|until|till)\s*()"_s +
+                kTime + uR"()(?=\s))"_s)
+            .match(rest);
+    if (range.hasMatch() && clockTime(range, 2).isValid() && clockTime(range, 6).isValid()) {
+        start = clockTime(range, 2);
+        end = clockTime(range, 6);
+        rest.replace(range.capturedStart(), range.capturedLength(), u" "_s);
+    } else if (!range.hasMatch()) {
         // A bare number is only a time after "at", or with am, pm or a colon.
         auto matches = pattern(uR"(\s(at|@)?\s*()"_s + kTime + uR"()(?=\s))"_s).globalMatch(rest);
         while (matches.hasNext()) {
             const QRegularExpressionMatch m = matches.next();
             const bool marked = !m.captured(1).isEmpty() || !m.captured(4).isEmpty() ||
                                 !m.captured(5).isEmpty() || !m.captured(2).front().isDigit();
-            if (!marked)
+            if (!marked || !clockTime(m, 3).isValid())
                 continue;
             start = clockTime(m, 3);
             rest.replace(m.capturedStart(), m.capturedLength(), u" "_s);
@@ -208,9 +211,10 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
                   });
     }
 
-    // Whatever follows "at" or "@" is the place.
+    // Whatever follows "at" or "@" is the place, if it has a letter in it:
+    // "at 25" is a time that cannot exist, not a place.
     QString location;
-    if (const auto m = take(rest, pattern(uR"(\s(?:at|@)\s+(.+?)\s*$)"_s)); m.hasMatch())
+    if (const auto m = take(rest, pattern(uR"(\s(?:at|@)\s+(.*\p{L}.*?)\s*$)"_s)); m.hasMatch())
         location = m.captured(1).trimmed();
 
     EventDraft draft;

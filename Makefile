@@ -19,7 +19,7 @@ FEDORA_DEPS := gcc-c++ cmake ninja-build qt6-qtbase-devel qt6-qtdeclarative-deve
 	tomlplusplus-devel kf6-kcalendarcore-devel clang-tools-extra entr nodejs npm
 DEBIAN_DEPS := build-essential cmake ninja-build qt6-base-dev qt6-declarative-dev \
 	qt6-declarative-dev-tools qml6-module-qtquick-controls qml6-module-qtquick-templates \
-	qml6-module-qtquick-effects \
+	qml6-module-qtquick-effects qml6-module-qtquick-dialogs \
 	qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev libqt6sql6-sqlite \
 	libkf6calendarcore-dev clang-format entr nodejs npm
 

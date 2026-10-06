@@ -2,6 +2,7 @@
 #include "EventModelForeign.h"
 #include "LiveQml.h"
 #include "ThemeController.h"
+#include "ThemesController.h"
 
 #include "callie/AccountStore.h"
 #include "callie/GoogleCache.h"
@@ -99,6 +100,8 @@ int main(int argc, char *argv[])
         const QStringList errors = callie::ThemeController::instance()->load(theme);
         for (const QString &error : errors)
             err << "callie-gui: " << theme << ": " << error << "\n";
+    } else {
+        callie::ThemesController::instance()->restore();
     }
     for (const QString &warning : callie::ThemeController::instance()->warnings())
         err << "callie-gui: theme: " << warning << "\n";

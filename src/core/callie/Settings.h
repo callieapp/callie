@@ -23,6 +23,8 @@ class Settings : public QObject
     Q_PROPERTY(bool widenToday READ widenToday WRITE setWidenToday NOTIFY widenTodayChanged)
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars NOTIFY hiddenCalendarsChanged)
     Q_PROPERTY(callie::Times *times READ times NOTIFY timesChanged)
+    /// A built-in theme id or a theme file path; empty is the default theme.
+    Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(QStringList collapsedAccounts READ collapsedAccounts NOTIFY collapsedAccountsChanged)
 
 public:
@@ -64,6 +66,9 @@ public:
     [[nodiscard]] QStringList collapsedAccounts() const { return m_collapsedAccounts; }
     Q_INVOKABLE void setAccountCollapsed(const QString &account, bool collapsed);
 
+    [[nodiscard]] QString theme() const { return m_theme; }
+    void setTheme(const QString &idOrPath);
+
     /// Every IANA zone id, for the zone picker.
     Q_INVOKABLE static QStringList availableTimeZones();
 
@@ -78,6 +83,7 @@ Q_SIGNALS:
     void widenTodayChanged();
     void hiddenCalendarsChanged();
     void timesChanged();
+    void themeChanged();
     void collapsedAccountsChanged();
 
 private:
@@ -92,6 +98,7 @@ private:
     bool m_widenToday = false;
     QStringList m_hiddenCalendars;
     Times *m_times = nullptr;
+    QString m_theme;
     QStringList m_collapsedAccounts;
 };
 

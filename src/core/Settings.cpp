@@ -16,6 +16,7 @@ const QString kDimPast = u"events/dimPast"_s;
 const QString kWidenToday = u"week/widenToday"_s;
 const QString kHiddenCalendars = u"calendars/hidden"_s;
 const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
+const QString kTheme = u"appearance/theme"_s;
 
 } // namespace
 
@@ -45,6 +46,7 @@ void Settings::load()
     m_widenToday = m_store.value(kWidenToday, false).toBool();
     m_hiddenCalendars = m_store.value(kHiddenCalendars).toStringList();
     m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
+    m_theme = m_store.value(kTheme).toString();
 }
 
 void Settings::setTimeFormat(TimeFormat format)
@@ -124,6 +126,15 @@ void Settings::setCalendarVisible(const QString &id, bool visible)
     Q_EMIT hiddenCalendarsChanged();
 }
 
+void Settings::setTheme(const QString &idOrPath)
+{
+    if (m_theme == idOrPath)
+        return;
+    m_theme = idOrPath;
+    m_store.setValue(kTheme, idOrPath);
+    Q_EMIT themeChanged();
+}
+
 void Settings::setAccountCollapsed(const QString &account, bool collapsed)
 {
     if (m_collapsedAccounts.contains(account) == collapsed)
@@ -163,6 +174,7 @@ void Settings::reset()
     const bool declined = m_showDeclined, dim = m_dimPast, widen = m_widenToday;
     const QStringList hidden = m_hiddenCalendars;
     const QStringList collapsed = m_collapsedAccounts;
+    const QString theme = m_theme;
     load();
     if (format != m_timeFormat)
         Q_EMIT timeFormatChanged();
@@ -178,6 +190,8 @@ void Settings::reset()
         Q_EMIT hiddenCalendarsChanged();
     if (collapsed != m_collapsedAccounts)
         Q_EMIT collapsedAccountsChanged();
+    if (theme != m_theme)
+        Q_EMIT themeChanged();
     rebuildTimes();
 }
 

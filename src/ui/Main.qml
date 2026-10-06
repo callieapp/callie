@@ -575,6 +575,14 @@ ApplicationWindow {
                                 text: qsTr("About Callie")
                                 onTriggered: about.open()
                             }
+                            // Closing the window leaves Callie running then, so
+                            // this is the way out.
+                            MenuEntry {
+                                text: qsTr("Quit Callie")
+                                visible: Settings.keepRunning
+                                height: visible ? implicitHeight : 0
+                                onTriggered: Qt.quit()
+                            }
                         }
                     }
 
@@ -700,6 +708,11 @@ ApplicationWindow {
     Shortcut {
         sequences: [StandardKey.New]
         onActivated: quickAdd.open()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Quit]
+        onActivated: Qt.quit()
     }
 
     Shortcut {

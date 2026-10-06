@@ -3,6 +3,7 @@
 #include "LiveQml.h"
 #include "NotificationServer.h"
 #include "Reminders.h"
+#include "SingleInstance.h"
 #include "ThemeController.h"
 #include "ThemesController.h"
 
@@ -91,6 +92,15 @@ int main(int argc, char *argv[])
     }
     callie::logfile::install(QStringLiteral("callie-gui"));
 
+    // Sample data and screenshots run beside a real Callie; anything else
+    // hands over to the one already running.
+    const bool useSample = parser.isSet(sampleOption);
+    const QString screenshot = parser.value(screenshotOption);
+    const bool standalone = useSample || !screenshot.isEmpty();
+    callie::SingleInstance single(QStringLiteral(CALLIE_APP_ID), QDBusConnection::sessionBus());
+    if (!standalone && !single.claim())
+        return 0;
+
     // Screenshots show the defaults, whatever this user has chosen.
     QTemporaryDir scratch;
     callie::Settings settings(parser.isSet(screenshotOption)
@@ -120,7 +130,6 @@ int main(int argc, char *argv[])
         err << "callie-gui: " << store.errorString() << "\n";
     callie::GoogleCache cache(callie::GoogleCache::defaultPath());
     // Sample data never touches the real cache.
-    const bool useSample = parser.isSet(sampleOption);
     if (!useSample && !accounts.isEmpty() && !cache.open())
         err << "callie-gui: " << cache.errorString() << "\n";
     err.flush();
@@ -139,7 +148,6 @@ int main(int argc, char *argv[])
     callie::CalendarSource *source =
         useSample ? static_cast<callie::CalendarSource *>(&sample) : &google;
     QTimer syncTimer;
-    const QString screenshot = parser.value(screenshotOption);
     // Without a client every refresh would fail, so show the cache and say why once.
     const bool canSync = client.isValid();
     if (!useSample && !accounts.isEmpty() && !canSync)
@@ -155,9 +163,13 @@ int main(int argc, char *argv[])
     // Screenshots and sample data stay quiet.
     callie::ReminderScheduler scheduler;
     callie::FreedesktopNotifications notifications;
-    if (!useSample && screenshot.isEmpty()) {
+    if (!standalone) {
         scheduler.setSource(source);
         callie::Reminders::instance()->setup(&scheduler, &notifications, &settings);
+        // Closing the window can leave Callie running so reminders still come.
+        app.setQuitOnLastWindowClosed(!settings.keepRunning());
+        QObject::connect(&settings, &callie::Settings::keepRunningChanged, &app,
+                         [&] { app.setQuitOnLastWindowClosed(!settings.keepRunning()); });
     }
 
     QQmlApplicationEngine engine;
@@ -181,6 +193,17 @@ int main(int argc, char *argv[])
             &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
             [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Callie.Ui", "Main");
+
+    // A second launch, or a reminder, brings back a hidden window.
+    QObject::connect(&single, &callie::SingleInstance::activated, &engine, [&engine] {
+        if (engine.rootObjects().isEmpty())
+            return;
+        if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first())) {
+            window->show();
+            window->raise();
+            window->requestActivate();
+        }
+    });
 
     if (windowSize.isValid() && !engine.rootObjects().isEmpty()) {
         if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first()))

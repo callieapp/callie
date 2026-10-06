@@ -22,9 +22,7 @@ Item {
     readonly property real cellHeight: (height - weekdays.height) / weeks
 
     function dateFor(i) {
-        const d = new Date(rangeStart)
-        d.setDate(d.getDate() + i)
-        return d
+        return Views.dayAt(rangeStart, i)
     }
 
     function isToday(d) {

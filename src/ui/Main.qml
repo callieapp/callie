@@ -484,29 +484,42 @@ ApplicationWindow {
                 width: parent.width - Theme.sidebarWidth
                 height: parent.height
 
-                WeekView {
+                // Only the view on screen exists, so hidden ones cost nothing.
+                Loader {
                     anchors.fill: parent
-                    visible: window.view === "day" || window.view === "week"
-                    model: events
-                    anchorDate: window.rangeStart
-                    dayCount: window.view === "day" ? 1 : 7
-                    onDayClicked: day => window.showDay(day)
+                    active: window.view === "day" || window.view === "week"
+                    sourceComponent: Component {
+                        WeekView {
+                            model: events
+                            anchorDate: window.rangeStart
+                            dayCount: window.view === "day" ? 1 : 7
+                            onDayClicked: day => window.showDay(day)
+                        }
+                    }
                 }
-                MonthView {
+                Loader {
                     anchors.fill: parent
-                    visible: window.view === "month"
-                    model: events
-                    rangeStart: window.rangeStart
-                    dayCount: window.rangeDays
-                    month: window.focusDate.getMonth()
-                    onDayClicked: day => window.showDay(day)
+                    active: window.view === "month"
+                    sourceComponent: Component {
+                        MonthView {
+                            model: events
+                            rangeStart: window.rangeStart
+                            dayCount: window.rangeDays
+                            month: window.focusDate.getMonth()
+                            onDayClicked: day => window.showDay(day)
+                        }
+                    }
                 }
-                AgendaView {
+                Loader {
                     anchors.fill: parent
-                    visible: window.view === "agenda"
-                    model: events
-                    rangeStart: window.rangeStart
-                    dayCount: window.rangeDays
+                    active: window.view === "agenda"
+                    sourceComponent: Component {
+                        AgendaView {
+                            model: events
+                            rangeStart: window.rangeStart
+                            dayCount: window.rangeDays
+                        }
+                    }
                 }
             }
         }

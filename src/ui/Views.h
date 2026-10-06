@@ -20,6 +20,8 @@ public:
     Q_INVOKABLE QDateTime start(const QString &view, const QDateTime &focus) const;
     Q_INVOKABLE int days(const QString &view, const QDateTime &focus) const;
     Q_INVOKABLE QDateTime step(const QString &view, const QDateTime &focus, int count) const;
+    /// The day `index` days after `start`.
+    Q_INVOKABLE QDateTime dayAt(const QDateTime &start, int index) const;
     Q_INVOKABLE QString heading(const QDateTime &day, const QDateTime &today) const;
 };
 

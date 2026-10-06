@@ -19,6 +19,11 @@ QDateTime Views::step(const QString &view, const QDateTime &focus, int count) co
     return ViewRange::step(ViewRange::fromName(view), focus.date(), count).startOfDay();
 }
 
+QDateTime Views::dayAt(const QDateTime &start, int index) const
+{
+    return start.date().addDays(index).startOfDay();
+}
+
 QString Views::heading(const QDateTime &day, const QDateTime &today) const
 {
     return ViewRange::heading(day.date(), today.date());

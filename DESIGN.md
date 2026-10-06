@@ -76,8 +76,10 @@ Theming is a first-class feature, in the spirit of Winamp skins but safer.
 5. Text is left-aligned. Times and numbers use tabular figures.
 6. Hairlines separate, borders enclose. Do not use a border where a hairline will do.
 7. Depth comes from soft shadows on things above the surface: menus, popovers, a dragged event.
-   Not on every card.
-8. Corners are slightly rounded, 4px on controls and event blocks.
+   Not on every card. The theme's `[shadow]` sets one shadow for all of them.
+8. Things you can press or drag are stickers: rounded (11px on buttons and events, 14 on cards,
+   16 on popovers) and raised on a 3px edge in a darker shade. Lists, labels and lines stay flat,
+   so the stickers are what draws the eye.
 9. Empty states may carry a small, quiet illustration. Nothing else is illustrated. No grain, no
    pixel art.
 10. The window works down to small sizes. Layouts collapse; they do not clip.
@@ -97,28 +99,31 @@ left-or-right button layout setting.
 - Three text weights (`text`, `text-muted`, `text-faint`). Nothing gets a fourth.
 - One accent, one danger. The now line uses the accent, because nothing is wrong at the current
   time.
+- Two edges: `edge` under neutral raised buttons, `accent-edge` under pink ones.
 - Light and dark are equal citizens, not a theme and its inversion. Both get checked.
 
 ### Calendar colors
 
 Calendar colors are harmonized by default. Each calendar keeps its hue, so calendars stay
-distinct, while the theme sets their lightness and saturation so they belong to it. Calendars too
+distinct, while the theme sets their lightness and saturation so they belong to it. An event is a
+pastel sticker: the fill, dark ink of the same hue for its text, and a deeper shade as its edge.
+The theme sets the OKLCH lightness and chroma of all three, and warns when the ink falls below
+4.5:1 on the fill at any hue. Calendars too
 close in hue are nudged apart. Each calendar can instead use its original color or a custom one,
 and each theme can turn harmonizing off.
 
 ## Type
 
-A warm, bundled typeface, with an option to use the system font. Candidates are Recursive, whose
-matching monospace would suit times, and Fraunces for display text such as the month heading.
-
-> **TODO(lara):** pick the faces. Whether times are monospace depends on the choice.
+Nunito for everything you read, and Fraunces for display text: the month heading, day numbers
+and the greeting. Both are bundled under the SIL Open Font License, and a theme may name any
+installed family instead.
 
 Sizes run from 11 to 28. Intent:
 
 - 11 for metadata that should recede, 12 for event titles, 13 for body and UI, 15 for
   day numbers, 20 for the month heading.
-- Weight carries hierarchy before size does. Prefer DemiBold at the same size over
-  jumping a step.
+- Weight carries hierarchy before size does. Prefer a heavier weight at the same size over
+  jumping a step. Event titles are ExtraBold, so a busy week still reads at a glance.
 - Never below 11. Nothing in a calendar is that unimportant.
 
 ## Spacing and layout

@@ -125,15 +125,25 @@ Item {
                 required property int daySpan
                 required property int lane
                 required property color calendarColor
-                readonly property color accent: Theme.calendarColor(calendarColor, Theme.calendar)
 
                 visible: allDay
                 x: Theme.gutterWidth + firstDay * root.dayWidth + 3
                 y: Theme.space2 + lane * Theme.allDayRowHeight
                 width: daySpan * root.dayWidth - 6
-                height: Theme.allDayRowHeight - 3
-                radius: Theme.radiusMd
-                color: Theme.tint(accent, Theme.dark ? 0.32 : 0.18)
+                height: Theme.allDayRowHeight - 3 - Theme.stickerEdge
+                radius: height / 2
+                color: Theme.calendarColor(calendarColor, Theme.calendar)
+
+                Rectangle {
+                    z: -1
+                    anchors {
+                        fill: parent
+                        topMargin: Theme.stickerEdge
+                        bottomMargin: -Theme.stickerEdge
+                    }
+                    radius: parent.radius
+                    color: Theme.calendarEdge(chip.calendarColor, Theme.calendar)
+                }
 
                 Text {
                     anchors {
@@ -144,10 +154,10 @@ Item {
                     verticalAlignment: Text.AlignVCenter
                     text: chip.summary
                     elide: Text.ElideRight
-                    color: Theme.text
+                    color: Theme.calendarInk(chip.calendarColor, Theme.calendar)
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.DemiBold
+                    font.weight: Font.ExtraBold
                 }
             }
         }
@@ -250,7 +260,6 @@ Item {
                     required property int durationMinutes
                     required property int lane
                     required property int laneCount
-                    required property color calendarColor
                     required property bool allDay
 
                     readonly property real laneWidth: (root.dayWidth - 6) / laneCount
@@ -260,9 +269,8 @@ Item {
                     x: Theme.gutterWidth + dayIndex * root.dayWidth + 3 + lane * laneWidth
                     width: laneWidth - (laneCount > 1 ? 3 : 0)
                     y: startMinutes / 60 * Theme.hourHeight
-                    height: Math.max(20, durationMinutes / 60 * Theme.hourHeight - 2)
-
-                    accent: Theme.calendarColor(calendarColor, Theme.calendar)
+                    height: Math.max(20, durationMinutes / 60 * Theme.hourHeight - 2
+                                     - Theme.stickerEdge)
 
                     onMoveRequested: (deltaMinutes, deltaDays) => {
                         // TODO(core): commit the move once the model can write.

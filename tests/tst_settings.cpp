@@ -45,6 +45,7 @@ void TestSettings::defaultsWithoutAFile()
     QVERIFY(!settings.widenToday());
     QVERIFY(settings.hiddenCalendars().isEmpty());
     QCOMPARE(settings.view(), u"week"_s);
+    QVERIFY(settings.lastSeenVersion().isEmpty());
 }
 
 void TestSettings::choicesSurviveARestart()
@@ -61,6 +62,7 @@ void TestSettings::choicesSurviveARestart()
         settings.setTheme(u"/home/me/.config/callie/themes/mine.toml"_s);
         settings.setView(u"month"_s);
         settings.setView(u"year"_s);
+        settings.setLastSeenVersion(u"0.1.0"_s);
     }
     const Settings settings(path());
     QCOMPARE(settings.timeFormat(), Settings::TimeFormat::TwelveHour);
@@ -72,6 +74,7 @@ void TestSettings::choicesSurviveARestart()
     QCOMPARE(settings.collapsedAccounts(), QStringList{u"me@example.com"_s});
     QCOMPARE(settings.theme(), u"/home/me/.config/callie/themes/mine.toml"_s);
     QCOMPARE(settings.view(), u"month"_s);
+    QCOMPARE(settings.lastSeenVersion(), u"0.1.0"_s);
 }
 
 void TestSettings::unchangedValueEmitsNothing()

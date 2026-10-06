@@ -11,6 +11,7 @@ Popup {
     required property CalendarSource source
 
     width: 420
+    margins: Theme.space3
     padding: Theme.space5
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside

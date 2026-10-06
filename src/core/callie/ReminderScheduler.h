@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QStringList>
+#include <QTimeZone>
 #include <QTimer>
 
 #include <functional>
@@ -29,6 +30,8 @@ public:
     void setNow(Now now);
     /// Minutes before events without reminders of their own; negative for none.
     void setDefaultMinutes(int minutes);
+    /// The zone all-day events start their day in.
+    void setTimeZone(const QTimeZone &zone);
     /// Calendars the user hid, which never remind.
     void setHiddenCalendars(const QStringList &calendars);
     /// Starts or stops watching. Reminders that fall due while stopped are
@@ -66,6 +69,7 @@ private:
     Now m_now;
     int m_defaultMinutes = 10;
     QStringList m_hidden;
+    QTimeZone m_zone = QTimeZone::systemTimeZone();
     bool m_enabled = false;
     QDateTime m_lastCheck;
     /// Reminders already said, by key, with when they fell due.

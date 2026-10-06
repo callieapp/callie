@@ -16,11 +16,16 @@ public:
 
     QString sourceId() const override { return u"list"_s; }
     QList<CalendarInfo> calendars() const override { return {}; }
+    // All-day events start at midnight in the zone asked for, as real sources do.
     QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
-                               const QTimeZone &) const override
+                               const QTimeZone &tz) const override
     {
         QList<Event> result;
-        for (const Event &event : events) {
+        for (Event event : events) {
+            if (event.allDay) {
+                event.start = QDateTime(event.start.date(), QTime(0, 0), tz);
+                event.end = QDateTime(event.end.date(), QTime(0, 0), tz);
+            }
             if (event.start < to && event.end > from)
                 result.append(event);
         }
@@ -57,6 +62,7 @@ private Q_SLOTS:
     void ownRemindersWinOverTheDefault();
     void eachReminderIsSaid();
     void nothingForDeclinedHiddenOrAllDay();
+    void allDayRemindersFollowTheZone();
     void recentReminderIsSaidOnStart();
     void endedEventsAreNotCaughtUp();
     void snoozeRemindsAgain();
@@ -142,6 +148,26 @@ void TestReminderScheduler::nothingForDeclinedHiddenOrAllDay()
     m_scheduler->setEnabled(true);
     stepTo(at(23, 55));
     QVERIFY(m_said.isEmpty());
+}
+
+void TestReminderScheduler::allDayRemindersFollowTheZone()
+{
+    // 15 hours before the day: 9:00 the day before, in Berlin.
+    Event birthday =
+        eventAt(u"birthday"_s, QDateTime(QDate(2026, 10, 8), QTime(0, 0), QTimeZone::UTC));
+    birthday.allDay = true;
+    birthday.end = birthday.start.addDays(1);
+    birthday.remindersKnown = true;
+    birthday.reminders = {15 * 60};
+    m_source.events = {birthday};
+    const QTimeZone berlin("Europe/Berlin");
+    m_scheduler->setTimeZone(berlin);
+    m_now = QDateTime(QDate(2026, 10, 7), QTime(8, 0), berlin);
+    m_scheduler->setEnabled(true);
+    stepTo(QDateTime(QDate(2026, 10, 7), QTime(8, 59), berlin));
+    QVERIFY(m_said.isEmpty());
+    stepTo(QDateTime(QDate(2026, 10, 7), QTime(9, 0), berlin));
+    QCOMPARE(m_said, (QList<QPair<QString, int>>{{u"birthday"_s, 15 * 60}}));
 }
 
 void TestReminderScheduler::recentReminderIsSaidOnStart()

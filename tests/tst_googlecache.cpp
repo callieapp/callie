@@ -55,6 +55,7 @@ private Q_SLOTS:
     void deletedEventIsRemoved();
     void cancelledOccurrenceIsKept();
     void deletedSeriesTakesExceptions();
+    void rangeReadSkipsDistantEvents();
     void syncTokenIsStoredWithChanges();
     void unknownCalendarIsRejected();
     void removedCalendarLosesEvents();
@@ -180,6 +181,43 @@ void TestGoogleCache::deletedSeriesTakesExceptions()
     apply({parsed(R"({"id":"s","status":"cancelled"})")}, false);
 
     QCOMPARE(ids(m_cache->events(kAccount, kCalendar)), QStringList{u"other"_s});
+}
+
+void TestGoogleCache::rangeReadSkipsDistantEvents()
+{
+    apply(
+        {parsed(R"({"id":"inside","start":{"dateTime":"2026-10-06T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T11:00:00Z"}})"),
+         parsed(R"({"id":"spanning","start":{"dateTime":"2026-10-01T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-20T11:00:00Z"}})"),
+         parsed(R"({"id":"before","start":{"dateTime":"2026-10-04T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-04T11:00:00Z"}})"),
+         parsed(R"({"id":"after","start":{"dateTime":"2026-10-12T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-12T11:00:00Z"}})"),
+         parsed(R"({"id":"allday","start":{"date":"2026-10-11"},"end":{"date":"2026-10-12"}})"),
+         parsed(R"({"id":"far-allday","start":{"date":"2026-11-11"},"end":{"date":"2026-11-12"}})"),
+         parsed(R"({"id":"series","start":{"dateTime":"2020-01-06T10:00:00Z"},
+                    "end":{"dateTime":"2020-01-06T11:00:00Z"},"recurrence":["RRULE:FREQ=WEEKLY"]})"),
+         parsed(R"({"id":"moved-out","recurringEventId":"series",
+                    "originalStartTime":{"dateTime":"2026-10-05T10:00:00Z"},
+                    "start":{"dateTime":"2026-11-30T10:00:00Z"},
+                    "end":{"dateTime":"2026-11-30T11:00:00Z"}})"),
+         parsed(R"({"id":"moved-in","recurringEventId":"series",
+                    "originalStartTime":{"dateTime":"2026-11-23T10:00:00Z"},
+                    "start":{"dateTime":"2026-10-07T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-07T11:00:00Z"}})"),
+         parsed(R"({"id":"cancelled","status":"cancelled","recurringEventId":"series",
+                    "originalStartTime":{"dateTime":"2026-10-05T10:00:00Z"}})"),
+         parsed(R"({"id":"far-exception","recurringEventId":"series",
+                    "originalStartTime":{"dateTime":"2025-03-03T10:00:00Z"},
+                    "start":{"dateTime":"2025-03-04T10:00:00Z"},
+                    "end":{"dateTime":"2025-03-04T11:00:00Z"}})")},
+        true);
+
+    const QDateTime from(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
+    QCOMPARE(ids(m_cache->events(kAccount, kCalendar, from, from.addDays(7))),
+             (QStringList{u"allday"_s, u"cancelled"_s, u"inside"_s, u"moved-in"_s, u"moved-out"_s,
+                          u"series"_s, u"spanning"_s}));
 }
 
 void TestGoogleCache::syncTokenIsStoredWithChanges()

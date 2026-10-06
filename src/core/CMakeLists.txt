@@ -99,6 +99,8 @@ add_library(calliecore STATIC
     TimeFormat.cpp
     callie/Times.h
     Times.cpp
+    callie/ThemeLibrary.h
+    ThemeLibrary.cpp
 )
 
 # Built-in themes are compiled in, so the app works uninstalled and a broken

@@ -314,6 +314,7 @@ Item {
                 EventBlock {
                     id: block
 
+                    required property int index
                     required property string uid
                     required property int dayIndex
                     required property int startMinutes
@@ -451,17 +452,8 @@ Item {
     function showDetails(block) {
         tipDelay.stop()
         tip.visible = false
-        details.showNear({
-                             "summary": block.summary,
-                             "start": block.start,
-                             "end": block.end,
-                             "allDay": false,
-                             "location": block.location,
-                             "conferenceUrl": block.conferenceUrl,
-                             "calendarName": block.calendarName,
-                             "calendarColor": block.calendarColor,
-                             "description": block.description
-                         }, root.model.callService(block.conferenceUrl), block)
+        details.showNear(root.model.eventAt(block.index), root.model.callService(
+                             block.conferenceUrl), block)
     }
 
     Timer {
@@ -489,5 +481,6 @@ Item {
 
     EventDetails {
         id: details
+        source: root.model.source
     }
 }

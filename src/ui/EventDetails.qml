@@ -1,12 +1,25 @@
+pragma ComponentBehavior: Bound
 import Callie.Ui
 import QtQuick
 import QtQuick.Controls
 
 /// The card that opens when an event is clicked: a header in the event's
-/// calendar colors, a join button for calls, then where, which calendar and
-/// the notes. Escape or a click outside closes it.
+/// calendar colors, the user's answer when invited, a join button for calls,
+/// where, which calendar and the notes, then writing to guests and deleting.
+/// Escape or a click outside closes it.
 Popup {
     id: root
+
+    /// The event as one of EventModel's row maps.
+    property var event: ({})
+    /// Where answers and deletions go.
+    property CalendarSource source
+    /// The user's answer, kept here so the card follows a change at once.
+    property string response
+    /// An answer ("accepted", "tentative", "declined") or "delete" waiting for
+    /// its this-event-or-all choice, which repeating events ask for.
+    property string pending
+    readonly property bool repeats: (event.seriesId || "") !== ""
 
     property string summary
     property string when
@@ -33,7 +46,35 @@ Popup {
         calendarName = event.calendarName
         calendarColor = event.calendarColor
         description = event.description
+        root.event = event
+        response = event.response || ""
+        pending = ""
+        actions.clearError()
         open()
+    }
+
+    /// Answers or deletes now, or first asks which occurrences when it repeats.
+    function act(action) {
+        if (repeats && pending !== action) {
+            pending = action
+            return
+        }
+        perform(action, false)
+    }
+
+    function perform(action, wholeSeries) {
+        pending = ""
+        if (action === "delete")
+            actions.remove(event, wholeSeries)
+        else
+            actions.respond(event, action, wholeSeries)
+    }
+
+    EventActions {
+        id: actions
+        source: root.source
+        onResponded: status => root.response = status
+        onRemoved: root.close()
     }
 
     /// show(), then places the card by `item`: to its right if there is room,
@@ -190,6 +231,59 @@ Popup {
             }
         }
 
+        // The user's answer, right under the header, when they were invited.
+        Rectangle {
+            visible: root.event.canRespond === true
+            width: root.width
+            height: answers.implicitHeight + 2 * Theme.space3
+            color: Theme.surfaceAlt
+
+            Row {
+                id: answers
+                anchors {
+                    left: parent.left
+                    leftMargin: Theme.space5
+                    verticalCenter: parent.verticalCenter
+                }
+                spacing: Theme.space2
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    rightPadding: Theme.space2
+                    text: qsTr("Going?")
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textSm
+                    font.weight: Font.ExtraBold
+                }
+                Repeater {
+                    model: [
+                        {
+                            "status": "accepted",
+                            "label": qsTr("Yes")
+                        },
+                        {
+                            "status": "tentative",
+                            "label": qsTr("Maybe")
+                        },
+                        {
+                            "status": "declined",
+                            "label": qsTr("No")
+                        }
+                    ]
+
+                    PillButton {
+                        id: answer
+                        required property var modelData
+                        label: answer.modelData.label
+                        selected: root.response === answer.modelData.status
+                        enabled: !actions.busy
+                        onClicked: root.act(answer.modelData.status)
+                    }
+                }
+            }
+        }
+
         Column {
             width: root.width
             padding: Theme.space5
@@ -220,6 +314,89 @@ Popup {
                 width: parent.width - 2 * parent.padding
                 label: qsTr("Notes")
                 value: root.description
+            }
+
+            // Which occurrences a repeating event's answer or deletion is for.
+            Column {
+                visible: root.pending !== ""
+                width: parent.width - 2 * parent.padding
+                spacing: Theme.space2
+
+                Text {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    text: root.pending === "delete" ? qsTr(
+                                                          "Delete this event, or every one in the series?") :
+                                                      qsTr("Answer for this event, or every one in the series?")
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textSm
+                    font.weight: Font.Bold
+                }
+                Flow {
+                    width: parent.width
+                    spacing: Theme.space2
+
+                    StickerButton {
+                        text: qsTr("This event")
+                        onClicked: root.perform(root.pending, false)
+                    }
+                    StickerButton {
+                        text: qsTr("All events")
+                        onClicked: root.perform(root.pending, true)
+                    }
+                    StickerButton {
+                        text: qsTr("Cancel")
+                        onClicked: root.pending = ""
+                    }
+                }
+            }
+
+            Flow {
+                visible: (root.event.attendees || []).length > 0 || root.event.canEdit === true
+                width: parent.width - 2 * parent.padding
+                spacing: Theme.space2
+
+                StickerButton {
+                    visible: (root.event.attendees || []).length > 0
+                    text: qsTr("Email guests")
+                    onClicked: Qt.openUrlExternally(actions.mailGuests(root.event))
+                }
+                // A one-off event takes a second click to delete.
+                StickerButton {
+                    id: deleteButton
+                    property bool armed: false
+                    visible: root.event.canEdit === true
+                    enabled: !actions.busy
+                    text: armed ? qsTr("Click again to delete") : qsTr("Delete")
+                    onClicked: {
+                        if (root.repeats) {
+                            root.act("delete")
+                        } else if (armed) {
+                            armed = false
+                            root.perform("delete", false)
+                        } else {
+                            armed = true
+                            disarm.restart()
+                        }
+                    }
+
+                    Timer {
+                        id: disarm
+                        interval: 4000
+                        onTriggered: deleteButton.armed = false
+                    }
+                }
+            }
+
+            Text {
+                visible: actions.error !== ""
+                width: parent.width - 2 * parent.padding
+                text: actions.error
+                wrapMode: Text.Wrap
+                color: Theme.danger
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
             }
         }
     }

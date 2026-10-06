@@ -157,5 +157,6 @@ Item {
 
     EventDetails {
         id: details
+        source: root.model.source
     }
 }

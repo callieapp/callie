@@ -91,6 +91,8 @@ add_library(calliecore STATIC
     callie/ThemeSpec.h
     callie/ThemeLoader.h
     ThemeLoader.cpp
+    callie/Settings.h
+    Settings.cpp
 )
 
 # Built-in themes are compiled in, so the app works uninstalled and a broken

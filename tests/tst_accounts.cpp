@@ -46,6 +46,7 @@ void TestAccounts::listsAndRemovesAccounts()
     QCOMPARE(source.accounts(), (QList<Account>{me, other}));
 
     accounts->remove(me.id);
+    QVERIFY(!accounts->signingIn());
     QTRY_VERIFY_WITH_TIMEOUT(!accounts->busy(), 5000);
     QVERIFY2(accounts->error().isEmpty(), qPrintable(accounts->error()));
     QCOMPARE(accounts->accounts().size(), 1);

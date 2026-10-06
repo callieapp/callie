@@ -61,7 +61,7 @@ Item {
         }
     }
 
-    // Two thirds of a circle with an arrowhead, for refresh.
+    // Most of a circle with an arrowhead at its open end, for refresh.
     Canvas {
         id: arc
         visible: root.name === "refresh"

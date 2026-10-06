@@ -124,6 +124,7 @@ private Q_SLOTS:
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
     void eventsOnListsADay();
+    void eventAtCarriesWhatActionsNeed();
     void shortEventMakesRoomForTheNext();
     void eventsOnRespectsMidnight();
     void eventsOnSurvivesADstGap();
@@ -637,6 +638,25 @@ void TestEventModel::shortEventMakesRoomForTheNext()
     model->setMinimumMinutes(20);
     QCOMPARE(intRole(*model, 0, EventModel::LaneCountRole), 2);
     QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
+}
+
+void TestEventModel::eventAtCarriesWhatActionsNeed()
+{
+    Event occurrence = timed("standup", kMonday, 9, 30, 15);
+    occurrence.eventId = QStringLiteral("standup_20260316T093000Z");
+    occurrence.seriesId = QStringLiteral("standup");
+    occurrence.calendarId = QStringLiteral("work");
+    occurrence.recurrenceId = QDateTime(kMonday, QTime(9, 0), QTimeZone::systemTimeZone());
+    auto [model, source] = modelFor({occurrence});
+
+    const QVariantMap row = model->eventAt(0);
+    QCOMPARE(row.value(QStringLiteral("eventId")).toString(), occurrence.eventId);
+    QCOMPARE(row.value(QStringLiteral("seriesId")).toString(), QStringLiteral("standup"));
+    QCOMPARE(row.value(QStringLiteral("calendarId")).toString(), QStringLiteral("work"));
+    // A moved occurrence is changed by where it was, not where it is.
+    QCOMPARE(row.value(QStringLiteral("recurrenceId")).toDateTime(), occurrence.recurrenceId);
+    QVERIFY(model->eventAt(1).isEmpty());
+    QVERIFY(model->eventAt(-1).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

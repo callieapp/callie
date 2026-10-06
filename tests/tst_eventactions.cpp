@@ -61,6 +61,7 @@ void TestEventActions::answerReachesTheSource()
     actions.respond(event, u"tentative"_s, false);
 
     QCOMPARE(responded.size(), 1);
+    QCOMPARE(responded.first().first().toString(), event.value(u"eventId"_s).toString());
     QVERIFY(actions.error().isEmpty());
     QCOMPARE(answerOf(source, event.value(u"eventId"_s).toString()), u"tentative"_s);
 }

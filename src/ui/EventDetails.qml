@@ -52,6 +52,11 @@ Popup {
     }
 
     Overlay.modeless: Rectangle {
+        // The attached Window type is not the QML Window type, so this stays untyped.
+        readonly property var appWindow: Window.window
+
+        // Follows the window's rounded corners rather than filling them in.
+        radius: appWindow && appWindow.cornerRadius ? appWindow.cornerRadius : 0
         color: Theme.tint(Theme.shadowColor, 0.35)
 
         Behavior on opacity {

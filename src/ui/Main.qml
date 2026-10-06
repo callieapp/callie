@@ -19,6 +19,9 @@ ApplicationWindow {
     // Callie draws its own title bar; see the title bar below and ResizeFrame.
     flags: Qt.Window | Qt.FramelessWindowHint
 
+    /// How round the window's corners are, for overlays drawn outside the frame.
+    readonly property int cornerRadius: frame.rounded ? frameMask.radius : 0
+
     /// Where events come from; set by main.cpp.
     required property CalendarSource source
 

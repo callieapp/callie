@@ -18,6 +18,10 @@ qt_add_qml_module(callieui
         EventActions.cpp
         EventModelForeign.h
         LiveQml.h
+        NotificationServer.h
+        NotificationServer.cpp
+        Reminders.h
+        Reminders.cpp
         LiveQml.cpp
         SupportActions.h
         SupportActions.cpp
@@ -69,5 +73,6 @@ target_include_directories(callieui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(callieui
     PUBLIC
         Qt6::Quick
+        Qt6::DBus
         calliecore
 )

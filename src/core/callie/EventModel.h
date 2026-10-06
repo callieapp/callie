@@ -122,6 +122,8 @@ public:
 
     /// One row as the same kind of map eventsOn() returns.
     Q_INVOKABLE QVariantMap eventAt(int row) const;
+    /// The row of the occurrence of `uid` that starts at `start`, or -1.
+    Q_INVOKABLE int rowOf(const QString &uid, const QDateTime &start) const;
 
     [[nodiscard]] QVariantList calendars() const { return m_calendars; }
 

@@ -50,6 +50,39 @@ ApplicationWindow {
         Settings.view = "day"
     }
 
+    // The event a reminder asked to see, shown once its day has loaded.
+    property string revealUid
+    property date revealStart
+
+    function reveal() {
+        if (revealUid === "" || !weekLoader.item)
+            return
+        const row = events.rowOf(revealUid, revealStart)
+        if (row < 0)
+            return
+        revealUid = ""(weekLoader.item as WeekView).showRow(row)
+    }
+
+    Connections {
+        target: Reminders
+        function onOpenRequested(day, uid, start) {
+            window.show()
+            window.raise()
+            window.requestActivate()
+            window.revealUid = uid
+            window.revealStart = start
+            window.showDay(day)
+            window.reveal()
+        }
+    }
+
+    Connections {
+        target: events
+        function onRevisionChanged() {
+            window.reveal()
+        }
+    }
+
     EventModel {
         id: events
         source: window.source
@@ -588,6 +621,7 @@ ApplicationWindow {
                     id: weekLoader
                     anchors.fill: parent
                     active: window.view === "day" || window.view === "week"
+                    onLoaded: window.reveal()
                     sourceComponent: Component {
                         WeekView {
                             model: events

@@ -657,6 +657,8 @@ void TestEventModel::eventAtCarriesWhatActionsNeed()
     QCOMPARE(row.value(QStringLiteral("recurrenceId")).toDateTime(), occurrence.recurrenceId);
     QVERIFY(model->eventAt(1).isEmpty());
     QVERIFY(model->eventAt(-1).isEmpty());
+    QCOMPARE(model->rowOf(QStringLiteral("standup"), occurrence.start), 0);
+    QCOMPARE(model->rowOf(QStringLiteral("standup"), occurrence.start.addDays(1)), -1);
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

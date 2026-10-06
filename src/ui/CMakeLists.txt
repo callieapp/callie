@@ -19,12 +19,17 @@ qt_add_qml_module(callieui
         SupportActions.cpp
         ThemeController.h
         ThemeController.cpp
+        WindowButtons.h
+        WindowButtons.cpp
     QML_FILES
         Main.qml
         WeekView.qml
         EventBlock.qml
-        NavButton.qml
         PillButton.qml
+        StickerButton.qml
+        Glyph.qml
+        WindowControls.qml
+        ResizeFrame.qml
         MenuEntry.qml
         Tip.qml
 )
@@ -36,6 +41,12 @@ qt_add_resources(callieui "callie_fonts"
     FILES
         "${PROJECT_SOURCE_DIR}/data/fonts/Nunito-Variable.ttf"
         "${PROJECT_SOURCE_DIR}/data/fonts/Fraunces-Variable.ttf"
+)
+
+qt_add_resources(callieui "callie_logo"
+    PREFIX "/callie"
+    BASE "${PROJECT_SOURCE_DIR}"
+    FILES "${PROJECT_SOURCE_DIR}/assets/logo.png"
 )
 
 target_include_directories(callieui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -224,12 +224,27 @@ ApplicationWindow {
                     label: qsTr("Month")
                 }
 
-                NavButton {
-                    glyph: "<"
+                StickerButton {
+                    glyph: "chevron-left"
+                    Accessible.name: qsTr("Previous")
                 }
 
-                NavButton {
-                    glyph: ">"
+                StickerButton {
+                    glyph: "chevron-right"
+                    Accessible.name: qsTr("Next")
+                }
+
+                StickerButton {
+                    text: qsTr("Today")
+                }
+
+                StickerButton {
+                    text: qsTr("Join call")
+                    accent: true
+                }
+
+                WindowControls {
+                    buttons: ["minimize", "maximize", "close"]
                 }
             }
 

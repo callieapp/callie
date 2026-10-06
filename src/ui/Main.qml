@@ -194,7 +194,8 @@ ApplicationWindow {
             }
             spacing: Theme.space4
 
-            // Sync status, with the error on hover.
+            // Sync status. When the bar is too narrow for the words it shrinks to
+            // its icon, with the words on hover, and below that it hides.
             Rectangle {
                 id: syncStatus
 
@@ -205,20 +206,39 @@ ApplicationWindow {
                                                   window.source.lastSynced.getTime())
                 readonly property color ink: failed ? Theme.danger : window.source.syncing
                                                       ? Theme.textMuted : Theme.accent
+                readonly property string label: window.source.syncing ? qsTr("Syncing...") : failed
+                                                                        ? qsTr("Sync failed") : qsTr(
+                                                                              "Updated %1").arg(
+                                                                              Qt.formatTime(
+                                                                                  window.source.lastSynced,
+                                                                                  "HH:mm"))
+                // Room between the left side and the rest of the right side.
+                readonly property real spare: titleBar.width - leading.x - leading.width
+                                              - trailingFixed.width - 3 * Theme.space4
+                readonly property real fullWidth: labelMetrics.advanceWidth + 2 * Theme.space4 + (
+                                                      check.visible ? check.width + Theme.space3 :
+                                                                      0)
+                readonly property bool compact: spare < fullWidth + Theme.space4
 
                 anchors.verticalCenter: parent.verticalCenter
-                visible: known
+                visible: known && spare >= height + Theme.space4
                 height: 28
-                width: syncRow.implicitWidth + 22
+                width: compact ? height : fullWidth
                 radius: height / 2
                 color: Theme.tint(ink, 0.16)
 
+                TextMetrics {
+                    id: labelMetrics
+                    font: syncText.font
+                    text: syncStatus.label
+                }
+
                 Row {
-                    id: syncRow
                     anchors.centerIn: parent
                     spacing: Theme.space3
 
                     Glyph {
+                        id: check
                         anchors.verticalCenter: parent.verticalCenter
                         visible: !window.source.syncing && !syncStatus.failed
                         name: "check"
@@ -228,13 +248,13 @@ ApplicationWindow {
                         color: syncStatus.ink
                     }
                     Text {
+                        id: syncText
                         anchors.verticalCenter: parent.verticalCenter
-                        text: window.source.syncing ? qsTr("Syncing...") : syncStatus.failed ? qsTr(
-                                                                                                   "Sync failed") :
-                                                                                               qsTr("Updated %1").arg(
-                                                                                                   Qt.formatTime(
-                                                                                                       window.source.lastSynced,
-                                                                                                       "HH:mm"))
+                        // Compact keeps a mark for the states without a check.
+                        visible: !syncStatus.compact || !check.visible
+                        text: !syncStatus.compact ? syncStatus.label : syncStatus.failed ? "!" :
+                                                                                           "..."
+
                         color: syncStatus.ink
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm
@@ -246,93 +266,99 @@ ApplicationWindow {
                     id: syncHover
                 }
                 Tip {
-                    visible: syncStatus.failed && syncHover.hovered
-                    text: window.source.lastError
+                    visible: syncHover.hovered && (syncStatus.failed || syncStatus.compact)
+                    text: syncStatus.failed ? window.source.lastError : syncStatus.label
                 }
             }
 
-            // View switcher. Only Week is implemented so far.
             Row {
+                id: trailingFixed
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.space2
+                spacing: Theme.space4
 
-                Repeater {
-                    model: [qsTr("Day"), qsTr("Week"), qsTr("Month"), qsTr("Agenda")]
+                // View switcher. Only Week is implemented so far.
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.space2
 
-                    PillButton {
-                        required property string modelData
-                        required property int index
-                        label: modelData
-                        selected: index === 1
-                    }
-                }
-            }
+                    Repeater {
+                        model: [qsTr("Day"), qsTr("Week"), qsTr("Month"), qsTr("Agenda")]
 
-            // Help: debug info, logs and bug reports.
-            StickerButton {
-                id: helpButton
-                anchors.verticalCenter: parent.verticalCenter
-                text: "?"
-                Accessible.name: qsTr("Help")
-                onClicked: helpMenu.popup(helpButton, 0, helpButton.height + Theme.space3)
-
-                Tip {
-                    visible: copiedTip.running
-                    text: qsTr("Debug info copied")
-                }
-
-                Timer {
-                    id: copiedTip
-                    interval: 2000
-                }
-
-                Connections {
-                    target: Support
-                    function onCopied() {
-                        copiedTip.restart()
+                        PillButton {
+                            required property string modelData
+                            required property int index
+                            label: modelData
+                            selected: index === 1
+                        }
                     }
                 }
 
-                Menu {
-                    id: helpMenu
-                    padding: Theme.space1
+                // Help: debug info, logs and bug reports.
+                StickerButton {
+                    id: helpButton
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "?"
+                    Accessible.name: qsTr("Help")
+                    onClicked: helpMenu.popup(helpButton, 0, helpButton.height + Theme.space3)
 
-                    // TODO(ui): DESIGN.md gives menus a soft shadow; the theme has the token,
-                    // and the menus pass draws it.
-                    background: Rectangle {
-                        implicitWidth: 200
-                        color: Theme.surface
-                        border.color: Theme.border
-                        radius: Theme.radiusLg
+                    Tip {
+                        visible: copiedTip.running
+                        text: qsTr("Debug info copied")
                     }
 
-                    MenuEntry {
-                        text: qsTr("Copy debug info")
-                        onTriggered: Support.copyDebugInfo()
+                    Timer {
+                        id: copiedTip
+                        interval: 2000
                     }
-                    MenuEntry {
-                        text: qsTr("Open logs folder")
-                        onTriggered: Support.openLogs()
+
+                    Connections {
+                        target: Support
+                        function onCopied() {
+                            copiedTip.restart()
+                        }
                     }
-                    MenuEntry {
-                        text: qsTr("Report a bug...")
-                        onTriggered: Support.reportBug()
+
+                    Menu {
+                        id: helpMenu
+                        padding: Theme.space1
+
+                        // TODO(ui): DESIGN.md gives menus a soft shadow; the theme has the token,
+                        // and the menus pass draws it.
+                        background: Rectangle {
+                            implicitWidth: 200
+                            color: Theme.surface
+                            border.color: Theme.border
+                            radius: Theme.radiusLg
+                        }
+
+                        MenuEntry {
+                            text: qsTr("Copy debug info")
+                            onTriggered: Support.copyDebugInfo()
+                        }
+                        MenuEntry {
+                            text: qsTr("Open logs folder")
+                            onTriggered: Support.openLogs()
+                        }
+                        MenuEntry {
+                            text: qsTr("Report a bug...")
+                            onTriggered: Support.reportBug()
+                        }
                     }
                 }
-            }
 
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: WindowButtons.right.length > 0
-                width: 1
-                height: 26
-                color: Theme.border
-            }
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: WindowButtons.right.length > 0
+                    width: 1
+                    height: 26
+                    color: Theme.border
+                }
 
-            WindowControls {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: buttons.length > 0
-                buttons: WindowButtons.right
+                WindowControls {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: buttons.length > 0
+                    buttons: WindowButtons.right
+                }
             }
         }
     }

@@ -150,6 +150,8 @@ void TestGoogleAuth::callbackPageIsThemed()
     QVERIFY(page.contains(ThemeLoader::defaultTheme().colors.background.name()));
     QVERIFY(page.contains(u"<svg"_s));
     QVERIFY(page.contains(u"All done here"_s));
+    QVERIFY(
+        page.contains(u"font-family: 'Fraunces'; font-weight: 100 900; src: url(data:font/ttf"_s));
 }
 
 void TestGoogleAuth::codeExchangeSendsVerifierMatchingChallenge()

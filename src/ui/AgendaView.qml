@@ -18,10 +18,8 @@ Item {
         for (let i = 0; i < dayCount; ++i) {
             const events = model.eventsOn(i, model.revision)
             if (events.length > 0) {
-                const d = new Date(rangeStart)
-                d.setDate(d.getDate() + i)
                 list.push({
-                              "date": d,
+                              "date": Views.dayAt(rangeStart, i),
                               "events": events
                           })
             }

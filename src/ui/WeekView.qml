@@ -36,7 +36,7 @@ Item {
             left: parent.left
             right: parent.right
         }
-        height: 62
+        height: 64
 
         Row {
             anchors.fill: parent
@@ -64,39 +64,46 @@ Item {
                             color: dayHeader.today ? Theme.accent : Theme.textFaint
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textXs
-                            font.weight: Font.DemiBold
-                            font.letterSpacing: 0.6
+                            font.weight: Font.ExtraBold
+                            font.letterSpacing: 0.8
                         }
 
-                        Rectangle {
+                        // Today's date is a pink sticker; the rest are plain.
+                        Item {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: 30
-                            height: 30
-                            radius: 15
-                            color: dayHeader.today ? Theme.accent : "transparent"
+                            width: 33
+                            height: 33
 
+                            Rectangle {
+                                visible: dayHeader.today
+                                anchors {
+                                    fill: parent
+                                    topMargin: Theme.stickerEdge
+                                    bottomMargin: -Theme.stickerEdge
+                                }
+                                radius: Theme.radiusMd + 1
+                                color: Theme.accentEdge
+                            }
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.radiusMd + 1
+                                color: dayHeader.today ? Theme.accent : "transparent"
+                            }
                             Text {
                                 anchors.centerIn: parent
                                 text: dayHeader.date.getDate()
                                 color: dayHeader.today ? Theme.accentText : Theme.text
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.textLg
-                                font.weight: dayHeader.today ? Font.DemiBold : Font.Normal
+                                font.family: Theme.displayFontFamily
+                                font.pixelSize: 18
+                                font.weight: Font.Bold
+                                font.features: {
+                                    "tnum": 1
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-
-        Rectangle {
-            anchors {
-                left: parent.left
-                right: parent.right
-                bottom: parent.bottom
-            }
-            height: 1
-            color: Theme.border
         }
     }
 
@@ -109,9 +116,9 @@ Item {
             left: parent.left
             right: parent.right
         }
-        height: root.model.allDayRows > 0 ? root.model.allDayRows * Theme.allDayRowHeight + Theme.space2
-                                            * 2 : 0
-        visible: height > 0
+        // A thin strip when empty, so the grid still starts below a hairline.
+        height: root.model.allDayRows > 0 ? root.model.allDayRows * Theme.allDayRowHeight + Theme.space2 :
+                                            Theme.space4
         clip: true
 
         Repeater {
@@ -128,7 +135,7 @@ Item {
 
                 visible: allDay
                 x: Theme.gutterWidth + firstDay * root.dayWidth + 3
-                y: Theme.space2 + lane * Theme.allDayRowHeight
+                y: Theme.space1 + lane * Theme.allDayRowHeight
                 width: daySpan * root.dayWidth - 6
                 height: Theme.allDayRowHeight - 3 - Theme.stickerEdge
                 radius: height / 2
@@ -169,7 +176,7 @@ Item {
                 bottom: parent.bottom
             }
             height: 1
-            color: Theme.border
+            color: Theme.hairline
         }
     }
 
@@ -186,8 +193,8 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
-        // Open on the working day rather than midnight.
-        Component.onCompleted: contentY = 7 * Theme.hourHeight
+        // Open on the working day, a little above 8:00 so its label shows.
+        Component.onCompleted: contentY = 8 * Theme.hourHeight - Theme.space4
 
         ScrollBar.vertical: ScrollBar {}
 
@@ -222,13 +229,14 @@ Item {
                             right: parent.left
                             top: parent.top
                         }
-                        anchors.rightMargin: -Theme.gutterWidth + Theme.space4
-                        anchors.topMargin: -6
+                        anchors.rightMargin: -Theme.gutterWidth + Theme.space3
+                        anchors.topMargin: -7
                         visible: hourRow.index > 0
-                        text: Qt.formatTime(new Date(2000, 0, 1, hourRow.index, 0), "h AP")
+                        text: Qt.formatTime(new Date(2000, 0, 1, hourRow.index, 0), "h:mm")
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
+                        font.weight: Font.Bold
                         font.features: {
                             "tnum": 1
                         }
@@ -236,16 +244,29 @@ Item {
                 }
             }
 
-            // Day column separators
+            // Day columns: a hairline on the left, a pink wash on today and a
+            // darker one on the weekend.
             Repeater {
-                model: root.dayCount - 1
+                model: root.dayCount
 
                 Rectangle {
+                    id: column
                     required property int index
-                    x: Theme.gutterWidth + (index + 1) * root.dayWidth
-                    width: 1
+                    readonly property date date: root.dateForColumn(index)
+                    readonly property bool weekend: date.getDay() === 0 || date.getDay() === 6
+
+                    x: Theme.gutterWidth + index * root.dayWidth
+                    width: root.dayWidth
                     height: grid.contentHeight
-                    color: Theme.hairline
+                    color: root.isToday(date) ? Theme.tint(Theme.accent, 0.04) : weekend ? Theme.tint(
+                                                                                               Theme.edge,
+                                                                                               0.35) : "transparent"
+
+                    Rectangle {
+                        width: 1
+                        height: parent.height
+                        color: Theme.hairline
+                    }
                 }
             }
 
@@ -279,7 +300,7 @@ Item {
                 }
             }
 
-            // Now indicator
+            // Now indicator: a pink line across today, with the time in the gutter.
             Item {
                 id: now
                 readonly property date current: Clock.now
@@ -292,25 +313,52 @@ Item {
 
                 visible: columnIndex >= 0
                 y: (current.getHours() * 60 + current.getMinutes()) / 60 * Theme.hourHeight
-                x: Theme.gutterWidth + columnIndex * root.dayWidth
-                width: root.dayWidth
-                height: 1
+                x: Theme.gutterWidth + columnIndex * root.dayWidth + 2
+                width: root.dayWidth - 4
+                height: 3
                 z: 50
 
                 Rectangle {
                     anchors.fill: parent
+                    radius: height / 2
                     color: Theme.accent
                 }
 
                 Rectangle {
                     anchors {
-                        verticalCenter: parent.top
-                        left: parent.left
+                        verticalCenter: parent.verticalCenter
+                        horizontalCenter: parent.left
                     }
-                    width: 7
-                    height: 7
-                    radius: 3.5
+                    width: 13
+                    height: 13
+                    radius: width / 2
                     color: Theme.accent
+                    border.width: 3
+                    border.color: Theme.bg
+                }
+            }
+
+            Rectangle {
+                visible: now.visible
+                z: 50
+                x: Theme.space1
+                y: now.y + now.height / 2 - height / 2
+                width: nowLabel.implicitWidth + 12
+                height: nowLabel.implicitHeight + 2
+                radius: height / 2
+                color: Theme.accent
+
+                Text {
+                    id: nowLabel
+                    anchors.centerIn: parent
+                    text: Qt.formatTime(now.current, "h:mm")
+                    color: Theme.accentText
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textXs
+                    font.weight: Font.ExtraBold
+                    font.features: {
+                        "tnum": 1
+                    }
                 }
             }
         }

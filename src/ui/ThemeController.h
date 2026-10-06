@@ -107,6 +107,8 @@ class ThemeController : public QObject
     /// The small line icons beside list text, and their stroke.
     Q_PROPERTY(int smallGlyphSize READ smallGlyphSize CONSTANT)
     Q_PROPERTY(qreal smallGlyphStroke READ smallGlyphStroke CONSTANT)
+    /// One event line in a month view day.
+    Q_PROPERTY(int monthChipHeight READ monthChipHeight CONSTANT)
     Q_PROPERTY(int miniDaySize READ miniDaySize CONSTANT)
 
 public:
@@ -204,6 +206,7 @@ public:
     int listRowHeight() const { return 28; }
     int smallGlyphSize() const { return 10; }
     qreal smallGlyphStroke() const { return 1.6; }
+    int monthChipHeight() const { return 20; }
     int miniDaySize() const { return 26; }
 
 Q_SIGNALS:

@@ -154,6 +154,8 @@ ApplicationWindow {
 
                 Image {
                     anchors.verticalCenter: parent.verticalCenter
+                    // The ears sit above the face; lifting it centres the face on the title.
+                    anchors.verticalCenterOffset: -2
                     source: "qrc:/callie/assets/logo.png"
                     sourceSize: Qt.size(56, 56)
                     width: 28
@@ -401,6 +403,7 @@ ApplicationWindow {
                     StickerButton {
                         anchors.verticalCenter: parent.verticalCenter
                         glyph: "settings"
+                        glyphStroke: 1.5
                         Accessible.name: qsTr("Settings")
                         onClicked: settingsDialog.open()
                     }

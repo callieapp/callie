@@ -8,6 +8,8 @@ AbstractButton {
     id: root
 
     property string glyph
+    /// Line weight of the glyph; busy glyphs such as settings read better thinner.
+    property real glyphStroke: 2.2
     property bool accent: false
 
     readonly property color face: accent ? Theme.accent : hovered ? Theme.border : Theme.surfaceAlt
@@ -62,7 +64,7 @@ AbstractButton {
                 visible: root.glyph !== ""
                 name: root.glyph
                 color: root.ink
-                stroke: 2.2
+                stroke: root.glyphStroke
             }
             Text {
                 id: label

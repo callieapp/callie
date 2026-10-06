@@ -200,6 +200,12 @@ void TestQuickAdd::versionNumbersStayInTheTitle()
     QCOMPARE(years.summary, u"Budget 2025-26 review"_s);
     QCOMPARE(years.start, at(10, 9, 15));
 
+    // Nor is a price range, or a dotted number followed by a count.
+    QCOMPARE(parse(u"Lunch $5-9.50 friday 1pm"_s).summary, u"Lunch $5-9.50"_s);
+    const EventDraft shipped = parse(u"Ship 4.15-26 friday 3pm"_s);
+    QCOMPARE(shipped.summary, u"Ship 4.15-26"_s);
+    QCOMPARE(shipped.start, at(10, 9, 15));
+
     // Nor is a time that cannot exist, even written with a dot.
     QCOMPARE(parse(u"Party at 9.99pm"_s).summary, u"Party at 9.99pm"_s);
 }

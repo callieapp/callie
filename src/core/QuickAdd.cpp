@@ -9,6 +9,9 @@ namespace callie {
 namespace {
 
 const QString kTime = uR"((?:(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|a|p)?|noon|midnight))"_s;
+/// A dash that ends a time-like number such as 4, 945 or 9:30, as in a range;
+/// a dash after "$5" or a year is something else.
+const QString kAfterTime = uR"((?<=\s\d|\s\d\d|\s\d\d\d|\s\d\d\d\d|\s\d:\d\d|\s\d\d:\d\d)-)"_s;
 const QString kWeekdays =
     uR"((mon|monday|tue|tues|tuesday|wed|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday))"_s;
 const QString kMonths =
@@ -139,15 +142,16 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
     // "415pm" and "4.15pm" are 4:15pm. Without am or pm a dot only counts after
     // "at" or in a range, so a number like 4.15 in a title stays as it is.
     static const QRegularExpression compact =
-        pattern(uR"(((?:\s|-)\d{1,2})[.]?(\d{2})(\s*(?:am|pm|a\.m\.|p\.m\.|a|p)(?=\s|-)))"_s);
+        pattern(uR"(((?:\s|)"_s + kAfterTime +
+                uR"()\d{1,2})[.]?(\d{2})(\s*(?:am|pm|a\.m\.|p\.m\.|a|p)(?=\s|-)))"_s);
     static const QRegularExpression dotted =
-        pattern(uR"(((?:\sat|-|\sto)\s*\d{1,2})\.(\d{2})()(?=\s|-))"_s);
+        pattern(uR"(((?:\sat|\sto|)"_s + kAfterTime + uR"()\s*\d{1,2})\.(\d{2})()(?=\s|-))"_s);
     // A range's start once its end reads as a time: "945-1015am" needs the end's
     // colon or am/pm, so a span such as 2025-26 is left alone; "4.15-5" has its dot.
     static const QRegularExpression compactStart = pattern(
         uR"((\s\d{1,2})(\d{2})()(?=\s*(?:-|to\s)\s*\d{1,2}(?::\d{2}|\s*(?:am|pm|a|p)(?=\s))))"_s);
-    static const QRegularExpression dottedStart =
-        pattern(uR"((\s\d{1,2})\.(\d{2})()(?=\s*(?:-|to\s)\s*\d))"_s);
+    static const QRegularExpression dottedStart = pattern(
+        uR"((\s\d{1,2})\.(\d{2})()(?=\s*(?:-|to\s)\s*(?:[01]?\d|2[0-3])(?:[:.]\d{2})?\s*(?:am|pm|a|p)?(?=\s)))"_s);
     for (const QRegularExpression *re : {&compact, &dotted, &compactStart, &dottedStart})
         writeAsClockTime(rest, *re);
 

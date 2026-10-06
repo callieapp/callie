@@ -64,7 +64,8 @@ Item {
                 property: "anchors.verticalCenterOffset"
                 to: 0
                 duration: Theme.durMed
-                easing.type: Easing.OutBounce
+                easing.type: Theme.easingBounce
+                easing.overshoot: Theme.bounce
             }
             NumberAnimation {
                 target: face

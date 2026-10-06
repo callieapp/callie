@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
     QTextStream err(stderr);
     if (const QString theme = parser.value(themeOption); !theme.isEmpty()) {
-        const QStringList errors = callie::ThemeController::instance()->load(theme);
+        const QStringList errors = callie::ThemesController::instance()->applyForThisRun(theme);
         for (const QString &error : errors)
             err << "callie-gui: " << theme << ": " << error << "\n";
     } else {

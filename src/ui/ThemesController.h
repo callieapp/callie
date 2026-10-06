@@ -41,6 +41,10 @@ public:
     /// forgotten, so the default takes over.
     void restore();
 
+    /// Applies a theme for this run only, as --theme and CALLIE_THEME do,
+    /// leaving the remembered choice alone. Returns the load errors.
+    QStringList applyForThisRun(const QString &idOrPath);
+
     [[nodiscard]] QVariantList available() const;
     [[nodiscard]] QString current() const;
     [[nodiscard]] bool editable() const;
@@ -69,6 +73,8 @@ private:
     void clearError();
 
     ThemeLibrary m_library;
+    /// The theme on screen when it is not the remembered one.
+    QString m_override;
     QString m_error;
 };
 

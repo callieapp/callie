@@ -133,9 +133,9 @@ An 8px rhythm with 2, 4 and 12 available for tight cases. `space5` (16) is the d
 gap between unrelated things, `space3` (8) between related ones.
 
 The week view should show about 8 working hours without scrolling, with the hour height scaling to
-the window down to a minimum. The current fixed `hourHeight` of 56 is a placeholder until that
-lands. Grid metrics set the feel of the whole product, so treat them as product decisions, not
-tweaks. Spacing and grid metrics are not themeable.
+the window down to a minimum. Until that lands, `hourHeight` is a fixed 62 and the hour gutter 52.
+Grid metrics set the feel of the whole product, so treat them as product decisions, not tweaks.
+Spacing and grid metrics are not themeable.
 
 ## CLI principles
 

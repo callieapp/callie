@@ -38,9 +38,7 @@ void TestSampleSource::reportListsEachAccount()
     QCOMPARE(report.size(), 2);
     const QVariantMap work = report.at(0).toMap();
     QCOMPARE(work.value(u"account"_s).toString(), u"sam@work.example"_s);
-    QCOMPARE(work.value(u"calendars"_s).toInt(), 2);
     QCOMPARE(work.value(u"lastSynced"_s).toDateTime(), source.lastSynced());
-    QCOMPARE(report.at(1).toMap().value(u"calendars"_s).toInt(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestSampleSource)

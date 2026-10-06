@@ -83,7 +83,7 @@ QList<Event> GoogleSource::eventsBetween(const QDateTime &from, const QDateTime 
                 continue;
             const QColor color = QColor::fromString(calendar.color);
             const QList<Event> events =
-                expandGoogleEvents(m_cache.events(account, calendar.id), from, to, tz);
+                expandGoogleEvents(m_cache.events(account, calendar.id, from, to), from, to, tz);
             for (Event event : events) {
                 event.calendarId = calendarKey(account, calendar.id);
                 event.color = color;

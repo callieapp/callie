@@ -353,14 +353,51 @@ bool GoogleCache::applyChanges(const Account &account, const QString &calendarId
 
 QList<GoogleEvent> GoogleCache::events(const Account &account, const QString &calendarId)
 {
-    QList<GoogleEvent> result;
-    if (!m_open)
-        return result;
     QSqlQuery query(QSqlDatabase::database(m_connection));
     query.prepare(QStringLiteral("SELECT * FROM events WHERE account = ? AND calendar_id = ? "
                                  "ORDER BY rowid"));
     query.addBindValue(accountKey(account));
     query.addBindValue(calendarId);
+    return readEvents(query);
+}
+
+QList<GoogleEvent> GoogleCache::events(const Account &account, const QString &calendarId,
+                                       const QDateTime &from, const QDateTime &to)
+{
+    // Instants are stored as UTC ISO strings, so they compare as text. All-day
+    // dates float, so they get a day of slack for any viewing zone; so do
+    // original times, which only need to be close enough to cancel an occurrence.
+    const QString start = from.toUTC().toString(Qt::ISODateWithMs);
+    const QString end = to.toUTC().toString(Qt::ISODateWithMs);
+    const QString looseStart = from.toUTC().addDays(-1).toString(Qt::ISODateWithMs);
+    const QString looseEnd = to.toUTC().addDays(1).toString(Qt::ISODateWithMs);
+    const QString startDate = from.date().addDays(-1).toString(Qt::ISODate);
+    const QString endDate = to.date().addDays(1).toString(Qt::ISODate);
+
+    QSqlQuery query(QSqlDatabase::database(m_connection));
+    query.prepare(QStringLiteral(
+        "SELECT * FROM events WHERE account = :account AND calendar_id = :calendar AND ("
+        "IFNULL(recurrence, '') <> '' "
+        "OR (start_time < :end AND end_time > :start) "
+        "OR (start_date < :end_date AND end_date > :start_date) "
+        "OR (original_time >= :loose_start AND original_time < :loose_end) "
+        "OR (original_date >= :start_date AND original_date < :end_date)) ORDER BY rowid"));
+    query.bindValue(QStringLiteral(":account"), accountKey(account));
+    query.bindValue(QStringLiteral(":calendar"), calendarId);
+    query.bindValue(QStringLiteral(":start"), start);
+    query.bindValue(QStringLiteral(":end"), end);
+    query.bindValue(QStringLiteral(":loose_start"), looseStart);
+    query.bindValue(QStringLiteral(":loose_end"), looseEnd);
+    query.bindValue(QStringLiteral(":start_date"), startDate);
+    query.bindValue(QStringLiteral(":end_date"), endDate);
+    return readEvents(query);
+}
+
+QList<GoogleEvent> GoogleCache::readEvents(QSqlQuery &query)
+{
+    QList<GoogleEvent> result;
+    if (!m_open)
+        return result;
     if (!query.exec()) {
         fail(query.lastError().text());
         return result;

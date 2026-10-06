@@ -6,6 +6,8 @@
 #include <QDateTime>
 #include <QString>
 
+class QSqlQuery;
+
 namespace callie {
 
 /// When something last synced, and why its latest attempt failed if it did.
@@ -65,12 +67,18 @@ public:
     /// Every stored event in a calendar, series and their exceptions included.
     [[nodiscard]] QList<GoogleEvent> events(const Account &account, const QString &calendarId);
 
+    /// The stored events that can produce an occurrence in [from, to): every
+    /// series, plus single events and exceptions near the range.
+    [[nodiscard]] QList<GoogleEvent> events(const Account &account, const QString &calendarId,
+                                            const QDateTime &from, const QDateTime &to);
+
     /// How many events the account has cached, across all its calendars.
     [[nodiscard]] int eventCount(const Account &account);
 
     bool removeAccount(const Account &account);
 
 private:
+    QList<GoogleEvent> readEvents(QSqlQuery &query);
     bool exec(const QString &statement);
     bool fail(const QString &message);
 

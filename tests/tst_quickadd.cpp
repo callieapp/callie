@@ -39,6 +39,7 @@ private Q_SLOTS:
     void nothingGivenStartsNextHour();
     void numbersInTheTitleStay();
     void tonightIsEvening();
+    void impossibleDatesStayInTheTitle();
 };
 
 void TestQuickAdd::titleDayRangeAndPlace()
@@ -162,6 +163,18 @@ void TestQuickAdd::tonightIsEvening()
     const EventDraft draft = parse(u"Dinner tonight"_s);
     QCOMPARE(draft.summary, u"Dinner"_s);
     QCOMPARE(draft.start, at(10, 7, 19));
+}
+
+void TestQuickAdd::impossibleDatesStayInTheTitle()
+{
+    for (const QString &text :
+         {u"Party feb 30"_s, u"Party 2026-13-45"_s, u"Party 31st of april"_s}) {
+        const EventDraft draft = parse(text);
+        QCOMPARE(draft.summary, text);
+        QVERIFY(!draft.allDay);
+    }
+    // February 29 exists only in leap years; 2027 is not one.
+    QCOMPARE(parse(u"Leap feb 29"_s).summary, u"Leap feb 29"_s);
 }
 
 QTEST_GUILESS_MAIN(TestQuickAdd)

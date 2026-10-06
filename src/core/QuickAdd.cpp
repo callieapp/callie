@@ -178,18 +178,34 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
         const int count = m.captured(1).toInt();
         date =
             today.addDays(m.captured(2).startsWith(u'w', Qt::CaseInsensitive) ? count * 7 : count);
-    } else if (const auto m = take(rest, pattern(uR"(\s(\d{4})-(\d{2})-(\d{2})(?=\s))"_s));
-               m.hasMatch()) {
-        date = QDate(m.captured(1).toInt(), m.captured(2).toInt(), m.captured(3).toInt());
-    } else if (const auto m = take(rest, pattern(uR"(\s(?:on\s+)?)"_s + kMonths +
-                                                 uR"(\s+(\d{1,2})(?:st|nd|rd|th)?(?=\s))"_s));
-               m.hasMatch()) {
-        date = upcoming(today, monthNumber(m.captured(1)), m.captured(2).toInt());
-    } else if (const auto m =
-                   take(rest, pattern(uR"(\s(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?)"_s +
-                                      kMonths + uR"((?=\s))"_s));
-               m.hasMatch()) {
-        date = upcoming(today, monthNumber(m.captured(2)), m.captured(1).toInt());
+    } else {
+        // Written dates. One that cannot exist, such as feb 30, stays in the
+        // title rather than moving the event to some other day.
+        const auto dated = [&](const QRegularExpression &re, auto read) {
+            const QRegularExpressionMatch m = re.match(rest);
+            if (!m.hasMatch())
+                return false;
+            const QDate found = read(m);
+            if (found.isValid()) {
+                date = found;
+                rest.replace(m.capturedStart(), m.capturedLength(), u" "_s);
+            }
+            return true;
+        };
+        dated(pattern(uR"(\s(\d{4})-(\d{2})-(\d{2})(?=\s))"_s),
+              [](const QRegularExpressionMatch &m) {
+                  return QDate(m.captured(1).toInt(), m.captured(2).toInt(), m.captured(3).toInt());
+              }) ||
+            dated(pattern(uR"(\s(?:on\s+)?)"_s + kMonths +
+                          uR"(\s+(\d{1,2})(?:st|nd|rd|th)?(?=\s))"_s),
+                  [&](const QRegularExpressionMatch &m) {
+                      return upcoming(today, monthNumber(m.captured(1)), m.captured(2).toInt());
+                  }) ||
+            dated(pattern(uR"(\s(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?)"_s + kMonths +
+                          uR"((?=\s))"_s),
+                  [&](const QRegularExpressionMatch &m) {
+                      return upcoming(today, monthNumber(m.captured(2)), m.captured(1).toInt());
+                  });
     }
 
     // Whatever follows "at" or "@" is the place.

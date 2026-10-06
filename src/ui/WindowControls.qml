@@ -43,7 +43,7 @@ Row {
             }
 
             background: Rectangle {
-                radius: Theme.radiusSm + 3
+                radius: Theme.radiusSm
                 color: !control.hovered ? "transparent" : control.modelData === "close" ? Theme.tint(
                                                                                               Theme.danger,
                                                                                               0.25) : Theme.surfaceAlt

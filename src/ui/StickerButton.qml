@@ -71,7 +71,7 @@ AbstractButton {
                 text: root.text
                 color: root.ink
                 font.family: Theme.fontFamily
-                font.pixelSize: Theme.textMd + 0.5
+                font.pixelSize: Theme.textMd
                 font.weight: Font.ExtraBold
             }
         }

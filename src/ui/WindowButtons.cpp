@@ -40,13 +40,52 @@ QStringList kdeSide(const QString &letters)
 
 } // namespace
 
-WindowButtons::WindowButtons(Layout layout, QObject *parent)
-    : QObject(parent), m_layout(std::move(layout))
-{}
+WindowButtons::WindowButtons(QObject *parent) : QObject(parent), m_layout{{}, kKnown}
+{
+    if (!qEnvironmentVariable("XDG_CURRENT_DESKTOP")
+             .contains(QLatin1String("KDE"), Qt::CaseInsensitive)) {
+        readGnome();
+        return;
+    }
+    const QString path =
+        QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kwinrc"));
+    QSettings kwin(path, QSettings::IniFormat);
+    kwin.beginGroup(QStringLiteral("org.kde.kdecoration2"));
+    // KDE's own defaults apply when the user never changed them.
+    apply(fromKde(kwin.value(QStringLiteral("ButtonsOnLeft"), QStringLiteral("MS")).toString(),
+                  kwin.value(QStringLiteral("ButtonsOnRight"), QStringLiteral("HIAX")).toString()));
+}
 
 WindowButtons *WindowButtons::create(QQmlEngine *engine, QJSEngine *)
 {
-    return new WindowButtons(detect(), engine);
+    return new WindowButtons(engine);
+}
+
+void WindowButtons::readGnome()
+{
+    auto *gsettings = new QProcess(this);
+    connect(gsettings, &QProcess::finished, this, [this, gsettings](int code) {
+        gsettings->deleteLater();
+        if (code != 0)
+            return;
+        const Layout layout = fromGnome(QString::fromUtf8(gsettings->readAllStandardOutput()));
+        if (!layout.left.isEmpty() || !layout.right.isEmpty())
+            apply(layout);
+    });
+    // Without gsettings the default layout stands.
+    connect(gsettings, &QProcess::errorOccurred, gsettings, &QObject::deleteLater);
+    gsettings->start(QStringLiteral("gsettings"),
+                     {QStringLiteral("get"), QStringLiteral("org.gnome.desktop.wm.preferences"),
+                      QStringLiteral("button-layout")});
+}
+
+void WindowButtons::apply(const Layout &layout)
+{
+    qCInfo(lcUi) << "window buttons:" << layout.left << layout.right;
+    if (layout.left == m_layout.left && layout.right == m_layout.right)
+        return;
+    m_layout = layout;
+    Q_EMIT changed();
 }
 
 WindowButtons::Layout WindowButtons::fromGnome(const QString &setting)
@@ -64,37 +103,6 @@ WindowButtons::Layout WindowButtons::fromGnome(const QString &setting)
 WindowButtons::Layout WindowButtons::fromKde(const QString &left, const QString &right)
 {
     return {kdeSide(left), kdeSide(right)};
-}
-
-WindowButtons::Layout WindowButtons::detect()
-{
-    const Layout fallback{{}, kKnown};
-    const QString desktop = qEnvironmentVariable("XDG_CURRENT_DESKTOP");
-
-    if (desktop.contains(QLatin1String("KDE"), Qt::CaseInsensitive)) {
-        const QString path =
-            QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kwinrc"));
-        QSettings kwin(path, QSettings::IniFormat);
-        kwin.beginGroup(QStringLiteral("org.kde.kdecoration2"));
-        // KDE's own defaults apply when the user never changed them.
-        const Layout layout = fromKde(
-            kwin.value(QStringLiteral("ButtonsOnLeft"), QStringLiteral("MS")).toString(),
-            kwin.value(QStringLiteral("ButtonsOnRight"), QStringLiteral("HIAX")).toString());
-        qCInfo(lcUi) << "window buttons from kwinrc:" << layout.left << layout.right;
-        return layout;
-    }
-
-    QProcess gsettings;
-    gsettings.start(QStringLiteral("gsettings"),
-                    {QStringLiteral("get"), QStringLiteral("org.gnome.desktop.wm.preferences"),
-                     QStringLiteral("button-layout")});
-    if (gsettings.waitForFinished(1000) && gsettings.exitCode() == 0) {
-        const Layout layout = fromGnome(QString::fromUtf8(gsettings.readAllStandardOutput()));
-        qCInfo(lcUi) << "window buttons from gsettings:" << layout.left << layout.right;
-        if (!layout.left.isEmpty() || !layout.right.isEmpty())
-            return layout;
-    }
-    return fallback;
 }
 
 } // namespace callie

@@ -6,34 +6,48 @@ name = "Callie"
 variant = "dark"
 
 [colors]
-background = "#180f17"
-surface = "#1f161e"
-surface-alt = "#271c26"
-hairline = "#2d232c"
-border = "#3d313c"
-text = "#eee7ed"
-text-muted = "#baacb8"
-text-faint = "#8a7b88"
-accent = "#e57db1"
-accent-text = "#180f17"
+background = "#1c1220"
+surface = "#261a2a"
+surface-alt = "#33243a"
+hairline = "#2c2031"
+border = "#3d2c42"
+text = "#f6eef5"
+text-muted = "#c9b7c6"
+text-faint = "#9a8797"
+accent = "#f08fb8"
+accent-text = "#2e0f20"
 danger = "#e66e6d"
+edge = "#140c17"
+accent-edge = "#a64b7a"
 
-# Calendar colors keep their hue; lightness and chroma come from here, in OKLCH.
+# Calendar colors keep their hue and become pastel stickers: a fill, dark ink on
+# it and a deeper edge under it. Lightness and chroma are OKLCH.
 [calendar]
 harmonize = true
-lightness = 0.72
-chroma = 0.12
+lightness = 0.86
+chroma = 0.073
+ink-lightness = 0.27
+ink-chroma = 0.06
+edge-lightness = 0.6
+edge-chroma = 0.095
 
 [shape]
-radius-small = 3
-radius = 4
-radius-large = 8
-radius-xlarge = 12
+radius-small = 6
+radius = 11
+radius-large = 14
+radius-xlarge = 16
+sticker-edge = 3
 
-# Empty means the system font, until Callie bundles its own.
+[shadow]
+color = "#000000"
+opacity = 0.5
+blur = 36
+offset = 14
+
+# Nunito and Fraunces ship with Callie. Empty means the system font.
 [type]
-family = ""
-display-family = ""
+family = "Nunito"
+display-family = "Fraunces"
 mono-family = ""
 
 # Durations in milliseconds. Bounce is the overshoot when something arrives;

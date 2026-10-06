@@ -294,6 +294,8 @@ ApplicationWindow {
                         summary: qsTr("%1 planning").arg(calendar.modelData.name)
                         location: qsTr("Studio")
                         conferenceUrl: ""
+                        calendarName: calendar.modelData.name
+                        description: ""
                         calendarColor: calendar.modelData.color
                         start: new Date(2026, 9, 5, 10, 0)
                         end: new Date(2026, 9, 5, 11, 0)

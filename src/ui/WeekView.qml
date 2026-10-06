@@ -276,6 +276,8 @@ Item {
                 model: root.model
 
                 EventBlock {
+                    id: block
+
                     required property string uid
                     required property int dayIndex
                     required property int startMinutes
@@ -293,6 +295,9 @@ Item {
                     y: startMinutes / 60 * Theme.hourHeight
                     height: Math.max(20, durationMinutes / 60 * Theme.hourHeight - 2
                                      - Theme.stickerEdge)
+
+                    onActivated: root.showDetails(block)
+                    onHoveredChanged: root.blockHovered(block, hovered)
 
                     onMoveRequested: (deltaMinutes, deltaDays) => {
                         // TODO(core): commit the move once the model can write.
@@ -363,5 +368,76 @@ Item {
                 }
             }
         }
+    }
+
+    // ---- Event tooltip and details -----------------------------------------
+    function whenText(block) {
+        return qsTr("%1 to %2").arg(Qt.formatTime(block.start, "h:mm")).arg(Qt.formatTime(block.end,
+                                                                                          "h:mm"))
+    }
+
+    // Beside the event, on whichever side has room, kept inside the view.
+    function placeBeside(block, popup) {
+        const gap = Theme.space3
+        const right = block.mapToItem(root, block.width + gap, 0)
+        const left = block.mapToItem(root, -gap - popup.width, 0)
+        popup.x = right.x + popup.width <= root.width ? right.x : Math.max(0, left.x)
+        popup.y = Math.min(Math.max(0, right.y), root.height - popup.height - gap)
+    }
+
+    property EventBlock hoveredBlock: null
+
+    function blockHovered(block, hovered) {
+        if (hovered) {
+            hoveredBlock = block
+            tipDelay.restart()
+        } else if (hoveredBlock === block) {
+            hoveredBlock = null
+            tipDelay.stop()
+            tip.visible = false
+        }
+    }
+
+    function showDetails(block) {
+        tipDelay.stop()
+        tip.visible = false
+        details.summary = block.summary
+        details.when = qsTr("%1, %2").arg(Qt.formatDate(block.start, "dddd, MMMM d")).arg(whenText(
+                                                                                              block))
+        details.location = block.location
+        details.conferenceUrl = block.conferenceUrl
+        details.calendarName = block.calendarName
+        details.calendarColor = block.calendarColor
+        details.description = block.description
+        details.open()
+        // Placed once its height reflects the new content.
+        placeBeside(block, details)
+    }
+
+    Timer {
+        id: tipDelay
+        interval: 450
+        onTriggered: {
+            const block = root.hoveredBlock
+            if (!block || details.opened)
+                return
+            tip.summary = block.summary
+            tip.when = block.calendarName ? qsTr("%1, %2").arg(root.whenText(block)).arg(
+                                                block.calendarName) : root.whenText(block)
+            tip.timing = root.model.timing(block.start, block.end, Clock.now)
+            tip.hasCall = block.conferenceUrl.toString() !== ""
+            root.placeBeside(block, tip)
+            tip.visible = true
+        }
+    }
+
+    EventTip {
+        id: tip
+        visible: false
+        z: 200
+    }
+
+    EventDetails {
+        id: details
     }
 }

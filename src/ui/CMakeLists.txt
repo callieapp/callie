@@ -26,6 +26,9 @@ qt_add_qml_module(callieui
         WeekView.qml
         Sidebar.qml
         EventBlock.qml
+        EventTip.qml
+        EventDetails.qml
+        SoftShadow.qml
         PillButton.qml
         StickerButton.qml
         Glyph.qml

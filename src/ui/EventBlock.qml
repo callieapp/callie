@@ -4,14 +4,16 @@ import Callie.Ui
 import QtQuick
 
 /// One timed event in the week/day grid, drawn as a sticker in its calendar's
-/// colors. Drag to move; the block snaps to Theme.snapMinutes and reports the
-/// delta rather than mutating state itself.
+/// colors. Click for details; drag to move, which snaps to Theme.snapMinutes and
+/// reports the delta rather than mutating state itself.
 Rectangle {
     id: root
 
     required property string summary
     required property string location
     required property url conferenceUrl
+    required property string calendarName
+    required property string description
     /// The calendar's own color; the theme turns it into fill, ink and edge.
     required property color calendarColor
     required property date start
@@ -21,6 +23,7 @@ Rectangle {
     signal activated
 
     readonly property bool compact: height < 34
+    readonly property bool hovered: hover.hovered
     readonly property color ink: Theme.calendarInk(calendarColor, Theme.calendar)
 
     radius: Theme.radiusMd
@@ -92,39 +95,12 @@ Rectangle {
         }
     }
 
-    // Join affordance for events that carry a conference link
-    Rectangle {
-        visible: root.conferenceUrl.toString() !== "" && !root.compact && hover.hovered
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-            margins: Theme.space2
-        }
-        width: joinLabel.implicitWidth + Theme.space4
-        height: 20
-        radius: Theme.radiusSm
-        color: root.ink
-
-        Text {
-            id: joinLabel
-            anchors.centerIn: parent
-            text: qsTr("Join")
-            color: root.color
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textXs
-            font.weight: Font.DemiBold
-        }
-
-        TapHandler {
-            onTapped: Qt.openUrlExternally(root.conferenceUrl)
-        }
-    }
-
     HoverHandler {
         id: hover
+        cursorShape: Qt.PointingHandCursor
     }
     TapHandler {
-        onDoubleTapped: root.activated()
+        onTapped: root.activated()
     }
 
     DragHandler {

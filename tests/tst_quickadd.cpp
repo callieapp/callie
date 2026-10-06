@@ -194,6 +194,14 @@ void TestQuickAdd::versionNumbersStayInTheTitle()
     const EventDraft draft = parse(u"Ship 4.15 friday 3pm"_s);
     QCOMPARE(draft.summary, u"Ship 4.15"_s);
     QCOMPARE(draft.start, at(10, 9, 15));
+
+    // A span of years is not a time range.
+    const EventDraft years = parse(u"Budget 2025-26 review friday 3pm"_s);
+    QCOMPARE(years.summary, u"Budget 2025-26 review"_s);
+    QCOMPARE(years.start, at(10, 9, 15));
+
+    // Nor is a time that cannot exist, even written with a dot.
+    QCOMPARE(parse(u"Party at 9.99pm"_s).summary, u"Party at 9.99pm"_s);
 }
 
 QTEST_GUILESS_MAIN(TestQuickAdd)

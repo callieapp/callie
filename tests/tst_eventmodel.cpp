@@ -123,6 +123,7 @@ private Q_SLOTS:
     void daysOffFollowTheLocale();
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
+    void eventsOnListsADay();
     void timingFollowsZoneAndClock();
     void callServiceTrustsOnlyTheHost();
     void slowLoadKeepsRowsForTheSameRange();
@@ -537,6 +538,30 @@ void TestEventModel::timingFollowsZoneAndClock()
 
     model.setTimeZoneId({});
     QVERIFY(model.timeZoneId().isEmpty());
+}
+
+void TestEventModel::eventsOnListsADay()
+{
+    Event overnight = timed("overnight", kMonday, 22, 0, 4 * 60);
+    auto [model, source] =
+        modelFor({timed("late", kMonday, 15, 0, 60), timed("early", kMonday, 9, 0, 60),
+                  allDay("holiday", kMonday, 2), overnight,
+                  timed("tuesday", kMonday.addDays(1), 10, 0, 30)});
+
+    const auto summaries = [&](int day) {
+        QStringList list;
+        for (const QVariant &event : model->eventsOn(day))
+            list << event.toMap().value(QStringLiteral("summary")).toString();
+        return list;
+    };
+    QCOMPARE(summaries(0), (QStringList{"holiday", "early", "late", "overnight"}));
+    // The holiday spans two days and the overnight event runs past midnight.
+    QCOMPARE(summaries(1), (QStringList{"holiday", "overnight", "tuesday"}));
+    QVERIFY(summaries(2).isEmpty());
+
+    const QVariantMap first = model->eventsOn(0).first().toMap();
+    QVERIFY(first.value(QStringLiteral("allDay")).toBool());
+    QVERIFY(first.contains(QStringLiteral("calendarColor")));
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

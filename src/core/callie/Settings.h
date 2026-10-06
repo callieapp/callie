@@ -26,6 +26,8 @@ class Settings : public QObject
     /// A built-in theme id or a theme file path; empty is the default theme.
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(QStringList collapsedAccounts READ collapsedAccounts NOTIFY collapsedAccountsChanged)
+    /// The calendar view last shown: "day", "week", "month" or "agenda".
+    Q_PROPERTY(QString view READ view WRITE setView NOTIFY viewChanged)
 
 public:
     enum class TimeFormat { Locale, TwentyFourHour, TwelveHour };
@@ -69,6 +71,9 @@ public:
     [[nodiscard]] QString theme() const { return m_theme; }
     void setTheme(const QString &idOrPath);
 
+    [[nodiscard]] QString view() const { return m_view; }
+    void setView(const QString &view);
+
     /// Every IANA zone id, for the zone picker.
     Q_INVOKABLE static QStringList availableTimeZones();
 
@@ -85,6 +90,7 @@ Q_SIGNALS:
     void timesChanged();
     void themeChanged();
     void collapsedAccountsChanged();
+    void viewChanged();
 
 private:
     void load();
@@ -100,6 +106,7 @@ private:
     Times *m_times = nullptr;
     QString m_theme;
     QStringList m_collapsedAccounts;
+    QString m_view;
 };
 
 } // namespace callie

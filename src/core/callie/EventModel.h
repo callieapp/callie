@@ -31,6 +31,8 @@ class EventModel : public QAbstractListModel
     Q_PROPERTY(bool use24Hour MEMBER m_use24Hour NOTIFY use24HourChanged)
     /// Rows the all-day strip needs so that no two all-day events overlap.
     Q_PROPERTY(int allDayRows READ allDayRows NOTIFY allDayRowsChanged)
+    /// Goes up whenever the rows are replaced.
+    Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
     /// The source's shown calendars as {id, name, color, account} maps, for the
     /// sidebar. Hidden calendars stay listed so they can be shown again.
     Q_PROPERTY(QVariantList calendars READ calendars NOTIFY calendarsChanged)
@@ -80,6 +82,7 @@ public:
     [[nodiscard]] bool showDeclined() const { return m_showDeclined; }
     void setShowDeclined(bool show);
 
+    [[nodiscard]] int revision() const { return m_revision; }
     [[nodiscard]] int allDayRows() const { return m_allDayRows; }
 
     /// Whether the user's locale treats `date` as a day off, for shading it.
@@ -94,6 +97,13 @@ public:
     /// http(s) link, or empty for a link Callie should not open.
     Q_INVOKABLE QString callService(const QUrl &url) const;
 
+    /// The events touching day `dayIndex` of the range, all-day ones first and
+    /// the rest by start, each as a map of this model's role names. For views
+    /// that list a day's events rather than place them on a grid. Call it as
+    /// `model.eventsOn(day, model.revision)`: QML cannot see what a C++ call
+    /// reads, so passing the revision is what makes the binding update.
+    Q_INVOKABLE QVariantList eventsOn(int dayIndex, int revision = 0) const;
+
     [[nodiscard]] QVariantList calendars() const { return m_calendars; }
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;
@@ -105,6 +115,7 @@ Q_SIGNALS:
     void rangeChanged();
     void timeZoneChanged();
     void filterChanged();
+    void revisionChanged();
     void use24HourChanged();
     void allDayRowsChanged();
     void calendarsChanged();
@@ -134,6 +145,7 @@ private:
     /// Counts reloads, so a slow load that a newer one overtook is dropped.
     quint64 m_generation = 0;
     int m_allDayRows = 0;
+    int m_revision = 0;
     QVariantList m_calendars;
     QHash<QString, QString> m_calendarNames;
 };

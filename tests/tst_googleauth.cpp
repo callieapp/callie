@@ -2,6 +2,7 @@
 
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleClientConfig.h"
+#include "callie/ThemeLoader.h"
 
 #include <QCryptographicHash>
 #include <QNetworkAccessManager>
@@ -12,6 +13,7 @@
 #include <QUrlQuery>
 
 using namespace callie;
+using namespace Qt::StringLiterals;
 
 namespace {
 
@@ -38,6 +40,7 @@ private Q_SLOTS:
     void environmentSecretAloneIsIgnored();
     void authorizationUrlRequestsOfflinePkceAccess();
     void callbackListensOnLoopbackOnly();
+    void callbackPageIsThemed();
     void codeExchangeSendsVerifierMatchingChallenge();
     void mismatchedStateIsNotExchanged();
     void missingRefreshTokenFails();
@@ -125,6 +128,28 @@ void TestGoogleAuth::callbackListensOnLoopbackOnly()
     remote.connectToHost(external, quint16(callback.port()));
     QVERIFY2(!remote.waitForConnected(2000),
              "callback port is reachable off the loopback interface");
+}
+
+void TestGoogleAuth::callbackPageIsThemed()
+{
+    FakeHttpServer tokenServer;
+    GoogleAuth auth(kClient);
+    const QUrl authorizeUrl = GoogleAuthDriver::startAuthorization(auth, tokenServer);
+    QVERIFY(authorizeUrl.isValid());
+
+    QUrl callback = auth.callbackUrl();
+    callback.setQuery(u"code=c&state="_s +
+                      QUrlQuery(authorizeUrl).queryItemValue(u"state"_s, QUrl::FullyEncoded));
+    QNetworkAccessManager network;
+    std::unique_ptr<QNetworkReply> reply(network.get(QNetworkRequest(callback)));
+    QTRY_VERIFY_WITH_TIMEOUT(reply->isFinished(), 5000);
+    const QString page = QString::fromUtf8(reply->readAll());
+
+    // Markup must reach the browser as markup, in the default theme's colors.
+    QVERIFY2(page.contains(u"<style>"_s), qPrintable(page.left(200)));
+    QVERIFY(page.contains(ThemeLoader::defaultTheme().colors.background.name()));
+    QVERIFY(page.contains(u"<svg"_s));
+    QVERIFY(page.contains(u"All done here"_s));
 }
 
 void TestGoogleAuth::codeExchangeSendsVerifierMatchingChallenge()

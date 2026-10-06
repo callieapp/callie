@@ -93,6 +93,8 @@ add_library(calliecore STATIC
     ThemeLoader.cpp
     callie/Settings.h
     Settings.cpp
+    callie/SignInPage.h
+    SignInPage.cpp
 )
 
 # Built-in themes are compiled in, so the app works uninstalled and a broken
@@ -100,7 +102,9 @@ add_library(calliecore STATIC
 qt_add_resources(calliecore "callie_themes"
     PREFIX "/callie"
     BASE "${PROJECT_SOURCE_DIR}"
-    FILES "${PROJECT_SOURCE_DIR}/themes/callie.toml"
+    FILES
+        "${PROJECT_SOURCE_DIR}/themes/callie.toml"
+        "${PROJECT_SOURCE_DIR}/assets/logo.svg"
 )
 
 # The QML module in src/ui exposes EventModel as a foreign type. Its registrar

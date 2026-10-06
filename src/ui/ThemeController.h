@@ -41,11 +41,19 @@ class ThemeController : public QObject
     Q_PROPERTY(QColor accent READ accent NOTIFY changed)
     Q_PROPERTY(QColor accentText READ accentText NOTIFY changed)
     Q_PROPERTY(QColor danger READ danger NOTIFY changed)
+    Q_PROPERTY(QColor edge READ edge NOTIFY changed)
+    Q_PROPERTY(QColor accentEdge READ accentEdge NOTIFY changed)
 
     Q_PROPERTY(int radiusSm READ radiusSm NOTIFY changed)
     Q_PROPERTY(int radiusMd READ radiusMd NOTIFY changed)
     Q_PROPERTY(int radiusLg READ radiusLg NOTIFY changed)
     Q_PROPERTY(int radiusXl READ radiusXl NOTIFY changed)
+    Q_PROPERTY(int stickerEdge READ stickerEdge NOTIFY changed)
+
+    /// The shadow under menus, popovers and tooltips; `shadowColor` carries its opacity.
+    Q_PROPERTY(QColor shadowColor READ shadowColor NOTIFY changed)
+    Q_PROPERTY(int shadowBlur READ shadowBlur NOTIFY changed)
+    Q_PROPERTY(int shadowOffset READ shadowOffset NOTIFY changed)
 
     Q_PROPERTY(QString fontFamily READ fontFamily NOTIFY changed)
     Q_PROPERTY(QString displayFontFamily READ displayFontFamily NOTIFY changed)
@@ -96,6 +104,9 @@ public:
     /// `Theme.calendarColor(color, Theme.calendar)`: QML cannot see what a C++
     /// call reads, so passing the settings is what makes the binding update.
     Q_INVOKABLE QColor calendarColor(const QColor &source, const QVariantMap &calendar) const;
+    /// The ink drawn on calendarColor() and the edge under it, called the same way.
+    Q_INVOKABLE QColor calendarInk(const QColor &source, const QVariantMap &calendar) const;
+    Q_INVOKABLE QColor calendarEdge(const QColor &source, const QVariantMap &calendar) const;
     Q_INVOKABLE double contrast(const QColor &a, const QColor &b) const;
 
     QVariantList swatches() const;
@@ -116,11 +127,18 @@ public:
     QColor accent() const { return m_spec.colors.accent; }
     QColor accentText() const { return m_spec.colors.accentText; }
     QColor danger() const { return m_spec.colors.danger; }
+    QColor edge() const { return m_spec.colors.edge; }
+    QColor accentEdge() const { return m_spec.colors.accentEdge; }
 
     int radiusSm() const { return m_spec.shape.radiusSmall; }
     int radiusMd() const { return m_spec.shape.radius; }
     int radiusLg() const { return m_spec.shape.radiusLarge; }
     int radiusXl() const { return m_spec.shape.radiusXLarge; }
+    int stickerEdge() const { return m_spec.shape.stickerEdge; }
+
+    QColor shadowColor() const;
+    int shadowBlur() const { return m_spec.shadow.blur; }
+    int shadowOffset() const { return m_spec.shadow.offset; }
 
     QString fontFamily() const { return m_spec.type.family; }
     QString displayFontFamily() const { return m_spec.type.displayFamily; }

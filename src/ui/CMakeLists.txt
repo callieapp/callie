@@ -29,6 +29,15 @@ qt_add_qml_module(callieui
         Tip.qml
 )
 
+# Both are under the SIL Open Font License; the license files sit beside them.
+qt_add_resources(callieui "callie_fonts"
+    PREFIX "/callie/fonts"
+    BASE "${PROJECT_SOURCE_DIR}/data/fonts"
+    FILES
+        "${PROJECT_SOURCE_DIR}/data/fonts/Nunito-Variable.ttf"
+        "${PROJECT_SOURCE_DIR}/data/fonts/Fraunces-Variable.ttf"
+)
+
 target_include_directories(callieui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(callieui

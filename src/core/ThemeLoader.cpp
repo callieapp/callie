@@ -9,6 +9,7 @@
 
 #include <toml++/toml.hpp>
 
+#include <algorithm>
 #include <functional>
 
 namespace callie {
@@ -122,10 +123,20 @@ const QHash<QString, Setter> &setters()
         {QStringLiteral("colors.accent"), colorSetter(CALLIE_FIELD(colors.accent))},
         {QStringLiteral("colors.accent-text"), colorSetter(CALLIE_FIELD(colors.accentText))},
         {QStringLiteral("colors.danger"), colorSetter(CALLIE_FIELD(colors.danger))},
+        {QStringLiteral("colors.edge"), colorSetter(CALLIE_FIELD(colors.edge))},
+        {QStringLiteral("colors.accent-edge"), colorSetter(CALLIE_FIELD(colors.accentEdge))},
         {QStringLiteral("calendar.harmonize"), booleanSetter(CALLIE_FIELD(calendar.harmonize))},
         {QStringLiteral("calendar.lightness"),
          numberSetter(CALLIE_FIELD(calendar.lightness), 0, 1)},
         {QStringLiteral("calendar.chroma"), numberSetter(CALLIE_FIELD(calendar.chroma), 0, 0.4)},
+        {QStringLiteral("calendar.ink-lightness"),
+         numberSetter(CALLIE_FIELD(calendar.inkLightness), 0, 1)},
+        {QStringLiteral("calendar.ink-chroma"),
+         numberSetter(CALLIE_FIELD(calendar.inkChroma), 0, 0.4)},
+        {QStringLiteral("calendar.edge-lightness"),
+         numberSetter(CALLIE_FIELD(calendar.edgeLightness), 0, 1)},
+        {QStringLiteral("calendar.edge-chroma"),
+         numberSetter(CALLIE_FIELD(calendar.edgeChroma), 0, 0.4)},
         {QStringLiteral("shape.radius-small"),
          integerSetter(CALLIE_FIELD(shape.radiusSmall), 0, 64)},
         {QStringLiteral("shape.radius"), integerSetter(CALLIE_FIELD(shape.radius), 0, 64)},
@@ -133,6 +144,12 @@ const QHash<QString, Setter> &setters()
          integerSetter(CALLIE_FIELD(shape.radiusLarge), 0, 64)},
         {QStringLiteral("shape.radius-xlarge"),
          integerSetter(CALLIE_FIELD(shape.radiusXLarge), 0, 64)},
+        {QStringLiteral("shape.sticker-edge"),
+         integerSetter(CALLIE_FIELD(shape.stickerEdge), 0, 8)},
+        {QStringLiteral("shadow.color"), colorSetter(CALLIE_FIELD(shadow.color))},
+        {QStringLiteral("shadow.opacity"), numberSetter(CALLIE_FIELD(shadow.opacity), 0, 1)},
+        {QStringLiteral("shadow.blur"), integerSetter(CALLIE_FIELD(shadow.blur), 0, 128)},
+        {QStringLiteral("shadow.offset"), integerSetter(CALLIE_FIELD(shadow.offset), 0, 64)},
         {QStringLiteral("type.family"), stringSetter(CALLIE_FIELD(type.family))},
         {QStringLiteral("type.display-family"), stringSetter(CALLIE_FIELD(type.displayFamily))},
         {QStringLiteral("type.mono-family"), stringSetter(CALLIE_FIELD(type.monoFamily))},
@@ -156,7 +173,8 @@ void requireColors(const ThemeSpec &theme, QStringList &errors)
         {"border", theme.colors.border},          {"text", theme.colors.text},
         {"text-muted", theme.colors.textMuted},   {"text-faint", theme.colors.textFaint},
         {"accent", theme.colors.accent},          {"accent-text", theme.colors.accentText},
-        {"danger", theme.colors.danger},
+        {"danger", theme.colors.danger},          {"edge", theme.colors.edge},
+        {"accent-edge", theme.colors.accentEdge},
     };
     for (const auto &[name, color] : colors) {
         if (!color.isValid())
@@ -284,6 +302,20 @@ QStringList ThemeLoader::contrastWarnings(const ThemeSpec &theme)
     };
 
     QStringList warnings;
+    // Event titles sit in the ink color on the sticker fill, at every hue.
+    if (theme.calendar.harmonize) {
+        double worst = 21;
+        for (int hue = 0; hue < 360; hue += 15) {
+            const QColor fill =
+                color::fromOklch({theme.calendar.lightness, theme.calendar.chroma, double(hue)});
+            const QColor ink = color::fromOklch(
+                {theme.calendar.inkLightness, theme.calendar.inkChroma, double(hue)});
+            worst = std::min(worst, color::contrastRatio(ink, fill));
+        }
+        if (worst < 4.5)
+            warnings << QStringLiteral("calendar ink on its fill is %1:1 at some hues, below 4.5:1")
+                            .arg(worst, 0, 'f', 1);
+    }
     for (const Pair &pair : pairs) {
         const double ratio = color::contrastRatio(pair.fg, pair.bg);
         if (ratio < pair.minimum)

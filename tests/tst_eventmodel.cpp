@@ -81,6 +81,7 @@ private Q_SLOTS:
     void allDayEventIsClippedToRange();
     void allDayEndOnDayWithoutMidnight();
     void calendarsListShownOnly();
+    void daysOffFollowTheLocale();
 
 private:
     /// Builds a model over `events` starting at kMonday. Rows keep source order.
@@ -297,6 +298,24 @@ void TestEventModel::calendarsListShownOnly()
     const QVariantMap shown = model.calendars().first().toMap();
     QCOMPARE(shown.value("name").toString(), QStringLiteral("Shown"));
     QCOMPARE(shown.value("color").value<QColor>(), QColor("#ff0000"));
+}
+
+void TestEventModel::daysOffFollowTheLocale()
+{
+    EventModel model;
+    const QLocale previous;
+
+    QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
+    QVERIFY(model.isDayOff(QDate(2026, 3, 21)));  // Saturday
+    QVERIFY(model.isDayOff(QDate(2026, 3, 22)));  // Sunday
+    QVERIFY(!model.isDayOff(QDate(2026, 3, 20))); // Friday
+
+    // Where the weekend is Friday and Saturday.
+    QLocale::setDefault(QLocale(QLocale::Arabic, QLocale::SaudiArabia));
+    QVERIFY(model.isDayOff(QDate(2026, 3, 20)));
+    QVERIFY(!model.isDayOff(QDate(2026, 3, 22)));
+
+    QLocale::setDefault(previous);
 }
 
 QTEST_GUILESS_MAIN(TestEventModel)

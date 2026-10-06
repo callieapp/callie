@@ -1,5 +1,7 @@
 #include "callie/EventModel.h"
 
+#include <QLocale>
+
 #include <algorithm>
 
 namespace callie {
@@ -160,6 +162,11 @@ int EventModel::assignAllDayRows(QList<Event> &events) const
         e->laneCount = 1;
     }
     return int(rowEnds.size());
+}
+
+bool EventModel::isDayOff(QDate date) const
+{
+    return !QLocale().weekdays().contains(Qt::DayOfWeek(date.dayOfWeek()));
 }
 
 int EventModel::rowCount(const QModelIndex &parent) const

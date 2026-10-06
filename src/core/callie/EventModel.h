@@ -57,6 +57,9 @@ public:
     void setDayCount(int days);
 
     [[nodiscard]] int allDayRows() const { return m_allDayRows; }
+
+    /// Whether the user's locale treats `date` as a day off, for shading it.
+    Q_INVOKABLE bool isDayOff(QDate date) const;
     [[nodiscard]] QVariantList calendars() const { return m_calendars; }
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;

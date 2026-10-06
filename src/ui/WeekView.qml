@@ -68,7 +68,7 @@ Item {
                             font.letterSpacing: 0.8
                         }
 
-                        // Today's date is a pink sticker; the rest are plain.
+                        // Today's date is an accent sticker; the rest are plain.
                         Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 33
@@ -81,12 +81,12 @@ Item {
                                     topMargin: Theme.stickerEdge
                                     bottomMargin: -Theme.stickerEdge
                                 }
-                                radius: Theme.radiusMd + 1
+                                radius: Theme.radiusMd
                                 color: Theme.accentEdge
                             }
                             Rectangle {
                                 anchors.fill: parent
-                                radius: Theme.radiusMd + 1
+                                radius: Theme.radiusMd
                                 color: dayHeader.today ? Theme.accent : "transparent"
                             }
                             Text {
@@ -94,7 +94,7 @@ Item {
                                 text: dayHeader.date.getDate()
                                 color: dayHeader.today ? Theme.accentText : Theme.text
                                 font.family: Theme.displayFontFamily
-                                font.pixelSize: 18
+                                font.pixelSize: Theme.textDate
                                 font.weight: Font.Bold
                                 font.features: {
                                     "tnum": 1
@@ -244,8 +244,7 @@ Item {
                 }
             }
 
-            // Day columns: a hairline on the left, a pink wash on today and a
-            // darker one on the weekend.
+            // Day columns: a hairline on the left, a wash on today and on days off.
             Repeater {
                 model: root.dayCount
 
@@ -253,14 +252,13 @@ Item {
                     id: column
                     required property int index
                     readonly property date date: root.dateForColumn(index)
-                    readonly property bool weekend: date.getDay() === 0 || date.getDay() === 6
+                    readonly property bool dayOff: root.model.isDayOff(date)
 
                     x: Theme.gutterWidth + index * root.dayWidth
                     width: root.dayWidth
                     height: grid.contentHeight
-                    color: root.isToday(date) ? Theme.tint(Theme.accent, 0.04) : weekend ? Theme.tint(
-                                                                                               Theme.edge,
-                                                                                               0.35) : "transparent"
+                    color: root.isToday(date) ? Theme.todayWash : dayOff ? Theme.dayOffWash :
+                                                                           "transparent"
 
                     Rectangle {
                         width: 1
@@ -300,7 +298,7 @@ Item {
                 }
             }
 
-            // Now indicator: a pink line across today, with the time in the gutter.
+            // Now indicator: an accent line across today, with the time in the gutter.
             Item {
                 id: now
                 readonly property date current: Clock.now

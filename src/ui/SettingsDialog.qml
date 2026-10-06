@@ -98,6 +98,10 @@ Popup {
                         "label": qsTr("General")
                     },
                     {
+                        "id": "reminders",
+                        "label": qsTr("Reminders")
+                    },
+                    {
                         "id": "appearance",
                         "label": qsTr("Appearance")
                     },
@@ -277,6 +281,92 @@ Popup {
                 text: qsTr("Give today more room")
                 checked: Settings.widenToday
                 onToggled: Settings.widenToday = checked
+            }
+        }
+
+        Section {
+            title: qsTr("Reminders")
+            visible: root.tab === "reminders"
+
+            Toggle {
+                width: parent.width
+                text: qsTr("Remind me before events")
+                checked: Settings.notify
+                onToggled: Settings.notify = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr("For events without reminders of their own:")
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textMd
+                font.weight: Font.DemiBold
+                opacity: Settings.notify ? 1 : Theme.fadedOpacity
+            }
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+                enabled: Settings.notify
+                opacity: enabled ? 1 : Theme.fadedOpacity
+                Accessible.role: Accessible.RadioButton
+
+                Repeater {
+                    model: [
+                        {
+                            "label": qsTr("None"),
+                            "minutes": -1
+                        },
+                        {
+                            "label": qsTr("At start"),
+                            "minutes": 0
+                        },
+                        {
+                            "label": qsTr("5 min"),
+                            "minutes": 5
+                        },
+                        {
+                            "label": qsTr("10 min"),
+                            "minutes": 10
+                        },
+                        {
+                            "label": qsTr("30 min"),
+                            "minutes": 30
+                        },
+                        {
+                            "label": qsTr("1 hour"),
+                            "minutes": 60
+                        }
+                    ]
+
+                    PillButton {
+                        required property var modelData
+                        label: modelData.label
+                        selected: Settings.reminderMinutes === modelData.minutes
+                        onClicked: Settings.reminderMinutes = modelData.minutes
+                    }
+                }
+            }
+        }
+
+        Section {
+            title: qsTr("When the window closes")
+            visible: root.tab === "reminders"
+
+            Toggle {
+                width: parent.width
+                text: qsTr("Keep running so reminders still come")
+                checked: Settings.keepRunning
+                onToggled: Settings.keepRunning = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr("Quit Callie from the ? menu, or with Ctrl+Q.")
+                visible: Settings.keepRunning
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
             }
         }
 

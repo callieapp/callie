@@ -17,5 +17,10 @@ ToolTip {
         color: Theme.surfaceAlt
         border.color: Theme.border
         radius: Theme.radiusMd
+
+        SoftShadow {
+            anchors.fill: parent
+            radius: parent.radius
+        }
     }
 }

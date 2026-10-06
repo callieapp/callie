@@ -22,6 +22,7 @@ private Q_SLOTS:
     void calendarsHideAndShow();
     void resetForgetsEverything();
     void timesAreReplacedOnChange();
+    void gridTimesAreWallClock();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -173,6 +174,17 @@ void TestSettings::timesAreReplacedOnChange()
     QCOMPARE(times.size(), 1);
     QVERIFY(settings.times() != before);
     QCOMPARE(settings.times()->zone(), QTimeZone("Asia/Tokyo"));
+}
+
+void TestSettings::gridTimesAreWallClock()
+{
+    // Berlin skips 02:00 to 03:00 on 29 March 2026: 13:00 is still 13:00.
+    const Times times(QTimeZone("Europe/Berlin"), true);
+    const QDateTime day = QDate(2026, 3, 29).startOfDay();
+    QCOMPARE(times.at(day, 13 * 60),
+             QDateTime(QDate(2026, 3, 29), QTime(13, 0), QTimeZone("Europe/Berlin")));
+    QCOMPARE(times.at(day, 24 * 60),
+             QDateTime(QDate(2026, 3, 30), QTime(0, 0), QTimeZone("Europe/Berlin")));
 }
 
 QTEST_GUILESS_MAIN(TestSettings)

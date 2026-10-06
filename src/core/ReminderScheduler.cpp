@@ -1,7 +1,5 @@
 #include "callie/ReminderScheduler.h"
 
-#include <QTimeZone>
-
 #include <algorithm>
 
 namespace callie {
@@ -51,6 +49,14 @@ void ReminderScheduler::setNow(Now now)
 void ReminderScheduler::setDefaultMinutes(int minutes)
 {
     m_defaultMinutes = minutes;
+    check();
+}
+
+void ReminderScheduler::setTimeZone(const QTimeZone &zone)
+{
+    if (m_zone == zone)
+        return;
+    m_zone = zone;
     check();
 }
 
@@ -117,7 +123,7 @@ void ReminderScheduler::check()
         // Events that already ended are left out: a reminder for one is no use,
         // even if it fell due while the computer slept.
         const QList<Event> events =
-            m_source->eventsBetween(now, now.addDays(kLookAheadDays), QTimeZone::UTC);
+            m_source->eventsBetween(now, now.addDays(kLookAheadDays), m_zone);
         for (const Event &event : events) {
             if (event.declined || m_hidden.contains(event.calendarId))
                 continue;

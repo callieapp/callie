@@ -1,6 +1,7 @@
 #pragma once
 
 #include "callie/Account.h"
+#include "callie/GoogleAuth.h"
 #include "callie/GoogleClientConfig.h"
 
 #include <QObject>
@@ -14,7 +15,6 @@ namespace callie {
 
 class AccountManager;
 class AccountStore;
-class GoogleAuth;
 class GoogleCache;
 class GoogleCalendarApi;
 class GoogleSource;

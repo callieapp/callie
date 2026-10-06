@@ -39,6 +39,10 @@ syncs now. `--sample` shows a made-up week instead, and `--screenshot file.png` 
 once it has rendered, then exits. `--now 2026-03-18T10:40` stops the clock at that time and
 `--size 1280x840` sets the window size, so a screenshot comes out the same every time.
 
+Connect Google accounts in Settings, under Accounts: Callie opens your browser to sign in, and the
+account's calendars appear once you have. The same tab shows how each account's sync is going and
+removes an account. `callie accounts add google` does the same from a terminal.
+
 Pick a theme in Settings, under Appearance. Customize colors copies the theme into
 `$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
 can be imported and exported there too, and Callie remembers the choice.

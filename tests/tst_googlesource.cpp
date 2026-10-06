@@ -516,12 +516,20 @@ void TestGoogleSource::accountsCanChangeWhileRunning()
     QVERIFY(source.calendars().isEmpty());
     QSignalSpy changed(&source, &CalendarSource::changed);
 
+    QVERIFY(m_cache->recordAccountSync(kAccount, u"keyring is locked"_s));
     source.setAccounts({kAccount});
 
     QCOMPARE(source.calendars().size(), 2);
     QVERIFY(!changed.isEmpty());
+    QVERIFY(source.lastError().contains(u"keyring is locked"_s));
+
+    // A removed account takes its events and its error with it.
+    changed.clear();
     source.setAccounts({});
     QVERIFY(source.calendars().isEmpty());
+    QVERIFY(source.lastError().isEmpty());
+    QVERIFY(!source.lastSynced().isValid());
+    QCOMPARE(changed.size(), 1);
 }
 
 void TestGoogleSource::statusStartsFromTheCache()

@@ -52,6 +52,8 @@ public:
 
 private:
     void flushChanges();
+    /// The last sync time and errors the cache recorded for the accounts.
+    void loadStatus();
     /// The account a CalendarInfo::id belongs to, and the calendar's own id.
     [[nodiscard]] std::optional<std::pair<Account, QString>>
     splitCalendarId(const QString &id) const;

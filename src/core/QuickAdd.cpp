@@ -102,6 +102,26 @@ QDate upcoming(const QDate &today, int month, int day)
     return date;
 }
 
+/// Rewrites each match of `re` as h:mm. The groups are the text up to the
+/// hour, the minutes, and what follows; a time that cannot exist, such as
+/// 9.99, stays as written, so it ends up in the title.
+void writeAsClockTime(QString &text, const QRegularExpression &re)
+{
+    QList<QRegularExpressionMatch> matches;
+    for (auto it = re.globalMatch(text); it.hasNext();)
+        matches.prepend(it.next());
+    for (const QRegularExpressionMatch &m : std::as_const(matches)) {
+        const QString lead = m.captured(1);
+        qsizetype digits = lead.size();
+        while (digits > 0 && lead.at(digits - 1).isDigit())
+            --digits;
+        if (lead.mid(digits).toInt() > 23 || m.captured(2).toInt() > 59)
+            continue;
+        text.replace(m.capturedStart(), m.capturedLength(),
+                     lead + u':' + m.captured(2) + m.captured(3));
+    }
+}
+
 /// Removes the first match of `re` from `text` and returns it.
 QRegularExpressionMatch take(QString &text, const QRegularExpression &re)
 {
@@ -120,14 +140,17 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
     // "at" or in a range, so a number like 4.15 in a title stays as it is.
     static const QRegularExpression compact =
         pattern(uR"(((?:\s|-)\d{1,2})[.]?(\d{2})(\s*(?:am|pm|a\.m\.|p\.m\.|a|p)(?=\s|-)))"_s);
-    rest.replace(compact, u"\\1:\\2\\3"_s);
     static const QRegularExpression dotted =
-        pattern(uR"(((?:\sat|-|\sto)\s*\d{1,2})\.(\d{2})(?=\s|-))"_s);
-    rest.replace(dotted, u"\\1:\\2"_s);
-    // The start of a range, "945-1015am" or "4.15-5", once its end reads as a time.
-    static const QRegularExpression rangeStart = pattern(
-        uR"((\s\d{1,2})[.]?(\d{2})(?=\s*(?:-|to\s)\s*\d{1,2}(?::\d{2}|\s*(?:am|pm|a|p)|(?=\s))))"_s);
-    rest.replace(rangeStart, u"\\1:\\2"_s);
+        pattern(uR"(((?:\sat|-|\sto)\s*\d{1,2})\.(\d{2})()(?=\s|-))"_s);
+    // A range's start once its end reads as a time: "945-1015am" needs the end's
+    // colon or am/pm, so a span such as 2025-26 is left alone; "4.15-5" has its dot.
+    static const QRegularExpression compactStart = pattern(
+        uR"((\s\d{1,2})(\d{2})()(?=\s*(?:-|to\s)\s*\d{1,2}(?::\d{2}|\s*(?:am|pm|a|p)(?=\s))))"_s);
+    static const QRegularExpression dottedStart =
+        pattern(uR"((\s\d{1,2})\.(\d{2})()(?=\s*(?:-|to\s)\s*\d))"_s);
+    for (const QRegularExpression *re : {&compact, &dotted, &compactStart, &dottedStart})
+        writeAsClockTime(rest, *re);
+
     const QDateTime local = now.toTimeZone(zone);
     const QDate today = local.date();
 
@@ -223,11 +246,17 @@ EventDraft QuickAdd::parse(const QString &text, const QDateTime &now, const QTim
                   });
     }
 
-    // Whatever follows "at" or "@" is the place, if it has a letter in it:
-    // "at 25" is a time that cannot exist, not a place.
+    // Whatever follows "at" or "@" is the place, unless it is shaped like a
+    // time: "at 25" and "at 9.99pm" are times that cannot exist, not places.
     QString location;
-    if (const auto m = take(rest, pattern(uR"(\s(?:at|@)\s+(.*\p{L}.*?)\s*$)"_s)); m.hasMatch())
+    static const QRegularExpression place = pattern(uR"(\s(?:at|@)\s+(.+?)\s*$)"_s);
+    static const QRegularExpression timeShaped =
+        pattern(uR"(^\d[\d:.]*\s*(?:am|pm|a\.m\.|p\.m\.|a|p)?$)"_s);
+    if (const auto m = place.match(rest);
+        m.hasMatch() && !timeShaped.match(m.captured(1)).hasMatch()) {
         location = m.captured(1).trimmed();
+        rest.replace(m.capturedStart(), m.capturedLength(), u" "_s);
+    }
 
     EventDraft draft;
     draft.summary = rest.simplified();

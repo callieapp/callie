@@ -45,6 +45,8 @@ class TestGoogleRecurrence : public QObject
 
 private Q_SLOTS:
     void declinedOccurrenceIsMarked();
+    void occurrencesCarryTheirIds();
+    void invitationsAndPermissions();
     void singleEventOverlapsRange();
     void weeklySeriesKeepsWallClockAcrossDst();
     void countLimitsSeries();
@@ -343,6 +345,54 @@ void TestGoogleRecurrence::declinedOccurrenceIsMarked()
     QVERIFY(!events.at(0).declined);
     QVERIFY(events.at(1).declined);
     QVERIFY(!events.at(2).declined);
+}
+
+void TestGoogleRecurrence::occurrencesCarryTheirIds()
+{
+    const QList<Event> events =
+        expand({parsed(kStandup), parsed(R"({"id":"lunch","start":{"date":"2026-10-07"},
+                                                   "end":{"date":"2026-10-08"},
+                                                   "recurrence":["RRULE:FREQ=WEEKLY"]})"),
+                parsed(R"({"id":"solo",
+                                            "start":{"dateTime":"2026-10-06T15:00:00Z"},
+                                            "end":{"dateTime":"2026-10-06T16:00:00Z"}})")},
+               utc(2026, 10, 5), utc(2026, 10, 8));
+
+    QCOMPARE(events.size(), 3);
+    // Monday's standup started at 13:30 UTC.
+    QCOMPARE(events.at(0).eventId, u"standup_20261005T133000Z"_s);
+    QCOMPARE(events.at(0).seriesId, u"standup"_s);
+    QCOMPARE(events.at(1).eventId, u"solo"_s);
+    QVERIFY(events.at(1).seriesId.isEmpty());
+    QCOMPARE(events.at(2).eventId, u"lunch_20261007"_s);
+}
+
+void TestGoogleRecurrence::invitationsAndPermissions()
+{
+    const GoogleEvent invited = parsed(R"({"id":"inv",
+        "start":{"dateTime":"2026-10-06T15:00:00Z"},"end":{"dateTime":"2026-10-06T16:00:00Z"},
+        "organizer":{"email":"boss@example.com"},
+        "attendees":[{"email":"boss@example.com","organizer":true,"responseStatus":"accepted"},
+                     {"email":"me@example.com","self":true,"responseStatus":"tentative"},
+                     {"email":"pat@example.com","responseStatus":"needsAction"}]})");
+    const GoogleEvent mine = parsed(R"({"id":"mine",
+        "start":{"dateTime":"2026-10-06T17:00:00Z"},"end":{"dateTime":"2026-10-06T18:00:00Z"},
+        "organizer":{"email":"me@example.com","self":true},
+        "attendees":[{"email":"me@example.com","self":true,"organizer":true,"responseStatus":"accepted"},
+                     {"email":"pat@example.com"}]})");
+    const QList<Event> events = expand({invited, mine}, utc(2026, 10, 6), utc(2026, 10, 7));
+
+    QCOMPARE(events.size(), 2);
+    const Event &guest = events.at(0);
+    QCOMPARE(guest.responseStatus, u"tentative"_s);
+    QCOMPARE(guest.attendees, (QStringList{u"boss@example.com"_s, u"pat@example.com"_s}));
+    QVERIFY(guest.canRespond);
+    QVERIFY(!guest.canEdit);
+
+    const Event &organizer = events.at(1);
+    QVERIFY(!organizer.canRespond);
+    QVERIFY(organizer.canEdit);
+    QCOMPARE(organizer.attendees, QStringList{u"pat@example.com"_s});
 }
 
 QTEST_GUILESS_MAIN(TestGoogleRecurrence)

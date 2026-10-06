@@ -51,6 +51,7 @@ private Q_SLOTS:
     void eventsComeFromSelectedCalendarsOnly();
     void eventsAreInTheRequestedZone();
     void seriesAreExpanded();
+    void readOnlyCalendarsAllowNoChanges();
     void backgroundLoadMatchesDirectRead();
     void refreshWithoutSyncRereadsCache();
     void refreshSyncsAndReportsErrorsPerAccount();
@@ -175,6 +176,36 @@ void TestGoogleSource::backgroundLoadMatchesDirectRead()
     QCOMPARE(snapshot.calendars.size(), source.calendars().size());
     QCOMPARE(snapshot.calendars.first().id, source.calendars().first().id);
     QCOMPARE(snapshot.calendars.first().account, kAccount.id);
+}
+
+void TestGoogleSource::readOnlyCalendarsAllowNoChanges()
+{
+    QVERIFY(m_cache->setCalendars(kAccount, {calendar(u"mine"_s, true),
+                                             calendar(u"hidden"_s, false, u"reader"_s),
+                                             calendar(u"shared"_s, true, u"reader"_s)}));
+    QVERIFY(m_cache->applyChanges(kAccount, u"shared"_s,
+                                  {{parsed(R"({"id":"talk","summary":"Talk",
+                     "start":{"dateTime":"2026-10-06T15:00:00Z"},
+                     "end":{"dateTime":"2026-10-06T16:00:00Z"},
+                     "attendees":[{"email":"me@example.com","self":true}]})")},
+                                   u"t"_s},
+                                  true));
+    const GoogleSource source(*m_cache, {kAccount});
+    const QList<Event> events = source.eventsBetween(
+        QDateTime(QDate(2026, 10, 6), QTime(0, 0), QTimeZone::UTC),
+        QDateTime(QDate(2026, 10, 7), QTime(0, 0), QTimeZone::UTC), QTimeZone::UTC);
+
+    QVERIFY(std::any_of(events.cbegin(), events.cend(),
+                        [](const Event &e) { return e.summary == u"Talk"; }));
+    for (const Event &event : events) {
+        if (event.summary == u"Talk") {
+            QVERIFY(!event.canEdit);
+            QVERIFY(!event.canRespond);
+        } else if (event.summary == u"Lunch") {
+            QVERIFY(event.canEdit);
+            QCOMPARE(event.eventId, u"lunch"_s);
+        }
+    }
 }
 
 void TestGoogleSource::refreshWithoutSyncRereadsCache()

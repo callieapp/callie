@@ -338,13 +338,16 @@ ApplicationWindow {
                         id: helpMenu
                         padding: Theme.space1
 
-                        // TODO(ui): DESIGN.md gives menus a soft shadow; the theme has the token,
-                        // and the menus pass draws it.
                         background: Rectangle {
                             implicitWidth: 200
                             color: Theme.surface
                             border.color: Theme.border
                             radius: Theme.radiusLg
+
+                            SoftShadow {
+                                anchors.fill: parent
+                                radius: parent.radius
+                            }
                         }
 
                         MenuEntry {

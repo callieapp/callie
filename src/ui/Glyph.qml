@@ -4,7 +4,7 @@ import QtQuick
 
 /// A small line icon drawn from rounded bars, so icons need no image files and
 /// take the text color: chevron-left, chevron-right, minimize, maximize,
-/// restore, close, check, plus, settings or video.
+/// restore, close, check, plus, refresh, settings or video.
 Item {
     id: root
 
@@ -58,6 +58,46 @@ Item {
             x: root.width * modelData[2] - width / 2
             y: root.height * modelData[3] - height / 2
             rotation: modelData[1]
+        }
+    }
+
+    // Two thirds of a circle with an arrowhead, for refresh.
+    Canvas {
+        id: arc
+        visible: root.name === "refresh"
+        anchors.fill: parent
+        antialiasing: true
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            const r = width / 2 - root.stroke
+            ctx.strokeStyle = root.color
+            ctx.fillStyle = root.color
+            ctx.lineWidth = root.stroke
+            ctx.lineCap = "round"
+            ctx.beginPath()
+            ctx.arc(width / 2, height / 2, r, -Math.PI * 0.35, Math.PI * 1.4)
+            ctx.stroke()
+            // The head sits at the arc's open end, pointing along it.
+            const tipX = width / 2 + r * Math.cos(-Math.PI * 0.35)
+            const tipY = height / 2 + r * Math.sin(-Math.PI * 0.35)
+            const size = root.stroke * 2.2
+            ctx.beginPath()
+            ctx.moveTo(tipX + size, tipY)
+            ctx.lineTo(tipX - size * 0.3, tipY - size)
+            ctx.lineTo(tipX - size * 0.4, tipY + size * 0.6)
+            ctx.closePath()
+            ctx.fill()
+        }
+
+        Connections {
+            target: root
+            function onColorChanged() {
+                arc.requestPaint()
+            }
+            function onStrokeChanged() {
+                arc.requestPaint()
+            }
         }
     }
 

@@ -49,6 +49,7 @@ constexpr Seed kSeeds[] = {
 
 SampleSource::SampleSource(QObject *parent) : CalendarSource(parent)
 {
+    m_synced = QDateTime::currentDateTimeUtc();
     m_calendars = {
         {QStringLiteral("work"), QStringLiteral("Work"), QColor(QStringLiteral("#5B8DEF")), true,
          true, QStringLiteral("sam@work.example")},
@@ -121,6 +122,34 @@ void SampleSource::deleteEvent(const Event &event, bool, Created done)
     m_deleted.insert(event.eventId);
     done({});
     Q_EMIT changed();
+}
+
+void SampleSource::refresh()
+{
+    m_synced = QDateTime::currentDateTimeUtc();
+    Q_EMIT statusChanged();
+    Q_EMIT changed();
+}
+
+QVariantList SampleSource::syncReport() const
+{
+    QVariantList report;
+    QStringList accounts;
+    for (const CalendarInfo &calendar : m_calendars) {
+        if (!accounts.contains(calendar.account))
+            accounts << calendar.account;
+    }
+    for (const QString &account : accounts) {
+        const auto count =
+            std::count_if(m_calendars.cbegin(), m_calendars.cend(),
+                          [&account](const CalendarInfo &c) { return c.account == account; });
+        report << QVariantMap{{QStringLiteral("account"), account},
+                              {QStringLiteral("lastSynced"), m_synced},
+                              {QStringLiteral("error"), QString()},
+                              {QStringLiteral("calendars"), int(count)},
+                              {QStringLiteral("problems"), QStringList()}};
+    }
+    return report;
 }
 
 void SampleSource::createEvent(const EventDraft &draft, Created done)

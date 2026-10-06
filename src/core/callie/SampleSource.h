@@ -20,7 +20,10 @@ public:
     [[nodiscard]] QList<CalendarInfo> calendars() const override { return m_calendars; }
     [[nodiscard]] QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                              const QTimeZone &tz) const override;
-    void refresh() override { Q_EMIT changed(); }
+    /// Made-up data is always up to date, so a refresh only marks the time.
+    void refresh() override;
+    [[nodiscard]] QDateTime lastSynced() const override { return m_synced; }
+    [[nodiscard]] QVariantList syncReport() const override;
     /// Keeps new events for as long as the app runs.
     void createEvent(const EventDraft &draft, Created done) override;
     /// Answers and deletions last as long as the app runs.
@@ -32,6 +35,7 @@ private:
     QList<Event> m_created;
     QHash<QString, QString> m_answers;
     QSet<QString> m_deleted;
+    QDateTime m_synced;
     QList<CalendarInfo> m_calendars;
 };
 

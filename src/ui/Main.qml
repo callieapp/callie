@@ -282,8 +282,55 @@ ApplicationWindow {
                 }
                 spacing: Theme.space4
 
+                // Sync now; it turns while a sync runs.
+                AbstractButton {
+                    id: refreshButton
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: syncStatus.visible
+                    width: syncStatus.height
+                    height: syncStatus.height
+                    enabled: !window.source.syncing
+                    Accessible.name: qsTr("Sync now")
+                    onClicked: window.source.refresh()
+
+                    HoverHandler {
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
+                    background: Rectangle {
+                        radius: height / 2
+                        color: refreshButton.hovered ? Theme.tint(syncStatus.ink, 0.28) : Theme.tint(
+                                                           syncStatus.ink, 0.16)
+                        border.width: refreshButton.visualFocus ? 2 : 0
+                        border.color: Theme.text
+                    }
+                    contentItem: Item {
+                        Glyph {
+                            id: refreshGlyph
+                            anchors.centerIn: parent
+                            width: 13
+                            height: 13
+                            stroke: Theme.fineGlyphStroke
+                            name: "refresh"
+                            color: syncStatus.ink
+
+                            RotationAnimator on rotation {
+                                running: window.source.syncing
+                                from: 0
+                                to: 360
+                                duration: Theme.durSlow * 4
+                                loops: Animation.Infinite
+                                onRunningChanged: {
+                                    if (!running)
+                                        refreshGlyph.rotation = 0
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Sync status. When the bar is too narrow for the words it shrinks to
-                // its icon, with the words on hover, and below that it hides.
+                // its icon, and below that it hides. Hovering it tells more.
                 Rectangle {
                     id: syncStatus
 
@@ -304,11 +351,31 @@ ApplicationWindow {
                     }
                     // Room between the left side and the rest of the right side.
                     readonly property real spare: titleBar.width - leading.x - leading.width
-                                                  - trailingFixed.width - 3 * Theme.space4
+                                                  - trailingFixed.width - height - 4 * Theme.space4
                     readonly property real fullWidth: labelMetrics.advanceWidth + 2 * Theme.space4
                                                       + (check.visible ? check.width + Theme.space3 :
                                                                          0)
                     readonly property bool compact: spare < fullWidth + Theme.space4
+
+                    /// The hover text: the status, then a line or more per account.
+                    function details() {
+                        const lines = [label]
+                        for (const entry of window.source.syncReport) {
+                            const when = isNaN(entry.lastSynced.getTime()) ? qsTr("not synced yet") :
+                                                                             qsTr("synced %1").arg(
+                                                                                 Settings.times.time(
+                                                                                     entry.lastSynced))
+                            const count = entry.calendars === 1 ? qsTr("1 calendar") : qsTr(
+                                                                      "%1 calendars").arg(
+                                                                      entry.calendars)
+                            lines.push(qsTr("%1: %2, %3").arg(entry.account).arg(when).arg(count))
+                            if (entry.error)
+                                lines.push("    " + entry.error)
+                            for (const problem of entry.problems)
+                                lines.push("    " + problem)
+                        }
+                        return lines.join("\n")
+                    }
 
                     anchors.verticalCenter: parent.verticalCenter
                     visible: known && spare >= height + Theme.space4
@@ -358,8 +425,8 @@ ApplicationWindow {
                         id: syncHover
                     }
                     Tip {
-                        visible: syncHover.hovered && (syncStatus.failed || syncStatus.compact)
-                        text: syncStatus.failed ? window.source.lastError : syncStatus.label
+                        visible: syncHover.hovered
+                        text: syncStatus.details()
                     }
                 }
 

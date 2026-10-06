@@ -44,6 +44,9 @@ class CalendarSource : public QObject
     Q_PROPERTY(bool syncing READ syncing NOTIFY statusChanged)
     Q_PROPERTY(QDateTime lastSynced READ lastSynced NOTIFY statusChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY statusChanged)
+    /// Per account: {account, lastSynced, error, calendars, problems}, where
+    /// problems lists the calendars whose last sync failed, with the reason.
+    Q_PROPERTY(QVariantList syncReport READ syncReport NOTIFY statusChanged)
 
 public:
     using QObject::QObject;
@@ -68,7 +71,7 @@ public:
     }
 
     /// Kick off a background refresh. Emits `changed` when new data lands.
-    virtual void refresh() = 0;
+    Q_INVOKABLE virtual void refresh() = 0;
 
     /// Called once a creation finishes; `error` is empty on success.
     using Created = std::function<void(const QString &error)>;
@@ -102,6 +105,7 @@ public:
     [[nodiscard]] virtual bool syncing() const { return false; }
     [[nodiscard]] virtual QDateTime lastSynced() const { return {}; }
     [[nodiscard]] virtual QString lastError() const { return {}; }
+    [[nodiscard]] virtual QVariantList syncReport() const { return {}; }
 
 Q_SIGNALS:
     void changed();

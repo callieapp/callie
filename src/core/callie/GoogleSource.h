@@ -43,6 +43,7 @@ public:
     [[nodiscard]] bool syncing() const override { return m_pending > 0; }
     [[nodiscard]] QDateTime lastSynced() const override { return m_lastSynced; }
     [[nodiscard]] QString lastError() const override { return m_lastError; }
+    [[nodiscard]] QVariantList syncReport() const override;
 
 private:
     void flushChanges();

@@ -81,11 +81,11 @@ Rectangle {
             text: (root.location ? qsTr("%1 to %2, %3") : qsTr("%1 to %2")).arg(Qt.formatTime(root.start,
                                                                                               "h:mm")).arg(
                       Qt.formatTime(root.end, "h:mm")).arg(root.location)
+            // Full-strength ink, lighter weight: the theme's contrast check covers it.
             color: root.ink
-            opacity: 0.75
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs
-            font.weight: Font.Bold
+            font.weight: Font.DemiBold
             elide: Text.ElideRight
         }
     }

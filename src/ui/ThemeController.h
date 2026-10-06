@@ -79,9 +79,16 @@ class ThemeController : public QObject
     Q_PROPERTY(int textXs READ textXs CONSTANT)
     Q_PROPERTY(int textSm READ textSm CONSTANT)
     Q_PROPERTY(int textMd READ textMd CONSTANT)
+    Q_PROPERTY(int textBase READ textBase CONSTANT)
     Q_PROPERTY(int textLg READ textLg CONSTANT)
+    Q_PROPERTY(int textDate READ textDate CONSTANT)
     Q_PROPERTY(int textXl READ textXl CONSTANT)
+    Q_PROPERTY(int textDisplay READ textDisplay CONSTANT)
     Q_PROPERTY(int text2xl READ text2xl CONSTANT)
+
+    /// Washes over day columns: a hint of pink on today, a shade on days off.
+    Q_PROPERTY(QColor todayWash READ todayWash NOTIFY changed)
+    Q_PROPERTY(QColor dayOffWash READ dayOffWash NOTIFY changed)
 
     Q_PROPERTY(int hourHeight READ hourHeight CONSTANT)
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
@@ -162,9 +169,15 @@ public:
     int textXs() const { return 11; }
     int textSm() const { return 12; }
     int textMd() const { return 13; }
+    int textBase() const { return 14; }
     int textLg() const { return 15; }
+    int textDate() const { return 18; }
     int textXl() const { return 20; }
+    int textDisplay() const { return 22; }
     int text2xl() const { return 28; }
+
+    QColor todayWash() const;
+    QColor dayOffWash() const;
 
     int hourHeight() const { return 56; }
     int gutterWidth() const { return 64; }

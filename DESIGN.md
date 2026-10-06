@@ -118,10 +118,11 @@ Nunito for everything you read, and Fraunces for display text: the month heading
 and the greeting. Both are bundled under the SIL Open Font License, and a theme may name any
 installed family instead.
 
-Sizes run from 11 to 28. Intent:
+Sizes run from 11 to 28, each a `Theme` value. Intent:
 
-- 11 for metadata that should recede, 12 for event titles, 13 for body and UI, 15 for
-  day numbers, 20 for the month heading.
+- 11 for metadata that should recede, 12 for event titles, 13 for body and UI, 14 for list
+  items such as calendar names, 15 for card titles, 18 for day numbers, 22 for the month
+  heading and the greeting.
 - Weight carries hierarchy before size does. Prefer a heavier weight at the same size over
   jumping a step. Event titles are ExtraBold, so a busy week still reads at a glance.
 - Never below 11. Nothing in a calendar is that unimportant.

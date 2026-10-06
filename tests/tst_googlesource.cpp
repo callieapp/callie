@@ -64,6 +64,7 @@ private Q_SLOTS:
     void answerAimsAtTheTimedOccurrence();
     void actionsNeedAKnownCalendar();
     void statusStartsFromTheCache();
+    void reportDescribesEachAccount();
     void statusFollowsARefresh();
     void calendarErrorShowsAfterRestart();
     void overlappingRefreshesReportEachErrorOnce();
@@ -489,6 +490,24 @@ void TestGoogleSource::actionsNeedAKnownCalendar()
     QVERIFY(!answered.isEmpty());
     QVERIFY(!deleted.isEmpty());
     QVERIFY(harness.apiServer.requests.isEmpty());
+}
+
+void TestGoogleSource::reportDescribesEachAccount()
+{
+    QVERIFY(m_cache->recordAccountSync(kAccount, {}));
+    QVERIFY(m_cache->recordCalendarError(kAccount, u"mine"_s, u"Rate limit"_s));
+    const Account other{u"google"_s, u"other@example.com"_s};
+    QVERIFY(m_cache->recordAccountSync(other, u"keyring is locked"_s));
+    const GoogleSource source(*m_cache, {kAccount, other});
+
+    const QVariantList report = source.syncReport();
+    QCOMPARE(report.size(), 2);
+    const QVariantMap mine = report.at(0).toMap();
+    QCOMPARE(mine.value(u"account"_s).toString(), kAccount.id);
+    QVERIFY(mine.value(u"lastSynced"_s).toDateTime().isValid());
+    QCOMPARE(mine.value(u"calendars"_s).toInt(), 2);
+    QCOMPARE(mine.value(u"problems"_s).toStringList(), QStringList{u"MINE: Rate limit"_s});
+    QCOMPARE(report.at(1).toMap().value(u"error"_s).toString(), u"keyring is locked"_s);
 }
 
 void TestGoogleSource::statusStartsFromTheCache()

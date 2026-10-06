@@ -203,6 +203,27 @@ void GoogleSource::deleteEvent(const Event &event, bool wholeSeries, Created don
     m_sync->remove(calendar->first, target(calendar->second, event, wholeSeries), std::move(done));
 }
 
+QVariantList GoogleSource::syncReport() const
+{
+    QVariantList report;
+    for (const Account &account : m_accounts) {
+        const SyncState state = m_cache.accountState(account);
+        const QList<GoogleCalendar> calendars = m_cache.calendars(account);
+        QStringList problems;
+        for (const GoogleCalendar &calendar : calendars) {
+            const QString error = m_cache.calendarState(account, calendar.id).lastError;
+            if (!error.isEmpty())
+                problems << QStringLiteral("%1: %2").arg(calendar.summary, error);
+        }
+        report << QVariantMap{{QStringLiteral("account"), account.id},
+                              {QStringLiteral("lastSynced"), state.lastSynced},
+                              {QStringLiteral("error"), state.lastError},
+                              {QStringLiteral("calendars"), int(calendars.size())},
+                              {QStringLiteral("problems"), problems}};
+    }
+    return report;
+}
+
 void GoogleSource::flushChanges()
 {
     if (!m_changes.isActive())

@@ -153,16 +153,9 @@ ApplicationWindow {
                     buttons: WindowButtons.left
                 }
 
-                Image {
+                Logo {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.verticalCenterOffset: -Theme.logoLift
-                    source: "qrc:/callie/assets/logo.png"
-                    sourceSize: Qt.size(56, 56)
-                    width: 28
-                    height: 28
-                    smooth: true
-                    mipmap: true
-                    Accessible.ignored: true
                 }
 
                 // As wide as the longest month name in the user's language, so the

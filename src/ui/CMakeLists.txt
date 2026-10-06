@@ -43,6 +43,7 @@ qt_add_qml_module(callieui
         PillButton.qml
         StickerButton.qml
         Glyph.qml
+        Logo.qml
         WindowControls.qml
         ResizeFrame.qml
         MenuEntry.qml

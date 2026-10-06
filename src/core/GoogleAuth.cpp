@@ -1,6 +1,8 @@
 #include "callie/GoogleAuth.h"
 
 #include "callie/Logging.h"
+#include "callie/SignInPage.h"
+#include "callie/ThemeLoader.h"
 
 #include <QHostAddress>
 #include <QJsonDocument>
@@ -102,7 +104,7 @@ void GoogleAuth::authorize()
         // Google recommends the IP literal over "localhost" for loopback redirects.
         m_handler->setCallbackHost(QStringLiteral("127.0.0.1"));
 #endif
-        m_handler->setCallbackText(tr("Callie is connected. You can close this tab."));
+        m_handler->setCallbackText(signInPage(ThemeLoader::defaultTheme()));
         m_flow->setReplyHandler(m_handler);
     }
     // A finished attempt closes the listener; a retry or a second account needs

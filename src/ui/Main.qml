@@ -360,6 +360,7 @@ ApplicationWindow {
                     /// The hover text: the status, then a line or more per account.
                     function details() {
                         const lines = [label]
+                        let explained = false
                         for (const entry of window.source.syncReport) {
                             const when = isNaN(entry.lastSynced.getTime()) ? qsTr("not synced yet") :
                                                                              qsTr("synced %1").arg(
@@ -370,7 +371,11 @@ ApplicationWindow {
                                 lines.push("    " + entry.error)
                             for (const problem of entry.problems)
                                 lines.push("    " + problem)
+                            explained = explained || entry.error !== "" || entry.problems.length > 0
                         }
+                        // The cache may not hold the reason, if writing it failed too.
+                        if (failed && !explained)
+                            lines.push(window.source.lastError)
                         return lines.join("\n")
                     }
 

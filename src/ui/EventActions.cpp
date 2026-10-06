@@ -26,13 +26,14 @@ void EventActions::respond(const QVariantMap &event, const QString &status, bool
         return;
     start();
     const QPointer<EventActions> self(this);
+    const QString eventId = event.value(u"eventId"_s).toString();
     m_source->respond(toEvent(event), status, wholeSeries,
-                      [this, self, status](const QString &error) {
+                      [this, self, eventId, status](const QString &error) {
                           if (!self)
                               return;
-                          finish(error);
+                          finish(eventId, error);
                           if (error.isEmpty())
-                              Q_EMIT responded(status);
+                              Q_EMIT responded(eventId, status);
                       });
 }
 
@@ -42,12 +43,13 @@ void EventActions::remove(const QVariantMap &event, bool wholeSeries)
         return;
     start();
     const QPointer<EventActions> self(this);
-    m_source->deleteEvent(toEvent(event), wholeSeries, [this, self](const QString &error) {
+    const QString eventId = event.value(u"eventId"_s).toString();
+    m_source->deleteEvent(toEvent(event), wholeSeries, [this, self, eventId](const QString &error) {
         if (!self)
             return;
-        finish(error);
+        finish(eventId, error);
         if (error.isEmpty())
-            Q_EMIT removed();
+            Q_EMIT removed(eventId);
     });
 }
 
@@ -71,6 +73,7 @@ void EventActions::clearError()
     if (m_error.isEmpty())
         return;
     m_error.clear();
+    m_errorEventId.clear();
     Q_EMIT errorChanged();
 }
 
@@ -81,12 +84,13 @@ void EventActions::start()
     clearError();
 }
 
-void EventActions::finish(const QString &error)
+void EventActions::finish(const QString &eventId, const QString &error)
 {
     m_busy = false;
     Q_EMIT busyChanged();
     if (!error.isEmpty()) {
         m_error = error;
+        m_errorEventId = eventId;
         Q_EMIT errorChanged();
     }
 }

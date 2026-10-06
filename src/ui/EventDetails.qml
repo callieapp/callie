@@ -49,6 +49,7 @@ Popup {
         root.event = event
         response = event.response || ""
         pending = ""
+        deleteButton.armed = false
         actions.clearError()
         open()
     }
@@ -73,8 +74,14 @@ Popup {
     EventActions {
         id: actions
         source: root.source
-        onResponded: status => root.response = status
-        onRemoved: root.close()
+        onResponded: (eventId, status) => {
+            if (eventId === root.event.eventId)
+                root.response = status
+        }
+        onRemoved: eventId => {
+            if (eventId === root.event.eventId)
+                root.close()
+        }
     }
 
     /// show(), then places the card by `item`: to its right if there is room,
@@ -390,7 +397,7 @@ Popup {
             }
 
             Text {
-                visible: actions.error !== ""
+                visible: actions.error !== "" && actions.errorEventId === root.event.eventId
                 width: parent.width - 2 * parent.padding
                 text: actions.error
                 wrapMode: Text.Wrap

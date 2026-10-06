@@ -19,12 +19,15 @@ class EventActions : public QObject
     Q_PROPERTY(callie::CalendarSource *source MEMBER m_source NOTIFY sourceChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
+    /// The event the error is about, so a card showing another event ignores it.
+    Q_PROPERTY(QString errorEventId READ errorEventId NOTIFY errorChanged)
 
 public:
     using QObject::QObject;
 
     [[nodiscard]] bool busy() const { return m_busy; }
     [[nodiscard]] QString error() const { return m_error; }
+    [[nodiscard]] QString errorEventId() const { return m_errorEventId; }
 
     /// "accepted", "tentative" or "declined".
     Q_INVOKABLE void respond(const QVariantMap &event, const QString &status, bool wholeSeries);
@@ -37,17 +40,20 @@ Q_SIGNALS:
     void sourceChanged();
     void busyChanged();
     void errorChanged();
-    void responded(const QString &status);
-    void removed();
+    /// Each names the event it was for, since a slow reply can arrive after
+    /// the card has moved on to another event.
+    void responded(const QString &eventId, const QString &status);
+    void removed(const QString &eventId);
 
 private:
     [[nodiscard]] static Event toEvent(const QVariantMap &event);
     void start();
-    void finish(const QString &error);
+    void finish(const QString &eventId, const QString &error);
 
     QPointer<CalendarSource> m_source;
     bool m_busy = false;
     QString m_error;
+    QString m_errorEventId;
 };
 
 } // namespace callie

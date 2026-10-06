@@ -56,6 +56,7 @@ private Q_SLOTS:
     void cancelledOccurrenceIsKept();
     void deletedSeriesTakesExceptions();
     void rangeReadSkipsDistantEvents();
+    void rangeReadKeepsEdgeCases();
     void syncTokenIsStoredWithChanges();
     void unknownCalendarIsRejected();
     void removedCalendarLosesEvents();
@@ -218,6 +219,28 @@ void TestGoogleCache::rangeReadSkipsDistantEvents()
     QCOMPARE(ids(m_cache->events(kAccount, kCalendar, from, from.addDays(7))),
              (QStringList{u"allday"_s, u"cancelled"_s, u"inside"_s, u"moved-in"_s, u"moved-out"_s,
                           u"series"_s, u"spanning"_s}));
+}
+
+void TestGoogleCache::rangeReadKeepsEdgeCases()
+{
+    apply({parsed(R"({"id":"no-end","start":{"dateTime":"2026-10-06T10:00:00Z"}})"),
+           parsed(R"({"id":"instant","start":{"dateTime":"2026-10-05T00:00:00Z"},
+                    "end":{"dateTime":"2026-10-05T00:00:00Z"}})"),
+           parsed(R"({"id":"allday-no-end","start":{"date":"2026-10-07"}})"),
+           // Four-day trips every month; one starting three days before the
+           // range is cancelled, though its days run into the range.
+           parsed(R"({"id":"trip","start":{"date":"2026-01-02"},"end":{"date":"2026-01-06"},
+                    "recurrence":["RRULE:FREQ=MONTHLY"]})"),
+           parsed(R"({"id":"trip-cancelled","status":"cancelled","recurringEventId":"trip",
+                    "originalStartTime":{"date":"2026-10-02"}})"),
+           parsed(R"({"id":"trip-old","status":"cancelled","recurringEventId":"trip",
+                    "originalStartTime":{"date":"2026-08-02"}})")},
+          true);
+
+    const QDateTime from(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
+    QCOMPARE(ids(m_cache->events(kAccount, kCalendar, from, from.addDays(7))),
+             (QStringList{u"allday-no-end"_s, u"instant"_s, u"no-end"_s, u"trip"_s,
+                          u"trip-cancelled"_s}));
 }
 
 void TestGoogleCache::syncTokenIsStoredWithChanges()

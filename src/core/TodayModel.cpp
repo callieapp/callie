@@ -39,6 +39,16 @@ void TodayModel::setTimeZone(const QTimeZone &zone)
     refresh();
 }
 
+QString TodayModel::timeZoneId() const
+{
+    return m_zone == QTimeZone::systemTimeZone() ? QString() : QString::fromUtf8(m_zone.id());
+}
+
+void TodayModel::setTimeZoneId(const QString &id)
+{
+    setTimeZone(id.isEmpty() ? QTimeZone::systemTimeZone() : QTimeZone(id.toUtf8()));
+}
+
 void TodayModel::setUse24Hour(bool use24Hour)
 {
     if (m_use24Hour == use24Hour)

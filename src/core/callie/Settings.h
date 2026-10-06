@@ -16,7 +16,6 @@ class Settings : public QObject
     Q_PROPERTY(TimeFormat timeFormat READ timeFormat WRITE setTimeFormat NOTIFY timeFormatChanged)
     Q_PROPERTY(bool use24Hour READ use24Hour NOTIFY timeFormatChanged)
     Q_PROPERTY(QString timeZoneId READ timeZoneId WRITE setTimeZoneId NOTIFY timeZoneChanged)
-    Q_PROPERTY(QTimeZone timeZone READ timeZone NOTIFY timeZoneChanged)
     Q_PROPERTY(bool showDeclined READ showDeclined WRITE setShowDeclined NOTIFY showDeclinedChanged)
     Q_PROPERTY(bool dimPast READ dimPast WRITE setDimPast NOTIFY dimPastChanged)
     Q_PROPERTY(bool widenToday READ widenToday WRITE setWidenToday NOTIFY widenTodayChanged)
@@ -60,8 +59,9 @@ public:
     Q_INVOKABLE QString formatHour(int hour) const;
 
     /// The calendar date of `time` in the chosen zone, which QML cannot work
-    /// out from a Date in the system zone.
-    Q_INVOKABLE QDate dateIn(const QDateTime &time) const;
+    /// out from a Date in the system zone. It comes back as that day's local
+    /// midnight: a QDate would reach QML as UTC midnight, a day early in the west.
+    Q_INVOKABLE QDateTime dateIn(const QDateTime &time) const;
     /// Minutes since midnight of `time` in the chosen zone.
     Q_INVOKABLE int minutesIntoDay(const QDateTime &time) const;
 

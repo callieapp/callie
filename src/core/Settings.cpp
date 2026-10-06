@@ -125,9 +125,9 @@ QString Settings::formatTime(const QDateTime &time) const
     return formatClock(time.toTimeZone(timeZone()).time(), use24Hour());
 }
 
-QDate Settings::dateIn(const QDateTime &time) const
+QDateTime Settings::dateIn(const QDateTime &time) const
 {
-    return time.toTimeZone(timeZone()).date();
+    return time.toTimeZone(timeZone()).date().startOfDay();
 }
 
 int Settings::minutesIntoDay(const QDateTime &time) const

@@ -21,8 +21,8 @@ class EventModel : public QAbstractListModel
     Q_PROPERTY(callie::CalendarSource *source READ source WRITE setSource NOTIFY sourceChanged)
     Q_PROPERTY(QDate rangeStart READ rangeStart WRITE setRangeStart NOTIFY rangeChanged)
     Q_PROPERTY(int dayCount READ dayCount WRITE setDayCount NOTIFY rangeChanged)
-    /// The zone days and times are shown in.
-    Q_PROPERTY(QTimeZone timeZone READ timeZone WRITE setTimeZone NOTIFY timeZoneChanged)
+    /// The IANA zone days and times are shown in; empty follows the system.
+    Q_PROPERTY(QString timeZoneId READ timeZoneId WRITE setTimeZoneId NOTIFY timeZoneChanged)
     /// Calendars left out, by CalendarInfo::id.
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars WRITE setHiddenCalendars NOTIFY
                    filterChanged)
@@ -70,6 +70,8 @@ public:
 
     [[nodiscard]] QTimeZone timeZone() const { return m_tz; }
     void setTimeZone(const QTimeZone &zone);
+    [[nodiscard]] QString timeZoneId() const;
+    void setTimeZoneId(const QString &id);
 
     [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
     void setHiddenCalendars(const QStringList &ids);

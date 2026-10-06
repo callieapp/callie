@@ -37,7 +37,7 @@ ApplicationWindow {
         return d
     }
 
-    Component.onCompleted: weekStart = mondayOf(Clock.now)
+    Component.onCompleted: weekStart = mondayOf(Settings.dateIn(Clock.now))
 
     function shiftWeeks(n) {
         const d = new Date(weekStart)
@@ -50,19 +50,25 @@ ApplicationWindow {
         source: window.source
         rangeStart: window.weekStart
         dayCount: 7
+        timeZoneId: Settings.timeZoneId
+        use24Hour: Settings.use24Hour
+        showDeclined: Settings.showDeclined
+        hiddenCalendars: Settings.hiddenCalendars
     }
 
     TodayModel {
         id: todayModel
         source: window.source
         now: Clock.now
+        timeZoneId: Settings.timeZoneId
+        use24Hour: Settings.use24Hour
     }
 
     MonthModel {
         id: monthModel
         month: window.weekStart
         weekStart: window.weekStart
-        today: Clock.now
+        today: Settings.dateIn(Clock.now)
     }
 
     // Everything the window shows, with its corners rounded unless it fills
@@ -223,7 +229,7 @@ ApplicationWindow {
                 StickerButton {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("Today")
-                    onClicked: window.weekStart = window.mondayOf(Clock.now)
+                    onClicked: window.weekStart = window.mondayOf(Settings.dateIn(Clock.now))
                 }
             }
 
@@ -253,9 +259,8 @@ ApplicationWindow {
                                                                             failed ? qsTr(
                                                                                          "Sync failed") :
                                                                                      qsTr("Updated %1").arg(
-                                                                                         Qt.formatTime(
-                                                                                             window.source.lastSynced,
-                                                                                             "HH:mm"))
+                                                                                         Settings.formatTime(
+                                                                                             window.source.lastSynced))
                     // Room between the left side and the rest of the right side.
                     readonly property real spare: titleBar.width - leading.x - leading.width
                                                   - trailingFixed.width - 3 * Theme.space4
@@ -337,6 +342,13 @@ ApplicationWindow {
                                 selected: index === 1
                             }
                         }
+                    }
+
+                    StickerButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        glyph: "settings"
+                        Accessible.name: qsTr("Settings")
+                        onClicked: settingsDialog.open()
                     }
 
                     // Help: debug info, logs and bug reports.
@@ -438,6 +450,15 @@ ApplicationWindow {
                 anchorDate: window.weekStart
             }
         }
+    }
+
+    SettingsDialog {
+        id: settingsDialog
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Preferences, "Ctrl+,"]
+        onActivated: settingsDialog.open()
     }
 
     Rectangle {

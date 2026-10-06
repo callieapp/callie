@@ -18,6 +18,8 @@ Rectangle {
     required property color calendarColor
     required property date start
     required property date end
+    /// The user said no; shown struck through when declined events are shown.
+    required property bool declined
 
     signal moveRequested(int deltaMinutes, int deltaDays)
     signal activated
@@ -25,11 +27,15 @@ Rectangle {
     readonly property bool compact: height < 34
     readonly property bool hovered: hover.hovered
     readonly property color ink: Theme.calendarInk(calendarColor, Theme.calendar)
+    readonly property bool past: Settings.dimPast && end < Clock.now
+    readonly property bool faded: declined || past
 
     radius: Theme.radiusMd
     color: Theme.calendarColor(calendarColor, Theme.calendar)
 
-    opacity: drag.active ? 0.85 : 1
+    opacity: drag.active ? 0.85 : faded ? Theme.fadedOpacity : 1
+    // Fades the sticker and its edge as one, so the edge does not show through.
+    layer.enabled: faded
     scale: drag.active ? 1.02 : 1
     z: drag.active ? 100 : 1
 
@@ -76,6 +82,7 @@ Rectangle {
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
             font.weight: Font.ExtraBold
+            font.strikeout: root.declined
             elide: Text.ElideRight
         }
 
@@ -84,8 +91,8 @@ Rectangle {
             visible: !root.compact
             textFormat: Text.PlainText
             text: {
-                const span = qsTr("%1 to %2").arg(Qt.formatTime(root.start, "h:mm")).arg(Qt.formatTime(
-                                                                                             root.end, "h:mm"))
+                const span = qsTr("%1 to %2").arg(Settings.formatTime(root.start)).arg(
+                          Settings.formatTime(root.end))
                 return root.location ? qsTr("%1, %2").arg(span).arg(root.location) : span
             }
             // Full-strength ink, lighter weight: the theme's contrast check covers it.

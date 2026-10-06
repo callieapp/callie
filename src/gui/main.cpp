@@ -1,4 +1,5 @@
 #include "Clock.h"
+#include "EventModelForeign.h"
 #include "LiveQml.h"
 #include "ThemeController.h"
 
@@ -20,6 +21,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QTemporaryDir>
 #include <QTextStream>
 #include <QTimer>
 
@@ -84,6 +86,13 @@ int main(int argc, char *argv[])
         }
     }
     callie::logfile::install(QStringLiteral("callie-gui"));
+
+    // Screenshots show the defaults, whatever this user has chosen.
+    QTemporaryDir scratch;
+    callie::Settings settings(parser.isSet(screenshotOption)
+                                  ? scratch.filePath(QStringLiteral("settings.ini"))
+                                  : callie::Settings::defaultPath());
+    callie::SettingsForeign::s_instance = &settings;
 
     QTextStream err(stderr);
     if (const QString theme = parser.value(themeOption); !theme.isEmpty()) {

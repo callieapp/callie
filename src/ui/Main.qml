@@ -390,7 +390,7 @@ ApplicationWindow {
         spacing: 0
 
         Sidebar {
-            width: 240
+            width: Theme.sidebarWidth
             height: parent.height
             today: todayModel
             month: monthModel
@@ -399,7 +399,7 @@ ApplicationWindow {
         }
 
         WeekView {
-            width: parent.width - 240
+            width: parent.width - Theme.sidebarWidth
             height: parent.height
             model: events
             anchorDate: window.weekStart

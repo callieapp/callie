@@ -97,6 +97,8 @@ class ThemeController : public QObject
     /// The grab strip along a frameless window's edges. Anything scrollable at
     /// an edge keeps its handle clear of it.
     Q_PROPERTY(int resizeBorder READ resizeBorder CONSTANT)
+    Q_PROPERTY(int sidebarWidth READ sidebarWidth CONSTANT)
+    Q_PROPERTY(int miniDaySize READ miniDaySize CONSTANT)
 
 public:
     /// The process-wide instance, which QML also receives.
@@ -187,6 +189,8 @@ public:
     int allDayRowHeight() const { return 30; }
     int snapMinutes() const { return 15; }
     int resizeBorder() const { return 6; }
+    int sidebarWidth() const { return 240; }
+    int miniDaySize() const { return 26; }
 
 Q_SIGNALS:
     void changed();

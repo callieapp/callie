@@ -116,6 +116,7 @@ format: ## Format C++, QML, Markdown, JSON and YAML in place
 
 check: ## Run everything CI checks: format, lint, a -Werror build, and tests
 	@scripts/format.sh check
+	@scripts/check-version.sh
 	@npx markdownlint-cli2
 	@npm run --silent format:md:check
 	@cmake --workflow --preset ci

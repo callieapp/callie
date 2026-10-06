@@ -22,6 +22,24 @@ bool canWrite(const QString &accessRole)
     return accessRole == QLatin1String("owner") || accessRole == QLatin1String("writer");
 }
 
+QList<CalendarInfo> readCalendars(GoogleCache &cache, const QList<Account> &accounts)
+{
+    QList<CalendarInfo> result;
+    for (const Account &account : accounts) {
+        for (const GoogleCalendar &calendar : cache.calendars(account)) {
+            result.append(CalendarInfo{
+                .id = calendarKey(account, calendar.id),
+                .displayName = calendar.summary,
+                .color = QColor::fromString(calendar.color),
+                .writable = canWrite(calendar.accessRole),
+                // Google's own "show in list" choice, until Callie has its own.
+                .enabled = calendar.selected,
+            });
+        }
+    }
+    return result;
+}
+
 QList<Event> readEvents(GoogleCache &cache, const QList<Account> &accounts, const QDateTime &from,
                         const QDateTime &to, const QTimeZone &tz)
 {
@@ -90,20 +108,7 @@ void GoogleSource::setSync(GoogleSync *sync)
 
 QList<CalendarInfo> GoogleSource::calendars() const
 {
-    QList<CalendarInfo> result;
-    for (const Account &account : m_accounts) {
-        for (const GoogleCalendar &calendar : m_cache.calendars(account)) {
-            result.append(CalendarInfo{
-                .id = calendarKey(account, calendar.id),
-                .displayName = calendar.summary,
-                .color = QColor::fromString(calendar.color),
-                .writable = canWrite(calendar.accessRole),
-                // Google's own "show in list" choice, until Callie has its own.
-                .enabled = calendar.selected,
-            });
-        }
-    }
-    return result;
+    return readCalendars(m_cache, m_accounts);
 }
 
 QList<Event> GoogleSource::eventsBetween(const QDateTime &from, const QDateTime &to,
@@ -112,20 +117,22 @@ QList<Event> GoogleSource::eventsBetween(const QDateTime &from, const QDateTime 
     return readEvents(m_cache, m_accounts, from, to, tz);
 }
 
-QFuture<QList<Event>> GoogleSource::loadEventsBetween(const QDateTime &from, const QDateTime &to,
-                                                      const QTimeZone &tz) const
+QFuture<SourceSnapshot> GoogleSource::load(const QDateTime &from, const QDateTime &to,
+                                           const QTimeZone &tz) const
 {
-    auto promise = std::make_shared<QPromise<QList<Event>>>();
-    QFuture<QList<Event>> future = promise->future();
+    auto promise = std::make_shared<QPromise<SourceSnapshot>>();
+    QFuture<SourceSnapshot> future = promise->future();
     promise->start();
     m_readers.start([path = m_cache.path(), accounts = m_accounts, from, to, tz, promise] {
         GoogleCache reader(path);
-        QList<Event> events;
-        if (reader.openForReading())
-            events = readEvents(reader, accounts, from, to, tz);
-        else
+        SourceSnapshot snapshot;
+        if (reader.openForReading()) {
+            snapshot.calendars = readCalendars(reader, accounts);
+            snapshot.events = readEvents(reader, accounts, from, to, tz);
+        } else {
             qCWarning(lcSync) << "could not read the cache:" << reader.errorString();
-        promise->addResult(events);
+        }
+        promise->addResult(snapshot);
         promise->finish();
     });
     return future;

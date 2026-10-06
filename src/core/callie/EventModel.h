@@ -86,8 +86,12 @@ Q_SIGNALS:
     void calendarsChanged();
 
 private:
+    /// Re-reads the shown range, keeping the rows until the answer arrives.
     void reload();
-    void apply(QList<Event> events);
+    /// Re-reads after the range changed, when the rows no longer fit it.
+    void reloadRange();
+    void load(bool rangeChanged);
+    void apply(SourceSnapshot snapshot);
     /// Assigns lane/laneCount to every timed event in `events`, per day.
     static void assignLanes(QList<Event> &events);
     /// Gives each all-day event a row in `lane` and returns the rows used.

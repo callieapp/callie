@@ -46,17 +46,16 @@ class SlowSource : public CalendarSource
 {
 public:
     QString sourceId() const override { return QStringLiteral("slow"); }
-    void refresh() override {}
     QList<CalendarInfo> calendars() const override { return {}; }
     QList<Event> eventsBetween(const QDateTime &, const QDateTime &,
                                const QTimeZone &) const override
     {
         return {};
     }
-    QFuture<QList<Event>> loadEventsBetween(const QDateTime &, const QDateTime &,
-                                            const QTimeZone &) const override
+    QFuture<SourceSnapshot> load(const QDateTime &, const QDateTime &,
+                                 const QTimeZone &) const override
     {
-        auto promise = std::make_shared<QPromise<QList<Event>>>();
+        auto promise = std::make_shared<QPromise<SourceSnapshot>>();
         promise->start();
         loads.append(promise);
         return promise->future();
@@ -64,11 +63,14 @@ public:
 
     void answer(int load, const QList<Event> &events)
     {
-        loads.at(load)->addResult(events);
+        loads.at(load)->addResult(SourceSnapshot{events, {}});
         loads.at(load)->finish();
     }
 
-    mutable QList<std::shared_ptr<QPromise<QList<Event>>>> loads;
+    void refresh() override {}
+    void reloadSame() { Q_EMIT changed(); }
+
+    mutable QList<std::shared_ptr<QPromise<SourceSnapshot>>> loads;
 };
 
 Event timed(const QString &uid, const QDate &date, int startHour, int startMinute,
@@ -118,7 +120,7 @@ private Q_SLOTS:
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
     void callServiceTrustsOnlyTheHost();
-    void slowLoadKeepsRowsUntilItArrives();
+    void slowLoadKeepsRowsForTheSameRange();
     void overtakenLoadIsDropped();
 
 private:
@@ -415,7 +417,7 @@ void TestEventModel::callServiceTrustsOnlyTheHost()
     QVERIFY(model.callService(QUrl()).isEmpty());
 }
 
-void TestEventModel::slowLoadKeepsRowsUntilItArrives()
+void TestEventModel::slowLoadKeepsRowsForTheSameRange()
 {
     SlowSource source;
     EventModel model;
@@ -424,12 +426,18 @@ void TestEventModel::slowLoadKeepsRowsUntilItArrives()
     source.answer(0, {timed("a", kMonday, 9, 0, 60)});
     QTRY_COMPARE(model.rowCount(), 1);
 
-    model.setRangeStart(kMonday.addDays(7));
+    // A sync re-reads the same range: the rows stay until the answer.
+    source.reloadSame();
     QCoreApplication::processEvents();
     QCOMPARE(model.rowCount(), 1);
+    source.answer(1, {timed("a", kMonday, 9, 0, 60), timed("b", kMonday, 11, 0, 60)});
+    QTRY_COMPARE(model.rowCount(), 2);
 
-    source.answer(1, {});
-    QTRY_COMPARE(model.rowCount(), 0);
+    // Another week empties at once, since the old rows belong to the old days.
+    model.setRangeStart(kMonday.addDays(7));
+    QCOMPARE(model.rowCount(), 0);
+    source.answer(2, {timed("c", kMonday.addDays(7), 9, 0, 60)});
+    QTRY_COMPARE(model.rowCount(), 1);
 }
 
 void TestEventModel::overtakenLoadIsDropped()

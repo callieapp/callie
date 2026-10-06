@@ -28,9 +28,8 @@ public:
     [[nodiscard]] QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                              const QTimeZone &tz) const override;
     /// Reads through a connection of its own on a background thread.
-    [[nodiscard]] QFuture<QList<Event>> loadEventsBetween(const QDateTime &from,
-                                                          const QDateTime &to,
-                                                          const QTimeZone &tz) const override;
+    [[nodiscard]] QFuture<SourceSnapshot> load(const QDateTime &from, const QDateTime &to,
+                                               const QTimeZone &tz) const override;
     void refresh() override;
 
     [[nodiscard]] bool syncing() const override { return m_pending > 0; }

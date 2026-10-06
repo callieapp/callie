@@ -103,6 +103,7 @@ private Q_SLOTS:
     void removedCalendarIsDropped();
     void calendarListChangeIsSignalled();
     void outcomesAreRecorded();
+    void forgottenAccountStoresNothing();
 
 private:
     QStringList runSync();
@@ -343,6 +344,25 @@ void TestGoogleSync::syncOnce()
     m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
     m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
     QCOMPARE(runSync(), QStringList());
+}
+
+void TestGoogleSync::forgottenAccountStoresNothing()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events(R"({"id":"a"})", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events(R"({"id":"t"})", "team-1"));
+    QStringList errors{u"not called"_s};
+    m_sync->sync(kAccount, [&](const QStringList &e) { errors = e; });
+    // Removed while the first request is still on its way.
+    m_sync->forget(kAccount);
+    QTRY_VERIFY_WITH_TIMEOUT(errors.isEmpty(), 5000);
+
+    QVERIFY(m_cache->calendars(kAccount).isEmpty());
+    QVERIFY(m_cache->events(kAccount, kAccount.id).isEmpty());
+    QVERIFY(!m_cache->accountState(kAccount).lastSynced.isValid());
+
+    // A later sync for the same account starts afresh.
+    QCOMPARE(runSync(), QStringList());
+    QCOMPARE(m_cache->calendars(kAccount).size(), 2);
 }
 
 QString TestGoogleSync::create(const QString &calendarId)

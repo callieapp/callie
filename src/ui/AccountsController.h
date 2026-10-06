@@ -33,7 +33,8 @@ class AccountsController : public QObject
     /// Why accounts cannot be connected here, or empty when they can.
     Q_PROPERTY(QString unavailable READ unavailable CONSTANT)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
-    /// A sign-in is under way, which cancel() can stop; removals cannot be.
+    /// A sign-in is waiting on the browser, which cancel() can stop. Once Google
+    /// grants access the account is being saved, and like a removal that runs on.
     Q_PROPERTY(bool signingIn READ signingIn NOTIFY stateChanged)
     /// What is happening now, such as waiting for the browser.
     Q_PROPERTY(QString status READ status NOTIFY stateChanged)
@@ -60,7 +61,7 @@ public:
     [[nodiscard]] QVariantList accounts() const;
     [[nodiscard]] QString unavailable() const;
     [[nodiscard]] bool busy() const { return signingIn() || m_removing; }
-    [[nodiscard]] bool signingIn() const { return m_auth != nullptr; }
+    [[nodiscard]] bool signingIn() const { return m_auth != nullptr && !m_granted; }
     [[nodiscard]] QString status() const { return m_status; }
     [[nodiscard]] QString error() const { return m_error; }
 
@@ -83,6 +84,8 @@ private:
     AccountManager *m_manager = nullptr;
     GoogleCalendarApi *m_api = nullptr;
     QPointer<GoogleAuth> m_auth;
+    /// Google said yes; the account is being stored and can no longer be stopped.
+    bool m_granted = false;
     bool m_removing = false;
     QList<Account> m_accounts;
     QString m_status;

@@ -57,12 +57,14 @@ void Reminders::setup(ReminderScheduler *scheduler, NotificationServer *server, 
     connect(m_settings, &Settings::notifyChanged, this, &Reminders::applySettings);
     connect(m_settings, &Settings::reminderMinutesChanged, this, &Reminders::applySettings);
     connect(m_settings, &Settings::hiddenCalendarsChanged, this, &Reminders::applySettings);
+    connect(m_settings, &Settings::timeZoneChanged, this, &Reminders::applySettings);
     applySettings();
 }
 
 void Reminders::applySettings()
 {
     m_scheduler->setHiddenCalendars(m_settings->hiddenCalendars());
+    m_scheduler->setTimeZone(m_settings->timeZone());
     m_scheduler->setDefaultMinutes(m_settings->reminderMinutes());
     m_scheduler->setEnabled(m_settings->notify());
 }

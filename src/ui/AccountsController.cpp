@@ -94,8 +94,9 @@ void AccountsController::cancel()
 {
     if (!m_auth)
         return;
-    m_auth->deleteLater();
-    m_auth = nullptr;
+    // Deleted now, not later, so a sign-in finishing in the browser meanwhile
+    // reaches nothing and cannot add the account or end the next attempt.
+    delete m_auth;
     m_status.clear();
     Q_EMIT stateChanged();
 }
@@ -132,10 +133,11 @@ void AccountsController::reload()
 
 void AccountsController::finish(const QString &error)
 {
-    if (m_auth) {
+    // Only the attempt in progress may finish; a cancelled one has no auth left.
+    if (!m_auth && !m_removing)
+        return;
+    if (m_auth)
         m_auth->deleteLater();
-        m_auth = nullptr;
-    }
     m_removing = false;
     m_status.clear();
     m_error = error;

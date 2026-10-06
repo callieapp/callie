@@ -81,8 +81,15 @@ GoogleSource::GoogleSource(GoogleCache &cache, QList<Account> accounts, QObject 
     m_changes.setInterval(250);
     connect(&m_changes, &QTimer::timeout, this, &CalendarSource::changed);
 
-    // Start from what the last run recorded, so the title bar is right before
-    // the first sync of this run finishes.
+    loadStatus();
+}
+
+void GoogleSource::loadStatus()
+{
+    m_lastSynced = {};
+    m_lastError.clear();
+    // From what the last run recorded, so the title bar is right before the
+    // first sync of this run finishes.
     for (const Account &account : std::as_const(m_accounts)) {
         const SyncState state = m_cache.accountState(account);
         if (state.lastSynced > m_lastSynced)
@@ -119,8 +126,12 @@ void GoogleSource::setAccounts(QList<Account> accounts)
     if (m_accounts == accounts)
         return;
     m_accounts = std::move(accounts);
+    // A removed account's errors and sync time go with it; a new one starts unsynced.
+    loadStatus();
     Q_EMIT statusChanged();
-    refresh();
+    Q_EMIT changed();
+    if (m_sync && !m_accounts.isEmpty())
+        refresh();
 }
 
 QList<CalendarInfo> GoogleSource::calendars() const

@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QQmlEngine>
+#include <QUrl>
 #include <QVariantList>
 
 class QNetworkAccessManager;
@@ -51,6 +52,10 @@ public:
         GoogleClientConfig client;
         /// Set when accounts must not change, such as while showing sample data.
         QString unavailable;
+        /// Google's endpoints; tests point them at fakes.
+        QUrl authUrl = {};
+        QUrl tokenUrl = {};
+        QUrl apiBaseUrl = {};
     };
 
     static AccountsController *instance();
@@ -60,7 +65,7 @@ public:
 
     [[nodiscard]] QVariantList accounts() const;
     [[nodiscard]] QString unavailable() const;
-    [[nodiscard]] bool busy() const { return signingIn() || m_removing; }
+    [[nodiscard]] bool busy() const { return m_auth != nullptr || m_removing; }
     [[nodiscard]] bool signingIn() const { return m_auth != nullptr && !m_granted; }
     [[nodiscard]] QString status() const { return m_status; }
     [[nodiscard]] QString error() const { return m_error; }

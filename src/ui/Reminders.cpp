@@ -107,10 +107,13 @@ void Reminders::notify(const Event &event)
     if (canJoin(event.conferenceUrl))
         actions << u"join"_s << tr("Join call");
     actions << u"snooze"_s << tr("Snooze %n min", nullptr, kSnoozeMinutes);
-    m_server->show(text.title, text.body, actions, [guard = QPointer(this), event](uint id) {
-        if (guard && id != 0)
-            guard->m_shown.insert(id, event);
-    });
+    // Daemons may read the body as markup, and its place comes from whoever
+    // sent the invitation.
+    m_server->show(text.title, text.body.toHtmlEscaped(), actions,
+                   [guard = QPointer(this), event](uint id) {
+                       if (guard && id != 0)
+                           guard->m_shown.insert(id, event);
+                   });
 }
 
 void Reminders::onAction(uint id, const QString &key)

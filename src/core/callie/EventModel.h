@@ -6,6 +6,7 @@
 #include <QAbstractListModel>
 #include <QDate>
 #include <QTimeZone>
+#include <QUrl>
 
 #include <utility>
 
@@ -68,6 +69,10 @@ public:
     /// another day, where the date says enough.
     Q_INVOKABLE QString timing(const QDateTime &start, const QDateTime &end,
                                const QDateTime &now) const;
+    /// Which service a conference link joins: "zoom", "meet", "web" for any other
+    /// http(s) link, or empty for a link Callie should not open.
+    Q_INVOKABLE QString callService(const QUrl &url) const;
+
     [[nodiscard]] QVariantList calendars() const { return m_calendars; }
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;

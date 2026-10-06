@@ -33,6 +33,7 @@ Rectangle {
         Text {
             width: parent.width
             text: root.summary
+            textFormat: Text.PlainText
             wrapMode: Text.Wrap
             maximumLineCount: 2
             elide: Text.ElideRight
@@ -44,6 +45,7 @@ Rectangle {
         Text {
             width: parent.width
             text: root.when
+            textFormat: Text.PlainText
             elide: Text.ElideRight
             color: Theme.textMuted
             font.family: Theme.fontFamily

@@ -71,6 +71,7 @@ Rectangle {
         Text {
             width: parent.width
             text: root.summary
+            textFormat: Text.PlainText
             color: root.ink
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
@@ -81,6 +82,7 @@ Rectangle {
         Text {
             width: parent.width
             visible: !root.compact
+            textFormat: Text.PlainText
             text: {
                 const span = qsTr("%1 to %2").arg(Qt.formatTime(root.start, "h:mm")).arg(Qt.formatTime(
                                                                                              root.end, "h:mm"))

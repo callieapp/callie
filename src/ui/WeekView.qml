@@ -160,6 +160,7 @@ Item {
                     }
                     verticalAlignment: Text.AlignVCenter
                     text: chip.summary
+                    textFormat: Text.PlainText
                     elide: Text.ElideRight
                     color: Theme.calendarInk(chip.calendarColor, Theme.calendar)
                     font.family: Theme.fontFamily
@@ -406,6 +407,7 @@ Item {
                                                                                               block))
         details.location = block.location
         details.conferenceUrl = block.conferenceUrl
+        details.callService = root.model.callService(block.conferenceUrl)
         details.calendarName = block.calendarName
         details.calendarColor = block.calendarColor
         details.description = block.description
@@ -425,7 +427,7 @@ Item {
             tip.when = block.calendarName ? qsTr("%1, %2").arg(root.whenText(block)).arg(
                                                 block.calendarName) : root.whenText(block)
             tip.timing = root.model.timing(block.start, block.end, Clock.now)
-            tip.hasCall = block.conferenceUrl.toString() !== ""
+            tip.hasCall = root.model.callService(block.conferenceUrl) !== ""
             root.placeBeside(block, tip)
             tip.visible = true
         }

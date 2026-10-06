@@ -2,8 +2,11 @@
 
 #include <QLocale>
 #include <QTextDocumentFragment>
+#include <QUrl>
 
 #include <algorithm>
+
+using namespace Qt::StringLiterals;
 
 namespace callie {
 
@@ -187,6 +190,19 @@ int EventModel::assignAllDayRows(QList<Event> &events) const
 bool EventModel::isDayOff(QDate date) const
 {
     return !QLocale().weekdays().contains(Qt::DayOfWeek(date.dayOfWeek()));
+}
+
+QString EventModel::callService(const QUrl &url) const
+{
+    const QString scheme = url.scheme();
+    if (!url.isValid() || (scheme != u"https"_s && scheme != u"http"_s))
+        return {};
+    const QString host = url.host().toLower();
+    if (host == u"zoom.us"_s || host.endsWith(u".zoom.us"_s))
+        return u"zoom"_s;
+    if (host == u"meet.google.com"_s)
+        return u"meet"_s;
+    return u"web"_s;
 }
 
 QString EventModel::timing(const QDateTime &start, const QDateTime &end, const QDateTime &now) const

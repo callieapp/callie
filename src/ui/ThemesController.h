@@ -25,8 +25,11 @@ class ThemesController : public QObject
     Q_PROPERTY(QString current READ current NOTIFY changed)
     /// Whether the theme in use is one of the user's own, which can be edited.
     Q_PROPERTY(bool editable READ editable NOTIFY changed)
-    /// {key, color} for each color the editor offers, from the theme in use.
-    Q_PROPERTY(QVariantList colors READ colors NOTIFY changed)
+    /// The colors the editor offers, in order. Constant, so the editor's rows
+    /// stay put while their colors change.
+    Q_PROPERTY(QStringList colorKeys READ colorKeys CONSTANT)
+    /// key to color for the theme in use.
+    Q_PROPERTY(QVariantMap colors READ colors NOTIFY changed)
     /// Why the last action failed, or empty.
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
 
@@ -41,7 +44,8 @@ public:
     [[nodiscard]] QVariantList available() const;
     [[nodiscard]] QString current() const;
     [[nodiscard]] bool editable() const;
-    [[nodiscard]] QVariantList colors() const;
+    [[nodiscard]] QStringList colorKeys() const { return ThemeLibrary::colorKeys(); }
+    [[nodiscard]] QVariantMap colors() const;
     [[nodiscard]] QString error() const { return m_error; }
 
     Q_INVOKABLE bool use(const QString &idOrPath);

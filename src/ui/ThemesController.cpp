@@ -102,13 +102,13 @@ bool ThemesController::editable() const
     return m_library.themes().contains(QFileInfo(current()).absoluteFilePath());
 }
 
-QVariantList ThemesController::colors() const
+QVariantMap ThemesController::colors() const
 {
     const ThemeSpec::Colors &c = ThemeController::instance()->spec().colors;
-    QVariantList list;
+    QVariantMap map;
     for (const QString &key : ThemeLibrary::colorKeys())
-        list << QVariantMap{{u"key"_s, key}, {u"color"_s, colorFor(c, key)}};
-    return list;
+        map.insert(key, colorFor(c, key));
+    return map;
 }
 
 bool ThemesController::use(const QString &idOrPath)

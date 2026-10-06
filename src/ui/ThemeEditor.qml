@@ -98,13 +98,14 @@ Popup {
             clip: true
             spacing: Theme.space2
             boundsBehavior: Flickable.StopAtBounds
-            model: Themes.colors
+            model: Themes.colorKeys
             ScrollBar.vertical: ScrollBar {}
 
             delegate: Row {
                 id: row
 
-                required property var modelData
+                required property string modelData
+                readonly property color value: Themes.colors[modelData]
 
                 spacing: Theme.space3
 
@@ -113,13 +114,13 @@ Popup {
                     width: 28
                     height: 28
                     radius: Theme.radiusSm
-                    color: row.modelData.color
+                    color: row.value
                     border.color: Theme.border
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 150
-                    text: row.modelData.key.replace(/-/g, " ")
+                    text: row.modelData.replace(/-/g, " ")
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textMd
@@ -129,21 +130,21 @@ Popup {
                     id: hex
                     anchors.verticalCenter: parent.verticalCenter
                     width: 120
-                    text: String(row.modelData.color)
+                    text: String(row.value)
                     selectByMouse: true
                     color: Theme.text
                     font.family: Theme.monoFontFamily
                     font.pixelSize: Theme.textMd
-                    Accessible.name: qsTr("%1 color").arg(row.modelData.key)
+                    Accessible.name: qsTr("%1 color").arg(row.modelData)
                     validator: RegularExpressionValidator {
                         regularExpression: /#?[0-9a-fA-F]{0,6}/
                     }
                     onEditingFinished: {
                         const value = text.startsWith("#") ? text : "#" + text
                         if (/^#[0-9a-fA-F]{6}$/.test(value))
-                            Themes.setColor(row.modelData.key, value)
+                            Themes.setColor(row.modelData, value)
                         else
-                            text = String(row.modelData.color)
+                            text = String(row.value)
                     }
                     background: Rectangle {
                         radius: Theme.radiusMd

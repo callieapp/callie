@@ -143,6 +143,7 @@ void TestSettings::resetForgetsEverything()
     Settings settings(path());
     settings.setWidenToday(true);
     settings.setTimeZoneId(u"Asia/Tokyo"_s);
+    settings.setTheme(u"/somewhere/mine.toml"_s);
     QSignalSpy widen(&settings, &Settings::widenTodayChanged);
     QSignalSpy declined(&settings, &Settings::showDeclinedChanged);
 
@@ -150,6 +151,7 @@ void TestSettings::resetForgetsEverything()
 
     QVERIFY(!settings.widenToday());
     QVERIFY(settings.timeZoneId().isEmpty());
+    QVERIFY(settings.theme().isEmpty());
     QCOMPARE(widen.size(), 1);
     QCOMPARE(declined.size(), 0);
     QVERIFY(!Settings(path()).widenToday());

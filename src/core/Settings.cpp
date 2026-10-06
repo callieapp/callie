@@ -3,6 +3,8 @@
 #include <QLocale>
 #include <QStandardPaths>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 namespace callie {
@@ -20,6 +22,9 @@ const QString kTheme = u"appearance/theme"_s;
 const QString kView = u"view/current"_s;
 const QString kLastSeenVersion = u"app/lastSeenVersion"_s;
 const QString kNewEventCalendar = u"events/newEventCalendar"_s;
+const QString kNotify = u"reminders/notify"_s;
+const QString kReminderMinutes = u"reminders/defaultMinutes"_s;
+const QString kKeepRunning = u"reminders/keepRunning"_s;
 const QStringList kViews{u"day"_s, u"week"_s, u"month"_s, u"agenda"_s};
 
 } // namespace
@@ -55,6 +60,9 @@ void Settings::load()
     m_view = kViews.contains(view) ? view : u"week"_s;
     m_lastSeenVersion = m_store.value(kLastSeenVersion).toString();
     m_newEventCalendar = m_store.value(kNewEventCalendar).toString();
+    m_notify = m_store.value(kNotify, true).toBool();
+    m_reminderMinutes = std::max(-1, m_store.value(kReminderMinutes, 10).toInt());
+    m_keepRunning = m_store.value(kKeepRunning, false).toBool();
 }
 
 void Settings::setTimeFormat(TimeFormat format)
@@ -193,6 +201,34 @@ void Settings::rebuildTimes()
     Q_EMIT timesChanged();
 }
 
+void Settings::setNotify(bool notify)
+{
+    if (m_notify == notify)
+        return;
+    m_notify = notify;
+    m_store.setValue(kNotify, notify);
+    Q_EMIT notifyChanged();
+}
+
+void Settings::setReminderMinutes(int minutes)
+{
+    minutes = std::max(-1, minutes);
+    if (m_reminderMinutes == minutes)
+        return;
+    m_reminderMinutes = minutes;
+    m_store.setValue(kReminderMinutes, minutes);
+    Q_EMIT reminderMinutesChanged();
+}
+
+void Settings::setKeepRunning(bool keep)
+{
+    if (m_keepRunning == keep)
+        return;
+    m_keepRunning = keep;
+    m_store.setValue(kKeepRunning, keep);
+    Q_EMIT keepRunningChanged();
+}
+
 QStringList Settings::availableTimeZones()
 {
     QStringList ids;
@@ -211,6 +247,8 @@ void Settings::reset()
     const QStringList collapsed = m_collapsedAccounts;
     const QString theme = m_theme;
     const QString view = m_view;
+    const bool notify = m_notify, keep = m_keepRunning;
+    const int minutes = m_reminderMinutes;
     load();
     if (format != m_timeFormat)
         Q_EMIT timeFormatChanged();
@@ -230,6 +268,12 @@ void Settings::reset()
         Q_EMIT themeChanged();
     if (view != m_view)
         Q_EMIT viewChanged();
+    if (notify != m_notify)
+        Q_EMIT notifyChanged();
+    if (minutes != m_reminderMinutes)
+        Q_EMIT reminderMinutesChanged();
+    if (keep != m_keepRunning)
+        Q_EMIT keepRunningChanged();
     rebuildTimes();
 }
 

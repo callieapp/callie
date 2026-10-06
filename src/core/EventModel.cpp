@@ -343,6 +343,15 @@ QVariantMap EventModel::eventAt(int row) const
     return event;
 }
 
+int EventModel::rowOf(const QString &uid, const QDateTime &start) const
+{
+    for (int row = 0; row < m_events.size(); ++row) {
+        if (m_events.at(row).uid == uid && m_events.at(row).start == start)
+            return row;
+    }
+    return -1;
+}
+
 QString EventModel::timing(const QDateTime &start, const QDateTime &end, const QDateTime &now) const
 {
     const auto span = [](qint64 seconds) {

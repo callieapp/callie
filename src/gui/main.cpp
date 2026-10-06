@@ -1,6 +1,8 @@
 #include "Clock.h"
 #include "EventModelForeign.h"
 #include "LiveQml.h"
+#include "NotificationServer.h"
+#include "Reminders.h"
 #include "ThemeController.h"
 #include "ThemesController.h"
 
@@ -12,6 +14,7 @@
 #include "callie/GoogleTokenProvider.h"
 #include "callie/LogFile.h"
 #include "callie/Logging.h"
+#include "callie/ReminderScheduler.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
 
@@ -147,6 +150,14 @@ int main(int argc, char *argv[])
         QObject::connect(&syncTimer, &QTimer::timeout, &google, &callie::GoogleSource::refresh);
         syncTimer.start(std::chrono::minutes(5));
         QTimer::singleShot(0, &google, &callie::GoogleSource::refresh);
+    }
+
+    // Screenshots and sample data stay quiet.
+    callie::ReminderScheduler scheduler;
+    callie::FreedesktopNotifications notifications;
+    if (!useSample && screenshot.isEmpty()) {
+        scheduler.setSource(source);
+        callie::Reminders::instance()->setup(&scheduler, &notifications, &settings);
     }
 
     QQmlApplicationEngine engine;

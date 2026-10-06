@@ -569,6 +569,15 @@ Item {
                              block.conferenceUrl), block)
     }
 
+    /// Opens the details of the event in `row`, centered, for when there is no
+    /// block under the pointer to place them by.
+    function showRow(row) {
+        const event = root.model.eventAt(row)
+        details.show(event, root.model.callService(event.conferenceUrl))
+        details.x = (root.width - details.width) / 2
+        details.y = Theme.space7
+    }
+
     Timer {
         id: tipDelay
         interval: 450

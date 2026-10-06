@@ -28,6 +28,7 @@ public:
     void setSource(CalendarSource *source);
     /// Replaces the wall clock, for tests and `--now`.
     void setNow(Now now);
+    [[nodiscard]] QDateTime now() const { return m_now(); }
     /// Minutes before events without reminders of their own; negative for none.
     void setDefaultMinutes(int minutes);
     /// The zone all-day events start their day in.

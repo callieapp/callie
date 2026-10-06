@@ -26,6 +26,9 @@ class Settings : public QObject
     /// A built-in theme id or a theme file path; empty is the default theme.
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(QStringList collapsedAccounts READ collapsedAccounts NOTIFY collapsedAccountsChanged)
+    /// The calendar new events went into last, by CalendarInfo::id.
+    Q_PROPERTY(QString newEventCalendar READ newEventCalendar WRITE setNewEventCalendar NOTIFY
+                   newEventCalendarChanged)
     /// The calendar view last shown: "day", "week", "month" or "agenda".
     Q_PROPERTY(QString view READ view WRITE setView NOTIFY viewChanged)
 
@@ -71,6 +74,9 @@ public:
     [[nodiscard]] QString theme() const { return m_theme; }
     void setTheme(const QString &idOrPath);
 
+    [[nodiscard]] QString newEventCalendar() const { return m_newEventCalendar; }
+    void setNewEventCalendar(const QString &id);
+
     [[nodiscard]] QString view() const { return m_view; }
     void setView(const QString &view);
 
@@ -91,6 +97,7 @@ Q_SIGNALS:
     void themeChanged();
     void collapsedAccountsChanged();
     void viewChanged();
+    void newEventCalendarChanged();
 
 private:
     void load();
@@ -107,6 +114,7 @@ private:
     QString m_theme;
     QStringList m_collapsedAccounts;
     QString m_view;
+    QString m_newEventCalendar;
 };
 
 } // namespace callie

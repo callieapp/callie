@@ -9,7 +9,7 @@ Item {
 
     // The attached Window type is not the QML Window type, so this stays untyped.
     readonly property var window: Window.window
-    property int thickness: 6
+    property int thickness: Theme.resizeBorder
 
     visible: window !== null && window.visibility !== Window.Maximized && window.visibility
              !== Window.FullScreen

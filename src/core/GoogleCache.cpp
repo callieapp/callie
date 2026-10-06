@@ -20,7 +20,7 @@ namespace callie {
 namespace {
 
 // Bump when the tables change. Older caches are dropped and fully re-synced.
-constexpr int kSchemaVersion = 4;
+constexpr int kSchemaVersion = 5;
 
 const char *const kSchema[] = {
     R"(CREATE TABLE calendars (
@@ -29,6 +29,7 @@ const char *const kSchema[] = {
         summary TEXT, time_zone TEXT, color TEXT, access_role TEXT,
         is_primary INTEGER NOT NULL DEFAULT 0,
         selected INTEGER NOT NULL DEFAULT 0,
+        default_reminders TEXT,
         sync_token TEXT,
         last_synced TEXT, last_error TEXT,
         PRIMARY KEY (account, id)))",
@@ -50,6 +51,8 @@ const char *const kSchema[] = {
         attendees TEXT,
         organizer_self INTEGER NOT NULL DEFAULT 0,
         guests_can_modify INTEGER NOT NULL DEFAULT 0,
+        reminders_default INTEGER NOT NULL DEFAULT 1,
+        reminders TEXT,
         PRIMARY KEY (account, calendar_id, id)))",
     "CREATE INDEX events_series ON events (account, calendar_id, recurring_event_id)",
 };
@@ -57,6 +60,23 @@ const char *const kSchema[] = {
 QString accountKey(const Account &account)
 {
     return account.provider + u'/' + account.id;
+}
+
+/// Reminder minutes as stored: comma separated.
+QString joinMinutes(const QList<int> &minutes)
+{
+    QStringList parts;
+    for (int value : minutes)
+        parts.append(QString::number(value));
+    return parts.join(u',');
+}
+
+QList<int> splitMinutes(const QString &text)
+{
+    QList<int> minutes;
+    for (QStringView part : QStringView(text).split(u',', Qt::SkipEmptyParts))
+        minutes.append(part.toInt());
+    return minutes;
 }
 
 // Instants are stored in UTC; the zone name is kept beside them so a reload
@@ -169,8 +189,9 @@ QList<GoogleCalendar> GoogleCache::calendars(const Account &account)
     if (!m_open)
         return result;
     QSqlQuery query(QSqlDatabase::database(m_connection));
-    query.prepare(QStringLiteral("SELECT id, summary, time_zone, color, access_role, is_primary, "
-                                 "selected FROM calendars WHERE account = ? ORDER BY rowid"));
+    query.prepare(QStringLiteral(
+        "SELECT id, summary, time_zone, color, access_role, is_primary, "
+        "selected, default_reminders FROM calendars WHERE account = ? ORDER BY rowid"));
     query.addBindValue(accountKey(account));
     if (!query.exec()) {
         fail(query.lastError().text());
@@ -185,6 +206,7 @@ QList<GoogleCalendar> GoogleCache::calendars(const Account &account)
             .accessRole = query.value(4).toString(),
             .primary = query.value(5).toBool(),
             .selected = query.value(6).toBool(),
+            .defaultReminders = splitMinutes(query.value(7).toString()),
         });
     }
     return result;
@@ -217,11 +239,12 @@ bool GoogleCache::setCalendars(const Account &account, const QList<GoogleCalenda
     QSqlQuery upsert(db);
     upsert.prepare(QStringLiteral(
         "INSERT INTO calendars (account, id, summary, time_zone, color, access_role, is_primary, "
-        "selected) VALUES (:account, :id, :summary, :zone, :color, :role, :primary, :selected) "
+        "selected, default_reminders) VALUES (:account, :id, :summary, :zone, :color, :role, "
+        ":primary, :selected, :reminders) "
         "ON CONFLICT (account, id) DO UPDATE SET summary = excluded.summary, "
         "time_zone = excluded.time_zone, color = excluded.color, "
         "access_role = excluded.access_role, is_primary = excluded.is_primary, "
-        "selected = excluded.selected"));
+        "selected = excluded.selected, default_reminders = excluded.default_reminders"));
     for (const GoogleCalendar &calendar : calendars) {
         upsert.bindValue(QStringLiteral(":account"), key);
         upsert.bindValue(QStringLiteral(":id"), calendar.id);
@@ -231,6 +254,7 @@ bool GoogleCache::setCalendars(const Account &account, const QList<GoogleCalenda
         upsert.bindValue(QStringLiteral(":role"), calendar.accessRole);
         upsert.bindValue(QStringLiteral(":primary"), calendar.primary);
         upsert.bindValue(QStringLiteral(":selected"), calendar.selected);
+        upsert.bindValue(QStringLiteral(":reminders"), joinMinutes(calendar.defaultReminders));
         if (!upsert.exec()) {
             ok = fail(upsert.lastError().text());
             break;
@@ -299,12 +323,15 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         "INSERT OR REPLACE INTO events (account, calendar_id, id, status, summary, description, "
         "location, conference_url, start_date, start_time, start_zone, end_date, end_time, "
         "end_zone, recurrence, recurring_event_id, original_date, original_time, original_zone, "
-        "updated, response_status, attendees, organizer_self, guests_can_modify) VALUES (:account, "
+        "updated, response_status, attendees, organizer_self, guests_can_modify, "
+        "reminders_default, "
+        "reminders) VALUES (:account, "
         ":calendar, :id, :status, :summary, "
         ":description, :location, "
         ":conference, :start_date, :start_time, :start_zone, :end_date, :end_time, :end_zone, "
         ":recurrence, :series, :original_date, :original_time, :original_zone, :updated, "
-        ":response, :attendees, :organizer_self, :guests_can_modify)"));
+        ":response, :attendees, :organizer_self, :guests_can_modify, :reminders_default, "
+        ":reminders)"));
     QSqlQuery remove(db);
     remove.prepare(QStringLiteral("DELETE FROM events WHERE account = :account AND "
                                   "calendar_id = :calendar AND (id = :id OR "
@@ -341,6 +368,8 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         upsert.bindValue(QStringLiteral(":attendees"), QString::fromUtf8(event.attendees));
         upsert.bindValue(QStringLiteral(":organizer_self"), event.organizerSelf);
         upsert.bindValue(QStringLiteral(":guests_can_modify"), event.guestsCanModify);
+        upsert.bindValue(QStringLiteral(":reminders_default"), event.remindersUseDefault);
+        upsert.bindValue(QStringLiteral(":reminders"), joinMinutes(event.reminders));
         ok = run(upsert);
     }
 
@@ -500,6 +529,8 @@ QList<GoogleEvent> GoogleCache::readEvents(QSqlQuery &query)
         event.attendees = query.value(u"attendees"_s).toString().toUtf8();
         event.organizerSelf = query.value(u"organizer_self"_s).toBool();
         event.guestsCanModify = query.value(u"guests_can_modify"_s).toBool();
+        event.remindersUseDefault = query.value(u"reminders_default"_s).toBool();
+        event.reminders = splitMinutes(query.value(u"reminders"_s).toString());
         result.append(event);
     }
     return result;

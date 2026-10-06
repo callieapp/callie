@@ -52,6 +52,7 @@ private Q_SLOTS:
     void eventsAreInTheRequestedZone();
     void seriesAreExpanded();
     void readOnlyCalendarsAllowNoChanges();
+    void remindersFallBackToTheCalendar();
     void backgroundLoadMatchesDirectRead();
     void refreshWithoutSyncRereadsCache();
     void refreshSyncsAndReportsErrorsPerAccount();
@@ -216,6 +217,40 @@ void TestGoogleSource::readOnlyCalendarsAllowNoChanges()
             QVERIFY(event.canEdit);
             QCOMPARE(event.eventId, u"lunch"_s);
         }
+    }
+}
+
+void TestGoogleSource::remindersFallBackToTheCalendar()
+{
+    GoogleCalendar mine = calendar(u"mine"_s, true);
+    mine.defaultReminders = {10};
+    QVERIFY(m_cache->setCalendars(kAccount, {mine}));
+    QVERIFY(m_cache->applyChanges(kAccount, u"mine"_s,
+                                  {{parsed(R"({"id":"call","summary":"Call",
+                     "reminders":{"useDefault":false,"overrides":[{"method":"popup","minutes":2}]},
+                     "start":{"dateTime":"2026-10-06T15:00:00Z"},
+                     "end":{"dateTime":"2026-10-06T16:00:00Z"}})"),
+                                    parsed(R"({"id":"quiet","summary":"Quiet",
+                     "reminders":{"useDefault":false},
+                     "start":{"dateTime":"2026-10-06T17:00:00Z"},
+                     "end":{"dateTime":"2026-10-06T18:00:00Z"}})")},
+                                   u"t2"_s},
+                                  false));
+    const GoogleSource source(*m_cache, {kAccount});
+    const QList<Event> events = source.eventsBetween(
+        QDateTime(QDate(2026, 10, 6), QTime(0, 0), QTimeZone::UTC),
+        QDateTime(QDate(2026, 10, 7), QTime(0, 0), QTimeZone::UTC), QTimeZone::UTC);
+
+    QVERIFY(std::any_of(events.cbegin(), events.cend(),
+                        [](const Event &e) { return e.summary == u"Call"; }));
+    for (const Event &event : events) {
+        QVERIFY(event.remindersKnown);
+        if (event.summary == u"Call")
+            QCOMPARE(event.reminders, QList<int>{2});
+        else if (event.summary == u"Quiet")
+            QVERIFY(event.reminders.isEmpty());
+        else
+            QCOMPARE(event.reminders, QList<int>{10});
     }
 }
 

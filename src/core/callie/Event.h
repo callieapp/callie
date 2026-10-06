@@ -50,6 +50,11 @@ public:
     /// Whether the user may change or delete it, and answer the invitation.
     bool canEdit = false;
     bool canRespond = false;
+    /// Minutes before the start to remind. Only when `remindersKnown` is the
+    /// list the source's own, so an empty one means no reminders; otherwise
+    /// Callie's default applies.
+    QList<int> reminders;
+    bool remindersKnown = false;
 
     /// Lane assignment for overlapping events, filled in by the view model.
     int lane = 0;

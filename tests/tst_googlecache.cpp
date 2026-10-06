@@ -58,6 +58,7 @@ private Q_SLOTS:
     void rangeReadSkipsDistantEvents();
     void rangeReadKeepsEdgeCases();
     void permissionsSurviveTheCache();
+    void remindersSurviveTheCache();
     void syncTokenIsStoredWithChanges();
     void unknownCalendarIsRejected();
     void removedCalendarLosesEvents();
@@ -265,6 +266,27 @@ void TestGoogleCache::permissionsSurviveTheCache()
     const GoogleEvent stored = m_cache->events(kAccount, kCalendar).first();
     QVERIFY(stored.organizerSelf);
     QVERIFY(stored.guestsCanModify);
+}
+
+void TestGoogleCache::remindersSurviveTheCache()
+{
+    GoogleCalendar withDefaults = calendar(kCalendar);
+    withDefaults.defaultReminders = {10, 60};
+    QVERIFY(m_cache->setCalendars(kAccount, {withDefaults}));
+    QCOMPARE(m_cache->calendars(kAccount).first().defaultReminders, (QList<int>{10, 60}));
+
+    apply({parsed(R"({"id":"own","reminders":{"useDefault":false,
+                    "overrides":[{"method":"popup","minutes":15}]},
+                    "start":{"dateTime":"2026-10-06T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T11:00:00Z"}})"),
+           parsed(R"({"id":"silent","reminders":{"useDefault":false},
+                    "start":{"dateTime":"2026-10-06T12:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T13:00:00Z"}})")},
+          true);
+    for (const GoogleEvent &stored : m_cache->events(kAccount, kCalendar)) {
+        QVERIFY(!stored.remindersUseDefault);
+        QCOMPARE(stored.reminders, stored.id == u"own" ? QList<int>{15} : QList<int>{});
+    }
 }
 
 void TestGoogleCache::syncTokenIsStoredWithChanges()

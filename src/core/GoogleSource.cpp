@@ -50,8 +50,12 @@ QList<Event> readEvents(GoogleCache &cache, const QList<Account> &accounts, cons
             if (!calendar.selected)
                 continue;
             const QColor color = QColor::fromString(calendar.color);
-            const QList<Event> events =
-                expandGoogleEvents(cache.events(account, calendar.id, from, to), from, to, tz);
+            QList<GoogleEvent> stored = cache.events(account, calendar.id, from, to);
+            for (GoogleEvent &event : stored) {
+                if (event.remindersUseDefault)
+                    event.reminders = calendar.defaultReminders;
+            }
+            const QList<Event> events = expandGoogleEvents(stored, from, to, tz);
             const bool writable = canWrite(calendar.accessRole);
             for (Event event : events) {
                 event.calendarId = calendarKey(account, calendar.id);

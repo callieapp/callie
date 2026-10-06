@@ -340,6 +340,12 @@ void TestEventModel::rowsNameTheirCalendar()
              QStringLiteral("Work"));
     QCOMPARE(model.data(model.index(0, 0), EventModel::DescriptionRole).toString(),
              QStringLiteral("Agenda in the doc"));
+
+    e.description = QStringLiteral("R&amp;D sync\nRooms 2 & 3");
+    FakeSource escaped({e});
+    model.setSource(&escaped);
+    QCOMPARE(model.data(model.index(0, 0), EventModel::DescriptionRole).toString(),
+             QStringLiteral("R&D sync\nRooms 2 & 3"));
 }
 
 void TestEventModel::timingDescribesWhereAnEventStands()

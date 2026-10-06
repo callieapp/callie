@@ -16,8 +16,16 @@ namespace {
 /// remote images, out of the view.
 QString plainDescription(const QString &description)
 {
-    if (!description.contains(u'<'))
-        return description.trimmed();
+    if (!description.contains(u'<')) {
+        if (!description.contains(u'&'))
+            return description.trimmed();
+        // Escaped text with no tags: decode entities a line at a time, since
+        // HTML would fold the line breaks.
+        QStringList lines = description.split(u'\n');
+        for (QString &line : lines)
+            line = QTextDocumentFragment::fromHtml(line).toPlainText();
+        return lines.join(u'\n').trimmed();
+    }
     QString text = QTextDocumentFragment::fromHtml(description).toPlainText();
     // Images become object replacement characters; there is nothing to show for them.
     text.remove(QChar::ObjectReplacementCharacter);

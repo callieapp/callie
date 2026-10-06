@@ -288,7 +288,7 @@ Rectangle {
                             id: groupHeader
                             visible: group.titled
                             width: parent.width
-                            height: 26
+                            height: Theme.listRowHeight
                             focusPolicy: Qt.TabFocus
                             Accessible.name: group.modelData
                             Accessible.role: Accessible.Button
@@ -310,9 +310,9 @@ Rectangle {
 
                                 Glyph {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    width: 10
-                                    height: 10
-                                    stroke: 1.6
+                                    width: Theme.smallGlyphSize
+                                    height: Theme.smallGlyphSize
+                                    stroke: Theme.smallGlyphStroke
                                     name: "chevron-right"
                                     color: Theme.textFaint
                                     rotation: group.collapsed ? 0 : 90
@@ -325,7 +325,7 @@ Rectangle {
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    width: groupHeader.width - 10 - Theme.space2
+                                    width: groupHeader.width - Theme.smallGlyphSize - Theme.space2
                                     text: group.modelData
                                     textFormat: Text.PlainText
                                     elide: Text.ElideMiddle
@@ -359,7 +359,7 @@ Rectangle {
         readonly property bool shown: Settings.hiddenCalendars.indexOf(modelData.id) < 0
 
         width: parent ? parent.width : 0
-        height: 28
+        height: Theme.listRowHeight
         focusPolicy: Qt.TabFocus
         Accessible.role: Accessible.CheckBox
         Accessible.checked: shown
@@ -395,9 +395,9 @@ Rectangle {
                 Glyph {
                     anchors.centerIn: parent
                     visible: row.shown
-                    width: 9
-                    height: 9
-                    stroke: 1.6
+                    width: Theme.smallGlyphSize - 1
+                    height: Theme.smallGlyphSize - 1
+                    stroke: Theme.smallGlyphStroke
                     name: "check"
                     color: Theme.calendarInk(row.modelData.color, Theme.calendar)
                 }

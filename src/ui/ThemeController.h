@@ -102,6 +102,11 @@ class ThemeController : public QObject
     /// How far past and declined events fade.
     Q_PROPERTY(qreal fadedOpacity READ fadedOpacity CONSTANT)
     Q_PROPERTY(int sidebarWidth READ sidebarWidth CONSTANT)
+    /// A row in a list such as the sidebar's calendars.
+    Q_PROPERTY(int listRowHeight READ listRowHeight CONSTANT)
+    /// The small line icons beside list text, and their stroke.
+    Q_PROPERTY(int smallGlyphSize READ smallGlyphSize CONSTANT)
+    Q_PROPERTY(qreal smallGlyphStroke READ smallGlyphStroke CONSTANT)
     Q_PROPERTY(int miniDaySize READ miniDaySize CONSTANT)
 
 public:
@@ -196,6 +201,9 @@ public:
     qreal fadedOpacity() const { return 0.5; }
     qreal todayShare() const { return 1.6; }
     int sidebarWidth() const { return 240; }
+    int listRowHeight() const { return 28; }
+    int smallGlyphSize() const { return 10; }
+    qreal smallGlyphStroke() const { return 1.6; }
     int miniDaySize() const { return 26; }
 
 Q_SIGNALS:

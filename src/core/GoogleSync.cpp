@@ -29,8 +29,6 @@ struct GoogleSync::Run
     bool retried = false;
     /// The account was removed; nothing more is written for it.
     bool forgotten = false;
-    /// The account had never synced, so its Google settings are read after.
-    bool first = false;
 };
 
 namespace {
@@ -65,7 +63,6 @@ void GoogleSync::sync(const Account &account, Done done)
     }
     auto run = std::make_shared<Run>();
     run->account = account;
-    run->first = !m_cache.accountState(account).lastSynced.isValid();
     run->waiting.append(std::move(done));
     m_running.insert(key, run);
     start(run);
@@ -348,6 +345,7 @@ void GoogleSync::forget(const Account &account)
 {
     if (const std::shared_ptr<Run> run = m_running.take(keyFor(account)))
         run->forgotten = true;
+    m_settingsRead.remove(keyFor(account));
 }
 
 void GoogleSync::readSettings(const Account &account)
@@ -365,12 +363,17 @@ void GoogleSync::readSettings(const Account &account)
                         retry();
                         return;
                     }
-                    // Accounts signed in before Callie asked to read settings
-                    // cannot, until they sign in again; nothing else needs them.
+                    // Tried again after the next sync. An account signed in before
+                    // Callie asked to read settings is refused until it signs in
+                    // again, which is expected, so that stays quiet.
                     if (error) {
-                        qCInfo(lcSync) << "could not read Google settings:" << error.message;
+                        if (error.status == 403)
+                            qCDebug(lcSync) << "Google settings not readable:" << error.message;
+                        else
+                            qCInfo(lcSync) << "could not read Google settings:" << error.message;
                         return;
                     }
+                    m_settingsRead.insert(keyFor(account));
                     Q_EMIT settingsFound(account, settings);
                 });
         },
@@ -406,7 +409,7 @@ void GoogleSync::finish(const std::shared_ptr<Run> &run)
         qCInfo(lcSync).noquote() << run->account.id + QStringLiteral(": ") + error;
 
     m_running.remove(keyFor(run->account));
-    if (run->first && run->accountError.isEmpty())
+    if (run->accountError.isEmpty() && !m_settingsRead.contains(keyFor(run->account)))
         readSettings(run->account);
     for (const Done &done : std::as_const(run->waiting))
         done(run->errors);

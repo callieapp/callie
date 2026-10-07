@@ -104,8 +104,9 @@ private Q_SLOTS:
     void calendarListChangeIsSignalled();
     void outcomesAreRecorded();
     void forgottenAccountStoresNothing();
-    void settingsAreReadAfterTheFirstSyncOnly();
-    void unreadableSettingsAreSkipped();
+    void settingsAreReadOnceARun();
+    void unreadableSettingsAreTriedAgain();
+    void rejectedTokenForSettingsIsRefreshed();
 
 private:
     QStringList runSync();
@@ -348,7 +349,7 @@ void TestGoogleSync::syncOnce()
     QCOMPARE(runSync(), QStringList());
 }
 
-void TestGoogleSync::settingsAreReadAfterTheFirstSyncOnly()
+void TestGoogleSync::settingsAreReadOnceARun()
 {
     m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
     m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
@@ -370,7 +371,7 @@ void TestGoogleSync::settingsAreReadAfterTheFirstSyncOnly()
     QCOMPARE(m_google->count(u"users/me/settings"_s), 2);
 }
 
-void TestGoogleSync::unreadableSettingsAreSkipped()
+void TestGoogleSync::unreadableSettingsAreTriedAgain()
 {
     // Signed in before Callie asked to read settings: Google says no.
     m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
@@ -386,6 +387,27 @@ void TestGoogleSync::unreadableSettingsAreSkipped()
     QVERIFY(found.isEmpty());
     // The account still counts as synced.
     QVERIFY(m_cache->accountState(kAccount).lastSynced.isValid());
+
+    // Signed in again with the permission, the next sync reads them.
+    m_google->responses[u"/v3/users/me/settings"_s] = {
+        {200, R"({"items":[{"id":"weekStart","value":"1"}]})"}};
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
+}
+
+void TestGoogleSync::rejectedTokenForSettingsIsRefreshed()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    m_google->on(u"users/me/settings"_s, 401, R"({"error":{"code":401,"message":"expired"}})");
+    m_google->on(u"users/me/settings"_s, 200, R"({"items":[{"id":"weekStart","value":"6"}]})");
+    QSignalSpy found(m_sync.get(), &GoogleSync::settingsFound);
+
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
+    QCOMPARE(m_google->count(u"users/me/settings"_s), 2);
+    const auto settings = found.first().at(1).value<QHash<QString, QString>>();
+    QCOMPARE(settings.value(u"weekStart"_s), u"6"_s);
 }
 
 void TestGoogleSync::forgottenAccountStoresNothing()

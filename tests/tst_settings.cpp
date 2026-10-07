@@ -66,6 +66,7 @@ void TestSettings::choicesSurviveARestart()
         settings.setTheme(u"/home/me/.config/callie/themes/mine.toml"_s);
         settings.setView(u"month"_s);
         settings.setView(u"year"_s);
+        settings.setDefaultCalendar(u"google/me/work"_s);
         settings.setLastSeenVersion(u"0.1.0"_s);
         settings.setNotify(false);
         settings.setReminderMinutes(-5);
@@ -81,6 +82,7 @@ void TestSettings::choicesSurviveARestart()
     QCOMPARE(settings.collapsedAccounts(), QStringList{u"me@example.com"_s});
     QCOMPARE(settings.theme(), u"/home/me/.config/callie/themes/mine.toml"_s);
     QCOMPARE(settings.view(), u"month"_s);
+    QCOMPARE(settings.defaultCalendar(), u"google/me/work"_s);
     QCOMPARE(settings.lastSeenVersion(), u"0.1.0"_s);
     QVERIFY(!settings.notify());
     QCOMPARE(settings.reminderMinutes(), -1);
@@ -162,7 +164,9 @@ void TestSettings::resetForgetsEverything()
     settings.setWidenToday(true);
     settings.setTimeZoneId(u"Asia/Tokyo"_s);
     settings.setTheme(u"/somewhere/mine.toml"_s);
+    settings.setDefaultCalendar(u"google/me/work"_s);
     QSignalSpy widen(&settings, &Settings::widenTodayChanged);
+    QSignalSpy calendar(&settings, &Settings::defaultCalendarChanged);
     QSignalSpy declined(&settings, &Settings::showDeclinedChanged);
 
     settings.reset();
@@ -172,6 +176,8 @@ void TestSettings::resetForgetsEverything()
     QVERIFY(settings.theme().isEmpty());
     QCOMPARE(widen.size(), 1);
     QCOMPARE(declined.size(), 0);
+    QVERIFY(settings.defaultCalendar().isEmpty());
+    QCOMPARE(calendar.size(), 1);
     QVERIFY(!Settings(path()).widenToday());
 }
 

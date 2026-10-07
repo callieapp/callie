@@ -86,6 +86,28 @@ Popup {
             if (eventId === root.event.eventId)
                 root.close()
         }
+        onDuplicated: root.close()
+    }
+
+    /// Copies the event to the same time, in a calendar that can take it.
+    function duplicate() {
+        actions.duplicate(event, new Date(NaN), Settings.defaultCalendar
+                          || Settings.newEventCalendar)
+    }
+
+    /// The event was copied, to be pasted elsewhere.
+    signal copied(var event)
+
+    // In the card, since an open card keeps the window's shortcuts from working.
+    Shortcut {
+        sequences: [StandardKey.Copy]
+        enabled: root.opened && !root.editing
+        onActivated: root.copied(root.event)
+    }
+    Shortcut {
+        sequence: "Ctrl+D"
+        enabled: root.opened && !root.editing && !actions.busy
+        onActivated: root.duplicate()
     }
 
     /// show(), then places the card by `item`: to its right if there is room,
@@ -392,7 +414,6 @@ Popup {
             }
 
             Flow {
-                visible: (root.event.attendees || []).length > 0 || root.event.canEdit === true
                 width: parent.width - 2 * parent.padding
                 spacing: Theme.space2
 
@@ -403,6 +424,11 @@ Popup {
                         editor.load(root.event)
                         root.editing = true
                     }
+                }
+                StickerButton {
+                    text: qsTr("Duplicate")
+                    enabled: !actions.busy
+                    onClicked: root.duplicate()
                 }
                 StickerButton {
                     visible: (root.event.attendees || []).length > 0

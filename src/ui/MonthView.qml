@@ -44,6 +44,18 @@ Item {
         details.showNear(event, root.model.callService(event.conferenceUrl), item)
     }
 
+    /// The day under the pointer at `event`'s time of day, where a copy pasted
+    /// now would start.
+    function pasteTarget(event) {
+        const day = pointer.hovered ? root.cellAt(pointer.point.scenePosition) : -1
+        return day < 0 ? null : Settings.times.at(root.dateFor(day), Settings.times.minutesIntoDay(
+                                                      event.start))
+    }
+
+    HoverHandler {
+        id: pointer
+    }
+
     // ---- Dragging events to other days ---------------------------------------
     /// The day a chip is dragged from, and the one it would land on.
     property int dragFrom: -1
@@ -246,9 +258,13 @@ Item {
         }
     }
 
+    /// An event copied from its card.
+    signal eventCopied(var event)
+
     EventDetails {
         id: details
         source: root.model.source
+        onCopied: event => root.eventCopied(event)
     }
 
     EventMover {

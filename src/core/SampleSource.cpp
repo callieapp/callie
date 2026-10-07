@@ -244,6 +244,7 @@ void SampleSource::createEvent(const EventDraft &draft, Created done)
     e.color = calendar->color;
     e.summary = draft.summary;
     e.location = draft.location;
+    e.description = draft.description;
     e.start = draft.start;
     e.end = draft.end;
     e.allDay = draft.allDay;

@@ -173,9 +173,13 @@ void TestEventEdit::movedSeriesGetsItsRuleRewritten()
     QVERIFY(QMetaObject::invokeMethod(form, "save"));
     QTRY_VERIFY(find(m_window->contentItem(), "StickerButton", "text", u"All events"_s));
     QVERIFY(find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
-    // A new repeat belongs to the series, so one occurrence cannot take it.
+    // A new repeat belongs to the series, so one occurrence cannot take it,
+    // not even by saving again while asked.
     form->setProperty("repeat", u"daily"_s);
     QTRY_VERIFY(!find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
+    QVERIFY(QMetaObject::invokeMethod(form, "save"));
+    QVERIFY(form->property("asking").toBool());
+    QCOMPARE(named(*m_source, u"Standup"_s).summary, u"Standup"_s);
 
     // An end before the start cannot be saved.
     form->setProperty("endDay", day.date().addDays(-1).startOfDay());

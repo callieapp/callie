@@ -102,7 +102,8 @@ Column {
     function save() {
         if (title.trim() === "" || !valid())
             return
-        if (repeating && !asking) {
+        // A repeating event saves through saveFor(), once asked which occurrences.
+        if (repeating) {
             asking = true
             return
         }

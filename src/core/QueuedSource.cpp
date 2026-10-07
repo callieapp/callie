@@ -365,6 +365,13 @@ void QueuedSource::apply(QList<Event> &events, const QList<PendingChange> &chang
                 const bool one = e.eventId == change.event.eventId;
                 const QDateTime start =
                     one ? change.start : Times::shiftWallClock(e.start, zone, days, secs);
+                if (e.allDay) {
+                    // Whole days, however long the clock makes them.
+                    const qint64 span = change.start.date().daysTo(change.end.date());
+                    e.start = QDateTime(start.toTimeZone(tz).date(), QTime(0, 0), tz);
+                    e.end = QDateTime(e.start.date().addDays(span), QTime(0, 0), tz);
+                    continue;
+                }
                 e.start = start.toTimeZone(tz);
                 e.end = start.addSecs(length).toTimeZone(tz);
             }

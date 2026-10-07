@@ -84,7 +84,6 @@ Rectangle {
         x: root.dayShiftX
         y: root.minuteShift / 60 * Theme.hourHeight
     }
-    z: drag.active ? 100 : 1
 
     Behavior on scale {
         NumberAnimation {
@@ -145,9 +144,9 @@ Rectangle {
             visible: !root.compact
             textFormat: Text.PlainText
             text: {
-                const shift = (root.minuteShift + root.dayShift * 1440) * 60000
-                const from = new Date(root.start.getTime() + shift)
-                const to = new Date(root.end.getTime() + shift + root.lengthChange * 60000)
+                const from = Settings.times.shifted(root.start, root.dayShift, root.minuteShift)
+                const to = Settings.times.shifted(root.end, root.dayShift, root.minuteShift
+                                                  + root.lengthChange)
                 const span = qsTr("%1 to %2").arg(Settings.times.time(from)).arg(Settings.times.time(
                                                                                      to))
                 return root.location ? qsTr("%1, %2").arg(span).arg(root.location) : span

@@ -161,9 +161,9 @@ Nothing here is released yet. Roughly in the order it needs to happen:
 ### The app
 
 - [x] Day, month and agenda views
-- [ ] Write path for drag-to-move, so edits actually persist
+- [x] Drag events to move or stretch them, saved to Google
 - [x] Natural language quick add
-- [ ] Desktop notifications, with one click to join a video call
+- [x] Desktop notifications, with one click to join a video call
 - [x] Correct handling of recurring events and cross-timezone meetings
 - [ ] Custom window chrome, and a week grid that fits about 8 working hours
 

@@ -4,6 +4,7 @@
 #include "callie/GoogleRecurrence.h"
 #include "callie/GoogleSync.h"
 #include "callie/Logging.h"
+#include "callie/Times.h"
 
 #include <QPointer>
 #include <QPromise>
@@ -259,9 +260,18 @@ void GoogleSource::moveEvent(const Event &event, const QDateTime &start, const Q
             done(tr("Callie does not have this series' times yet; try again after a sync."));
             return;
         }
-        // Every occurrence moves by the shift dragged on this one.
-        newStart = stored->start.dateTime.addSecs(event.start.secsTo(start));
-        newEnd = stored->end.dateTime.addSecs(event.end.secsTo(end));
+        // Every occurrence moves by the shift dragged on this one, read off the
+        // series' wall clock so a drag across a daylight saving change does not
+        // add or lose an hour.
+        const auto shift = [&zone](const QDateTime &series, const QDateTime &was,
+                                   const QDateTime &now) {
+            const QDateTime from = was.toTimeZone(zone);
+            const QDateTime to = now.toTimeZone(zone);
+            return Times::shiftWallClock(series, zone, int(from.date().daysTo(to.date())),
+                                         from.time().secsTo(to.time()));
+        };
+        newStart = shift(stored->start.dateTime, event.start, start);
+        newEnd = shift(stored->end.dateTime, event.end, end);
     }
     m_sync->move(account, calendarId, series ? event.seriesId : event.eventId,
                  newStart.toTimeZone(zone), newEnd.toTimeZone(zone), std::move(done));

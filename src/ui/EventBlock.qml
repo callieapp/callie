@@ -76,10 +76,10 @@ Rectangle {
     }
 
     Stripes {
-        visible: root.response === "tentative"
         anchors.fill: parent
         radius: root.radius
-        color: Theme.tint(Theme.calendarEdge(root.calendarColor, Theme.calendar), 0.5)
+        calendarColor: root.calendarColor
+        response: root.response
     }
 
     Column {

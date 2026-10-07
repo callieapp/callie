@@ -1,12 +1,20 @@
+import Callie.Ui
 import QtQuick
 
-/// Diagonal stripes inside a rounded rectangle, laid over an event to mark
-/// one the user answered "maybe".
+/// Diagonal stripes inside a rounded rectangle, laid over an event in its
+/// calendar's edge color when the user answered "maybe". Shows nothing for
+/// any other answer.
 Canvas {
     id: root
 
-    property color color
+    property color calendarColor
+    property string response
     property real radius
+
+    readonly property color color: Theme.tint(Theme.calendarEdge(calendarColor, Theme.calendar),
+                                              0.5)
+
+    visible: response === "tentative"
 
     onColorChanged: requestPaint()
     onRadiusChanged: requestPaint()
@@ -21,10 +29,9 @@ Canvas {
         ctx.roundedRect(0, 0, width, height, r, r)
         ctx.clip()
         ctx.strokeStyle = color
-        ctx.lineWidth = 3
-        const step = 8
+        ctx.lineWidth = Theme.stripeWidth
         ctx.beginPath()
-        for (let x = -height; x < width; x += step) {
+        for (let x = -height; x < width; x += Theme.stripeStep) {
             ctx.moveTo(x, height)
             ctx.lineTo(x + height, 0)
         }

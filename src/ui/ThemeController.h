@@ -94,6 +94,12 @@ class ThemeController : public QObject
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
     Q_PROPERTY(int allDayRowHeight READ allDayRowHeight CONSTANT)
     Q_PROPERTY(int snapMinutes READ snapMinutes CONSTANT)
+    /// Stripes over an event answered "maybe": line width and the distance
+    /// from one stripe to the next.
+    Q_PROPERTY(int stripeWidth READ stripeWidth CONSTANT)
+    Q_PROPERTY(int stripeStep READ stripeStep CONSTANT)
+    /// The outline of a calendar mark left hollow for "maybe".
+    Q_PROPERTY(int markRing READ markRing CONSTANT)
     /// The grab strip along a frameless window's edges. Anything scrollable at
     /// an edge keeps its handle clear of it.
     Q_PROPERTY(int resizeBorder READ resizeBorder CONSTANT)
@@ -210,6 +216,9 @@ public:
     int gutterWidth() const { return 52; }
     int allDayRowHeight() const { return 30; }
     int snapMinutes() const { return 15; }
+    int stripeWidth() const { return 3; }
+    int stripeStep() const { return 8; }
+    int markRing() const { return 2; }
     int resizeBorder() const { return 6; }
     qreal fadedOpacity() const { return 0.5; }
     int minEventHeight() const { return 20; }

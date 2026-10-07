@@ -70,6 +70,7 @@ qt_add_qml_module(callieui
         InvitesTray.qml
         Field.qml
         LookEditor.qml
+        SearchPopup.qml
         SettingsDialog.qml
         AccountsSection.qml
         ThemeEditor.qml

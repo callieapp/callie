@@ -581,6 +581,14 @@ ApplicationWindow {
 
                     StickerButton {
                         anchors.verticalCenter: parent.verticalCenter
+                        glyph: "search"
+                        glyphStroke: Theme.fineGlyphStroke
+                        Accessible.name: qsTr("Search events")
+                        onClicked: searchPopup.open()
+                    }
+
+                    StickerButton {
+                        anchors.verticalCenter: parent.verticalCenter
                         glyph: "settings"
                         glyphStroke: Theme.fineGlyphStroke
                         Accessible.name: qsTr("Settings")
@@ -789,6 +797,17 @@ ApplicationWindow {
     Shortcut {
         sequences: [StandardKey.New]
         onActivated: quickAdd.open()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Find]
+        onActivated: searchPopup.open()
+    }
+
+    SearchPopup {
+        id: searchPopup
+        source: window.source
+        onJumpRequested: (day, uid, start) => window.revealEvent(day, uid, start)
     }
 
     Shortcut {

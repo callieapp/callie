@@ -4,7 +4,7 @@ import QtQuick
 
 /// A small line icon drawn from rounded bars, so icons need no image files and
 /// take the text color: chevron-left, chevron-right, minimize, maximize,
-/// restore, close, check, plus, refresh, bell, settings, video or more.
+/// restore, close, check, plus, refresh, bell, search, settings, video or more.
 Item {
     id: root
 
@@ -154,6 +154,31 @@ Item {
             x: root.width * modelData - width / 2
             y: root.height / 2 - height / 2
         }
+    }
+
+    // Search: a lens with a handle.
+    Rectangle {
+        visible: root.name === "search"
+        x: root.width * 0.08
+        y: root.height * 0.08
+        width: root.width * 0.6
+        height: width
+        radius: width / 2
+        color: "transparent"
+        border.width: root.stroke
+        border.color: root.color
+        antialiasing: true
+    }
+    Rectangle {
+        visible: root.name === "search"
+        width: root.width * 0.34
+        height: root.stroke
+        radius: root.stroke / 2
+        color: root.color
+        antialiasing: true
+        rotation: 45
+        x: root.width * 0.76 - width / 2
+        y: root.height * 0.76 - height / 2
     }
 
     // The video camera's body.

@@ -68,6 +68,11 @@ public:
     /// Deletes the target and drops it from the cache.
     void remove(const Account &account, const Target &target, Created done);
 
+    /// Changes `fields` of an event, occurrence or series and stores the result.
+    /// With `conference`, the fields may add or remove its video call.
+    void update(const Account &account, const QString &calendarId, const QString &eventId,
+                const QJsonObject &fields, bool conference, Created done);
+
     /// Gives an event, occurrence or series new times, in the zone they carry.
     void move(const Account &account, const QString &calendarId, const QString &eventId,
               const QDateTime &start, const QDateTime &end, Created done);
@@ -91,7 +96,8 @@ private:
     void readSettings(const Account &account);
     /// Patches `fields` into an event and stores what Google returns.
     void patch(const Account &account, const QString &calendarId, const QString &eventId,
-               const QJsonObject &fields, const QString &failure, Created done);
+               const QJsonObject &fields, const QString &failure, Created done,
+               bool conference = false);
     /// Runs `call` with an access token. If Google rejects the token, `call`
     /// asks through `retry`, and the token is refreshed for one more try.
     using Retry = std::function<void()>;

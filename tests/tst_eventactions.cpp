@@ -61,6 +61,8 @@ private Q_SLOTS:
     void answerReachesTheSource();
     void removeTakesItAway();
     void moveGivesNewTimes();
+    void changesBecomeAnEdit();
+    void editsReachTheWholeSeries();
     void mailGoesToTheOtherGuests();
     void failureIsReportedForItsEvent();
 };
@@ -155,6 +157,55 @@ void TestEventActions::failureIsReportedForItsEvent()
     actions.clearError();
     QVERIFY(actions.error().isEmpty());
     QVERIFY(actions.errorEventId().isEmpty());
+}
+
+void TestEventActions::changesBecomeAnEdit()
+{
+    const QDateTime start(QDate(2026, 10, 8), QTime(15, 0), QTimeZone::UTC);
+    const EventEdit edit = EventActions::toEdit({{u"summary"_s, u"  Review  "_s},
+                                                 {u"start"_s, start},
+                                                 {u"zone"_s, u"Europe/Berlin"_s},
+                                                 {u"guests"_s, QStringList{u" a@x.com"_s, u""_s}},
+                                                 {u"videoCall"_s, false}});
+    QCOMPARE(*edit.summary, u"Review"_s);
+    // The same moment, written in the event's own zone.
+    QCOMPARE(*edit.start, start);
+    QCOMPARE(edit.start->timeZone(), QTimeZone("Europe/Berlin"));
+    QCOMPARE(*edit.guests, QStringList{u"a@x.com"_s});
+    QVERIFY(!*edit.videoCall);
+    QVERIFY(!edit.location && !edit.end && !edit.recurrence);
+}
+
+void TestEventActions::editsReachTheWholeSeries()
+{
+    SampleSource source;
+    EventActions actions;
+    actions.setProperty("source", QVariant::fromValue<CalendarSource *>(&source));
+    const QVariantMap standup = [&source] {
+        const QDateTime monday(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
+        for (const Event &e : source.eventsBetween(monday, monday.addDays(1), QTimeZone::UTC)) {
+            if (e.summary == u"Standup")
+                return QVariantMap{{u"uid"_s, e.uid},
+                                   {u"eventId"_s, e.eventId},
+                                   {u"seriesId"_s, e.seriesId},
+                                   {u"calendarId"_s, e.calendarId},
+                                   {u"summary"_s, e.summary},
+                                   {u"start"_s, e.start},
+                                   {u"end"_s, e.end}};
+        }
+        return QVariantMap{};
+    }();
+    QSignalSpy updated(&actions, &EventActions::updated);
+    actions.update(standup, {{u"summary"_s, u"Daily"_s}}, u"all"_s);
+    QCOMPARE(updated.size(), 1);
+
+    const QDateTime week(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
+    int daily = 0;
+    for (const Event &e : source.eventsBetween(week, week.addDays(7), QTimeZone::UTC)) {
+        QVERIFY(e.summary != u"Standup");
+        daily += e.summary == u"Daily";
+    }
+    QCOMPARE(daily, 5);
 }
 
 QTEST_GUILESS_MAIN(TestEventActions)

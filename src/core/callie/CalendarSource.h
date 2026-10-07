@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Event.h"
+#include "EventEdit.h"
 #include "Outcome.h"
 #include "QuickAdd.h"
 
@@ -114,6 +115,16 @@ public:
         Q_UNUSED(end)
         Q_UNUSED(wholeSeries)
         done(tr("These calendars cannot move events."));
+    }
+
+    /// Changes the event, its occurrence, or the occurrences `scope` names.
+    virtual void updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
+                             Created done)
+    {
+        Q_UNUSED(event)
+        Q_UNUSED(edit)
+        Q_UNUSED(scope)
+        done(tr("These calendars cannot change events."));
     }
 
     /// Sync status for the title bar. Sources that never sync keep the defaults.

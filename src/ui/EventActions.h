@@ -32,6 +32,15 @@ public:
     /// "accepted", "tentative" or "declined".
     Q_INVOKABLE void respond(const QVariantMap &event, const QString &status, bool wholeSeries);
     Q_INVOKABLE void remove(const QVariantMap &event, bool wholeSeries);
+    /// Changes the event. `changes` holds only what changes, by EventEdit's
+    /// names (summary, location, description, start, end, allDay, recurrence,
+    /// guests, videoCall) plus zone, the IANA zone the times are written in.
+    /// `scope` is "this", "following" or "all".
+    Q_INVOKABLE void update(const QVariantMap &event, const QVariantMap &changes,
+                            const QString &scope);
+    /// The edit `changes` describes, as update() reads it.
+    [[nodiscard]] static EventEdit toEdit(const QVariantMap &changes);
+
     /// Gives the event new times, as dragging it on the grid does.
     Q_INVOKABLE void move(const QVariantMap &event, const QDateTime &from, const QDateTime &to,
                           bool wholeSeries);
@@ -48,6 +57,7 @@ Q_SIGNALS:
     void responded(const QString &eventId, const QString &status);
     void removed(const QString &eventId);
     void moved(const QString &eventId);
+    void updated(const QString &eventId);
 
 private:
     [[nodiscard]] static Event toEvent(const QVariantMap &event);

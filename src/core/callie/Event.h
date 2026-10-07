@@ -61,6 +61,9 @@ public:
     QStringList attendees;
     /// Everyone invited, the user included, organizer first.
     QList<Guest> guests;
+    /// The repeat rule of the series it belongs to, as RFC 5545 lines; empty
+    /// for an event that does not repeat.
+    QStringList recurrence;
     /// The source's id for this one occurrence, and for the series it belongs
     /// to (empty for a one-off event), which actions on it need.
     QString eventId;

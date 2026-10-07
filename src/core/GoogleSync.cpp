@@ -183,34 +183,44 @@ void GoogleSync::move(const Account &account, const QString &calendarId, const Q
           tr("Google could not move the event: %1"), std::move(done));
 }
 
+void GoogleSync::update(const Account &account, const QString &calendarId, const QString &eventId,
+                        const QJsonObject &fields, bool conference, Created done)
+{
+    patch(account, calendarId, eventId, fields, tr("Google could not change the event: %1"),
+          std::move(done), conference);
+}
+
 void GoogleSync::patch(const Account &account, const QString &calendarId, const QString &eventId,
-                       const QJsonObject &fields, const QString &failure, Created done)
+                       const QJsonObject &fields, const QString &failure, Created done,
+                       bool conference)
 {
     const QPointer<GoogleSync> self(this);
     withToken(
         account, false,
-        [this, self, account, calendarId, eventId, fields, failure, done](const QString &token,
-                                                                          const Retry &retry) {
-            m_api.patchEvent(token, calendarId, eventId, fields,
-                             [this, self, account, calendarId, failure, done,
-                              retry](const GoogleEvent &changedEvent, const GoogleApiError &error) {
-                                 if (!self)
-                                     return;
-                                 if (error.unauthorized()) {
-                                     retry();
-                                     return;
-                                 }
-                                 if (error) {
-                                     done({failure.arg(error.message), worthRetrying(error)});
-                                     return;
-                                 }
-                                 if (!m_cache.storeEvents(account, calendarId, {changedEvent})) {
-                                     done(m_cache.errorString());
-                                     return;
-                                 }
-                                 Q_EMIT changed(account);
-                                 done({});
-                             });
+        [this, self, account, calendarId, eventId, fields, failure, done,
+         conference](const QString &token, const Retry &retry) {
+            m_api.patchEvent(
+                token, calendarId, eventId, fields,
+                [this, self, account, calendarId, failure, done,
+                 retry](const GoogleEvent &changedEvent, const GoogleApiError &error) {
+                    if (!self)
+                        return;
+                    if (error.unauthorized()) {
+                        retry();
+                        return;
+                    }
+                    if (error) {
+                        done({failure.arg(error.message), worthRetrying(error)});
+                        return;
+                    }
+                    if (!m_cache.storeEvents(account, calendarId, {changedEvent})) {
+                        done(m_cache.errorString());
+                        return;
+                    }
+                    Q_EMIT changed(account);
+                    done({});
+                },
+                conference);
         },
         done);
 }

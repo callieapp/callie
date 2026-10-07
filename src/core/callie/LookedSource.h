@@ -38,6 +38,11 @@ public:
     [[nodiscard]] QVariantList syncReport() const override { return m_inner->syncReport(); }
     [[nodiscard]] QStringList waitingChanges() const override { return m_inner->waitingChanges(); }
     bool undoChange(const QString &id) override { return m_inner->undoChange(id); }
+    void updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
+                     Created done) override
+    {
+        m_inner->updateEvent(event, edit, scope, std::move(done));
+    }
 
     /// Puts the looks in `looks` (as Settings::calendarLooks) on a snapshot.
     static void applyLooks(SourceSnapshot &snapshot, const QVariantMap &looks);

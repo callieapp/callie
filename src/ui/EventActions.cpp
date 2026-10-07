@@ -9,6 +9,7 @@ namespace callie {
 Event EventActions::toEvent(const QVariantMap &event)
 {
     Event e;
+    e.uid = event.value(u"uid"_s).toString();
     e.calendarId = event.value(u"calendarId"_s).toString();
     e.eventId = event.value(u"eventId"_s).toString();
     e.seriesId = event.value(u"seriesId"_s).toString();
@@ -70,6 +71,67 @@ void EventActions::move(const QVariantMap &event, const QDateTime &from, const Q
                             if (error.isEmpty())
                                 Q_EMIT moved(eventId);
                         });
+}
+
+EventEdit EventActions::toEdit(const QVariantMap &changes)
+{
+    EventEdit edit;
+    const auto has = [&changes](const QString &key) { return changes.contains(key); };
+    if (has(u"summary"_s))
+        edit.summary = changes.value(u"summary"_s).toString().trimmed();
+    if (has(u"location"_s))
+        edit.location = changes.value(u"location"_s).toString().trimmed();
+    if (has(u"description"_s))
+        edit.description = changes.value(u"description"_s).toString();
+    // Times arrive in the system zone; they are written in the event's own.
+    const QTimeZone zone(changes.value(u"zone"_s).toString().toUtf8());
+    const auto inZone = [&zone](const QDateTime &time) {
+        return zone.isValid() ? time.toTimeZone(zone) : time;
+    };
+    if (has(u"start"_s))
+        edit.start = inZone(changes.value(u"start"_s).toDateTime());
+    if (has(u"end"_s))
+        edit.end = inZone(changes.value(u"end"_s).toDateTime());
+    if (has(u"allDay"_s))
+        edit.allDay = changes.value(u"allDay"_s).toBool();
+    if (has(u"recurrence"_s))
+        edit.recurrence = changes.value(u"recurrence"_s).toStringList();
+    if (has(u"guests"_s)) {
+        QStringList guests;
+        for (const QString &guest : changes.value(u"guests"_s).toStringList()) {
+            if (!guest.trimmed().isEmpty())
+                guests.append(guest.trimmed());
+        }
+        edit.guests = guests;
+    }
+    if (has(u"videoCall"_s))
+        edit.videoCall = changes.value(u"videoCall"_s).toBool();
+    return edit;
+}
+
+void EventActions::update(const QVariantMap &event, const QVariantMap &changes,
+                          const QString &scope)
+{
+    if (!m_source || m_busy)
+        return;
+    const EventEdit edit = toEdit(changes);
+    const QString eventId = event.value(u"eventId"_s).toString();
+    if (edit.isEmpty()) {
+        Q_EMIT updated(eventId);
+        return;
+    }
+    start();
+    const EditScope range = scope == u"all"         ? EditScope::AllEvents
+                            : scope == u"following" ? EditScope::ThisAndFollowing
+                                                    : EditScope::ThisEvent;
+    const QPointer<EventActions> self(this);
+    m_source->updateEvent(toEvent(event), edit, range, [this, self, eventId](const QString &error) {
+        if (!self)
+            return;
+        finish(eventId, error);
+        if (error.isEmpty())
+            Q_EMIT updated(eventId);
+    });
 }
 
 QUrl EventActions::mailGuests(const QVariantMap &event)

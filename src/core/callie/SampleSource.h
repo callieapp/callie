@@ -39,12 +39,23 @@ public:
     /// Moves only the occurrence, whatever `wholeSeries` says.
     void moveEvent(const Event &event, const QDateTime &start, const QDateTime &end,
                    bool wholeSeries, Created done) override;
+    /// Keeps changes for as long as the app runs; "this and following" is not
+    /// offered.
+    void updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
+                     Created done) override;
 
 private:
     QList<Event> m_created;
     QHash<QString, QString> m_answers;
     QSet<QString> m_deleted;
     QHash<QString, std::pair<QDateTime, QDateTime>> m_moved;
+    struct Edit
+    {
+        Event edited;
+        EventEdit edit;
+        bool wholeSeries = false;
+    };
+    QList<Edit> m_edits;
     std::function<QDateTime()> m_now;
     QDateTime m_synced;
     QList<CalendarInfo> m_calendars;

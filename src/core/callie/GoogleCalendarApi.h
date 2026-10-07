@@ -140,8 +140,10 @@ public:
                      const QJsonObject &event, EventResult result);
 
     /// Changes the given fields of one event or occurrence, telling its guests.
+    /// Changes `fields` of an event and tells its guests. With `conference`,
+    /// the fields may add or remove its video call.
     void patchEvent(const QString &accessToken, const QString &calendarId, const QString &eventId,
-                    const QJsonObject &fields, EventResult result);
+                    const QJsonObject &fields, EventResult result, bool conference = false);
 
     using DoneResult = std::function<void(const GoogleApiError &error)>;
 

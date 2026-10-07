@@ -63,6 +63,8 @@ add_library(calliecore STATIC
     callie/LookedSource.h
     LookedSource.cpp
     callie/Outcome.h
+    callie/EventEdit.h
+    EventEdit.cpp
     callie/QueuedSource.h
     QueuedSource.cpp
     ReminderScheduler.cpp

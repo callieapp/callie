@@ -172,16 +172,22 @@ QList<Event> expandGoogleEvents(const QList<GoogleEvent> &events, const QDateTim
                                 const QDateTime &to, const QTimeZone &viewZone)
 {
     QSet<QString> replaced;
+    // A moved occurrence still repeats by its series' rule.
+    QHash<QString, QStringList> rules;
     for (const GoogleEvent &event : events) {
         if (!event.recurringEventId.isEmpty())
             replaced.insert(occurrenceKey(event.recurringEventId, event.originalStart));
+        else if (!event.recurrence.isEmpty())
+            rules.insert(event.id, event.recurrence);
     }
 
     QList<Event> result;
     for (const GoogleEvent &source : events) {
         if (source.isCancelled())
             continue;
-        const Event base = toEvent(source, viewZone);
+        Event base = toEvent(source, viewZone);
+        base.recurrence = source.recurringEventId.isEmpty() ? source.recurrence
+                                                            : rules.value(source.recurringEventId);
         if (!base.start.isValid())
             continue;
 

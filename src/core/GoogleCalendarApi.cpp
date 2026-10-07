@@ -197,9 +197,12 @@ void GoogleCalendarApi::insertEvent(const QString &accessToken, const QString &c
 
 void GoogleCalendarApi::patchEvent(const QString &accessToken, const QString &calendarId,
                                    const QString &eventId, const QJsonObject &fields,
-                                   EventResult result)
+                                   EventResult result, bool conference)
 {
-    QNetworkRequest request(eventUrl(calendarId, eventId));
+    QUrl url = eventUrl(calendarId, eventId);
+    if (conference)
+        url.setQuery(url.query() + QStringLiteral("&conferenceDataVersion=1"));
+    QNetworkRequest request(url);
     request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     send(m_network->sendCustomRequest(request, "PATCH",

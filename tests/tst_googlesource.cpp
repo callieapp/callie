@@ -586,12 +586,15 @@ void TestGoogleSource::actionsNeedAKnownCalendar()
     Event stranger;
     stranger.calendarId = u"google/nobody@example.com/x"_s;
     stranger.eventId = u"e"_s;
-    QString answered;
-    QString deleted;
-    source.respond(stranger, u"accepted"_s, false, [&answered](const QString &e) { answered = e; });
-    source.deleteEvent(stranger, false, [&deleted](const QString &e) { deleted = e; });
+    Outcome answered;
+    Outcome deleted;
+    source.respond(stranger, u"accepted"_s, false, [&answered](const Outcome &o) { answered = o; });
+    source.deleteEvent(stranger, false, [&deleted](const Outcome &o) { deleted = o; });
     QVERIFY(!answered.isEmpty());
     QVERIFY(!deleted.isEmpty());
+    // The account is gone and will not come back, so nothing waits for it.
+    QVERIFY(!answered.retry);
+    QVERIFY(!deleted.retry);
     QVERIFY(harness.apiServer.requests.isEmpty());
 }
 

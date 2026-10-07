@@ -1,5 +1,6 @@
 #include "callie/QueuedSource.h"
 
+#include <QRegularExpression>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -249,6 +250,10 @@ void TestQueuedSource::pendingCreationTakesLaterChanges()
     source->createEvent(draft, [](const QString &) {});
     const Event made = source->eventsBetween(at(18), at(19), QTimeZone::UTC).first();
     QCOMPARE(made.summary, u"Pottery"_s);
+    // Given an id in Google's alphabet before it goes out.
+    QVERIFY(QRegularExpression(u"^[0-9a-v]{32}$"_s)
+                .match(source->changes().first().draft.id)
+                .hasMatch());
     QCOMPARE(made.color, QColor(u"#5b8def"_s));
 
     // Moving it changes what will be created; deleting it creates nothing.

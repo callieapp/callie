@@ -94,6 +94,7 @@ private Q_SLOTS:
     void createdEventIsStoredWithoutCountingAsASync();
     void createRetriesOnceAfterRejection();
     void createReportsWhatGoogleSaid();
+    void createWithTakenIdIsAlreadyMade();
     void answerKeepsOtherGuestsIntact();
     void answerNeedsAnInvitation();
     void deletingAnOccurrenceKeepsTheRest();
@@ -495,6 +496,26 @@ void TestGoogleSync::createReportsWhatGoogleSaid()
 
     QVERIFY(error.contains(u"You need writer access"_s));
     QCOMPARE(m_cache->events(kAccount, u"team"_s).size(), storedBefore);
+}
+
+void TestGoogleSync::createWithTakenIdIsAlreadyMade()
+{
+    syncOnce();
+    m_google->responses.clear();
+    // An earlier try made it, but its answer was lost: the id is taken.
+    m_google->on(u"calendars/team/events"_s, 409,
+                 R"({"error":{"message":"The requested identifier already exists."}})");
+    EventDraft draft;
+    draft.summary = u"Pottery"_s;
+    draft.id = u"0123456789abcdefuv"_s;
+    draft.start = QDateTime(QDate(2026, 10, 9), QTime(18, 0), QTimeZone::UTC);
+    draft.end = draft.start.addSecs(7200);
+    QString result = u"unset"_s;
+    m_sync->createEvent(kAccount, u"team"_s, draft, [&result](const QString &e) { result = e; });
+    QTRY_VERIFY_WITH_TIMEOUT(result != u"unset", 5000);
+    QCOMPARE(result, QString());
+    const QJsonObject sent = QJsonDocument::fromJson(m_apiServer->requests.last().body).object();
+    QCOMPARE(sent[u"id"].toString(), u"0123456789abcdefuv"_s);
 }
 
 QString TestGoogleSync::act(const std::function<void(GoogleSync::Created)> &action)

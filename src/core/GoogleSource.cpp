@@ -200,9 +200,12 @@ GoogleSync::Target GoogleSource::target(const QString &calendarId, const Event &
 void GoogleSource::createEvent(const EventDraft &draft, Created done)
 {
     const auto calendar = splitCalendarId(draft.calendarId);
-    if (!m_sync || !calendar) {
-        done(m_sync ? tr("That calendar is not in any connected account.")
-                    : tr("Callie is not connected to Google right now."));
+    if (!m_sync) {
+        done({tr("Callie is not connected to Google right now."), true});
+        return;
+    }
+    if (!calendar) {
+        done(tr("That calendar is not in any connected account."));
         return;
     }
     m_sync->createEvent(calendar->first, calendar->second, draft, std::move(done));
@@ -212,8 +215,13 @@ void GoogleSource::respond(const Event &event, const QString &status, bool whole
                            Created done)
 {
     const auto calendar = splitCalendarId(event.calendarId);
-    if (!m_sync || !calendar) {
-        done({tr("Callie is not connected to that event's account right now."), true});
+    // Not syncing yet can pass; an account that is gone will not come back.
+    if (!m_sync) {
+        done({tr("Callie is not connected to Google right now."), true});
+        return;
+    }
+    if (!calendar) {
+        done(tr("That event's account is no longer connected."));
         return;
     }
     m_sync->respond(calendar->first, target(calendar->second, event, wholeSeries), status,
@@ -223,8 +231,13 @@ void GoogleSource::respond(const Event &event, const QString &status, bool whole
 void GoogleSource::deleteEvent(const Event &event, bool wholeSeries, Created done)
 {
     const auto calendar = splitCalendarId(event.calendarId);
-    if (!m_sync || !calendar) {
-        done({tr("Callie is not connected to that event's account right now."), true});
+    // Not syncing yet can pass; an account that is gone will not come back.
+    if (!m_sync) {
+        done({tr("Callie is not connected to Google right now."), true});
+        return;
+    }
+    if (!calendar) {
+        done(tr("That event's account is no longer connected."));
         return;
     }
     m_sync->remove(calendar->first, target(calendar->second, event, wholeSeries), std::move(done));
@@ -234,8 +247,13 @@ void GoogleSource::moveEvent(const Event &event, const QDateTime &start, const Q
                              bool wholeSeries, Created done)
 {
     const auto calendar = splitCalendarId(event.calendarId);
-    if (!m_sync || !calendar) {
-        done({tr("Callie is not connected to that event's account right now."), true});
+    // Not syncing yet can pass; an account that is gone will not come back.
+    if (!m_sync) {
+        done({tr("Callie is not connected to Google right now."), true});
+        return;
+    }
+    if (!calendar) {
+        done(tr("That event's account is no longer connected."));
         return;
     }
     if (event.allDay) {

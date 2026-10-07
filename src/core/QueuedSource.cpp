@@ -94,7 +94,8 @@ QJsonObject changeJson(const PendingChange &c)
                                      {u"start"_s, timeJson(c.draft.start)},
                                      {u"end"_s, timeJson(c.draft.end)},
                                      {u"allDay"_s, c.draft.allDay},
-                                     {u"calendarId"_s, c.draft.calendarId}}},
+                                     {u"calendarId"_s, c.draft.calendarId},
+                                     {u"id"_s, c.draft.id}}},
             {u"status"_s, c.status},
             {u"wholeSeries"_s, c.wholeSeries},
             {u"start"_s, timeJson(c.start)},
@@ -125,6 +126,7 @@ std::optional<PendingChange> changeFrom(const QJsonObject &json)
     c.draft.end = timeFrom(draft[u"end"]);
     c.draft.allDay = draft[u"allDay"].toBool();
     c.draft.calendarId = draft[u"calendarId"].toString();
+    c.draft.id = draft[u"id"].toString();
     c.status = json[u"status"].toString();
     c.wholeSeries = json[u"wholeSeries"].toBool();
     c.start = timeFrom(json[u"start"]);
@@ -311,6 +313,10 @@ void QueuedSource::createEvent(const EventDraft &draft, Created done)
     PendingChange change;
     change.kind = PendingChange::Kind::Create;
     change.draft = draft;
+    // Chosen now, in Google's alphabet (0-9, a-v), so a retry after a lost
+    // answer finds the event already made instead of making another.
+    if (change.draft.id.isEmpty())
+        change.draft.id = QUuid::createUuid().toString(QUuid::Id128);
     // Shown at once under a made-up id, until the server gives the real one.
     Event &e = change.event;
     e.uid = u"pending-"_s + QUuid::createUuid().toString(QUuid::WithoutBraces);

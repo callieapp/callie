@@ -4,7 +4,7 @@ import QtQuick
 
 /// A small line icon drawn from rounded bars, so icons need no image files and
 /// take the text color: chevron-left, chevron-right, minimize, maximize,
-/// restore, close, check, plus, refresh, settings or video.
+/// restore, close, check, plus, refresh, bell, settings or video.
 Item {
     id: root
 
@@ -58,6 +58,41 @@ Item {
             x: root.width * modelData[2] - width / 2
             y: root.height * modelData[3] - height / 2
             rotation: modelData[1]
+        }
+    }
+
+    // A bell: a dome flaring to a rim, with the clapper below.
+    Canvas {
+        id: bell
+        visible: root.name === "bell"
+        anchors.fill: parent
+        antialiasing: true
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            const w = width, h = height, s = root.stroke
+            ctx.strokeStyle = root.color
+            ctx.fillStyle = root.color
+            ctx.lineWidth = s
+            ctx.lineCap = "round"
+            ctx.lineJoin = "round"
+            ctx.beginPath()
+            ctx.moveTo(w * 0.14, h * 0.74)
+            ctx.quadraticCurveTo(w * 0.26, h * 0.62, w * 0.26, h * 0.44)
+            ctx.arc(w * 0.5, h * 0.44, w * 0.24, Math.PI, 0)
+            ctx.quadraticCurveTo(w * 0.74, h * 0.62, w * 0.86, h * 0.74)
+            ctx.closePath()
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(w * 0.5, h * 0.86, s * 0.9, 0, 2 * Math.PI)
+            ctx.fill()
+        }
+
+        Connections {
+            target: root
+            function onColorChanged() {
+                bell.requestPaint()
+            }
         }
     }
 

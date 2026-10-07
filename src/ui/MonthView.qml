@@ -79,15 +79,6 @@ Item {
                                                                                                      days, 0))
     }
 
-    // Beside the item, on whichever side has room, kept inside the view.
-    function placeBeside(item, popup) {
-        const gap = Theme.space3
-        const right = item.mapToItem(root, item.width + gap, 0)
-        const left = item.mapToItem(root, -gap - popup.width, 0)
-        popup.x = right.x + popup.width <= root.width ? right.x : Math.max(0, left.x)
-        popup.y = Math.min(Math.max(0, right.y), root.height - popup.height - gap)
-    }
-
     Row {
         id: weekdays
         width: parent.width
@@ -264,7 +255,6 @@ Item {
         id: mover
         anchors.fill: parent
         source: root.model.source
-        placeBeside: root.placeBeside
     }
 
     /// One event in a day cell: all-day events as stickers, timed ones as a dot,

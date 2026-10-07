@@ -18,9 +18,9 @@ Rectangle {
     required property date end
     required property url conferenceUrl
     required property bool canEdit
-    /// The view's column edges, and the shown column under an x in the strip.
-    required property var columnX
-    required property var columnAtX
+    /// The week view, for its column edges (columnX) and the shown column under
+    /// an x in the strip (columnAtX).
+    required property var view
 
     /// Days a drag moves the event, and adds to its end when stretching.
     property int dayShift: 0
@@ -42,7 +42,7 @@ Rectangle {
     }
 
     function columnUnder(scenePosition) {
-        return columnAtX(parent.mapFromItem(null, scenePosition.x, scenePosition.y).x)
+        return view.columnAtX(parent.mapFromItem(null, scenePosition.x, scenePosition.y).x)
     }
 
     // The days the pointer crossed since the drag began.
@@ -55,9 +55,9 @@ Rectangle {
     visible: allDay && width > 0
     opacity: declined || (Settings.dimPast && end < Clock.now) ? Theme.fadedOpacity : 1
     layer.enabled: opacity < 1
-    x: columnX(firstDay + dayShift) + 3
+    x: view.columnX(firstDay + dayShift) + 3
     y: Theme.space1 + lane * Theme.allDayRowHeight
-    width: columnX(firstDay + dayShift + daySpan + spanChange) - x - 3
+    width: view.columnX(firstDay + dayShift + daySpan + spanChange) - x - 3
     height: Theme.allDayRowHeight - 3 - Theme.stickerEdge
     z: drag.active || stretch.active ? 2 : 1
     radius: height / 2

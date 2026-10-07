@@ -25,7 +25,7 @@ Popup {
     anchors.centerIn: undefined
     x: (parent ? parent.width - width : 0) / 2
     y: Theme.space7 * 2
-    width: Math.min(560, parent ? parent.width - 2 * Theme.space6 : 560)
+    width: Math.min(Theme.searchWidth, parent ? parent.width - 2 * Theme.space6 : Theme.searchWidth)
     padding: Theme.space4
     modal: true
     focus: true
@@ -40,6 +40,7 @@ Popup {
         source: root.source
         now: Clock.now
         hiddenCalendars: Settings.hiddenCalendars
+        timeZoneId: Settings.timeZoneId
         query: root.opened ? field.text : ""
     }
 
@@ -60,6 +61,16 @@ Popup {
             anchors.fill: parent
             radius: parent.radius
         }
+    }
+
+    // The date column fits the longest date and time it shows.
+    TextMetrics {
+        id: dateWidth
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.textSm
+        font.weight: Font.Bold
+        text: qsTr("%1, %2").arg(Qt.formatDate(new Date(2026, 8, 30), "ddd, MMM d, yyyy")).arg(
+                  Settings.times.time(new Date(2026, 8, 30, 12, 30)))
     }
 
     contentItem: Column {
@@ -143,7 +154,7 @@ Popup {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 150
+                        width: dateWidth.advanceWidth + Theme.space2
                         text: {
                             const date = Settings.times.date(result.start)
                             // The year only when it is not this one.
@@ -170,7 +181,8 @@ Popup {
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: result.width - 150 - Theme.space3 - 3 * Theme.space3 - Theme.space3
+                        // What is left of the row after the date and the mark.
+                        width: result.width - x - Theme.space3
                         text: result.location ? qsTr("%1, %2").arg(result.summary).arg(
                                                     result.location) : result.summary
                         textFormat: Text.PlainText

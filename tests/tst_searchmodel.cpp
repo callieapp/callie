@@ -1,5 +1,8 @@
 #include "callie/SearchModel.h"
 
+#include <QCoreApplication>
+#include <QPromise>
+#include <QSignalSpy>
 #include <QTest>
 
 using namespace callie;
@@ -11,6 +14,29 @@ class ListSource : public CalendarSource
 {
 public:
     QList<Event> events;
+    /// Reads wait here until answered, as a disk read in the background would.
+    bool slow = false;
+    mutable QList<std::shared_ptr<QPromise<SourceSnapshot>>> waiting;
+    mutable int reads = 0;
+
+    QFuture<SourceSnapshot> load(const QDateTime &from, const QDateTime &to,
+                                 const QTimeZone &tz) const override
+    {
+        ++reads;
+        if (!slow)
+            return CalendarSource::load(from, to, tz);
+        auto promise = std::make_shared<QPromise<SourceSnapshot>>();
+        promise->start();
+        waiting.append(promise);
+        return promise->future();
+    }
+    void answer(int index) const
+    {
+        auto promise = waiting.at(index);
+        promise->addResult(SourceSnapshot{events, {}});
+        promise->finish();
+        QCoreApplication::processEvents();
+    }
 
     QString sourceId() const override { return u"list"_s; }
     QList<CalendarInfo> calendars() const override { return {}; }
@@ -66,6 +92,8 @@ private Q_SLOTS:
     void eachEventOnceUpcomingFirst();
     void hiddenCalendarsAndEmptyQueries();
     void changesAreSearchedAfresh();
+    void slowReadsAndStaleAnswers();
+    void ticksKeepTheResults();
 };
 
 void TestSearchModel::everyWordMustMatchSomewhere()
@@ -129,6 +157,50 @@ void TestSearchModel::changesAreSearchedAfresh()
     source.events.append(makeEvent(u"q"_s, u"Planning 2"_s, at(10, 10)));
     Q_EMIT source.changed();
     QCOMPARE(model.count(), 2);
+}
+
+void TestSearchModel::slowReadsAndStaleAnswers()
+{
+    ListSource source;
+    source.slow = true;
+    source.events = {makeEvent(u"p"_s, u"Planning"_s, at(9, 10))};
+    SearchModel model;
+    model.setNow(at(7, 12));
+    model.setSource(&source);
+    model.setQuery(u"plan"_s);
+    QVERIFY(model.busy());
+    QCOMPARE(model.count(), 0);
+
+    // A change while reading asks for a fresh read once this one lands.
+    source.events.append(makeEvent(u"q"_s, u"Planning 2"_s, at(10, 10)));
+    Q_EMIT source.changed();
+    source.answer(0);
+    QCOMPARE(source.reads, 2);
+    source.answer(1);
+    QVERIFY(!model.busy());
+    QCOMPARE(model.count(), 2);
+
+    // Ten minutes on, a new search reads again.
+    model.setNow(at(7, 12).addSecs(10 * 60));
+    model.setQuery(u"planning"_s);
+    QCOMPARE(source.reads, 3);
+}
+
+void TestSearchModel::ticksKeepTheResults()
+{
+    ListSource source;
+    source.events = {makeEvent(u"p"_s, u"Planning"_s, at(9, 10))};
+    SearchModel model;
+    model.setNow(at(7, 12));
+    model.setSource(&source);
+    model.setQuery(u"plan"_s);
+    QSignalSpy reset(&model, &QAbstractItemModel::modelReset);
+    model.setNow(at(7, 12).addSecs(30));
+    QCOMPARE(reset.size(), 0);
+    // Once it is past, it moves to the past results.
+    model.setNow(at(9, 12));
+    QCOMPARE(reset.size(), 1);
+    QVERIFY(!model.data(model.index(0), SearchModel::UpcomingRole).toBool());
 }
 
 QTEST_GUILESS_MAIN(TestSearchModel)

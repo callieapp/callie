@@ -65,6 +65,18 @@ void SearchModel::setHiddenCalendars(const QStringList &calendars)
     filter();
 }
 
+void SearchModel::setTimeZoneId(const QString &id)
+{
+    if (m_timeZoneId == id)
+        return;
+    m_timeZoneId = id;
+    Q_EMIT timeZoneIdChanged();
+    // All-day events start at midnight in the zone, so they are read again.
+    m_stale = true;
+    if (!m_query.trimmed().isEmpty())
+        ensureLoaded();
+}
+
 void SearchModel::setBusy(bool busy)
 {
     if (m_busy == busy)
@@ -83,8 +95,10 @@ void SearchModel::ensureLoaded()
     const quint64 generation = ++m_generation;
     m_stale = false;
     m_loadedAt = m_now;
+    const QTimeZone tz =
+        m_timeZoneId.isEmpty() ? QTimeZone::systemTimeZone() : QTimeZone(m_timeZoneId.toUtf8());
     QFuture<SourceSnapshot> future =
-        m_source->load(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround), m_now.timeZone());
+        m_source->load(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround), tz);
     if (future.isFinished()) {
         m_pool = future.result().events;
         filter();
@@ -150,6 +164,15 @@ void SearchModel::filter()
             results.resize(kMaxResults);
     }
 
+    // The clock ticks often; unchanged results keep the list's place.
+    const auto same = [this](const Event &now, const Event &before) {
+        return now.uid == before.uid && now.start == before.start &&
+               now.summary == before.summary && now.location == before.location &&
+               now.color == before.color && (now.end > m_now) == (before.end > m_shownAt);
+    };
+    if (std::equal(results.cbegin(), results.cend(), m_results.cbegin(), m_results.cend(), same))
+        return;
+    m_shownAt = m_now;
     const bool counted = results.size() != m_results.size();
     beginResetModel();
     m_results = results;
@@ -176,7 +199,7 @@ QVariant SearchModel::data(const QModelIndex &index, int role) const
     case LocationRole: return e.location;
     case CalendarColorRole: return e.color;
     case UidRole: return e.uid;
-    case UpcomingRole: return e.end > m_now;
+    case UpcomingRole: return e.end > m_shownAt;
     default: return {};
     }
 }

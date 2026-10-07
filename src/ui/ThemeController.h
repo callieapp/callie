@@ -100,6 +100,8 @@ class ThemeController : public QObject
     Q_PROPERTY(int stripeStep READ stripeStep CONSTANT)
     /// The outline of a calendar mark left hollow for "maybe".
     Q_PROPERTY(int markRing READ markRing CONSTANT)
+    /// The widest a search box opens, on a large window.
+    Q_PROPERTY(int searchWidth READ searchWidth CONSTANT)
     /// The outline of an invitation still waiting for an answer.
     Q_PROPERTY(int inviteOutline READ inviteOutline CONSTANT)
     /// Colors offered for recoloring a calendar, as calendar colors that the
@@ -224,6 +226,7 @@ public:
     int stripeWidth() const { return 3; }
     int stripeStep() const { return 8; }
     int markRing() const { return 2; }
+    int searchWidth() const { return 560; }
     int inviteOutline() const { return 2; }
     QStringList calendarPalette() const
     {

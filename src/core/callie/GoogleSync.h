@@ -5,6 +5,7 @@
 
 #include <QHash>
 #include <QObject>
+#include <QSet>
 #include <QStringList>
 
 #include <functional>
@@ -73,7 +74,8 @@ public:
 Q_SIGNALS:
     /// Emitted after each calendar's changes are stored.
     void changed(const callie::Account &account);
-    /// The account's Google Calendar settings, read after its first sync.
+    /// The account's Google Calendar settings, read once a run of Callie after
+    /// the account's first successful sync, and again after a failed read.
     void settingsFound(const callie::Account &account, const QHash<QString, QString> &settings);
 
 private:
@@ -99,6 +101,8 @@ private:
     GoogleCalendarApi &m_api;
     GoogleCache &m_cache;
     QHash<QString, std::shared_ptr<Run>> m_running;
+    /// Accounts whose settings were read in this run.
+    QSet<QString> m_settingsRead;
 };
 
 } // namespace callie

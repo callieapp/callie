@@ -88,12 +88,23 @@ EventEdit EventActions::toEdit(const QVariantMap &changes)
     const auto inZone = [&zone](const QDateTime &time) {
         return zone.isValid() ? time.toTimeZone(zone) : time;
     };
+    // An all-day day comes as midnight where it was picked, here or in the
+    // event's zone, and is written as that midnight in the event's zone.
+    const bool allDay = changes.value(u"allDay"_s).toBool();
+    const auto when = [&](const QString &key) {
+        const QDateTime given = changes.value(key).toDateTime();
+        const QDateTime time = inZone(given);
+        if (!allDay)
+            return time;
+        const QDate day = given.time() == QTime(0, 0) ? given.date() : time.date();
+        return QDateTime(day, QTime(0, 0), time.timeZone());
+    };
     if (has(u"start"_s))
-        edit.start = inZone(changes.value(u"start"_s).toDateTime());
+        edit.start = when(u"start"_s);
     if (has(u"end"_s))
-        edit.end = inZone(changes.value(u"end"_s).toDateTime());
+        edit.end = when(u"end"_s);
     if (has(u"allDay"_s))
-        edit.allDay = changes.value(u"allDay"_s).toBool();
+        edit.allDay = allDay;
     if (has(u"recurrence"_s))
         edit.recurrence = changes.value(u"recurrence"_s).toStringList();
     if (has(u"guests"_s)) {

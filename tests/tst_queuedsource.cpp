@@ -134,6 +134,7 @@ private Q_SLOTS:
     void passingFailuresAreTriedAgain();
     void seriesMovesOnItsOwnClock();
     void editsShowAtOnceAndSurviveARestart();
+    void editsFoldIntoAPendingCreation();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -416,6 +417,42 @@ void TestQueuedSource::editsShowAtOnceAndSurviveARestart()
     m_online = true;
     release(*source);
     QCOMPARE(m_server.calls, QStringList{u"update lunch Lunch with Alex"_s});
+}
+
+void TestQueuedSource::editsFoldIntoAPendingCreation()
+{
+    auto source = make();
+    EventDraft draft;
+    draft.summary = u"Pottery"_s;
+    draft.calendarId = u"work"_s;
+    draft.start = at(18);
+    draft.end = at(20);
+    source->createEvent(draft, [](const QString &) {});
+    const Event pottery = source->eventsBetween(at(18), at(19), QTimeZone::UTC).first();
+
+    // What a creation can say is folded into it.
+    EventEdit rename;
+    rename.summary = u"Clay"_s;
+    rename.start = at(17);
+    rename.end = at(19);
+    QString error = u"unset"_s;
+    source->updateEvent(pottery, rename, EditScope::ThisEvent,
+                        [&error](const QString &e) { error = e; });
+    QVERIFY(error.isEmpty());
+    QCOMPARE(source->changes().size(), 1);
+    QCOMPARE(source->changes().first().draft.summary, u"Clay"_s);
+    QCOMPARE(source->changes().first().draft.start, at(17));
+
+    // Guests wait for the event to exist.
+    EventEdit invite;
+    invite.guests = QStringList{u"pat@example.com"_s};
+    source->updateEvent(pottery, invite, EditScope::ThisEvent,
+                        [&error](const QString &e) { error = e; });
+    QVERIFY(error.contains(u"Wait"_s));
+    QCOMPARE(source->changes().size(), 1);
+
+    release(*source);
+    QCOMPARE(m_server.calls, QStringList{u"create Clay"_s});
 }
 
 QTEST_GUILESS_MAIN(TestQueuedSource)

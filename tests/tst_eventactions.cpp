@@ -62,6 +62,7 @@ private Q_SLOTS:
     void removeTakesItAway();
     void moveGivesNewTimes();
     void changesBecomeAnEdit();
+    void allDayKeepsItsDays();
     void editsReachTheWholeSeries();
     void mailGoesToTheOtherGuests();
     void failureIsReportedForItsEvent();
@@ -174,6 +175,20 @@ void TestEventActions::changesBecomeAnEdit()
     QCOMPARE(*edit.guests, QStringList{u"a@x.com"_s});
     QVERIFY(!*edit.videoCall);
     QVERIFY(!edit.location && !edit.end && !edit.recurrence);
+}
+
+void TestEventActions::allDayKeepsItsDays()
+{
+    // Midnights in a zone hours ahead of the event's still mean those days.
+    const QTimeZone tokyo("Asia/Tokyo");
+    const EventEdit edit =
+        EventActions::toEdit({{u"start"_s, QDateTime(QDate(2026, 10, 8), QTime(0, 0), tokyo)},
+                              {u"end"_s, QDateTime(QDate(2026, 10, 9), QTime(0, 0), tokyo)},
+                              {u"allDay"_s, true},
+                              {u"zone"_s, u"America/New_York"_s}});
+    QCOMPARE(edit.start->date(), QDate(2026, 10, 8));
+    QCOMPARE(edit.end->date(), QDate(2026, 10, 9));
+    QCOMPARE(edit.start->time(), QTime(0, 0));
 }
 
 void TestEventActions::editsReachTheWholeSeries()

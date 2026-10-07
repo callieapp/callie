@@ -29,6 +29,10 @@ class Settings : public QObject
     /// The calendar new events went into last, by CalendarInfo::id.
     Q_PROPERTY(QString newEventCalendar READ newEventCalendar WRITE setNewEventCalendar NOTIFY
                    newEventCalendarChanged)
+    /// The calendar new events start in, by CalendarInfo::id; empty starts them
+    /// in the one used last.
+    Q_PROPERTY(QString defaultCalendar READ defaultCalendar WRITE setDefaultCalendar NOTIFY
+                   defaultCalendarChanged)
     /// The Callie version that last ran, so the next one can say what is new.
     Q_PROPERTY(QString lastSeenVersion READ lastSeenVersion WRITE setLastSeenVersion NOTIFY
                    lastSeenVersionChanged)
@@ -86,6 +90,8 @@ public:
 
     [[nodiscard]] QString newEventCalendar() const { return m_newEventCalendar; }
     void setNewEventCalendar(const QString &id);
+    [[nodiscard]] QString defaultCalendar() const { return m_defaultCalendar; }
+    void setDefaultCalendar(const QString &id);
 
     [[nodiscard]] QString lastSeenVersion() const { return m_lastSeenVersion; }
     void setLastSeenVersion(const QString &version);
@@ -121,6 +127,7 @@ Q_SIGNALS:
     void viewChanged();
     void lastSeenVersionChanged();
     void newEventCalendarChanged();
+    void defaultCalendarChanged();
     void notifyChanged();
     void reminderMinutesChanged();
     void keepRunningChanged();
@@ -142,6 +149,7 @@ private:
     QString m_view;
     QString m_lastSeenVersion;
     QString m_newEventCalendar;
+    QString m_defaultCalendar;
     bool m_notify = true;
     int m_reminderMinutes = 10;
     bool m_keepRunning = false;

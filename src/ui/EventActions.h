@@ -41,6 +41,18 @@ public:
     /// The edit `changes` describes, as update() reads it.
     [[nodiscard]] static EventEdit toEdit(const QVariantMap &changes);
 
+    // For the editor, which works in the event's own zone, empty for the system's.
+    /// The moment `minutes` past midnight on `day` on the zone's clock.
+    Q_INVOKABLE static QDateTime at(const QDateTime &day, int minutes, const QString &zone);
+    /// The date of `time` in the zone, as a local midnight QML keeps whole.
+    Q_INVOKABLE static QDateTime dayOf(const QDateTime &time, const QString &zone);
+    /// Minutes past midnight of `time` on the zone's clock.
+    Q_INVOKABLE static int minutesOf(const QDateTime &time, const QString &zone);
+    /// The repeat choices for an event starting on `day`, as {id, label}.
+    Q_INVOKABLE static QVariantList repeatChoices(const QDateTime &day);
+    Q_INVOKABLE static QString repeatChoice(const QStringList &recurrence, const QDateTime &day);
+    Q_INVOKABLE static QStringList repeatRule(const QString &choice, const QDateTime &day);
+
     /// Gives the event new times, as dragging it on the grid does.
     Q_INVOKABLE void move(const QVariantMap &event, const QDateTime &from, const QDateTime &to,
                           bool wholeSeries);

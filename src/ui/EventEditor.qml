@@ -409,7 +409,7 @@ Column {
 
             StickerButton {
                 // A rule belongs to the series, not one occurrence.
-                visible: root.changes("this").recurrence === undefined
+                visible: root.asking && root.changes("this").recurrence === undefined
                 text: qsTr("This event")
                 onClicked: root.saveFor("this")
             }

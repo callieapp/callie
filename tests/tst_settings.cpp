@@ -145,6 +145,12 @@ void TestSettings::googleFillsOnlyWhatIsUnset()
     settings.seedFromGoogle({{u"weekStart"_s, u"1"_s}, {u"hideWeekends"_s, u"false"_s}});
     QCOMPARE(settings.firstDayOfWeek(), int(Qt::Sunday));
     QVERIFY(settings.hideWeekends());
+
+    // Even a choice matching Callie's default is kept from the first account.
+    Settings fresh(m_dir->filePath(u"fresh.ini"_s));
+    fresh.seedFromGoogle({{u"hideWeekends"_s, u"false"_s}});
+    fresh.seedFromGoogle({{u"hideWeekends"_s, u"true"_s}});
+    QVERIFY(!fresh.hideWeekends());
 }
 
 void TestSettings::workingHoursStayInOrder()

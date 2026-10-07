@@ -327,18 +327,27 @@ void Settings::seedFromGoogle(const QHash<QString, QString> &google)
         return !m_store.contains(ours) && google.contains(theirs);
     };
     const auto yes = [&google](const QString &id) { return google.value(id) == u"true"; };
+    // Each is stored even when it matches Callie's default, so it counts as
+    // set and a second account leaves it alone.
     if (unset(kWeekStart, u"weekStart"_s)) {
         // Google counts from Sunday as 0; Qt from Monday as 1.
         const int day = google.value(u"weekStart"_s).toInt();
         setWeekStart(day == 0 ? int(Qt::Sunday) : std::clamp(day, 1, 6));
+        m_store.setValue(kWeekStart, m_weekStart);
     }
-    if (unset(kHideWeekends, u"hideWeekends"_s))
+    if (unset(kHideWeekends, u"hideWeekends"_s)) {
         setHideWeekends(yes(u"hideWeekends"_s));
-    if (unset(kTimeFormat, u"format24HourTime"_s))
+        m_store.setValue(kHideWeekends, m_hideWeekends);
+    }
+    if (unset(kTimeFormat, u"format24HourTime"_s)) {
         setTimeFormat(yes(u"format24HourTime"_s) ? TimeFormat::TwentyFourHour
                                                  : TimeFormat::TwelveHour);
-    if (unset(kShowDeclined, u"showDeclinedEvents"_s))
+        m_store.setValue(kTimeFormat, int(m_timeFormat));
+    }
+    if (unset(kShowDeclined, u"showDeclinedEvents"_s)) {
         setShowDeclined(yes(u"showDeclinedEvents"_s));
+        m_store.setValue(kShowDeclined, m_showDeclined);
+    }
 }
 
 void Settings::reset()

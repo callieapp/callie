@@ -102,6 +102,9 @@ class ThemeController : public QObject
     Q_PROPERTY(int markRing READ markRing CONSTANT)
     /// The outline of an invitation still waiting for an answer.
     Q_PROPERTY(int inviteOutline READ inviteOutline CONSTANT)
+    /// Colors offered for recoloring a calendar, as calendar colors that the
+    /// theme turns into fills, in order around the color wheel.
+    Q_PROPERTY(QStringList calendarPalette READ calendarPalette CONSTANT)
     /// The grab strip along a frameless window's edges. Anything scrollable at
     /// an edge keeps its handle clear of it.
     Q_PROPERTY(int resizeBorder READ resizeBorder CONSTANT)
@@ -222,6 +225,13 @@ public:
     int stripeStep() const { return 8; }
     int markRing() const { return 2; }
     int inviteOutline() const { return 2; }
+    QStringList calendarPalette() const
+    {
+        return {QStringLiteral("#d50000"), QStringLiteral("#f4511e"), QStringLiteral("#f6bf26"),
+                QStringLiteral("#33b679"), QStringLiteral("#009688"), QStringLiteral("#039be5"),
+                QStringLiteral("#3f51b5"), QStringLiteral("#7986cb"), QStringLiteral("#8e24aa"),
+                QStringLiteral("#e91e63"), QStringLiteral("#795548"), QStringLiteral("#616161")};
+    }
     int resizeBorder() const { return 6; }
     qreal fadedOpacity() const { return 0.5; }
     int minEventHeight() const { return 20; }

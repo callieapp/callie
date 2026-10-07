@@ -13,9 +13,6 @@ Popup {
     property bool account: false
     property string name
 
-    /// Colors to choose from; the theme turns each into its own fill.
-    readonly property var swatches: ["#d50000", "#f4511e", "#f6bf26", "#33b679", "#009688",
-        "#039be5", "#3f51b5", "#7986cb", "#8e24aa", "#e91e63", "#795548", "#616161"]
     readonly property string chosenColor: Settings.calendarLooks[targetId] ? (
                                                                                  Settings.calendarLooks[targetId].color
                                                                                  || "") : ""
@@ -34,7 +31,11 @@ Popup {
         open()
     }
 
+    // Only a name the user typed is kept, so an unchanged one keeps following
+    // the calendar's own if that is renamed later.
     function saveName() {
+        if (field.text.trim() === name.trim())
+            return
         if (account)
             Settings.setAccountName(targetId, field.text)
         else
@@ -90,7 +91,7 @@ Popup {
             spacing: Theme.space2
 
             Repeater {
-                model: root.swatches
+                model: Theme.calendarPalette
 
                 AbstractButton {
                     id: swatch

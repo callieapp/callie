@@ -56,3 +56,6 @@ callie_add_test(tst_accounts)
 target_link_libraries(tst_accounts PRIVATE callieui)
 callie_add_test(tst_composer)
 target_link_libraries(tst_composer PRIVATE callieui)
+# Drives the real main window with the pointer.
+callie_add_test(tst_weekdrag)
+target_link_libraries(tst_weekdrag PRIVATE callieui callieuiplugin Qt6::QuickControls2)

@@ -456,15 +456,16 @@ Item {
                     width: laneWidth - (laneCount > 1 ? 3 : 0)
                     y: startMinutes / 60 * Theme.hourHeight
                     height: Math.max(Theme.minEventHeight, durationMinutes / 60 * Theme.hourHeight
-                                     - 2 - Theme.stickerEdge)
+                                     - 2 - Theme.stickerEdge + stretchHeight)
 
                     onActivated: root.showDetails(block)
                     onHoveredChanged: root.blockHovered(block, hovered)
 
-                    onMoveRequested: (deltaMinutes, deltaDays) => {
-                        // TODO(core): commit the move once the model can write.
-                        console.log("move", uid, deltaMinutes, "min", deltaDays, "days")
-                    }
+                    onDraggedTo: scenePosition => root.dragBlock(block, scenePosition)
+                    onMoveRequested: (deltaMinutes, deltaDays) => root.commitChange(block,
+                                                                                    deltaMinutes,
+                                                                                    deltaDays, 0)
+                    onResizeRequested: deltaMinutes => root.commitChange(block, 0, 0, deltaMinutes)
                 }
             }
 
@@ -611,6 +612,82 @@ Item {
         id: tip
         visible: false
         z: 200
+    }
+
+    // ---- Moving and stretching events -----------------------------------------
+    /// The block whose change is being saved, so a failure can put it back.
+    property EventBlock changing: null
+
+    function columnAtX(x) {
+        for (let i = root.dayCount - 1; i >= 0; --i)
+            if (x >= root.columnX(i))
+                return i
+        return 0
+    }
+
+    function dragBlock(block, scenePosition) {
+        tipDelay.stop()
+        tip.visible = false
+        const at = block.parent.mapFromItem(null, scenePosition.x, scenePosition.y)
+        const column = root.columnAtX(at.x)
+        block.dayShift = column - block.dayIndex
+        block.dayShiftX = root.columnX(column) - root.columnX(block.dayIndex)
+    }
+
+    /// Saves a drop: `minutes` and `days` move the event, `length` stretches it.
+    function commitChange(block, minutes, days, length) {
+        if (changes.busy) {
+            block.settle()
+            return
+        }
+        const event = root.model.eventAt(block.index)
+        const column = Math.max(0, Math.min(root.dayCount - 1, block.dayIndex + days))
+        const startMinutes = Math.max(0, Math.min(24 * 60 - Theme.snapMinutes, block.startMinutes
+                                                  + minutes))
+
+        const from = Settings.times.at(root.dateForColumn(column), startMinutes)
+        const to = new Date(from.getTime() + (event.end - event.start) + length * 60000)
+        root.changing = block
+        if (event.seriesId !== "") {
+            root.placeBeside(block, moveChoice)
+            moveChoice.ask(event, from, to)
+        } else {
+            changes.move(event, from, to, false)
+        }
+    }
+
+    function changeFailed(message) {
+        if (!root.changing)
+            return
+        if (message !== "") {
+            changeError.text = message
+            root.placeBeside(root.changing, changeError)
+            changeError.open()
+        }
+        root.changing.settle()
+        root.changing = null
+    }
+
+    EventActions {
+        id: changes
+        source: root.model.source
+        onErrorChanged: {
+            if (error !== "")
+                root.changeFailed(error)
+        }
+        // The reloaded model draws the event in its new place.
+        onMoved: root.changing = null
+    }
+
+    MoveChoice {
+        id: moveChoice
+        onChosen: (event, from, to, wholeSeries) => changes.move(event, from, to, wholeSeries)
+        onCancelled: root.changeFailed("")
+    }
+
+    Tip {
+        id: changeError
+        timeout: 5000
     }
 
     EventDetails {

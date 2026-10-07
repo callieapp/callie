@@ -53,6 +53,24 @@ void EventActions::remove(const QVariantMap &event, bool wholeSeries)
     });
 }
 
+void EventActions::move(const QVariantMap &event, const QDateTime &from, const QDateTime &to,
+                        bool wholeSeries)
+{
+    if (!m_source || m_busy)
+        return;
+    start();
+    const QPointer<EventActions> self(this);
+    const QString eventId = event.value(u"eventId"_s).toString();
+    m_source->moveEvent(toEvent(event), from, to, wholeSeries,
+                        [this, self, eventId](const QString &error) {
+                            if (!self)
+                                return;
+                            finish(eventId, error);
+                            if (error.isEmpty())
+                                Q_EMIT moved(eventId);
+                        });
+}
+
 QUrl EventActions::mailGuests(const QVariantMap &event)
 {
     const QStringList guests = event.value(u"attendees"_s).toStringList();

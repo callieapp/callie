@@ -60,6 +60,7 @@ class TestEventActions : public QObject
 private Q_SLOTS:
     void answerReachesTheSource();
     void removeTakesItAway();
+    void moveGivesNewTimes();
     void mailGoesToTheOtherGuests();
     void failureIsReportedForItsEvent();
 };
@@ -93,6 +94,31 @@ void TestEventActions::removeTakesItAway()
 
     QCOMPARE(removed.size(), 1);
     QCOMPARE(answerOf(source, event.value(u"eventId"_s).toString()), u"(gone)"_s);
+}
+
+void TestEventActions::moveGivesNewTimes()
+{
+    SampleSource source;
+    const QVariantMap event = invitation(source);
+    QVERIFY(!event.isEmpty());
+    const QDateTime start = event.value(u"start"_s).toDateTime().addSecs(30 * 60);
+    const QDateTime end = event.value(u"end"_s).toDateTime().addSecs(60 * 60);
+    EventActions actions;
+    actions.setProperty("source", QVariant::fromValue<CalendarSource *>(&source));
+    QSignalSpy moved(&actions, &EventActions::moved);
+
+    actions.move(event, start, end, false);
+
+    QCOMPARE(moved.size(), 1);
+    const QString id = event.value(u"eventId"_s).toString();
+    QCOMPARE(moved.first().first().toString(), id);
+    const QList<Event> events =
+        source.eventsBetween(start.addDays(-1), start.addDays(1), QTimeZone::systemTimeZone());
+    const auto found = std::find_if(events.cbegin(), events.cend(),
+                                    [&id](const Event &e) { return e.eventId == id; });
+    QVERIFY(found != events.cend());
+    QCOMPARE(found->start, start);
+    QCOMPARE(found->end, end);
 }
 
 void TestEventActions::mailGoesToTheOtherGuests()

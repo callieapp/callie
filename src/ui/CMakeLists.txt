@@ -61,6 +61,7 @@ qt_add_qml_module(callieui
         WindowControls.qml
         ResizeFrame.qml
         MenuEntry.qml
+        MoveChoice.qml
         Tip.qml
         Toggle.qml
         ZonePicker.qml

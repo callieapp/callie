@@ -55,6 +55,10 @@ public:
     [[nodiscard]] QVariantList syncReport() const override;
 
 private:
+    /// Ends the series the occurrence before `event` and starts a new one from
+    /// it, with `edit` made.
+    void splitSeries(const Account &account, const QString &calendarId, const Event &event,
+                     const EventEdit &edit, Created done);
     void flushChanges();
     /// The last sync time and errors the cache recorded for the accounts.
     void loadStatus();

@@ -121,7 +121,11 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                 const bool inSeries = !change.edited.seriesId.isEmpty()
                                           ? e.seriesId == change.edited.seriesId
                                           : e.uid == change.edited.uid;
-                if (change.wholeSeries ? inSeries : e.eventId == change.edited.eventId)
+                const bool hit = change.scope == EditScope::AllEvents ? inSeries
+                                 : change.scope == EditScope::ThisAndFollowing
+                                     ? inSeries && e.start >= change.edited.start
+                                     : e.eventId == change.edited.eventId;
+                if (hit)
                     applyEdit(e, change.edited, change.edit);
             }
             if (const auto moved = m_moved.constFind(e.eventId); moved != m_moved.cend()) {
@@ -174,10 +178,6 @@ void SampleSource::moveEvent(const Event &event, const QDateTime &start, const Q
 void SampleSource::updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
                                Created done)
 {
-    if (scope == EditScope::ThisAndFollowing) {
-        done(tr("Changing this and the following events is not possible yet."));
-        return;
-    }
     for (Event &created : m_created) {
         if (created.eventId == event.eventId) {
             applyEdit(created, event, edit);
@@ -186,7 +186,7 @@ void SampleSource::updateEvent(const Event &event, const EventEdit &edit, EditSc
             return;
         }
     }
-    m_edits.append({event, edit, scope == EditScope::AllEvents});
+    m_edits.append({event, edit, scope});
     done({});
     Q_EMIT changed();
 }

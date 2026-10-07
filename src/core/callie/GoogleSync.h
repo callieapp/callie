@@ -51,6 +51,10 @@ public:
     /// shows before the next sync.
     void createEvent(const Account &account, const QString &calendarId, const EventDraft &draft,
                      Created done);
+    /// Creates an event as Google writes one, which may ask for a video call
+    /// with `conference`. An id already taken counts as created.
+    void insert(const Account &account, const QString &calendarId, const QJsonObject &event,
+                bool conference, Created done);
 
     /// What an answer or a deletion is aimed at: one event, one occurrence of
     /// a series (with `seriesId` and its original start), or a whole series.

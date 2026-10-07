@@ -135,6 +135,7 @@ private Q_SLOTS:
     void seriesMovesOnItsOwnClock();
     void editsShowAtOnceAndSurviveARestart();
     void editsFoldIntoAPendingCreation();
+    void followingEditsShowFromTheOccurrenceOn();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -453,6 +454,28 @@ void TestQueuedSource::editsFoldIntoAPendingCreation()
 
     release(*source);
     QCOMPARE(m_server.calls, QStringList{u"create Clay"_s});
+}
+
+void TestQueuedSource::followingEditsShowFromTheOccurrenceOn()
+{
+    m_online = false;
+    m_server.events.clear();
+    for (int hour : {9, 11, 13}) {
+        Event e = makeEvent(u"walk-"_s + QString::number(hour), hour);
+        e.summary = u"Walk"_s;
+        e.seriesId = u"walk"_s;
+        e.recurrenceId = e.start;
+        m_server.events.append(e);
+    }
+    auto source = make();
+    EventEdit edit;
+    edit.summary = u"Run"_s;
+    source->updateEvent(m_server.events[1], edit, EditScope::ThisAndFollowing,
+                        [](const QString &) {});
+    QCOMPARE(shown(*source), (QStringList{u"Run@11:00"_s, u"Run@13:00"_s, u"Walk@09:00"_s}));
+    m_online = true;
+    release(*source);
+    QCOMPARE(m_server.calls, QStringList{u"update walk-11 Run"_s});
 }
 
 QTEST_GUILESS_MAIN(TestQueuedSource)

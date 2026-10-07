@@ -296,9 +296,11 @@ Popup {
                 spacing: Theme.space2
                 Accessible.role: Accessible.RadioButton
 
+                // Also lit when the chosen calendar is gone or hidden, since new
+                // events then go to the last one used.
                 PillButton {
                     label: qsTr("The last one used")
-                    selected: Settings.defaultCalendar === ""
+                    selected: !newEvents.calendars.some(c => c.id === Settings.defaultCalendar)
                     onClicked: Settings.defaultCalendar = ""
                 }
                 Repeater {

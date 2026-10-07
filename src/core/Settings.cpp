@@ -22,6 +22,7 @@ const QString kTheme = u"appearance/theme"_s;
 const QString kView = u"view/current"_s;
 const QString kLastSeenVersion = u"app/lastSeenVersion"_s;
 const QString kNewEventCalendar = u"events/newEventCalendar"_s;
+const QString kDefaultCalendar = u"events/defaultCalendar"_s;
 const QString kNotify = u"reminders/notify"_s;
 const QString kReminderMinutes = u"reminders/defaultMinutes"_s;
 const QString kKeepRunning = u"reminders/keepRunning"_s;
@@ -60,6 +61,7 @@ void Settings::load()
     m_view = kViews.contains(view) ? view : u"week"_s;
     m_lastSeenVersion = m_store.value(kLastSeenVersion).toString();
     m_newEventCalendar = m_store.value(kNewEventCalendar).toString();
+    m_defaultCalendar = m_store.value(kDefaultCalendar).toString();
     m_notify = m_store.value(kNotify, true).toBool();
     m_reminderMinutes = std::max(-1, m_store.value(kReminderMinutes, 10).toInt());
     m_keepRunning = m_store.value(kKeepRunning, false).toBool();
@@ -137,6 +139,15 @@ void Settings::setNewEventCalendar(const QString &id)
     m_newEventCalendar = id;
     m_store.setValue(kNewEventCalendar, id);
     Q_EMIT newEventCalendarChanged();
+}
+
+void Settings::setDefaultCalendar(const QString &id)
+{
+    if (m_defaultCalendar == id)
+        return;
+    m_defaultCalendar = id;
+    m_store.setValue(kDefaultCalendar, id);
+    Q_EMIT defaultCalendarChanged();
 }
 
 void Settings::setLastSeenVersion(const QString &version)
@@ -247,6 +258,7 @@ void Settings::reset()
     const QStringList collapsed = m_collapsedAccounts;
     const QString theme = m_theme;
     const QString view = m_view;
+    const QString defaultCalendar = m_defaultCalendar;
     const bool notify = m_notify, keep = m_keepRunning;
     const int minutes = m_reminderMinutes;
     load();
@@ -268,6 +280,8 @@ void Settings::reset()
         Q_EMIT themeChanged();
     if (view != m_view)
         Q_EMIT viewChanged();
+    if (defaultCalendar != m_defaultCalendar)
+        Q_EMIT defaultCalendarChanged();
     if (notify != m_notify)
         Q_EMIT notifyChanged();
     if (minutes != m_reminderMinutes)

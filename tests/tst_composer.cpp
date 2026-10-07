@@ -22,6 +22,7 @@ private Q_SLOTS:
     void submitCreatesInTheChosenCalendar();
     void untitledIsNotReady();
     void hiddenCalendarsAreNotOffered();
+    void newEventsStartInTheDefault();
     void pickedTimesFillTheGaps();
 
 private:
@@ -84,6 +85,34 @@ void TestComposer::submitCreatesInTheChosenCalendar()
     Composer next;
     next.setSource(&source);
     QCOMPARE(next.calendarId(), personal);
+}
+
+void TestComposer::newEventsStartInTheDefault()
+{
+    SampleSource source;
+    Composer composer;
+    composer.setSource(&source);
+    const QString work = source.calendars().first().id;
+    const QString personal = source.calendars().last().id;
+    m_settings->setNewEventCalendar(personal);
+
+    // With no default, the calendar used last.
+    m_settings->setDefaultCalendar({});
+    composer.setCalendarId(work);
+    composer.reset();
+    QCOMPARE(composer.calendarId(), personal);
+
+    // A default wins over the last one, each time the composer opens.
+    m_settings->setDefaultCalendar(work);
+    composer.setCalendarId(personal);
+    composer.reset();
+    QCOMPARE(composer.calendarId(), work);
+
+    // A default that is gone falls back to the last one.
+    m_settings->setDefaultCalendar(u"gone"_s);
+    composer.reset();
+    QCOMPARE(composer.calendarId(), personal);
+    m_settings->setDefaultCalendar({});
 }
 
 void TestComposer::untitledIsNotReady()

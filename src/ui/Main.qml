@@ -700,6 +700,7 @@ ApplicationWindow {
     SettingsDialog {
         id: settingsDialog
         syncReport: window.source.syncReport
+        source: window.source
         onEditColorsRequested: {
             close()
             themeEditor.open()

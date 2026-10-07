@@ -40,6 +40,9 @@ void Composer::setText(const QString &text)
 
 void Composer::reset()
 {
+    // Each new event starts in the chosen default, or the calendar used last.
+    m_calendarId.clear();
+    refreshCalendars();
     m_text.clear();
     m_pickedStart = {};
     m_pickedEnd = {};
@@ -92,8 +95,10 @@ void Composer::refreshCalendars()
     }
     if (ids.contains(m_calendarId))
         return;
-    const QString last = SettingsForeign::create(nullptr, nullptr)->newEventCalendar();
-    m_calendarId = ids.contains(last) ? last : ids.value(0);
+    const Settings *settings = SettingsForeign::create(nullptr, nullptr);
+    const QString chosen = settings->defaultCalendar();
+    const QString last = settings->newEventCalendar();
+    m_calendarId = ids.contains(chosen) ? chosen : ids.contains(last) ? last : ids.value(0);
     Q_EMIT calendarIdChanged();
     Q_EMIT draftChanged();
 }

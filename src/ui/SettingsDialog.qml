@@ -23,6 +23,14 @@ Popup {
     property string tab: "general"
     /// The source's syncReport, for the accounts tab.
     property var syncReport: []
+    /// Where the calendars new events can go come from.
+    property CalendarSource source
+
+    // Lists the calendars that take new events, as quick add offers them.
+    Composer {
+        id: newEvents
+        source: root.source
+    }
 
     Overlay.modal: Rectangle {
         // The attached Window type is not the QML Window type, so this stays untyped.
@@ -269,6 +277,40 @@ Popup {
                 text: qsTr("Fade events that have ended")
                 checked: Settings.dimPast
                 onToggled: Settings.dimPast = checked
+            }
+        }
+
+        Section {
+            title: qsTr("New events")
+            visible: root.tab === "general" && newEvents.calendars.length > 1
+
+            Text {
+                text: qsTr("Start them in")
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textMd
+                font.weight: Font.DemiBold
+            }
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+                Accessible.role: Accessible.RadioButton
+
+                PillButton {
+                    label: qsTr("The last one used")
+                    selected: Settings.defaultCalendar === ""
+                    onClicked: Settings.defaultCalendar = ""
+                }
+                Repeater {
+                    model: newEvents.calendars
+
+                    PillButton {
+                        required property var modelData
+                        label: modelData.name
+                        selected: Settings.defaultCalendar === modelData.id
+                        onClicked: Settings.defaultCalendar = modelData.id
+                    }
+                }
             }
         }
 

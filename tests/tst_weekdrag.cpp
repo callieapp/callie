@@ -104,13 +104,15 @@ void TestWeekDrag::dragMovesStretchesAndClickStillOpens()
     QTest::qWait(300);
     QTest::mouseClick(window, Qt::LeftButton, {},
                       block->mapToScene(QPointF(block->width() / 2, 10)).toPoint());
-    QTest::qWait(300);
-    bool opened = false;
-    for (QObject *o : engine.rootObjects().first()->findChildren<QObject *>())
-        if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"EventDetails") &&
-            o->property("opened").toBool())
-            opened = true;
-    QVERIFY(opened);
+    const auto detailsOpen = [&engine] {
+        for (QObject *o : engine.rootObjects().first()->findChildren<QObject *>())
+            if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"EventDetails") &&
+                o->property("opened").toBool())
+                return true;
+        return false;
+    };
+    // Waited for, since a loaded machine can take a while to open it.
+    QTRY_VERIFY_WITH_TIMEOUT(detailsOpen(), 5000);
     const Event after = climbing(source);
     QCOMPARE(after.start, stretched.start);
 }

@@ -12,12 +12,14 @@ class ListSource : public CalendarSource
 {
 public:
     QList<Event> events;
+    mutable int reads = 0;
 
     QString sourceId() const override { return u"list"_s; }
     QList<CalendarInfo> calendars() const override { return {}; }
     QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
                                const QTimeZone &) const override
     {
+        ++reads;
         QList<Event> result;
         for (const Event &event : events) {
             if (event.start < to && event.end > from)
@@ -57,6 +59,7 @@ class TestInvitesModel : public QObject
 private Q_SLOTS:
     void listsWaitingInvitesSoonestFirst();
     void answeringOneDropsIt();
+    void clockTicksKeepTheList();
 };
 
 void TestInvitesModel::listsWaitingInvitesSoonestFirst()
@@ -110,6 +113,29 @@ void TestInvitesModel::answeringOneDropsIt()
     Q_EMIT source.changed();
     QCOMPARE(model.count(), 0);
     QCOMPARE(counted.size(), 1);
+}
+
+void TestInvitesModel::clockTicksKeepTheList()
+{
+    ListSource source;
+    source.events = {invite(u"Review"_s, at(8, 15))};
+    InvitesModel model;
+    model.setNow(at(7, 12));
+    model.setSource(&source);
+    QCOMPARE(source.reads, 1);
+    QSignalSpy reset(&model, &QAbstractItemModel::modelReset);
+
+    // A tick that changes nothing neither reads again nor rebuilds the list.
+    model.setNow(at(7, 12).addSecs(30));
+    QCOMPARE(source.reads, 1);
+    QCOMPARE(reset.size(), 0);
+
+    // A quarter of an hour on, or a clock set back, reads afresh.
+    model.setNow(at(7, 12).addSecs(15 * 60));
+    QCOMPARE(source.reads, 2);
+    model.setNow(at(7, 11));
+    QCOMPARE(source.reads, 3);
+    QCOMPARE(reset.size(), 0);
 }
 
 QTEST_GUILESS_MAIN(TestInvitesModel)

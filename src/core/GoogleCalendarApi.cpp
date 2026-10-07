@@ -136,6 +136,8 @@ QJsonObject googleEventJson(const EventDraft &draft)
                      {u"end"_s, time(draft.end)}};
     if (!draft.location.isEmpty())
         json.insert(u"location"_s, draft.location);
+    if (!draft.description.isEmpty())
+        json.insert(u"description"_s, draft.description);
     if (!draft.id.isEmpty())
         json.insert(u"id"_s, draft.id);
     return json;

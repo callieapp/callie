@@ -147,6 +147,7 @@ QJsonObject changeJson(const PendingChange &c)
             {u"event"_s, eventJson(c.event)},
             {u"draft"_s, QJsonObject{{u"summary"_s, c.draft.summary},
                                      {u"location"_s, c.draft.location},
+                                     {u"description"_s, c.draft.description},
                                      {u"start"_s, timeJson(c.draft.start)},
                                      {u"end"_s, timeJson(c.draft.end)},
                                      {u"allDay"_s, c.draft.allDay},
@@ -182,6 +183,7 @@ std::optional<PendingChange> changeFrom(const QJsonObject &json)
     const QJsonObject draft = json[u"draft"].toObject();
     c.draft.summary = draft[u"summary"].toString();
     c.draft.location = draft[u"location"].toString();
+    c.draft.description = draft[u"description"].toString();
     c.draft.start = timeFrom(draft[u"start"]);
     c.draft.end = timeFrom(draft[u"end"]);
     c.draft.allDay = draft[u"allDay"].toBool();
@@ -436,6 +438,7 @@ void QueuedSource::createEvent(const EventDraft &draft, Created done)
     e.calendarId = draft.calendarId;
     e.summary = draft.summary;
     e.location = draft.location;
+    e.description = draft.description;
     e.start = draft.start;
     e.end = draft.end;
     e.allDay = draft.allDay;
@@ -527,7 +530,7 @@ void QueuedSource::updateEvent(const Event &event, const EventEdit &edit, EditSc
         if (change.kind != PendingChange::Kind::Create || change.event.eventId != event.eventId ||
             change.id == m_sending)
             continue;
-        if (edit.description || edit.recurrence || edit.guests || edit.videoCall) {
+        if (edit.recurrence || edit.guests || edit.videoCall) {
             done(tr("Wait a moment for the new event to be saved, then change it."));
             return;
         }
@@ -535,6 +538,7 @@ void QueuedSource::updateEvent(const Event &event, const EventEdit &edit, EditSc
         applyEdit(change.event, event, edit);
         change.draft.summary = change.event.summary;
         change.draft.location = change.event.location;
+        change.draft.description = change.event.description;
         change.draft.start = change.event.start;
         change.draft.end = change.event.end;
         change.draft.allDay = change.event.allDay;

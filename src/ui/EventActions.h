@@ -56,6 +56,15 @@ public:
     Q_INVOKABLE static QString repeatChoice(const QStringList &recurrence, const QDateTime &day);
     Q_INVOKABLE static QStringList repeatRule(const QString &choice, const QDateTime &day);
 
+    /// Makes a copy of the event, starting at `at`, or at the same time when it
+    /// is invalid. An all-day copy keeps to whole days. The copy goes in the
+    /// event's calendar if it can be written to, otherwise in `fallbackCalendar`
+    /// or the first calendar that can.
+    Q_INVOKABLE void duplicate(const QVariantMap &event, const QDateTime &at,
+                               const QString &fallbackCalendar);
+    /// The copy's details, as duplicate() creates it.
+    [[nodiscard]] static EventDraft toCopy(const QVariantMap &event, const QDateTime &start);
+
     /// Gives the event new times, as dragging it on the grid does.
     Q_INVOKABLE void move(const QVariantMap &event, const QDateTime &from, const QDateTime &to,
                           bool wholeSeries);
@@ -73,6 +82,7 @@ Q_SIGNALS:
     void removed(const QString &eventId);
     void moved(const QString &eventId);
     void updated(const QString &eventId);
+    void duplicated();
 
 private:
     [[nodiscard]] static Event toEvent(const QVariantMap &event);

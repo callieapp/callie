@@ -191,6 +191,10 @@ Item {
                                             Theme.space4
         clip: true
 
+        HoverHandler {
+            id: stripHover
+        }
+
         Repeater {
             model: root.model
 
@@ -343,6 +347,10 @@ Item {
 
                 function columnAt(x) {
                     return root.columnAtX(x)
+                }
+
+                HoverHandler {
+                    id: gridHover
                 }
 
                 x: Theme.gutterWidth
@@ -569,6 +577,20 @@ Item {
         }
     }
 
+    /// Where a copy of `event` pasted now would start: the slot under the
+    /// pointer, or its day at the event's time of day over the all-day strip.
+    function pasteTarget(event) {
+        if (gridHover.hovered) {
+            const at = gridHover.point.position
+            return Settings.times.at(root.dateForColumn(drawer.columnAt(at.x + drawer.x)), drawer.minutesAt(
+                                         at.y))
+        }
+        if (stripHover.hovered)
+            return Settings.times.at(root.dateForColumn(root.columnAtX(stripHover.point.position.x)),
+                                     Settings.times.minutesIntoDay(event.start))
+        return null
+    }
+
     function showDetails(block) {
         tipDelay.stop()
         tip.visible = false
@@ -646,8 +668,12 @@ Item {
         source: root.model.source
     }
 
+    /// An event copied from its card.
+    signal eventCopied(var event)
+
     EventDetails {
         id: details
         source: root.model.source
+        onCopied: event => root.eventCopied(event)
     }
 }

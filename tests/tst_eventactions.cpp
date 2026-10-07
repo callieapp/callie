@@ -64,6 +64,8 @@ private Q_SLOTS:
     void changesBecomeAnEdit();
     void allDayKeepsItsDays();
     void editorTimesFollowTheZone();
+    void copiesKeepTheirLengthAndDays();
+    void duplicateLandsInAWritableCalendar();
     void editsReachTheWholeSeries();
     void mailGoesToTheOtherGuests();
     void failureIsReportedForItsEvent();
@@ -209,6 +211,63 @@ void TestEventActions::editorTimesFollowTheZone()
 
     QCOMPARE(EventActions::daysBetween(day, EventActions::addDays(day, 3)), 3);
     QCOMPARE(EventActions::addDays(day, 1).time(), QTime(0, 0));
+}
+
+void TestEventActions::copiesKeepTheirLengthAndDays()
+{
+    const QDateTime start(QDate(2026, 10, 7), QTime(12, 0), QTimeZone::UTC);
+    const QVariantMap lunch{{u"summary"_s, u"Lunch"_s},
+                            {u"description"_s, u"Bring the menu"_s},
+                            {u"start"_s, start},
+                            {u"end"_s, start.addSecs(90 * 60)}};
+    // Unplaced, the copy is where the event is.
+    EventDraft same = EventActions::toCopy(lunch, {});
+    QCOMPARE(same.start, start);
+    QCOMPARE(same.description, u"Bring the menu"_s);
+    // Placed, it keeps its length.
+    const QDateTime friday(QDate(2026, 10, 9), QTime(15, 30), QTimeZone::UTC);
+    EventDraft moved = EventActions::toCopy(lunch, friday);
+    QCOMPARE(moved.start, friday);
+    QCOMPARE(moved.end, friday.addSecs(90 * 60));
+
+    // An all-day copy takes whole days from the day it is put on.
+    const QDateTime monday = QDate(2026, 10, 5).startOfDay();
+    const EventDraft trip = EventActions::toCopy({{u"summary"_s, u"Trip"_s},
+                                                  {u"allDay"_s, true},
+                                                  {u"start"_s, monday},
+                                                  {u"end"_s, monday.addDays(2)}},
+                                                 friday);
+    QCOMPARE(trip.start.date(), QDate(2026, 10, 9));
+    QCOMPARE(trip.start.time(), QTime(0, 0));
+    QCOMPARE(trip.end.date(), QDate(2026, 10, 11));
+}
+
+void TestEventActions::duplicateLandsInAWritableCalendar()
+{
+    SampleSource source;
+    EventActions actions;
+    actions.setProperty("source", QVariant::fromValue<CalendarSource *>(&source));
+    QVariantMap event = invitation(source);
+    QVERIFY(!event.isEmpty());
+    // Not a calendar the user can write to, so the copy goes elsewhere.
+    event.insert(u"calendarId"_s, u"holidays"_s);
+    QSignalSpy duplicated(&actions, &EventActions::duplicated);
+    const QDateTime at = event.value(u"start"_s).toDateTime().addDays(1);
+    actions.duplicate(event, at, u"nope"_s);
+    QCOMPARE(duplicated.size(), 1);
+
+    int copies = 0;
+    for (const Event &e : source.eventsBetween(at.addSecs(-1), at.addSecs(1), QTimeZone::UTC)) {
+        // The sample's own events can repeat at that time too.
+        if (e.summary == event.value(u"summary"_s).toString() && e.start == at &&
+            !e.uid.startsWith(u"sample-"_s)) {
+            ++copies;
+            QVERIFY(std::any_of(
+                source.calendars().cbegin(), source.calendars().cend(),
+                [&e](const CalendarInfo &c) { return c.id == e.calendarId && c.writable; }));
+        }
+    }
+    QCOMPARE(copies, 1);
 }
 
 void TestEventActions::editsReachTheWholeSeries()

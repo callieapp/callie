@@ -155,8 +155,16 @@ Item {
         }
     }
 
+    function pasteTarget(event) {
+        return null
+    }
+
+    /// An event copied from its card.
+    signal eventCopied(var event)
+
     EventDetails {
         id: details
         source: root.model.source
+        onCopied: event => root.eventCopied(event)
     }
 }

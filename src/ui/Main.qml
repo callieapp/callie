@@ -734,6 +734,7 @@ ApplicationWindow {
                             anchorDate: window.rangeStart
                             dayCount: window.view === "day" ? 1 : 7
                             onDayClicked: day => window.showDay(day)
+                            onEventCopied: event => window.copyEvent(event)
                             onRangeDrawn: (day, from, to, block) => quickAdd.openFor(
                                                                         Settings.times.at(day, from),
                                                                         Settings.times.at(day, to),
@@ -742,6 +743,7 @@ ApplicationWindow {
                     }
                 }
                 Loader {
+                    id: monthLoader
                     anchors.fill: parent
                     active: window.view === "month"
                     sourceComponent: Component {
@@ -751,10 +753,12 @@ ApplicationWindow {
                             dayCount: window.rangeDays
                             month: window.focusDate.getMonth()
                             onDayClicked: day => window.showDay(day)
+                            onEventCopied: event => window.copyEvent(event)
                         }
                     }
                 }
                 Loader {
+                    id: agendaLoader
                     anchors.fill: parent
                     active: window.view === "agenda"
                     sourceComponent: Component {
@@ -762,6 +766,7 @@ ApplicationWindow {
                             model: events
                             rangeStart: window.rangeStart
                             dayCount: window.rangeDays
+                            onEventCopied: event => window.copyEvent(event)
                         }
                     }
                 }
@@ -834,6 +839,39 @@ ApplicationWindow {
         function onChangeMade(id, what) {
             undoToast.show(id, what)
         }
+    }
+
+    // ---- Copying and pasting events ---------------------------------------------
+    /// The event last copied, which pasting makes another copy of.
+    property var copiedEvent: null
+
+    function shownView() {
+        return weekLoader.item || monthLoader.item || agendaLoader.item
+    }
+
+    function copyEvent(event) {
+        copiedEvent = event
+        undoToast.show("", qsTr("Copied %1").arg(event.summary))
+    }
+
+    // Under the pointer, or on the day in view at the same time of day.
+    Shortcut {
+        sequences: [StandardKey.Paste]
+        enabled: window.copiedEvent !== null
+        onActivated: {
+            const event = window.copiedEvent
+            const view = window.shownView()
+            const target = view ? view.pasteTarget(event) : null
+            pasteActions.duplicate(event, target || Settings.times.at(window.focusDate,
+                                                                      Settings.times.minutesIntoDay(
+                                                                          event.start)),
+                                   Settings.defaultCalendar || Settings.newEventCalendar)
+        }
+    }
+
+    EventActions {
+        id: pasteActions
+        source: window.source
     }
 
     Shortcut {

@@ -205,6 +205,60 @@ void EventActions::update(const QVariantMap &event, const QVariantMap &changes,
     });
 }
 
+EventDraft EventActions::toCopy(const QVariantMap &event, const QDateTime &start)
+{
+    EventDraft draft;
+    draft.summary = event.value(u"summary"_s).toString();
+    draft.location = event.value(u"location"_s).toString();
+    draft.description = event.value(u"description"_s).toString();
+    draft.allDay = event.value(u"allDay"_s).toBool();
+    draft.calendarId = event.value(u"calendarId"_s).toString();
+    draft.start = event.value(u"start"_s).toDateTime();
+    draft.end = event.value(u"end"_s).toDateTime();
+    if (!start.isValid())
+        return draft;
+    if (draft.allDay) {
+        // Whole days, from midnight on the day picked.
+        const qint64 days = draft.start.date().daysTo(draft.end.date());
+        draft.start = QDateTime(start.date(), QTime(0, 0), draft.start.timeZone());
+        draft.end = QDateTime(start.date().addDays(days), QTime(0, 0), draft.start.timeZone());
+    } else {
+        draft.end = start.addSecs(draft.start.secsTo(draft.end));
+        draft.start = start;
+    }
+    return draft;
+}
+
+void EventActions::duplicate(const QVariantMap &event, const QDateTime &at,
+                             const QString &fallbackCalendar)
+{
+    if (!m_source || m_busy)
+        return;
+    EventDraft draft = toCopy(event, at);
+    const QList<CalendarInfo> calendars = m_source->calendars();
+    const auto writable = [&calendars](const QString &id) {
+        return std::any_of(calendars.cbegin(), calendars.cend(),
+                           [&id](const CalendarInfo &c) { return c.id == id && c.writable; });
+    };
+    if (!writable(draft.calendarId)) {
+        const auto first = std::find_if(calendars.cbegin(), calendars.cend(),
+                                        [](const CalendarInfo &c) { return c.writable; });
+        draft.calendarId = writable(fallbackCalendar)  ? fallbackCalendar
+                           : first != calendars.cend() ? first->id
+                                                       : QString();
+    }
+    const QString eventId = event.value(u"eventId"_s).toString();
+    start();
+    const QPointer<EventActions> self(this);
+    m_source->createEvent(draft, [this, self, eventId](const QString &error) {
+        if (!self)
+            return;
+        finish(eventId, error);
+        if (error.isEmpty())
+            Q_EMIT duplicated();
+    });
+}
+
 QUrl EventActions::mailGuests(const QVariantMap &event)
 {
     const QStringList guests = event.value(u"attendees"_s).toStringList();

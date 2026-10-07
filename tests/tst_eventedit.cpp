@@ -1,6 +1,7 @@
 #include "Clock.h"
 #include "EventActions.h"
 #include "EventModelForeign.h"
+#include "ThemeController.h"
 
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
@@ -64,6 +65,7 @@ private Q_SLOTS:
     void cardTurnsIntoAFormAndSaves();
     void movedSeriesGetsItsRuleRewritten();
     void overnightKeepsItsLength();
+    void copyPastesUnderThePointer();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -113,6 +115,9 @@ void TestEventEdit::init()
     m_window = qobject_cast<QQuickWindow *>(m_engine->rootObjects().first());
     m_window->resize(1280, 1300);
     QVERIFY(QTest::qWaitForWindowExposed(m_window));
+    // Shortcuts only work in the active window.
+    m_window->requestActivate();
+    QVERIFY(QTest::qWaitForWindowActive(m_window));
 }
 
 void TestEventEdit::cleanup()
@@ -208,6 +213,44 @@ void TestEventEdit::overnightKeepsItsLength()
     QVERIFY(QMetaObject::invokeMethod(form, "moveStart", Q_ARG(QVariant, 23 * 60)));
     QCOMPARE(form->property("endDay").toDateTime().date(), day.date().addDays(1));
     QCOMPARE(form->property("endMinutes").toInt(), 3 * 60);
+}
+
+void TestEventEdit::copyPastesUnderThePointer()
+{
+    QQuickItem *block = nullptr;
+    QTRY_VERIFY((block = find(m_window->contentItem(), "EventBlock", "summary", u"Climbing"_s)));
+    QTest::qWait(300);
+    const Event original = named(*m_source, u"Climbing"_s);
+    const int hour = ThemeController::instance()->hourHeight();
+    // The day before, two hours later: over the grid at the block's top edge.
+    const QPoint target = block->mapToScene(QPointF(-block->width() / 2, 1 + 2 * hour)).toPoint();
+
+    click(m_window, block);
+    QTRY_VERIFY(find(m_window->contentItem(), "StickerButton", "text", u"Duplicate"_s));
+    // Copying needs the card fully open.
+    QTest::qWait(400);
+    QTest::keySequence(m_window, QKeySequence::Copy);
+    QTRY_VERIFY(!m_window->property("copiedEvent").isNull());
+    QTest::keyClick(m_window, Qt::Key_Escape);
+    QTest::mouseMove(m_window, target);
+    QTest::qWait(100);
+    QTest::keySequence(m_window, QKeySequence::Paste);
+
+    const QDateTime from(QDate(2026, 10, 5), QTime(0, 0));
+    QList<Event> copies;
+    QTRY_VERIFY_WITH_TIMEOUT(
+        [&] {
+            copies.clear();
+            for (const Event &e :
+                 m_source->eventsBetween(from, from.addDays(7), QTimeZone::systemTimeZone())) {
+                if (e.summary == u"Climbing" && e.eventId != original.eventId)
+                    copies.append(e);
+            }
+            return copies.size() == 1;
+        }(),
+        5000);
+    QCOMPARE(copies.first().start, original.start.addDays(-1).addSecs(2 * 3600));
+    QCOMPARE(copies.first().end, original.end.addDays(-1).addSecs(2 * 3600));
 }
 
 QTEST_MAIN(TestEventEdit)

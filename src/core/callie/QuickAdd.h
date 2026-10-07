@@ -11,6 +11,7 @@ struct EventDraft
 {
     QString summary;
     QString location;
+    QString description;
     QDateTime start;
     QDateTime end;
     bool allDay = false;

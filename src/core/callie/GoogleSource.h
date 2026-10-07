@@ -44,6 +44,8 @@ public:
     void respond(const Event &event, const QString &status, bool wholeSeries,
                  Created done) override;
     void deleteEvent(const Event &event, bool wholeSeries, Created done) override;
+    void moveEvent(const Event &event, const QDateTime &start, const QDateTime &end,
+                   bool wholeSeries, Created done) override;
 
     [[nodiscard]] bool syncing() const override { return m_pending > 0; }
     [[nodiscard]] QDateTime lastSynced() const override { return m_lastSynced; }

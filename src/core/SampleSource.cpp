@@ -95,6 +95,10 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                 e.canRespond = true;
             }
 
+            if (const auto moved = m_moved.constFind(e.eventId); moved != m_moved.cend()) {
+                e.start = moved->first.toTimeZone(tz);
+                e.end = moved->second.toTimeZone(tz);
+            }
             if (m_answers.contains(e.eventId)) {
                 e.responseStatus = m_answers.value(e.eventId);
                 e.declined = e.responseStatus == u"declined";
@@ -116,6 +120,20 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
 void SampleSource::respond(const Event &event, const QString &status, bool, Created done)
 {
     m_answers.insert(event.eventId, status);
+    done({});
+    Q_EMIT changed();
+}
+
+void SampleSource::moveEvent(const Event &event, const QDateTime &start, const QDateTime &end, bool,
+                             Created done)
+{
+    m_moved.insert(event.eventId, {start, end});
+    for (Event &created : m_created) {
+        if (created.eventId == event.eventId) {
+            created.start = start;
+            created.end = end;
+        }
+    }
     done({});
     Q_EMIT changed();
 }

@@ -38,6 +38,8 @@ hovering it lists each account's last sync and any calendar that failed, and the
 syncs now. `--sample` shows a made-up week instead, and `--screenshot file.png` saves the window
 once it has rendered, then exits. `--now 2026-03-18T10:40` stops the clock at that time and
 `--size 1280x840` sets the window size, so a screenshot comes out the same every time.
+`--background` starts without showing the window while Callie is set to keep running for
+reminders; Settings > Reminders > Start when I log in adds an autostart entry that uses it.
 
 Connect Google accounts in Settings, under Accounts: Callie opens your browser to sign in, and the
 account's calendars appear once you have. The same tab shows how each account's sync is going and

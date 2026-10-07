@@ -14,17 +14,22 @@ namespace callie {
 
 namespace {
 
-// Desktop entry Exec values quote arguments that hold spaces or quotes.
-QString quoted(const QString &argument)
+// An argument as a desktop entry's Exec value wants it: % doubled, quoted if
+// it holds a reserved character (with " ` $ and \ escaped inside the quotes),
+// then every backslash doubled again, since the whole value is also a string
+// with escapes of its own.
+QString execArgument(const QString &argument)
 {
-    static const QString special = u" \t\"'\\$`"_s;
-    if (std::none_of(argument.cbegin(), argument.cend(),
-                     [](QChar c) { return special.contains(c); }))
-        return argument;
+    static const QString reserved = u" \t\n\"'\\><~|&;$*?#()`"_s;
     QString escaped = argument;
-    for (const QString &c : {u"\\"_s, u"\""_s, u"$"_s, u"`"_s})
-        escaped.replace(c, u"\\"_s + c);
-    return u'"' + escaped + u'"';
+    escaped.replace(u'%', u"%%"_s);
+    if (std::any_of(argument.cbegin(), argument.cend(),
+                    [](QChar c) { return reserved.contains(c); })) {
+        for (const QString &c : {u"\\"_s, u"\""_s, u"$"_s, u"`"_s})
+            escaped.replace(c, u"\\"_s + c);
+        escaped = u'"' + escaped + u'"';
+    }
+    return escaped.replace(u"\\"_s, u"\\\\"_s);
 }
 
 } // namespace
@@ -64,16 +69,17 @@ bool Autostart::setEnabled(bool enabled)
         m_error = file.errorString();
         return false;
     }
-    const QString entry = u"[Desktop Entry]\n"
-                          u"Type=Application\n"
-                          u"Name=Callie\n"
-                          u"Comment=Keeps Callie running for event reminders\n"
-                          u"Exec=%1 --%2\n"
-                          u"Icon=%3\n"
-                          u"Terminal=false\n"
-                          u"NoDisplay=true\n"
-                          u"X-GNOME-Autostart-enabled=true\n"_s.arg(
-                              quoted(m_program), QString::fromLatin1(kBackgroundOption), m_appId);
+    const QString entry =
+        u"[Desktop Entry]\n"
+        u"Type=Application\n"
+        u"Name=Callie\n"
+        u"Comment=Keeps Callie running for event reminders\n"
+        u"Exec=%1 --%2\n"
+        u"Icon=%3\n"
+        u"Terminal=false\n"
+        u"NoDisplay=true\n"
+        u"X-GNOME-Autostart-enabled=true\n"_s.arg(execArgument(m_program),
+                                                  QString::fromLatin1(kBackgroundOption), m_appId);
     file.write(entry.toUtf8());
     if (!file.commit()) {
         m_error = file.errorString();

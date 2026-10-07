@@ -15,6 +15,8 @@ private Q_SLOTS:
     void entryStartsInTheBackground();
     void programWithSpacesIsQuoted();
     void turningOffRemovesTheEntry();
+    void execEscapesPercentAndBackslash();
+    void unwritablePlaceIsReported();
 };
 
 void TestAutostart::entryStartsInTheBackground()
@@ -57,6 +59,34 @@ void TestAutostart::turningOffRemovesTheEntry()
     QVERIFY(!QFile::exists(path));
     // Already off is fine.
     QVERIFY(autostart.setEnabled(false));
+}
+
+void TestAutostart::execEscapesPercentAndBackslash()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(u"app.desktop"_s);
+    // 100% and a backslash: % doubles, and the backslash is escaped inside the
+    // quotes and then once more for the string as a whole.
+    Autostart autostart(u"org.example.App"_s, u"/opt/100% sure/a\\b"_s, path);
+    QVERIFY(autostart.setEnabled(true));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QVERIFY(QString::fromUtf8(file.readAll())
+                .contains(u"\nExec=\"/opt/100%% sure/a\\\\\\\\b\" --background\n"_s));
+}
+
+void TestAutostart::unwritablePlaceIsReported()
+{
+    QTemporaryDir dir;
+    // A file where the autostart folder should be.
+    QFile blocker(dir.filePath(u"autostart"_s));
+    QVERIFY(blocker.open(QIODevice::WriteOnly));
+    blocker.close();
+    Autostart autostart(u"org.example.App"_s, u"/usr/bin/callie-gui"_s,
+                        dir.filePath(u"autostart/app.desktop"_s));
+    QVERIFY(!autostart.setEnabled(true));
+    QVERIFY(!autostart.errorString().isEmpty());
+    QVERIFY(!autostart.isEnabled());
 }
 
 QTEST_GUILESS_MAIN(TestAutostart)

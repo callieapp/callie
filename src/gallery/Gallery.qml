@@ -301,6 +301,23 @@ ApplicationWindow {
                         end: new Date(2026, 9, 5, 11, 0)
                         declined: false
                         depth: 0
+                        response: ""
+                    }
+
+                    EventBlock {
+                        width: 240
+                        height: 48
+                        summary: qsTr("%1 maybe").arg(calendar.modelData.name)
+                        location: ""
+                        conferenceUrl: ""
+                        calendarName: calendar.modelData.name
+                        description: ""
+                        calendarColor: calendar.modelData.color
+                        start: new Date(2026, 9, 5, 10, 0)
+                        end: new Date(2026, 9, 5, 11, 0)
+                        declined: false
+                        response: "tentative"
+                        depth: 0
                     }
                 }
             }

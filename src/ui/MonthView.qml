@@ -203,6 +203,13 @@ Item {
             color: chip.event.allDay ? Theme.calendarColor(chip.event.calendarColor,
                                                            Theme.calendar) : chip.hovered
                                        ? Theme.surfaceAlt : "transparent"
+
+            Stripes {
+                visible: chip.event.allDay && chip.event.response === "tentative"
+                anchors.fill: parent
+                radius: parent.radius
+                color: Theme.tint(Theme.calendarEdge(chip.event.calendarColor, Theme.calendar), 0.5)
+            }
         }
 
         contentItem: Row {
@@ -215,7 +222,12 @@ Item {
                 width: 7
                 height: 7
                 radius: width / 2
-                color: Theme.calendarColor(chip.event.calendarColor, Theme.calendar)
+                // A ring rather than a dot for "maybe".
+                readonly property color fill: Theme.calendarColor(chip.event.calendarColor,
+                                                                  Theme.calendar)
+                color: chip.event.response === "tentative" ? "transparent" : fill
+                border.width: chip.event.response === "tentative" ? 2 : 0
+                border.color: fill
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter

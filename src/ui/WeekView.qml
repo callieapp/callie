@@ -171,6 +171,7 @@ Item {
                 required property int lane
                 required property color calendarColor
                 required property bool declined
+                required property string response
                 required property date end
 
                 visible: allDay
@@ -192,6 +193,13 @@ Item {
                     }
                     radius: parent.radius
                     color: Theme.calendarEdge(chip.calendarColor, Theme.calendar)
+                }
+
+                Stripes {
+                    visible: chip.response === "tentative"
+                    anchors.fill: parent
+                    radius: chip.radius
+                    color: Theme.tint(Theme.calendarEdge(chip.calendarColor, Theme.calendar), 0.5)
                 }
 
                 Text {

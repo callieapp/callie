@@ -23,6 +23,8 @@ Rectangle {
     /// How many earlier events this one steps in over; deeper ones draw on top,
     /// outlined so they stand apart from what they cover.
     required property int depth
+    /// The user's answer; "tentative" (maybe) shows striped.
+    required property string response
 
     signal moveRequested(int deltaMinutes, int deltaDays)
     signal activated
@@ -71,6 +73,13 @@ Rectangle {
         }
         radius: root.radius
         color: root.shade(Theme.calendarEdge(root.calendarColor, Theme.calendar))
+    }
+
+    Stripes {
+        visible: root.response === "tentative"
+        anchors.fill: parent
+        radius: root.radius
+        color: Theme.tint(Theme.calendarEdge(root.calendarColor, Theme.calendar), 0.5)
     }
 
     Column {

@@ -14,6 +14,7 @@ private Q_SLOTS:
     void countsAsSyncedFromTheStart();
     void reportListsEachAccount();
     void syncTimeFollowsTheClock();
+    void answersReachTheGuestList();
 };
 
 void TestSampleSource::countsAsSyncedFromTheStart()
@@ -52,6 +53,34 @@ void TestSampleSource::syncTimeFollowsTheClock()
     now = now.addSecs(60);
     source.refresh();
     QCOMPARE(source.lastSynced(), now);
+}
+
+void TestSampleSource::answersReachTheGuestList()
+{
+    SampleSource source;
+    const QDateTime from(QDate(2026, 10, 5), QTime(0, 0), QTimeZone::UTC);
+    const auto invitation = [&source, &from] {
+        for (const Event &e : source.eventsBetween(from, from.addDays(7), QTimeZone::UTC)) {
+            if (e.summary == u"Vendor call")
+                return e;
+        }
+        return Event{};
+    };
+    const auto self = [](const Event &e) {
+        for (const Guest &guest : e.guests) {
+            if (guest.self)
+                return guest.response;
+        }
+        return QString();
+    };
+    const Event before = invitation();
+    QCOMPARE(before.responseStatus, u"needsAction"_s);
+    QCOMPARE(self(before), u"needsAction"_s);
+
+    source.respond(before, u"accepted"_s, false, [](const QString &) {});
+    const Event after = invitation();
+    QCOMPARE(after.responseStatus, u"accepted"_s);
+    QCOMPARE(self(after), u"accepted"_s);
 }
 
 QTEST_GUILESS_MAIN(TestSampleSource)

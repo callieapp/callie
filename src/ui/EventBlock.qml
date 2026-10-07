@@ -87,7 +87,7 @@ Rectangle {
     }
     scale: drag.active ? 1.02 : 1
     z: drag.active ? 100 : 1 + depth
-    border.width: pending ? 2 : depth > 0 ? 1 : 0
+    border.width: pending ? Theme.inviteOutline : depth > 0 ? 1 : 0
     border.color: pending ? shade(fill) : Theme.bg
     transform: Translate {
         x: root.dayShiftX

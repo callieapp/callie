@@ -100,6 +100,8 @@ class ThemeController : public QObject
     Q_PROPERTY(int stripeStep READ stripeStep CONSTANT)
     /// The outline of a calendar mark left hollow for "maybe".
     Q_PROPERTY(int markRing READ markRing CONSTANT)
+    /// The outline of an invitation still waiting for an answer.
+    Q_PROPERTY(int inviteOutline READ inviteOutline CONSTANT)
     /// The grab strip along a frameless window's edges. Anything scrollable at
     /// an edge keeps its handle clear of it.
     Q_PROPERTY(int resizeBorder READ resizeBorder CONSTANT)
@@ -219,6 +221,7 @@ public:
     int stripeWidth() const { return 3; }
     int stripeStep() const { return 8; }
     int markRing() const { return 2; }
+    int inviteOutline() const { return 2; }
     int resizeBorder() const { return 6; }
     qreal fadedOpacity() const { return 0.5; }
     int minEventHeight() const { return 20; }

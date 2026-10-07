@@ -185,7 +185,7 @@ Item {
                 radius: height / 2
                 // Hollow, outlined in the calendar's color, until answered.
                 color: pending ? Theme.surface : Theme.calendarColor(calendarColor, Theme.calendar)
-                border.width: pending ? 2 : 0
+                border.width: pending ? Theme.inviteOutline : 0
                 border.color: Theme.calendarColor(calendarColor, Theme.calendar)
 
                 Rectangle {

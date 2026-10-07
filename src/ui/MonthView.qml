@@ -207,7 +207,7 @@ Item {
                                                                                      Theme.calendar) :
                                                                  chip.hovered ? Theme.surfaceAlt :
                                                                                 "transparent"
-            border.width: pending ? 2 : 0
+            border.width: pending ? Theme.inviteOutline : 0
             border.color: Theme.calendarColor(chip.event.calendarColor, Theme.calendar)
 
             Stripes {

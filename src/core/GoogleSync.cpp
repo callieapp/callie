@@ -92,6 +92,13 @@ void GoogleSync::createEvent(const Account &account, const QString &calendarId,
                         retry();
                         return;
                     }
+                    // Its id is taken: an earlier try got there, though its answer
+                    // did not, and the next sync brings the event.
+                    if (error.status == 409) {
+                        Q_EMIT changed(account);
+                        done({});
+                        return;
+                    }
                     if (error) {
                         done({tr("Google could not create the event: %1").arg(error.message),
                               worthRetrying(error)});

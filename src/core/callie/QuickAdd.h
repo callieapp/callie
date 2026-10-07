@@ -21,6 +21,9 @@ struct EventDraft
     int lengthMinutes = 0;
     /// CalendarInfo::id of the calendar to create it in.
     QString calendarId;
+    /// An id for the event chosen before it is sent, so sending it twice
+    /// cannot make two; empty lets the server choose.
+    QString id;
 
     [[nodiscard]] bool isValid() const
     {

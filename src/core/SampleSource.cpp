@@ -105,6 +105,8 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                      false, true},
                 };
                 e.canRespond = true;
+                // Calls repeat weekly, so their occurrences share a series.
+                e.seriesId = QStringLiteral("sample-") + QString::fromUtf8(s.summary);
             }
 
             if (const auto moved = m_moved.constFind(e.eventId); moved != m_moved.cend()) {

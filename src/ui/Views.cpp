@@ -4,14 +4,20 @@
 
 namespace callie {
 
-QDateTime Views::start(const QString &view, const QDateTime &focus) const
+QDateTime Views::start(const QString &view, const QDateTime &focus, int firstDay) const
 {
-    return ViewRange::start(ViewRange::fromName(view), focus.date()).startOfDay();
+    return ViewRange::start(ViewRange::fromName(view), focus.date(), Qt::DayOfWeek(firstDay))
+        .startOfDay();
 }
 
-int Views::days(const QString &view, const QDateTime &focus) const
+int Views::days(const QString &view, const QDateTime &focus, int firstDay) const
 {
-    return ViewRange::days(ViewRange::fromName(view), focus.date());
+    return ViewRange::days(ViewRange::fromName(view), focus.date(), Qt::DayOfWeek(firstDay));
+}
+
+int Views::weekNumber(const QDateTime &day) const
+{
+    return day.date().weekNumber();
 }
 
 QDateTime Views::step(const QString &view, const QDateTime &focus, int count) const

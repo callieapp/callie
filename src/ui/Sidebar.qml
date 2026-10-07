@@ -15,7 +15,8 @@ Rectangle {
     /// A day was picked in the mini month.
     signal dayPicked(date day)
 
-    readonly property real dayCellWidth: (width - 2 * Theme.space5) / 7
+    // Week numbers take a column of their own when shown.
+    readonly property real dayCellWidth: (width - 2 * Theme.space5) / (Settings.weekNumbers ? 8 : 7)
 
     color: Theme.surface
 
@@ -126,15 +127,21 @@ Rectangle {
             spacing: Theme.space3
 
             Row {
+                Item {
+                    visible: Settings.weekNumbers
+                    width: root.dayCellWidth
+                    height: 1
+                }
                 Repeater {
-                    // Monday first, as the week view is.
-                    model: [1, 2, 3, 4, 5, 6, 0]
+                    // From the chosen first day, as the week view is.
+                    model: 7
 
                     Text {
-                        required property int modelData
+                        required property int index
                         width: root.dayCellWidth
                         horizontalAlignment: Text.AlignHCenter
-                        text: Qt.locale().dayName(modelData, Locale.NarrowFormat)
+                        text: Qt.locale().dayName((Settings.firstDayOfWeek + index) % 7,
+                                                  Locale.NarrowFormat)
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
@@ -143,77 +150,100 @@ Rectangle {
                 }
             }
 
-            Grid {
-                columns: 7
-                rowSpacing: Theme.space1
+            Row {
+                Column {
+                    visible: Settings.weekNumbers
+                    spacing: Theme.space1
 
-                Repeater {
-                    model: root.month
+                    Repeater {
+                        model: root.month.weekNumbers(root.month.month, root.month.firstDay)
 
-                    AbstractButton {
-                        id: dayCell
-
-                        required property date date
-                        required property int day
-                        required property bool inMonth
-                        required property bool inWeek
-                        required property bool isToday
-
-                        width: root.dayCellWidth
-                        height: Theme.miniDaySize
-                        // A sliver between neighbours, so the shown week reads as days.
-                        leftInset: Theme.space1
-                        rightInset: Theme.space1
-                        focusPolicy: Qt.TabFocus
-                        Accessible.name: Qt.formatDate(date, Qt.locale().dateFormat(
-                                                           Locale.LongFormat))
-                        onClicked: root.dayPicked(date)
-
-                        background: Item {
-                            Rectangle {
-                                visible: dayCell.isToday
-                                anchors {
-                                    fill: parent
-                                    topMargin: Theme.stickerEdge
-                                    bottomMargin: -Theme.stickerEdge
-                                }
-                                radius: Theme.radiusSm
-                                color: Theme.accentEdge
-                            }
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: Theme.radiusSm
-                                color: dayCell.isToday ? Theme.accent : dayCell.inWeek
-                                                         ? Theme.surfaceAlt : dayCell.hovered
-                                                           ? Theme.tint(Theme.surfaceAlt, 0.5) :
-                                                             "transparent"
-                                border.width: dayCell.visualFocus ? 2 : 0
-                                border.color: Theme.text
-                            }
-                        }
-                        contentItem: Text {
+                        Text {
+                            required property int modelData
+                            width: root.dayCellWidth
+                            height: Theme.miniDaySize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
-                            // Neighbouring months' days stay visible and clickable, since
-                            // today and the shown week can fall among them.
-                            text: dayCell.day
-                            // Other months' days recede, even inside the shown week.
-                            opacity: dayCell.inMonth || dayCell.isToday ? 1 : Theme.fadedOpacity
-                            color: dayCell.isToday ? Theme.accentText : dayCell.inWeek ? Theme.text :
-                                                                                         dayCell.inMonth
-                                                                                         ? Theme.textMuted :
-                                                                                           Theme.textFaint
+                            text: modelData
+                            color: Theme.textFaint
                             font.family: Theme.fontFamily
-                            font.pixelSize: Theme.textSm
-                            font.weight: dayCell.isToday ? Font.ExtraBold : dayCell.inWeek
-                                                           ? Font.Bold : Font.Normal
-                            font.features: {
-                                "tnum": 1
-                            }
+                            font.pixelSize: Theme.textXs
+                            font.weight: Font.Bold
                         }
+                    }
+                }
 
-                        HoverHandler {
-                            cursorShape: Qt.PointingHandCursor
+                Grid {
+                    columns: 7
+                    rowSpacing: Theme.space1
+
+                    Repeater {
+                        model: root.month
+
+                        AbstractButton {
+                            id: dayCell
+
+                            required property date date
+                            required property int day
+                            required property bool inMonth
+                            required property bool inWeek
+                            required property bool isToday
+
+                            width: root.dayCellWidth
+                            height: Theme.miniDaySize
+                            // A sliver between neighbours, so the shown week reads as days.
+                            leftInset: Theme.space1
+                            rightInset: Theme.space1
+                            focusPolicy: Qt.TabFocus
+                            Accessible.name: Qt.formatDate(date, Qt.locale().dateFormat(
+                                                               Locale.LongFormat))
+                            onClicked: root.dayPicked(date)
+
+                            background: Item {
+                                Rectangle {
+                                    visible: dayCell.isToday
+                                    anchors {
+                                        fill: parent
+                                        topMargin: Theme.stickerEdge
+                                        bottomMargin: -Theme.stickerEdge
+                                    }
+                                    radius: Theme.radiusSm
+                                    color: Theme.accentEdge
+                                }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.radiusSm
+                                    color: dayCell.isToday ? Theme.accent : dayCell.inWeek
+                                                             ? Theme.surfaceAlt : dayCell.hovered
+                                                               ? Theme.tint(Theme.surfaceAlt, 0.5) :
+                                                                 "transparent"
+                                    border.width: dayCell.visualFocus ? 2 : 0
+                                    border.color: Theme.text
+                                }
+                            }
+                            contentItem: Text {
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                // Neighbouring months' days stay visible and clickable, since
+                                // today and the shown week can fall among them.
+                                text: dayCell.day
+                                // Other months' days recede, even inside the shown week.
+                                opacity: dayCell.inMonth || dayCell.isToday ? 1 : Theme.fadedOpacity
+                                color: dayCell.isToday ? Theme.accentText : dayCell.inWeek
+                                                         ? Theme.text : dayCell.inMonth
+                                                           ? Theme.textMuted : Theme.textFaint
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.textSm
+                                font.weight: dayCell.isToday ? Font.ExtraBold : dayCell.inWeek
+                                                               ? Font.Bold : Font.Normal
+                                font.features: {
+                                    "tnum": 1
+                                }
+                            }
+
+                            HoverHandler {
+                                cursorShape: Qt.PointingHandCursor
+                            }
                         }
                     }
                 }

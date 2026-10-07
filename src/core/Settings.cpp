@@ -16,6 +16,12 @@ const QString kTimeZone = u"time/zone"_s;
 const QString kShowDeclined = u"events/showDeclined"_s;
 const QString kDimPast = u"events/dimPast"_s;
 const QString kWidenToday = u"week/widenToday"_s;
+const QString kWeekStart = u"week/start"_s;
+const QString kHideWeekends = u"week/hideWeekends"_s;
+const QString kWeekNumbers = u"week/numbers"_s;
+const QString kWorkStart = u"week/workStart"_s;
+const QString kWorkEnd = u"week/workEnd"_s;
+constexpr int kDayMinutes = 24 * 60;
 const QString kHiddenCalendars = u"calendars/hidden"_s;
 const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
 const QString kTheme = u"appearance/theme"_s;
@@ -54,6 +60,11 @@ void Settings::load()
     m_showDeclined = m_store.value(kShowDeclined, true).toBool();
     m_dimPast = m_store.value(kDimPast, true).toBool();
     m_widenToday = m_store.value(kWidenToday, false).toBool();
+    m_weekStart = std::clamp(m_store.value(kWeekStart, 0).toInt(), 0, 7);
+    m_hideWeekends = m_store.value(kHideWeekends, false).toBool();
+    m_weekNumbers = m_store.value(kWeekNumbers, false).toBool();
+    m_workStart = std::clamp(m_store.value(kWorkStart, 9 * 60).toInt(), 0, kDayMinutes - 30);
+    m_workEnd = std::clamp(m_store.value(kWorkEnd, 17 * 60).toInt(), m_workStart + 30, kDayMinutes);
     m_hiddenCalendars = m_store.value(kHiddenCalendars).toStringList();
     m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
     m_theme = m_store.value(kTheme).toString();
@@ -121,6 +132,73 @@ void Settings::setDimPast(bool dim)
     m_dimPast = dim;
     m_store.setValue(kDimPast, dim);
     Q_EMIT dimPastChanged();
+}
+
+void Settings::setWeekStart(int day)
+{
+    day = std::clamp(day, 0, 7);
+    if (m_weekStart == day)
+        return;
+    m_weekStart = day;
+    m_store.setValue(kWeekStart, day);
+    Q_EMIT weekChanged();
+}
+
+int Settings::firstDayOfWeek() const
+{
+    return m_weekStart == 0 ? int(QLocale().firstDayOfWeek()) : m_weekStart;
+}
+
+void Settings::setHideWeekends(bool hide)
+{
+    if (m_hideWeekends == hide)
+        return;
+    m_hideWeekends = hide;
+    m_store.setValue(kHideWeekends, hide);
+    Q_EMIT weekChanged();
+}
+
+void Settings::setWeekNumbers(bool show)
+{
+    if (m_weekNumbers == show)
+        return;
+    m_weekNumbers = show;
+    m_store.setValue(kWeekNumbers, show);
+    Q_EMIT weekChanged();
+}
+
+bool Settings::isWorkDay(const QDateTime &day)
+{
+    return QLocale().weekdays().contains(Qt::DayOfWeek(day.date().dayOfWeek()));
+}
+
+void Settings::setWorkStart(int minutes)
+{
+    // Working hours are at least half an hour, so the end moves along if needed.
+    minutes = std::clamp(minutes, 0, kDayMinutes - 30);
+    if (m_workStart == minutes)
+        return;
+    m_workStart = minutes;
+    m_store.setValue(kWorkStart, minutes);
+    if (m_workEnd < minutes + 30) {
+        m_workEnd = minutes + 30;
+        m_store.setValue(kWorkEnd, m_workEnd);
+    }
+    Q_EMIT workHoursChanged();
+}
+
+void Settings::setWorkEnd(int minutes)
+{
+    minutes = std::clamp(minutes, 30, kDayMinutes);
+    if (m_workEnd == minutes)
+        return;
+    m_workEnd = minutes;
+    m_store.setValue(kWorkEnd, minutes);
+    if (m_workStart > minutes - 30) {
+        m_workStart = minutes - 30;
+        m_store.setValue(kWorkStart, m_workStart);
+    }
+    Q_EMIT workHoursChanged();
 }
 
 void Settings::setWidenToday(bool widen)
@@ -261,6 +339,8 @@ void Settings::reset()
     const QString defaultCalendar = m_defaultCalendar;
     const bool notify = m_notify, keep = m_keepRunning;
     const int minutes = m_reminderMinutes;
+    const int weekStart = m_weekStart, workStart = m_workStart, workEnd = m_workEnd;
+    const bool hideWeekends = m_hideWeekends, weekNumbers = m_weekNumbers;
     load();
     if (format != m_timeFormat)
         Q_EMIT timeFormatChanged();
@@ -288,6 +368,10 @@ void Settings::reset()
         Q_EMIT reminderMinutesChanged();
     if (keep != m_keepRunning)
         Q_EMIT keepRunningChanged();
+    if (weekStart != m_weekStart || hideWeekends != m_hideWeekends || weekNumbers != m_weekNumbers)
+        Q_EMIT weekChanged();
+    if (workStart != m_workStart || workEnd != m_workEnd)
+        Q_EMIT workHoursChanged();
     rebuildTimes();
 }
 

@@ -1,5 +1,9 @@
 #include "callie/MonthModel.h"
 
+#include "callie/ViewRange.h"
+
+#include <algorithm>
+
 namespace callie {
 
 MonthModel::MonthModel(QObject *parent) : QAbstractListModel(parent) {}
@@ -17,11 +21,22 @@ void MonthModel::setMonth(QDate day)
     Q_EMIT monthChanged();
 }
 
-void MonthModel::setWeekStart(QDate monday)
+void MonthModel::setFirstDay(int day)
 {
-    if (monday == m_weekStart)
+    day = std::clamp(day, int(Qt::Monday), int(Qt::Sunday));
+    if (day == m_firstDay)
         return;
-    m_weekStart = monday;
+    beginResetModel();
+    m_firstDay = day;
+    endResetModel();
+    Q_EMIT firstDayChanged();
+}
+
+void MonthModel::setWeekStart(QDate first)
+{
+    if (first == m_weekStart)
+        return;
+    m_weekStart = first;
     Q_EMIT weekStartChanged();
     flagsChanged();
 }
@@ -43,7 +58,17 @@ void MonthModel::flagsChanged()
 
 QDate MonthModel::gridStart() const
 {
-    return m_first.addDays(-(m_first.dayOfWeek() - Qt::Monday));
+    return ViewRange::weekStart(m_first, Qt::DayOfWeek(m_firstDay));
+}
+
+QList<int> MonthModel::weekNumbers(QDate month, int firstDay) const
+{
+    Q_UNUSED(month)
+    Q_UNUSED(firstDay)
+    QList<int> numbers;
+    for (int row = 0; row < rowCount() / 7; ++row)
+        numbers.append(gridStart().addDays(row * 7 + 3).weekNumber());
+    return numbers;
 }
 
 int MonthModel::rowCount(const QModelIndex &parent) const

@@ -16,12 +16,15 @@ enum class View { Day, Week, Month, Agenda };
 /// How many days the agenda looks ahead.
 constexpr int kAgendaDays = 30;
 
-/// The first day shown: the day itself, its week's Monday, or the Monday on
-/// or before the first of its month.
-[[nodiscard]] QDate start(View view, QDate focus);
+/// The first day shown: the day itself, the start of its week, or the start
+/// of the week holding the first of its month. Weeks begin on `firstDay`.
+[[nodiscard]] QDate start(View view, QDate focus, Qt::DayOfWeek firstDay = Qt::Monday);
 
 /// How many days are shown; a month is whole weeks, so 28 to 42.
-[[nodiscard]] int days(View view, QDate focus);
+[[nodiscard]] int days(View view, QDate focus, Qt::DayOfWeek firstDay = Qt::Monday);
+
+/// The first day of the week holding `day`.
+[[nodiscard]] QDate weekStart(QDate day, Qt::DayOfWeek firstDay);
 
 /// The day `count` views later (or earlier, when negative). Months keep to
 /// the first, so stepping from 31 January does not skip February.

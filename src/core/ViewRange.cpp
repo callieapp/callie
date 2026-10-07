@@ -9,17 +9,17 @@ namespace callie::ViewRange {
 
 namespace {
 
-QDate mondayOf(QDate day)
-{
-    return day.addDays(-(day.dayOfWeek() - Qt::Monday));
-}
-
 QDate firstOfMonth(QDate day)
 {
     return QDate(day.year(), day.month(), 1);
 }
 
 } // namespace
+
+QDate weekStart(QDate day, Qt::DayOfWeek firstDay)
+{
+    return day.addDays(-((day.dayOfWeek() - firstDay + 7) % 7));
+}
 
 View fromName(const QString &name)
 {
@@ -32,18 +32,18 @@ View fromName(const QString &name)
     return View::Week;
 }
 
-QDate start(View view, QDate focus)
+QDate start(View view, QDate focus, Qt::DayOfWeek firstDay)
 {
     switch (view) {
-    case View::Week: return mondayOf(focus);
-    case View::Month: return mondayOf(firstOfMonth(focus));
+    case View::Week: return weekStart(focus, firstDay);
+    case View::Month: return weekStart(firstOfMonth(focus), firstDay);
     case View::Day:
     case View::Agenda: break;
     }
     return focus;
 }
 
-int days(View view, QDate focus)
+int days(View view, QDate focus, Qt::DayOfWeek firstDay)
 {
     switch (view) {
     case View::Day: return 1;
@@ -52,7 +52,7 @@ int days(View view, QDate focus)
     case View::Month: break;
     }
     const QDate first = firstOfMonth(focus);
-    const qint64 lead = first.dayOfWeek() - Qt::Monday;
+    const qint64 lead = weekStart(first, firstDay).daysTo(first);
     return int((lead + first.daysInMonth() + 6) / 7 * 7);
 }
 

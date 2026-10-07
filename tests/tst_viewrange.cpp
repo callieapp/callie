@@ -14,6 +14,7 @@ private Q_SLOTS:
     void namesFallBackToWeek();
     void rangesAroundAWednesday();
     void monthsAreWholeWeeks();
+    void weeksCanStartOnAnyDay();
     void stepsMoveByTheView();
     void headingsNameNearbyDays();
 };
@@ -34,6 +35,20 @@ void TestViewRange::rangesAroundAWednesday()
     QCOMPARE(days(View::Day, wednesday), 1);
     QCOMPARE(days(View::Week, wednesday), 7);
     QCOMPARE(days(View::Agenda, wednesday), kAgendaDays);
+}
+
+void TestViewRange::weeksCanStartOnAnyDay()
+{
+    const QDate wednesday(2026, 10, 7);
+    QCOMPARE(start(View::Week, wednesday, Qt::Sunday), QDate(2026, 10, 4));
+    QCOMPARE(start(View::Week, wednesday, Qt::Saturday), QDate(2026, 10, 3));
+    QCOMPARE(start(View::Week, wednesday, Qt::Wednesday), wednesday);
+    // October 2026 starts on a Thursday: from Sunday, five whole weeks cover it.
+    QCOMPARE(start(View::Month, wednesday, Qt::Sunday), QDate(2026, 9, 27));
+    QCOMPARE(days(View::Month, wednesday, Qt::Sunday), 35);
+    // November 2026 starts on a Sunday and needs five weeks from Sunday, six from Monday.
+    QCOMPARE(days(View::Month, QDate(2026, 11, 10), Qt::Sunday), 35);
+    QCOMPARE(days(View::Month, QDate(2026, 11, 10), Qt::Monday), 42);
 }
 
 void TestViewRange::monthsAreWholeWeeks()

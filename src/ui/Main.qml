@@ -31,8 +31,8 @@ ApplicationWindow {
     readonly property string view: Settings.view
 
     /// The first day the current view shows, and how many days it shows.
-    readonly property date rangeStart: Views.start(view, focusDate)
-    readonly property int rangeDays: Views.days(view, focusDate)
+    readonly property date rangeStart: Views.start(view, focusDate, Settings.firstDayOfWeek)
+    readonly property int rangeDays: Views.days(view, focusDate, Settings.firstDayOfWeek)
 
     function today() {
         return Settings.times.date(Clock.now)
@@ -109,6 +109,7 @@ ApplicationWindow {
     MonthModel {
         id: monthModel
         month: window.focusDate
+        firstDay: Settings.firstDayOfWeek
         // Only the week view is a run of seven days to mark.
         weekStart: window.view === "week" ? window.rangeStart : new Date(NaN)
         today: Settings.times.date(Clock.now)

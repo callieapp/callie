@@ -133,6 +133,7 @@ private Q_SLOTS:
     void changesGoOutInOrder();
     void passingFailuresAreTriedAgain();
     void seriesMovesOnItsOwnClock();
+    void allDaySeriesMovesByWholeDays();
     void editsShowAtOnceAndSurviveARestart();
     void editsFoldIntoAPendingCreation();
     void followingEditsShowFromTheOccurrenceOn();
@@ -476,6 +477,37 @@ void TestQueuedSource::followingEditsShowFromTheOccurrenceOn()
     m_online = true;
     release(*source);
     QCOMPARE(m_server.calls, QStringList{u"update walk-11 Run"_s});
+}
+
+void TestQueuedSource::allDaySeriesMovesByWholeDays()
+{
+    const QTimeZone york("America/New_York");
+    const auto midnight = [&york](int month, int day) {
+        return QDateTime(QDate(2026, month, day), QTime(0, 0), york);
+    };
+    // A weekly all-day series; the one on 31 October is dragged a day on,
+    // across the night New York falls back, which is 25 hours long.
+    QList<Event> events;
+    for (const QDate day : {QDate(2026, 10, 24), QDate(2026, 10, 31)}) {
+        Event e = makeEvent(u"bins-"_s + day.toString(Qt::ISODate), 0);
+        e.seriesId = u"bins"_s;
+        e.allDay = true;
+        e.start = day.startOfDay(york);
+        e.end = day.addDays(1).startOfDay(york);
+        events.append(e);
+    }
+    PendingChange move;
+    move.kind = PendingChange::Kind::Move;
+    move.event = events[1];
+    move.start = midnight(11, 1);
+    move.end = midnight(11, 2);
+    move.wholeSeries = true;
+    QueuedSource::apply(events, {move}, {}, midnight(10, 1), midnight(12, 1), york);
+
+    QCOMPARE(events[0].start, midnight(10, 25));
+    QCOMPARE(events[0].end, midnight(10, 26));
+    QCOMPARE(events[1].start, midnight(11, 1));
+    QCOMPARE(events[1].end, midnight(11, 2));
 }
 
 QTEST_GUILESS_MAIN(TestQueuedSource)

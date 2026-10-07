@@ -20,4 +20,9 @@ The first release: a cozy calendar for Linux that keeps up with your Google cale
 - Settings for the clock (24-hour or AM/PM), the time zone, declined and past events, and a
   roomier today.
 - The Callie and Callie Light themes, and your own: customize any color, import and export themes.
+- Reminders as desktop notifications, following your Google reminders or a default you choose,
+  with buttons to join the call or snooze, and the option to keep Callie running after its window
+  closes.
+- Sync now from the title bar, with each account's last sync on hover, and "About" and "What's new"
+  in the ? menu.
 - Help for when things go wrong: copy debug info, open the logs, report a bug, and `callie doctor`.

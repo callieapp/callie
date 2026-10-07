@@ -577,6 +577,18 @@ Item {
         }
     }
 
+    /// Scrolls the day: "scrollDown" and "scrollUp" by an hour, "top" and "bottom" all the way.
+    function scroll(how) {
+        const hours = {
+            "top": -Infinity,
+            "scrollUp": -1,
+            "scrollDown": 1,
+            "bottom": Infinity
+        }
+        const end = Math.max(0, grid.contentHeight - grid.height)
+        grid.contentY = Math.max(0, Math.min(end, grid.contentY + hours[how] * Theme.hourHeight))
+    }
+
     /// Where a copy of `event` pasted now would start: the slot under the
     /// pointer, or its day at the event's time of day over the all-day strip.
     function pasteTarget(event) {

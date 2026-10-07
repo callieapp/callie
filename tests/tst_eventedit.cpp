@@ -66,6 +66,7 @@ private Q_SLOTS:
     void movedSeriesGetsItsRuleRewritten();
     void overnightKeepsItsLength();
     void copyPastesUnderThePointer();
+    void viKeysDriveTheWindow();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -251,6 +252,37 @@ void TestEventEdit::copyPastesUnderThePointer()
         5000);
     QCOMPARE(copies.first().start, original.start.addDays(-1).addSecs(2 * 3600));
     QCOMPARE(copies.first().end, original.end.addDays(-1).addSecs(2 * 3600));
+}
+
+void TestEventEdit::viKeysDriveTheWindow()
+{
+    m_settings->setViMode(true);
+    m_settings->setLeaderTimeout(0);
+
+    // The leader, a pause that shows what can follow it, then a view.
+    QTest::keyClick(m_window, ',');
+    QTRY_VERIFY(find(m_window->contentItem(), "WhichKey", "visible", u"true"_s));
+    QTest::keyClick(m_window, 'm');
+    QCOMPARE(m_settings->view(), u"month"_s);
+    QVERIFY(!find(m_window->contentItem(), "WhichKey", "visible", u"true"_s));
+
+    // Keys typed into a text field stay there.
+    QTest::keyClick(m_window, '/');
+    QQuickItem *search = nullptr;
+    QTRY_VERIFY((search = m_window->activeFocusItem()) && search->inherits("QQuickTextInput"));
+    QTest::keyClick(m_window, ',');
+    QTest::keyClick(m_window, 'w');
+    QCOMPARE(search->property("text").toString(), u",w"_s);
+    QCOMPARE(m_settings->view(), u"month"_s);
+    QTest::keyClick(m_window, Qt::Key_Escape);
+
+    // Off again, the keys do nothing.
+    m_settings->setViMode(false);
+    QTRY_VERIFY(!m_window->activeFocusItem() ||
+                !m_window->activeFocusItem()->inherits("QQuickTextInput"));
+    QTest::keyClick(m_window, ',');
+    QTest::keyClick(m_window, 'w');
+    QCOMPARE(m_settings->view(), u"month"_s);
 }
 
 QTEST_MAIN(TestEventEdit)

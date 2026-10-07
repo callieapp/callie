@@ -664,6 +664,10 @@ ApplicationWindow {
                                 }
                             }
                             MenuEntry {
+                                text: qsTr("Keyboard shortcuts")
+                                onTriggered: keyHelp.open()
+                            }
+                            MenuEntry {
                                 text: qsTr("What's new")
                                 onTriggered: whatsNew.open()
                             }
@@ -808,25 +812,10 @@ ApplicationWindow {
         onFinished: settingsDialog.open()
     }
 
-    Shortcut {
-        sequences: [StandardKey.New]
-        onActivated: quickAdd.open()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Find]
-        onActivated: searchPopup.open()
-    }
-
     SearchPopup {
         id: searchPopup
         source: window.source
         onJumpRequested: (day, uid, start) => window.revealEvent(day, uid, start)
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Undo]
-        onActivated: undoToast.undo()
     }
 
     UndoToast {
@@ -854,19 +843,17 @@ ApplicationWindow {
         undoToast.show("", qsTr("Copied %1").arg(event.summary))
     }
 
-    // Under the pointer, or on the day in view at the same time of day.
-    Shortcut {
-        sequences: [StandardKey.Paste]
-        enabled: window.copiedEvent !== null
-        onActivated: {
-            const event = window.copiedEvent
-            const view = window.shownView()
-            const target = view ? view.pasteTarget(event) : null
-            pasteActions.duplicate(event, target || Settings.times.at(window.focusDate,
-                                                                      Settings.times.minutesIntoDay(
-                                                                          event.start)),
-                                   Settings.defaultCalendar || Settings.newEventCalendar)
-        }
+    /// Pastes under the pointer, or on the day in view at the same time of day.
+    function paste() {
+        const event = window.copiedEvent
+        if (!event)
+            return
+        const view = window.shownView()
+        const target = view ? view.pasteTarget(event) : null
+        pasteActions.duplicate(event, target || Settings.times.at(window.focusDate,
+                                                                  Settings.times.minutesIntoDay(
+                                                                      event.start)),
+                               Settings.defaultCalendar || Settings.newEventCalendar)
     }
 
     EventActions {
@@ -878,14 +865,99 @@ ApplicationWindow {
         }
     }
 
-    Shortcut {
-        sequences: [StandardKey.Quit]
-        onActivated: Qt.quit()
+    // ---- Keyboard ----------------------------------------------------------------
+    /// Does what the keyboard asked for, by KeyRouter's action id.
+    function run(id) {
+        const view = window.shownView()
+        switch (id) {
+        case "newEvent":
+            quickAdd.open()
+            break
+        case "search":
+            searchPopup.open()
+            break
+        case "undo":
+            undoToast.undo()
+            break
+        case "paste":
+            window.paste()
+            break
+        case "previous":
+            window.step(-1)
+            break
+        case "next":
+            window.step(1)
+            break
+        case "today":
+            window.focusDate = window.today()
+            break
+        case "scrollDown":
+        case "scrollUp":
+        case "top":
+        case "bottom":
+            if (weekLoader.item)
+                (weekLoader.item as WeekView).scroll(id)
+            break
+        case "dayView":
+            Settings.view = "day"
+            break
+        case "weekView":
+            Settings.view = "week"
+            break
+        case "monthView":
+            Settings.view = "month"
+            break
+        case "agendaView":
+            Settings.view = "agenda"
+            break
+        case "invites":
+            invitesTray.open()
+            break
+        case "refresh":
+            window.source.refresh()
+            break
+        case "settings":
+            settingsDialog.open()
+            break
+        case "help":
+            keyHelp.open()
+            break
+        case "quit":
+            Qt.quit()
+            break
+        }
     }
 
-    Shortcut {
-        sequences: [StandardKey.Preferences, "Ctrl+,"]
-        onActivated: settingsDialog.open()
+    KeyRouter {
+        id: keys
+        window: window
+        viMode: Settings.viMode
+        leaderKey: Settings.leaderKey
+        leaderTimeout: Settings.leaderTimeout
+        blocked: settingsDialog.opened || searchPopup.opened || quickAdd.opened || keyHelp.opened
+                 || themeEditor.opened || about.opened || whatsNew.opened
+        onTriggered: id => window.run(id)
+    }
+
+    // The shortcuts that always work. Those for an open card live in the card,
+    // since an open card keeps these from working.
+    Instantiator {
+        model: keys.actions.filter(a => !a.inCard && a.standard.length > 0)
+
+        Shortcut {
+            required property var modelData
+            sequences: modelData.standard
+            onActivated: window.run(modelData.id)
+        }
+    }
+
+    WhichKey {
+        router: keys
+    }
+
+    KeyHelp {
+        id: keyHelp
+        actions: keys.actions
     }
 
     Rectangle {

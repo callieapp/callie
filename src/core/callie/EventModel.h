@@ -66,6 +66,7 @@ public:
         EndRole,
         LaneRole,
         LaneCountRole,
+        DepthRole,
         FirstDayRole,
         DaySpanRole,
         CalendarNameRole,
@@ -149,7 +150,7 @@ private:
     void reloadRange();
     void load(bool rangeChanged);
     void apply(SourceSnapshot snapshot);
-    /// Assigns lane/laneCount to every timed event in `events`, per day.
+    /// Lays out every timed event in `events`, per day: depth, lane and laneCount.
     void assignLanes(QList<Event> &events) const;
     /// Gives each all-day event a row in `lane` and returns the rows used.
     int assignAllDayRows(QList<Event> &events) const;

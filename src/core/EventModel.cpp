@@ -193,8 +193,10 @@ void EventModel::setMinimumMinutes(int minutes)
 
 void EventModel::assignLanes(QList<Event> &events) const
 {
-    // Sweep each day assigning the lowest free lane. A cluster ends at the first
-    // gap, and every event in it then learns the cluster's final lane count.
+    // Events that start close together sit side by side, sharing one depth.
+    // One that starts later steps in over everything it overlaps, so every
+    // event keeps most of the column and its title stays readable.
+    constexpr qint64 kSideBySideSecs = 30 * 60;
     QMap<qint64, QList<Event *>> byDay;
     for (Event &e : events) {
         if (e.allDay)
@@ -202,46 +204,57 @@ void EventModel::assignLanes(QList<Event> &events) const
         byDay[e.start.date().toJulianDay()].append(&e);
     }
 
+    // Where each event's block ends on screen, which for a short event is
+    // later than the event itself.
+    const auto drawnEnd = [this](const Event *e) {
+        return std::max(e->end, e->start.addSecs(qint64(m_minimumMinutes) * 60));
+    };
+    struct Group
+    {
+        QDateTime start;
+        int depth = 0;
+        QList<Event *> members;
+    };
+
     for (QList<Event *> &day : byDay) {
         std::sort(day.begin(), day.end(), [](const Event *a, const Event *b) {
             return a->start == b->start ? a->end > b->end : a->start < b->start;
         });
 
-        // Where each event's block ends on screen, which for a short event is
-        // later than the event itself.
-        const auto drawnEnd = [this](const Event *e) {
-            return std::max(e->end, e->start.addSecs(qint64(m_minimumMinutes) * 60));
-        };
-        QList<Event *> cluster;
-        QList<QDateTime> laneEnds;
-        auto flush = [&] {
-            for (Event *e : cluster)
-                e->laneCount = laneEnds.size();
-            cluster.clear();
-            laneEnds.clear();
-        };
-
+        QList<Group> groups;
+        QHash<const Event *, qsizetype> groupOf;
         for (Event *e : day) {
-            const bool overlapsCluster =
-                std::any_of(laneEnds.cbegin(), laneEnds.cend(),
-                            [e](const QDateTime &end) { return end > e->start; });
-            if (!overlapsCluster)
-                flush();
-
-            int lane = 0;
-            for (; lane < laneEnds.size(); ++lane) {
-                if (laneEnds[lane] <= e->start)
-                    break;
+            qsizetype near = -1;
+            int depth = 0;
+            bool overlaps = false;
+            for (const Group &group : std::as_const(groups)) {
+                for (const Event *other : group.members) {
+                    if (drawnEnd(other) <= e->start)
+                        continue;
+                    overlaps = true;
+                    const qsizetype index = groupOf.value(other);
+                    if (group.start.secsTo(e->start) < kSideBySideSecs)
+                        near = std::max(near, index);
+                    depth = std::max(depth, group.depth + 1);
+                }
             }
-            if (lane == laneEnds.size())
-                laneEnds.append(drawnEnd(e));
-            else
-                laneEnds[lane] = drawnEnd(e);
-
-            e->lane = lane;
-            cluster.append(e);
+            if (near >= 0) {
+                groups[near].members.append(e);
+                groupOf.insert(e, near);
+            } else {
+                groups.append({e->start, overlaps ? depth : 0, {e}});
+                groupOf.insert(e, groups.size() - 1);
+            }
         }
-        flush();
+
+        for (const Group &group : std::as_const(groups)) {
+            for (qsizetype i = 0; i < group.members.size(); ++i) {
+                Event *e = group.members.at(i);
+                e->depth = group.depth;
+                e->lane = int(i);
+                e->laneCount = int(group.members.size());
+            }
+        }
     }
 }
 
@@ -404,6 +417,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case EndRole: return e.end;
     case LaneRole: return e.lane;
     case LaneCountRole: return e.laneCount;
+    case DepthRole: return e.depth;
     case DayIndexRole: return static_cast<int>(m_rangeStart.daysTo(e.start.date()));
     case StartMinutesRole: return e.start.time().hour() * 60 + e.start.time().minute();
     case DurationMinutesRole: return static_cast<int>(e.start.secsTo(e.end) / 60);
@@ -445,6 +459,7 @@ QHash<int, QByteArray> EventModel::roleNames() const
         {EndRole, "end"},
         {LaneRole, "lane"},
         {LaneCountRole, "laneCount"},
+        {DepthRole, "depth"},
         {FirstDayRole, "firstDay"},
         {DaySpanRole, "daySpan"},
         {CalendarNameRole, "calendarName"},

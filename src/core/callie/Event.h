@@ -56,7 +56,10 @@ public:
     QList<int> reminders;
     bool remindersKnown = false;
 
-    /// Lane assignment for overlapping events, filled in by the view model.
+    /// Where an overlapping event sits, filled in by the view model: `depth`
+    /// steps it in over earlier events, and `lane` of `laneCount` places it
+    /// beside events that start at about the same time.
+    int depth = 0;
     int lane = 0;
     int laneCount = 1;
 

@@ -108,8 +108,9 @@ private Q_SLOTS:
     void singleEventGetsOneLane();
     void separatedEventsShareLaneZero();
     void backToBackEventsDoNotOverlap();
-    void twoOverlappingEventsSplitLanes();
-    void threeWayOverlapUsesThreeLanes();
+    void closeStartsSitSideBySide();
+    void laterStartsStepIn();
+    void stepsAndSidesMix();
     void clustersAreCountedIndependently();
     void differentDaysDoNotShareLanes();
     void positionRolesAreComputed();
@@ -193,20 +194,22 @@ void TestEventModel::backToBackEventsDoNotOverlap()
     QCOMPARE(intRole(*model, 1, EventModel::LaneCountRole), 1);
 }
 
-void TestEventModel::twoOverlappingEventsSplitLanes()
+void TestEventModel::closeStartsSitSideBySide()
 {
     auto [model, source] = modelFor({
         timed("a", kMonday, 9, 0, 60),
-        timed("b", kMonday, 9, 30, 60),
+        timed("b", kMonday, 9, 15, 60),
     });
 
     QCOMPARE(intRole(*model, 0, EventModel::LaneRole), 0);
     QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
     QCOMPARE(intRole(*model, 0, EventModel::LaneCountRole), 2);
     QCOMPARE(intRole(*model, 1, EventModel::LaneCountRole), 2);
+    QCOMPARE(intRole(*model, 0, EventModel::DepthRole), 0);
+    QCOMPARE(intRole(*model, 1, EventModel::DepthRole), 0);
 }
 
-void TestEventModel::threeWayOverlapUsesThreeLanes()
+void TestEventModel::laterStartsStepIn()
 {
     auto [model, source] = modelFor({
         timed("wide", kMonday, 9, 0, 120),
@@ -214,19 +217,40 @@ void TestEventModel::threeWayOverlapUsesThreeLanes()
         timed("short", kMonday, 10, 0, 15),
     });
 
-    QCOMPARE(intRole(*model, 0, EventModel::LaneRole), 0);
-    QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
-    QCOMPARE(intRole(*model, 2, EventModel::LaneRole), 2);
-    for (int row = 0; row < 3; ++row)
-        QCOMPARE(intRole(*model, row, EventModel::LaneCountRole), 3);
+    for (int row = 0; row < 3; ++row) {
+        QCOMPARE(intRole(*model, row, EventModel::DepthRole), row);
+        QCOMPARE(intRole(*model, row, EventModel::LaneRole), 0);
+        QCOMPARE(intRole(*model, row, EventModel::LaneCountRole), 1);
+    }
+}
+
+void TestEventModel::stepsAndSidesMix()
+{
+    // Two side by side under a long event, then one that only covers the first.
+    auto [model, source] = modelFor({
+        timed("workshop", kMonday, 10, 0, 90),
+        timed("call", kMonday, 10, 30, 60),
+        timed("sync", kMonday, 10, 45, 30),
+        timed("late", kMonday, 11, 20, 30),
+    });
+
+    QCOMPARE(intRole(*model, 0, EventModel::DepthRole), 0);
+    QCOMPARE(intRole(*model, 1, EventModel::DepthRole), 1);
+    QCOMPARE(intRole(*model, 2, EventModel::DepthRole), 1);
+    QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 0);
+    QCOMPARE(intRole(*model, 2, EventModel::LaneRole), 1);
+    QCOMPARE(intRole(*model, 2, EventModel::LaneCountRole), 2);
+    // "late" overlaps the workshop and the call, not the sync, which has ended.
+    QCOMPARE(intRole(*model, 3, EventModel::DepthRole), 2);
+    QCOMPARE(intRole(*model, 3, EventModel::LaneCountRole), 1);
 }
 
 void TestEventModel::clustersAreCountedIndependently()
 {
-    // A gap ends the cluster, so the later event must not inherit laneCount 2.
+    // A gap ends the overlap, so the later event starts over at the edge.
     auto [model, source] = modelFor({
         timed("a", kMonday, 9, 0, 60),
-        timed("b", kMonday, 9, 30, 60),
+        timed("b", kMonday, 9, 10, 60),
         timed("afternoon", kMonday, 14, 0, 60),
     });
 
@@ -234,6 +258,7 @@ void TestEventModel::clustersAreCountedIndependently()
     QCOMPARE(intRole(*model, 1, EventModel::LaneCountRole), 2);
     QCOMPARE(intRole(*model, 2, EventModel::LaneRole), 0);
     QCOMPARE(intRole(*model, 2, EventModel::LaneCountRole), 1);
+    QCOMPARE(intRole(*model, 2, EventModel::DepthRole), 0);
 }
 
 void TestEventModel::differentDaysDoNotShareLanes()

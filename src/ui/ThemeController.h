@@ -103,6 +103,8 @@ class ThemeController : public QObject
     /// how many minutes of the grid that covers.
     Q_PROPERTY(int minEventHeight READ minEventHeight CONSTANT)
     Q_PROPERTY(int minEventMinutes READ minEventMinutes CONSTANT)
+    /// How far an event steps in over the earlier events it overlaps.
+    Q_PROPERTY(int cascadeIndent READ cascadeIndent CONSTANT)
     /// How far the logo sits above centre, so its face, not its ears, lines up
     /// with the title beside it.
     Q_PROPERTY(int logoLift READ logoLift CONSTANT)
@@ -211,6 +213,7 @@ public:
     int resizeBorder() const { return 6; }
     qreal fadedOpacity() const { return 0.5; }
     int minEventHeight() const { return 20; }
+    int cascadeIndent() const { return 14; }
     int minEventMinutes() const
     {
         return (minEventHeight() * 60 + hourHeight() - 1) / hourHeight();

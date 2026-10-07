@@ -436,11 +436,15 @@ Item {
                     required property int laneCount
                     required property bool allDay
 
-                    readonly property real laneWidth: (root.columnWidth(dayIndex) - 6) / laneCount
+                    readonly property real columnInner: root.columnWidth(dayIndex) - 6
+                    // Stepping in never takes more than half the column.
+                    readonly property real indent: Math.min(depth * Theme.cascadeIndent,
+                                                            columnInner / 2)
+                    readonly property real laneWidth: (columnInner - indent) / laneCount
 
                     visible: !allDay && dayIndex >= 0 && dayIndex < root.dayCount
 
-                    x: root.columnX(dayIndex) + 3 + lane * laneWidth
+                    x: root.columnX(dayIndex) + 3 + indent + lane * laneWidth
                     width: laneWidth - (laneCount > 1 ? 3 : 0)
                     y: startMinutes / 60 * Theme.hourHeight
                     height: Math.max(Theme.minEventHeight, durationMinutes / 60 * Theme.hourHeight

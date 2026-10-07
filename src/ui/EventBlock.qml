@@ -20,24 +20,33 @@ Rectangle {
     required property date end
     /// The user said no; shown struck through when declined events are shown.
     required property bool declined
+    /// How many earlier events this one steps in over; deeper ones draw on top,
+    /// outlined so they stand apart from what they cover.
+    required property int depth
 
     signal moveRequested(int deltaMinutes, int deltaDays)
     signal activated
 
     readonly property bool compact: height < 34
     readonly property bool hovered: hover.hovered
-    readonly property color ink: Theme.calendarInk(calendarColor, Theme.calendar)
+    readonly property color ink: shade(Theme.calendarInk(calendarColor, Theme.calendar))
     readonly property bool past: Settings.dimPast && end < Clock.now
     readonly property bool faded: declined || past
 
     radius: Theme.radiusMd
-    color: Theme.calendarColor(calendarColor, Theme.calendar)
+    color: shade(Theme.calendarColor(calendarColor, Theme.calendar))
 
-    opacity: drag.active ? 0.85 : faded ? Theme.fadedOpacity : 1
-    // Fades the sticker and its edge as one, so the edge does not show through.
-    layer.enabled: faded
+    opacity: drag.active ? 0.85 : 1
+
+    // Faded by mixing toward the background rather than by opacity, so a
+    // faded event still hides what it covers.
+    function shade(color) {
+        return faded ? Qt.tint(color, Theme.tint(Theme.bg, 1 - Theme.fadedOpacity)) : color
+    }
     scale: drag.active ? 1.02 : 1
-    z: drag.active ? 100 : 1
+    z: drag.active ? 100 : 1 + depth
+    border.width: depth > 0 ? 1 : 0
+    border.color: Theme.bg
 
     Behavior on scale {
         NumberAnimation {
@@ -61,7 +70,7 @@ Rectangle {
             bottomMargin: -Theme.stickerEdge
         }
         radius: root.radius
-        color: Theme.calendarEdge(root.calendarColor, Theme.calendar)
+        color: root.shade(Theme.calendarEdge(root.calendarColor, Theme.calendar))
     }
 
     Column {

@@ -300,6 +300,7 @@ ApplicationWindow {
                         start: new Date(2026, 9, 5, 10, 0)
                         end: new Date(2026, 9, 5, 11, 0)
                         declined: false
+                        depth: 0
                     }
                 }
             }

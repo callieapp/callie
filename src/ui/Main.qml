@@ -872,6 +872,10 @@ ApplicationWindow {
     EventActions {
         id: pasteActions
         source: window.source
+        onErrorChanged: {
+            if (error !== "")
+                undoToast.show("", error)
+        }
     }
 
     Shortcut {

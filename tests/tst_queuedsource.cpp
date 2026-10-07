@@ -136,6 +136,7 @@ private Q_SLOTS:
     void allDaySeriesMovesByWholeDays();
     void editsShowAtOnceAndSurviveARestart();
     void editsFoldIntoAPendingCreation();
+    void creationsKeepTheirNotes();
     void followingEditsShowFromTheOccurrenceOn();
 
 private:
@@ -508,6 +509,35 @@ void TestQueuedSource::allDaySeriesMovesByWholeDays()
     QCOMPARE(events[0].end, midnight(10, 26));
     QCOMPARE(events[1].start, midnight(11, 1));
     QCOMPARE(events[1].end, midnight(11, 2));
+}
+
+void TestQueuedSource::creationsKeepTheirNotes()
+{
+    m_online = false;
+    {
+        auto source = make();
+        EventDraft draft;
+        draft.summary = u"Pottery"_s;
+        draft.description = u"Bring an apron"_s;
+        draft.calendarId = u"work"_s;
+        draft.start = at(18);
+        draft.end = at(20);
+        source->createEvent(draft, [](const QString &) {});
+        // New notes fold into the creation, as a title does.
+        const Event pottery = source->eventsBetween(at(18), at(19), QTimeZone::UTC).first();
+        QCOMPARE(pottery.description, u"Bring an apron"_s);
+        EventEdit notes;
+        notes.description = u"Bring an apron and a towel"_s;
+        QString error = u"unset"_s;
+        source->updateEvent(pottery, notes, EditScope::ThisEvent,
+                            [&error](const QString &e) { error = e; });
+        QVERIFY(error.isEmpty());
+    }
+    auto source = make();
+    QCOMPARE(source->changes().size(), 1);
+    QCOMPARE(source->changes().first().draft.description, u"Bring an apron and a towel"_s);
+    QCOMPARE(source->eventsBetween(at(18), at(19), QTimeZone::UTC).first().description,
+             u"Bring an apron and a towel"_s);
 }
 
 QTEST_GUILESS_MAIN(TestQueuedSource)

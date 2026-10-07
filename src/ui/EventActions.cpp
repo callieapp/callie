@@ -248,6 +248,10 @@ void EventActions::duplicate(const QVariantMap &event, const QDateTime &at,
                                                        : QString();
     }
     const QString eventId = event.value(u"eventId"_s).toString();
+    if (draft.calendarId.isEmpty()) {
+        finish(eventId, tr("No calendar can take a copy."));
+        return;
+    }
     start();
     const QPointer<EventActions> self(this);
     m_source->createEvent(draft, [this, self, eventId](const QString &error) {

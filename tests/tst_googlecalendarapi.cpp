@@ -312,11 +312,13 @@ void TestGoogleCalendarApi::draftBecomesRequestBody()
     EventDraft timed;
     timed.summary = QStringLiteral("Lunch");
     timed.location = QStringLiteral("Cafe Sol");
+    timed.description = QStringLiteral("Bring the menu");
     timed.start = QDateTime(QDate(2026, 10, 8), QTime(12, 0), berlin);
     timed.end = timed.start.addSecs(3600);
     const QJsonObject json = googleEventJson(timed);
     QCOMPARE(json[u"summary"].toString(), QStringLiteral("Lunch"));
     QCOMPARE(json[u"location"].toString(), QStringLiteral("Cafe Sol"));
+    QCOMPARE(json[u"description"].toString(), QStringLiteral("Bring the menu"));
     QCOMPARE(json[u"start"][u"dateTime"].toString(), QStringLiteral("2026-10-08T12:00:00+02:00"));
     QCOMPARE(json[u"start"][u"timeZone"].toString(), QStringLiteral("Europe/Berlin"));
     QCOMPARE(json[u"end"][u"dateTime"].toString(), QStringLiteral("2026-10-08T13:00:00+02:00"));
@@ -330,6 +332,7 @@ void TestGoogleCalendarApi::draftBecomesRequestBody()
     QCOMPARE(day[u"start"][u"date"].toString(), QStringLiteral("2026-10-20"));
     QCOMPARE(day[u"end"][u"date"].toString(), QStringLiteral("2026-10-21"));
     QVERIFY(!day.contains(u"location"));
+    QVERIFY(!day.contains(u"description"));
 }
 
 void TestGoogleCalendarApi::insertPostsAndReturnsTheEvent()

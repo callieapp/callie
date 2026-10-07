@@ -6,8 +6,14 @@
 #include "callie/Logging.h"
 #include "callie/Times.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPointer>
 #include <QPromise>
+#include <QUuid>
+
+using namespace Qt::StringLiterals;
 
 namespace callie {
 
@@ -293,6 +299,122 @@ void GoogleSource::moveEvent(const Event &event, const QDateTime &start, const Q
     }
     m_sync->move(account, calendarId, series ? event.seriesId : event.eventId,
                  newStart.toTimeZone(zone), newEnd.toTimeZone(zone), std::move(done));
+}
+
+void GoogleSource::updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
+                               Created done)
+{
+    const auto calendar = splitCalendarId(event.calendarId);
+    if (!m_sync || !calendar) {
+        done({tr("Callie is not connected to that event's account right now."), true});
+        return;
+    }
+    if (scope == EditScope::ThisAndFollowing) {
+        done(tr("Changing this and the following events is not possible yet."));
+        return;
+    }
+    const auto &[account, calendarId] = *calendar;
+    const bool series = scope == EditScope::AllEvents && !event.seriesId.isEmpty();
+    const QString target = series ? event.seriesId : event.eventId;
+    // An occurrence never changed before is stored only as its series.
+    std::optional<GoogleEvent> stored = m_cache.event(account, calendarId, target);
+    if (!stored && !event.seriesId.isEmpty())
+        stored = m_cache.event(account, calendarId, event.seriesId);
+
+    QJsonObject fields;
+    if (edit.summary)
+        fields.insert(u"summary"_s, *edit.summary);
+    if (edit.location)
+        fields.insert(u"location"_s, *edit.location);
+    if (edit.description)
+        fields.insert(u"description"_s, *edit.description);
+
+    if (edit.movesTimes()) {
+        const bool allDay = edit.allDay.value_or(event.allDay);
+        const QDateTime start = edit.start.value_or(event.start);
+        const QDateTime end = edit.end.value_or(event.end);
+        // A series keeps its first day: it moves by as many days as this
+        // occurrence did, to the time of day this occurrence now has.
+        QDate firstDay = start.date();
+        QDateTime newStart = start;
+        if (series) {
+            if (!stored || !(stored->start.dateTime.isValid() || stored->start.date.isValid())) {
+                done(tr("Callie does not have this series' times yet; try again after a sync."));
+                return;
+            }
+            const QTimeZone was = stored->start.timeZone.isEmpty()
+                                      ? event.start.timeZone()
+                                      : QTimeZone(stored->start.timeZone.toUtf8());
+            const qint64 days = event.start.toTimeZone(was).date().daysTo(start.date());
+            const QDate seriesDay = stored->start.isAllDay()
+                                        ? stored->start.date
+                                        : stored->start.dateTime.toTimeZone(was).date();
+            firstDay = seriesDay.addDays(days);
+            newStart = QDateTime(firstDay, start.time(), start.timeZone());
+        }
+        if (allDay) {
+            const qint64 length = std::max<qint64>(1, start.date().daysTo(end.date()));
+            fields.insert(u"start"_s, QJsonObject{{u"date"_s, firstDay.toString(Qt::ISODate)}});
+            fields.insert(u"end"_s,
+                          QJsonObject{{u"date"_s, firstDay.addDays(length).toString(Qt::ISODate)}});
+        } else {
+            const QDateTime newEnd = newStart.addSecs(start.secsTo(end));
+            const auto time = [](const QDateTime &moment) {
+                QJsonObject json{{u"dateTime"_s, moment.toString(Qt::ISODate)}};
+                if (moment.timeSpec() == Qt::TimeZone)
+                    json.insert(u"timeZone"_s, QString::fromUtf8(moment.timeZone().id()));
+                return json;
+            };
+            fields.insert(u"start"_s, time(newStart));
+            fields.insert(u"end"_s, time(newEnd));
+        }
+    }
+
+    if (edit.recurrence)
+        fields.insert(u"recurrence"_s, QJsonArray::fromStringList(*edit.recurrence));
+
+    if (edit.guests) {
+        // Guests who stay keep their answers; the user stays on the list.
+        const QJsonArray before =
+            QJsonDocument::fromJson(stored ? stored->attendees : QByteArray()).array();
+        QJsonArray after;
+        for (const QJsonValue &guest : before) {
+            if (guest[u"self"].toBool() || guest[u"resource"].toBool() ||
+                edit.guests->contains(guest[u"email"].toString(), Qt::CaseInsensitive))
+                after.append(guest);
+        }
+        for (const QString &email : *edit.guests) {
+            const bool known =
+                std::any_of(after.cbegin(), after.cend(), [&email](const QJsonValue &g) {
+                    return g[u"email"].toString().compare(email, Qt::CaseInsensitive) == 0;
+                });
+            if (!known)
+                after.append(QJsonObject{{u"email"_s, email}});
+        }
+        fields.insert(u"attendees"_s, after);
+    }
+
+    bool conference = false;
+    if (edit.videoCall) {
+        conference = true;
+        if (*edit.videoCall) {
+            fields.insert(
+                u"conferenceData"_s,
+                QJsonObject{{u"createRequest"_s,
+                             QJsonObject{{u"requestId"_s,
+                                          QUuid::createUuid().toString(QUuid::WithoutBraces)},
+                                         {u"conferenceSolutionKey"_s,
+                                          QJsonObject{{u"type"_s, u"hangoutsMeet"_s}}}}}});
+        } else {
+            fields.insert(u"conferenceData"_s, QJsonValue::Null);
+        }
+    }
+
+    if (fields.isEmpty()) {
+        done({});
+        return;
+    }
+    m_sync->update(account, calendarId, target, fields, conference, std::move(done));
 }
 
 QVariantList GoogleSource::syncReport() const

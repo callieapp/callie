@@ -76,6 +76,13 @@ public:
             events.removeIf([&event](const Event &e) { return e.eventId == event.eventId; });
         answer(done);
     }
+    void updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
+                     Created done) override
+    {
+        calls << u"update "_s + event.eventId + u' ' + edit.summary.value_or(QString()) +
+                     (scope == EditScope::AllEvents ? u" all"_s : QString());
+        answer(done);
+    }
     void moveEvent(const Event &event, const QDateTime &start, const QDateTime &, bool,
                    Created done) override
     {
@@ -126,6 +133,7 @@ private Q_SLOTS:
     void changesGoOutInOrder();
     void passingFailuresAreTriedAgain();
     void seriesMovesOnItsOwnClock();
+    void editsShowAtOnceAndSurviveARestart();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -381,6 +389,33 @@ void TestQueuedSource::seriesMovesOnItsOwnClock()
     // Still 10:00 in Berlin, though Berlin's offset changed in between.
     QCOMPARE(starts, (QList<QDateTime>{QDateTime(QDate(2026, 3, 29), QTime(10, 0), berlin),
                                        QDateTime(QDate(2026, 3, 31), QTime(10, 0), berlin)}));
+}
+
+void TestQueuedSource::editsShowAtOnceAndSurviveARestart()
+{
+    m_online = false;
+    {
+        auto source = make();
+        EventEdit edit;
+        edit.summary = u"Lunch with Alex"_s;
+        edit.start = at(13);
+        edit.end = at(14, 30);
+        QSignalSpy made(source.get(), &CalendarSource::changeMade);
+        source->updateEvent(makeEvent(u"lunch"_s, 12), edit, EditScope::ThisEvent,
+                            [](const QString &) {});
+        QCOMPARE(made.first().at(1).toString(), u"Changed lunch"_s);
+        QCOMPARE(shown(*source), (QStringList{u"Lunch with Alex@13:00"_s, u"standup@09:00"_s}));
+    }
+    // Kept as it was, only what was set.
+    auto source = make();
+    const PendingChange change = source->changes().first();
+    QCOMPARE(change.kind, PendingChange::Kind::Update);
+    QCOMPARE(*change.edit.summary, u"Lunch with Alex"_s);
+    QCOMPARE(*change.edit.end, at(14, 30));
+    QVERIFY(!change.edit.location);
+    m_online = true;
+    release(*source);
+    QCOMPARE(m_server.calls, QStringList{u"update lunch Lunch with Alex"_s});
 }
 
 QTEST_GUILESS_MAIN(TestQueuedSource)

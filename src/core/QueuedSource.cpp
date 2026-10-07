@@ -30,6 +30,7 @@ const char *kindName(PendingChange::Kind kind)
     case PendingChange::Kind::Respond: return "respond";
     case PendingChange::Kind::Delete: return "delete";
     case PendingChange::Kind::Move: return "move";
+    case PendingChange::Kind::Update: return "update";
     }
     return "create";
 }
@@ -84,6 +85,61 @@ Event eventFrom(const QJsonObject &json)
     return e;
 }
 
+// Only what an edit sets is written, so what it leaves alone stays unset.
+QJsonObject editJson(const EventEdit &edit)
+{
+    QJsonObject json;
+    if (edit.summary)
+        json.insert(u"summary"_s, *edit.summary);
+    if (edit.location)
+        json.insert(u"location"_s, *edit.location);
+    if (edit.description)
+        json.insert(u"description"_s, *edit.description);
+    if (edit.start)
+        json.insert(u"start"_s, timeJson(*edit.start));
+    if (edit.end)
+        json.insert(u"end"_s, timeJson(*edit.end));
+    if (edit.allDay)
+        json.insert(u"allDay"_s, *edit.allDay);
+    if (edit.recurrence)
+        json.insert(u"recurrence"_s, QJsonArray::fromStringList(*edit.recurrence));
+    if (edit.guests)
+        json.insert(u"guests"_s, QJsonArray::fromStringList(*edit.guests));
+    if (edit.videoCall)
+        json.insert(u"videoCall"_s, *edit.videoCall);
+    return json;
+}
+
+EventEdit editFrom(const QJsonObject &json)
+{
+    const auto strings = [](const QJsonValue &value) {
+        QStringList list;
+        for (const QJsonValue &item : value.toArray())
+            list.append(item.toString());
+        return list;
+    };
+    EventEdit edit;
+    if (json.contains(u"summary"))
+        edit.summary = json[u"summary"].toString();
+    if (json.contains(u"location"))
+        edit.location = json[u"location"].toString();
+    if (json.contains(u"description"))
+        edit.description = json[u"description"].toString();
+    if (json.contains(u"start"))
+        edit.start = timeFrom(json[u"start"]);
+    if (json.contains(u"end"))
+        edit.end = timeFrom(json[u"end"]);
+    if (json.contains(u"allDay"))
+        edit.allDay = json[u"allDay"].toBool();
+    if (json.contains(u"recurrence"))
+        edit.recurrence = strings(json[u"recurrence"]);
+    if (json.contains(u"guests"))
+        edit.guests = strings(json[u"guests"]);
+    if (json.contains(u"videoCall"))
+        edit.videoCall = json[u"videoCall"].toBool();
+    return edit;
+}
+
 QJsonObject changeJson(const PendingChange &c)
 {
     return {{u"id"_s, c.id},
@@ -100,7 +156,9 @@ QJsonObject changeJson(const PendingChange &c)
             {u"wholeSeries"_s, c.wholeSeries},
             {u"start"_s, timeJson(c.start)},
             {u"end"_s, timeJson(c.end)},
-            {u"notBefore"_s, timeJson(c.notBefore)}};
+            {u"notBefore"_s, timeJson(c.notBefore)},
+            {u"edit"_s, editJson(c.edit)},
+            {u"scope"_s, int(c.scope)}};
 }
 
 std::optional<PendingChange> changeFrom(const QJsonObject &json)
@@ -115,6 +173,8 @@ std::optional<PendingChange> changeFrom(const QJsonObject &json)
         c.kind = PendingChange::Kind::Delete;
     else if (kind == u"move")
         c.kind = PendingChange::Kind::Move;
+    else if (kind == u"update")
+        c.kind = PendingChange::Kind::Update;
     else
         return std::nullopt;
     c.id = json[u"id"].toString();
@@ -132,6 +192,8 @@ std::optional<PendingChange> changeFrom(const QJsonObject &json)
     c.start = timeFrom(json[u"start"]);
     c.end = timeFrom(json[u"end"]);
     c.notBefore = timeFrom(json[u"notBefore"]);
+    c.edit = editFrom(json[u"edit"].toObject());
+    c.scope = EditScope(std::clamp(json[u"scope"].toInt(), 0, int(EditScope::AllEvents)));
     return c;
 }
 
@@ -174,6 +236,7 @@ QString PendingChange::describeDone() const
     case Kind::Respond: return QObject::tr("Answered %1").arg(name);
     case Kind::Delete: return QObject::tr("Deleted %1").arg(name);
     case Kind::Move: return QObject::tr("Moved %1").arg(name);
+    case Kind::Update: return QObject::tr("Changed %1").arg(name);
     }
     return name;
 }
@@ -186,6 +249,7 @@ QString PendingChange::describe() const
     case Kind::Respond: return QObject::tr("Answer %1").arg(name);
     case Kind::Delete: return QObject::tr("Delete %1").arg(name);
     case Kind::Move: return QObject::tr("Move %1").arg(name);
+    case Kind::Update: return QObject::tr("Change %1").arg(name);
     }
     return name;
 }
@@ -268,6 +332,12 @@ void QueuedSource::apply(QList<Event> &events, const QList<PendingChange> &chang
                     if (guest.self)
                         guest.response = change.status;
                 }
+            }
+            break;
+        case PendingChange::Kind::Update:
+            for (Event &e : events) {
+                if (targets(e, change))
+                    applyEdit(e, change.event, change.edit);
             }
             break;
         case PendingChange::Kind::Move: {
@@ -432,6 +502,41 @@ void QueuedSource::folded(qsizetype index, const PendingChange &before, const QS
     Q_EMIT changeMade(id, what);
 }
 
+void QueuedSource::updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
+                               Created done)
+{
+    // An event not created yet is created as edited, if a creation can say it all.
+    for (qsizetype i = 0; i < m_changes.size(); ++i) {
+        PendingChange &change = m_changes[i];
+        if (change.kind != PendingChange::Kind::Create || change.event.eventId != event.eventId ||
+            change.id == m_sending)
+            continue;
+        if (edit.description || edit.recurrence || edit.guests || edit.videoCall) {
+            done(tr("Wait a moment for the new event to be saved, then change it."));
+            return;
+        }
+        const PendingChange before = change;
+        applyEdit(change.event, event, edit);
+        change.draft.summary = change.event.summary;
+        change.draft.location = change.event.location;
+        change.draft.start = change.event.start;
+        change.draft.end = change.event.end;
+        change.draft.allDay = change.event.allDay;
+        save();
+        done({});
+        folded(i, before, doneText(PendingChange::Kind::Update, event));
+        Q_EMIT changed();
+        return;
+    }
+    PendingChange change;
+    change.kind = PendingChange::Kind::Update;
+    change.event = event;
+    change.edit = edit;
+    change.scope = scope;
+    change.wholeSeries = scope == EditScope::AllEvents;
+    add(change, done);
+}
+
 bool QueuedSource::undoChange(const QString &id)
 {
     if (const auto folded = m_folded.constFind(id); folded != m_folded.cend()) {
@@ -502,6 +607,9 @@ void QueuedSource::send(const PendingChange &change)
         break;
     case PendingChange::Kind::Move:
         m_inner->moveEvent(change.event, change.start, change.end, change.wholeSeries, done);
+        break;
+    case PendingChange::Kind::Update:
+        m_inner->updateEvent(change.event, change.edit, change.scope, done);
         break;
     }
 }

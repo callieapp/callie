@@ -7,6 +7,7 @@
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
 
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -65,6 +66,8 @@ private Q_SLOTS:
     void answerAimsAtTheTimedOccurrence();
     void actionsNeedAKnownCalendar();
     void moveShiftsTheOccurrenceOrTheSeries();
+    void editPatchesOnlyWhatChanged();
+    void editingTheSeriesKeepsItsFirstDay();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -497,6 +500,91 @@ void TestGoogleSource::answerAimsAtTheTimedOccurrence()
     // Addressed by the occurrence's UTC start, not the series or the local time.
     QVERIFY(harness.apiServer.requests.last().target.contains("/events/standup_20261006T133000Z?"));
     QCOMPARE(harness.apiServer.requests.last().method, QByteArray("PATCH"));
+}
+
+void TestGoogleSource::editPatchesOnlyWhatChanged()
+{
+    QVERIFY(m_cache->storeEvents(kAccount, u"mine"_s, {parsed(R"({"id":"review","summary":"Review",
+                    "start":{"dateTime":"2026-10-06T15:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T16:00:00Z"},
+                    "attendees":[{"email":"me@example.com","self":true,"responseStatus":"accepted"},
+                                 {"email":"pat@example.com","responseStatus":"accepted"},
+                                 {"email":"sam@example.com","responseStatus":"declined"}]})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"review","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 6), QTime(0, 0), QTimeZone::UTC);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), QTimeZone::UTC);
+    const auto review = std::find_if(events.cbegin(), events.cend(),
+                                     [](const Event &e) { return e.summary == u"Review"; });
+    QVERIFY(review != events.cend());
+
+    EventEdit edit;
+    edit.summary = u"Design review"_s;
+    edit.start = QDateTime(QDate(2026, 10, 6), QTime(10, 0), kNewYork);
+    edit.end = QDateTime(QDate(2026, 10, 6), QTime(11, 30), kNewYork);
+    edit.guests = QStringList{u"pat@example.com"_s, u"alex@example.com"_s};
+    edit.videoCall = true;
+    QString error = u"unset"_s;
+    source.updateEvent(*review, edit, EditScope::ThisEvent,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+
+    const FakeHttpServer::Request request = harness.apiServer.requests.last();
+    QCOMPARE(request.method, QByteArray("PATCH"));
+    // A video call needs Google told that the body may carry one.
+    QVERIFY(request.target.contains("conferenceDataVersion=1"));
+    const QJsonObject body = QJsonDocument::fromJson(request.body).object();
+    QCOMPARE(body[u"summary"].toString(), u"Design review"_s);
+    QVERIFY(!body.contains(u"location"));
+    QCOMPARE(body[u"start"][u"dateTime"].toString(), u"2026-10-06T10:00:00-04:00"_s);
+    QCOMPARE(body[u"start"][u"timeZone"].toString(), u"America/New_York"_s);
+    QCOMPARE(body[u"end"][u"dateTime"].toString(), u"2026-10-06T11:30:00-04:00"_s);
+    QCOMPARE(
+        body[u"conferenceData"][u"createRequest"][u"conferenceSolutionKey"][u"type"].toString(),
+        u"hangoutsMeet"_s);
+    // The user and Pat stay, Pat keeping the answer; Sam goes; Alex is new.
+    const QJsonArray guests = body[u"attendees"].toArray();
+    QCOMPARE(guests.size(), 3);
+    QVERIFY(guests.at(0)[u"self"].toBool());
+    QCOMPARE(guests.at(1)[u"email"].toString(), u"pat@example.com"_s);
+    QCOMPARE(guests.at(1)[u"responseStatus"].toString(), u"accepted"_s);
+    QCOMPARE(guests.at(2)[u"email"].toString(), u"alex@example.com"_s);
+}
+
+void TestGoogleSource::editingTheSeriesKeepsItsFirstDay()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"standup","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 7), QTime(0, 0), kNewYork);
+    const QList<Event> wednesday = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto standup = std::find_if(wednesday.cbegin(), wednesday.cend(),
+                                      [](const Event &e) { return e.summary == u"Standup"; });
+    QVERIFY(standup != wednesday.cend());
+
+    // Wednesday's standup moved to 10:15, for the whole series, which began on Monday.
+    EventEdit edit;
+    edit.start = QDateTime(QDate(2026, 10, 7), QTime(10, 15), kNewYork);
+    edit.end = QDateTime(QDate(2026, 10, 7), QTime(10, 30), kNewYork);
+    QString error = u"unset"_s;
+    source.updateEvent(*standup, edit, EditScope::AllEvents,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+
+    QVERIFY(harness.apiServer.requests.last().target.contains("/events/standup?"));
+    const QJsonObject body =
+        QJsonDocument::fromJson(harness.apiServer.requests.last().body).object();
+    QCOMPARE(body[u"start"][u"dateTime"].toString(), u"2026-10-05T10:15:00-04:00"_s);
+    QCOMPARE(body[u"end"][u"dateTime"].toString(), u"2026-10-05T10:30:00-04:00"_s);
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

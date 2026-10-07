@@ -22,6 +22,7 @@ private Q_SLOTS:
     void rowsCoverTheWholeMonth();
     void weekAndTodayAreMarked();
     void markingsReachNeighbouringMonths();
+    void gridFollowsTheFirstDay();
 };
 
 void TestMonthModel::gridStartsOnMonday()
@@ -34,6 +35,19 @@ void TestMonthModel::gridStartsOnMonday()
     QVERIFY(!cell(model, 0, MonthModel::InMonthRole).toBool());
     QCOMPARE(cell(model, 6, MonthModel::DayRole).toInt(), 1);
     QVERIFY(cell(model, 6, MonthModel::InMonthRole).toBool());
+}
+
+void TestMonthModel::gridFollowsTheFirstDay()
+{
+    // From Sunday, March 2026 opens on the 1st itself.
+    MonthModel model;
+    model.setMonth(QDate(2026, 3, 18));
+    model.setFirstDay(Qt::Sunday);
+
+    QCOMPARE(cell(model, 0, MonthModel::DayRole).toInt(), 1);
+    QCOMPARE(model.rowCount(), 35);
+    // Each row is numbered by the ISO week of its middle day.
+    QCOMPARE(model.weekNumbers(model.month(), model.firstDay()), (QList<int>{10, 11, 12, 13, 14}));
 }
 
 void TestMonthModel::rowsCoverTheWholeMonth()

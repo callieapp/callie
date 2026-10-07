@@ -21,6 +21,16 @@ class Settings : public QObject
     Q_PROPERTY(bool showDeclined READ showDeclined WRITE setShowDeclined NOTIFY showDeclinedChanged)
     Q_PROPERTY(bool dimPast READ dimPast WRITE setDimPast NOTIFY dimPastChanged)
     Q_PROPERTY(bool widenToday READ widenToday WRITE setWidenToday NOTIFY widenTodayChanged)
+    /// The week's first day as chosen, 1 (Monday) to 7 (Sunday), or 0 to
+    /// follow the region; firstDayOfWeek resolves it.
+    Q_PROPERTY(int weekStart READ weekStart WRITE setWeekStart NOTIFY weekChanged)
+    Q_PROPERTY(int firstDayOfWeek READ firstDayOfWeek NOTIFY weekChanged)
+    /// The week and month views leave out the region's weekend.
+    Q_PROPERTY(bool hideWeekends READ hideWeekends WRITE setHideWeekends NOTIFY weekChanged)
+    Q_PROPERTY(bool weekNumbers READ weekNumbers WRITE setWeekNumbers NOTIFY weekChanged)
+    /// Working hours, as minutes past midnight; the grid shades the rest.
+    Q_PROPERTY(int workStart READ workStart WRITE setWorkStart NOTIFY workHoursChanged)
+    Q_PROPERTY(int workEnd READ workEnd WRITE setWorkEnd NOTIFY workHoursChanged)
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars NOTIFY hiddenCalendarsChanged)
     Q_PROPERTY(callie::Times *times READ times NOTIFY timesChanged)
     /// A built-in theme id or a theme file path; empty is the default theme.
@@ -74,6 +84,21 @@ public:
     [[nodiscard]] bool widenToday() const { return m_widenToday; }
     void setWidenToday(bool widen);
 
+    [[nodiscard]] int weekStart() const { return m_weekStart; }
+    void setWeekStart(int day);
+    [[nodiscard]] int firstDayOfWeek() const;
+    [[nodiscard]] bool hideWeekends() const { return m_hideWeekends; }
+    void setHideWeekends(bool hide);
+    [[nodiscard]] bool weekNumbers() const { return m_weekNumbers; }
+    void setWeekNumbers(bool show);
+    /// Whether `day` is a working day in the region, so not a weekend.
+    Q_INVOKABLE static bool isWorkDay(const QDateTime &day);
+
+    [[nodiscard]] int workStart() const { return m_workStart; }
+    void setWorkStart(int minutes);
+    [[nodiscard]] int workEnd() const { return m_workEnd; }
+    void setWorkEnd(int minutes);
+
     /// Calendars the user hid in Callie, by CalendarInfo::id.
     [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
     Q_INVOKABLE void setCalendarVisible(const QString &id, bool visible);
@@ -120,6 +145,8 @@ Q_SIGNALS:
     void showDeclinedChanged();
     void dimPastChanged();
     void widenTodayChanged();
+    void weekChanged();
+    void workHoursChanged();
     void hiddenCalendarsChanged();
     void timesChanged();
     void themeChanged();
@@ -142,6 +169,11 @@ private:
     bool m_showDeclined = true;
     bool m_dimPast = true;
     bool m_widenToday = false;
+    int m_weekStart = 0;
+    bool m_hideWeekends = false;
+    bool m_weekNumbers = false;
+    int m_workStart = 9 * 60;
+    int m_workEnd = 17 * 60;
     QStringList m_hiddenCalendars;
     Times *m_times = nullptr;
     QString m_theme;

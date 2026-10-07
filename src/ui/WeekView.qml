@@ -22,9 +22,21 @@ Item {
     property date anchorDate: Clock.now
     property int dayCount: 7
 
+    /// Whether each column shows: a week can leave out the weekend, which
+    /// keeps its place in the model but takes no width.
+    readonly property var shown: {
+        const list = []
+        for (let i = 0; i < dayCount; ++i)
+            list.push(dayCount < 7 || !Settings.hideWeekends || Settings.isWorkDay(dateForColumn(
+                                                                                       i)))
+
+        return list
+    }
+    readonly property int shownCount: shown.filter(s => s).length
+
     readonly property int todayColumn: {
         for (let i = 0; i < dayCount; ++i)
-            if (isToday(dateForColumn(i)))
+            if (shown[i] && isToday(dateForColumn(i)))
                 return i
         return -1
     }
@@ -32,14 +44,19 @@ Item {
     readonly property real todayShare: Settings.widenToday && todayColumn >= 0 ? Theme.todayShare :
                                                                                  1
     /// The width of an ordinary day column.
-    readonly property real dayWidth: (width - Theme.gutterWidth) / (dayCount - 1 + todayShare)
+    readonly property real dayWidth: (width - Theme.gutterWidth) / Math.max(1, shownCount - 1
+                                                                            + todayShare)
 
     function columnX(i) {
-        const wider = todayColumn >= 0 && i > todayColumn ? (todayShare - 1) * dayWidth : 0
-        return Theme.gutterWidth + i * dayWidth + wider
+        let x = Theme.gutterWidth
+        for (let j = 0; j < i; ++j)
+            x += columnWidth(j)
+        return x
     }
 
     function columnWidth(i) {
+        if (!shown[i])
+            return 0
         return i === todayColumn ? todayShare * dayWidth : dayWidth
     }
 
@@ -69,6 +86,21 @@ Item {
         }
         height: 64
 
+        // The week's number, in the corner above the hours.
+        Text {
+            visible: Settings.weekNumbers
+            width: Theme.gutterWidth
+            height: parent.height
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            text: qsTr("W%1").arg(Views.weekNumber(root.dateForColumn(Math.min(3, root.dayCount
+                                                                               - 1))))
+            color: Theme.textFaint
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textXs
+            font.weight: Font.ExtraBold
+        }
+
         Row {
             anchors.fill: parent
             leftPadding: Theme.gutterWidth
@@ -84,6 +116,7 @@ Item {
 
                     width: root.columnWidth(index)
                     height: header.height
+                    visible: width > 0
 
                     TapHandler {
                         onTapped: root.dayClicked(dayHeader.date)
@@ -174,7 +207,7 @@ Item {
                 required property string response
                 required property date end
 
-                visible: allDay
+                visible: allDay && width > 0
                 opacity: declined || (Settings.dimPast && end < Clock.now) ? Theme.fadedOpacity : 1
                 layer.enabled: opacity < 1
                 x: root.columnX(firstDay) + 3
@@ -245,8 +278,9 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
-        // Open on the working day, a little above 8:00 so its label shows.
-        Component.onCompleted: contentY = 8 * Theme.hourHeight - Theme.space4
+        // Open on the working day, a little above its start so that hour's label shows.
+        Component.onCompleted: contentY = Math.max(0, Settings.workStart / 60 * Theme.hourHeight
+                                                   - Theme.hourHeight / 2)
 
         // Inset so the window's resize strip does not cover the handle.
         ScrollBar.vertical: ScrollBar {
@@ -311,9 +345,25 @@ Item {
 
                     x: root.columnX(index)
                     width: root.columnWidth(index)
+                    visible: width > 0
                     height: grid.contentHeight
                     color: root.isToday(date) ? Theme.todayWash : dayOff ? Theme.dayOffWash :
                                                                            "transparent"
+
+                    // Outside working hours, shaded like a day off.
+                    Rectangle {
+                        visible: !column.dayOff
+                        width: parent.width
+                        height: Settings.workStart / 60 * Theme.hourHeight
+                        color: Theme.dayOffWash
+                    }
+                    Rectangle {
+                        visible: !column.dayOff
+                        y: Settings.workEnd / 60 * Theme.hourHeight
+                        width: parent.width
+                        height: parent.height - y
+                        color: Theme.dayOffWash
+                    }
 
                     Rectangle {
                         width: 1
@@ -451,6 +501,7 @@ Item {
                     readonly property real laneWidth: (columnInner - indent) / laneCount
 
                     visible: !allDay && dayIndex >= 0 && dayIndex < root.dayCount
+                             && root.columnWidth(dayIndex) > 0
 
                     x: root.columnX(dayIndex) + 3 + indent + lane * laneWidth
                     width: laneWidth - (laneCount > 1 ? 3 : 0)

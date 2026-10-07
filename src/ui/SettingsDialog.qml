@@ -106,6 +106,10 @@ Popup {
                         "label": qsTr("General")
                     },
                     {
+                        "id": "week",
+                        "label": qsTr("Week")
+                    },
+                    {
                         "id": "reminders",
                         "label": qsTr("Reminders")
                     },
@@ -318,13 +322,101 @@ Popup {
 
         Section {
             title: qsTr("Week")
-            visible: root.tab === "general"
+            visible: root.tab === "week"
 
+            Text {
+                text: qsTr("Starts on")
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textMd
+                font.weight: Font.DemiBold
+            }
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+                Accessible.role: Accessible.RadioButton
+
+                Repeater {
+                    model: [
+                        {
+                            "label": qsTr("Like my region"),
+                            "day": 0
+                        },
+                        {
+                            "label": Qt.locale().dayName(1),
+                            "day": 1
+                        },
+                        {
+                            "label": Qt.locale().dayName(0),
+                            "day": 7
+                        },
+                        {
+                            "label": Qt.locale().dayName(6),
+                            "day": 6
+                        }
+                    ]
+
+                    PillButton {
+                        required property var modelData
+                        label: modelData.label
+                        selected: Settings.weekStart === modelData.day
+                        onClicked: Settings.weekStart = modelData.day
+                    }
+                }
+            }
+            Toggle {
+                width: parent.width
+                text: qsTr("Hide weekends")
+                checked: Settings.hideWeekends
+                onToggled: Settings.hideWeekends = checked
+            }
+            Toggle {
+                width: parent.width
+                text: qsTr("Show week numbers")
+                checked: Settings.weekNumbers
+                onToggled: Settings.weekNumbers = checked
+            }
             Toggle {
                 width: parent.width
                 text: qsTr("Give today more room")
                 checked: Settings.widenToday
                 onToggled: Settings.widenToday = checked
+            }
+        }
+
+        Section {
+            title: qsTr("Working hours")
+            visible: root.tab === "week"
+
+            Row {
+                spacing: Theme.space4
+
+                TimeStepper {
+                    minutes: Settings.workStart
+                    label: qsTr("Start of working hours")
+                    onStepped: minutes => Settings.workStart = minutes
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("to")
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textMd
+                }
+                TimeStepper {
+                    minutes: Settings.workEnd
+                    label: qsTr("End of working hours")
+                    onStepped: minutes => Settings.workEnd = minutes
+                }
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr(
+                          "The day and week views shade the hours outside these, and open at the start.")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
             }
         }
 
@@ -439,6 +531,45 @@ Popup {
         defaultSuffix: "toml"
         nameFilters: [qsTr("Callie themes (*.toml)")]
         onAccepted: Themes.exportTo(selectedFile)
+    }
+
+    /// A time of day with buttons for half an hour earlier and later.
+    component TimeStepper: Row {
+        id: stepper
+
+        required property int minutes
+        required property string label
+
+        signal stepped(int minutes)
+
+        spacing: Theme.space2
+
+        StickerButton {
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: "minimize"
+            Accessible.name: qsTr("%1, half an hour earlier").arg(stepper.label)
+            onClicked: stepper.stepped(stepper.minutes - 30)
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 72
+            horizontalAlignment: Text.AlignHCenter
+            text: Settings.times.time(Settings.times.at(Settings.times.date(Clock.now),
+                                                        stepper.minutes))
+            color: Theme.text
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textMd
+            font.weight: Font.Bold
+            font.features: {
+                "tnum": 1
+            }
+        }
+        StickerButton {
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: "plus"
+            Accessible.name: qsTr("%1, half an hour later").arg(stepper.label)
+            onClicked: stepper.stepped(stepper.minutes + 30)
+        }
     }
 
     /// A small heading over a group of related settings.

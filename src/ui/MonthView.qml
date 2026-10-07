@@ -9,7 +9,7 @@ Item {
     id: root
 
     required property EventModel model
-    /// Monday of the first week shown, and the days shown, whole weeks.
+    /// The first day of the first week shown, and the days shown, whole weeks.
     required property date rangeStart
     required property int dayCount
     /// The month being shown (0 to 11); days outside it are quieter.
@@ -18,7 +18,16 @@ Item {
     signal dayClicked(date day)
 
     readonly property int weeks: Math.max(1, Math.ceil(dayCount / 7))
-    readonly property real cellWidth: width / 7
+    /// Which of the seven columns show: all, or only working days.
+    readonly property var shownColumns: {
+        const shown = []
+        for (let i = 0; i < 7; ++i) {
+            if (!Settings.hideWeekends || Settings.isWorkDay(dateFor(i)))
+                shown.push(i)
+        }
+        return shown
+    }
+    readonly property real cellWidth: width / Math.max(1, shownColumns.length)
     readonly property real cellHeight: (height - weekdays.height) / weeks
 
     function dateFor(i) {
@@ -45,12 +54,14 @@ Item {
 
             Text {
                 required property int index
+                visible: root.shownColumns.indexOf(index) >= 0
                 width: root.cellWidth
                 height: weekdays.height
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-                // Monday first, as the grid is.
-                text: Qt.locale().dayName((index + 1) % 7, Locale.ShortFormat).toUpperCase()
+                // Named from the grid's own first row, whatever day the week starts on.
+                text: Qt.locale().dayName(root.dateFor(index).getDay(),
+                                          Locale.ShortFormat).toUpperCase()
                 color: Theme.textFaint
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textXs
@@ -62,7 +73,8 @@ Item {
 
     Grid {
         anchors.top: weekdays.bottom
-        columns: 7
+        // Hidden weekend cells take no place in the grid.
+        columns: Math.max(1, root.shownColumns.length)
 
         Repeater {
             model: root.dayCount
@@ -82,6 +94,7 @@ Item {
                 readonly property int shown: events.length > fits ? Math.max(0, fits - 1) :
                                                                     events.length
 
+                visible: root.shownColumns.indexOf(index % 7) >= 0
                 width: root.cellWidth
                 height: root.cellHeight
                 color: today ? Theme.todayWash : root.model.isDayOff(date) ? Theme.dayOffWash :
@@ -102,6 +115,23 @@ Item {
 
                 TapHandler {
                     onTapped: root.dayClicked(cell.date)
+                }
+
+                // The week's number, on the first day shown in each row.
+                Text {
+                    visible: Settings.weekNumbers && cell.index % 7 === root.shownColumns[0]
+                    anchors {
+                        top: parent.top
+                        right: parent.right
+                        topMargin: Theme.space3
+                        rightMargin: Theme.space3
+                    }
+                    text: qsTr("W%1").arg(Views.weekNumber(root.dateFor(cell.index - cell.index % 7
+                                                                        + 3)))
+                    color: Theme.textFaint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textXs
+                    font.weight: Font.Bold
                 }
 
                 // The date, as an accent sticker on today.

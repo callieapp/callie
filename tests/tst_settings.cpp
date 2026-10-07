@@ -15,6 +15,7 @@ private Q_SLOTS:
     void init();
     void defaultsWithoutAFile();
     void choicesSurviveARestart();
+    void workingHoursStayInOrder();
     void unchangedValueEmitsNothing();
     void unknownZoneFollowsTheSystem();
     void unknownStoredZoneFollowsTheSystem();
@@ -71,6 +72,11 @@ void TestSettings::choicesSurviveARestart()
         settings.setNotify(false);
         settings.setReminderMinutes(-5);
         settings.setKeepRunning(true);
+        settings.setWeekStart(7);
+        settings.setHideWeekends(true);
+        settings.setWeekNumbers(true);
+        settings.setWorkEnd(18 * 60);
+        settings.setWorkStart(8 * 60);
     }
     const Settings settings(path());
     QCOMPARE(settings.timeFormat(), Settings::TimeFormat::TwelveHour);
@@ -87,6 +93,26 @@ void TestSettings::choicesSurviveARestart()
     QVERIFY(!settings.notify());
     QCOMPARE(settings.reminderMinutes(), -1);
     QVERIFY(settings.keepRunning());
+    QCOMPARE(settings.firstDayOfWeek(), int(Qt::Sunday));
+    QVERIFY(settings.hideWeekends());
+    QVERIFY(settings.weekNumbers());
+    QCOMPARE(settings.workStart(), 8 * 60);
+    QCOMPARE(settings.workEnd(), 18 * 60);
+}
+
+void TestSettings::workingHoursStayInOrder()
+{
+    Settings settings(path());
+    QCOMPARE(settings.firstDayOfWeek(), int(QLocale().firstDayOfWeek()));
+    QCOMPARE(settings.workStart(), 9 * 60);
+    QCOMPARE(settings.workEnd(), 17 * 60);
+    // A start past the end pushes the end along, and the reverse.
+    settings.setWorkStart(17 * 60);
+    QCOMPARE(settings.workEnd(), 17 * 60 + 30);
+    settings.setWorkEnd(8 * 60);
+    QCOMPARE(settings.workStart(), 7 * 60 + 30);
+    settings.setWorkEnd(30 * 60);
+    QCOMPARE(settings.workEnd(), 24 * 60);
 }
 
 void TestSettings::unchangedValueEmitsNothing()

@@ -156,7 +156,7 @@ Rectangle {
                     spacing: Theme.space1
 
                     Repeater {
-                        model: root.month.weekNumbers(root.month.month, root.month.firstDay)
+                        model: root.month.weekNumbers
 
                         Text {
                             required property int modelData

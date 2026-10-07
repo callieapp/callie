@@ -393,10 +393,7 @@ Item {
                 }
 
                 function columnAt(x) {
-                    for (let i = root.dayCount - 1; i >= 0; --i)
-                        if (x >= root.columnX(i))
-                            return i
-                    return 0
+                    return root.columnAtX(x)
                 }
 
                 x: Theme.gutterWidth
@@ -670,11 +667,16 @@ Item {
     /// The block whose change is being saved, so a failure can put it back.
     property EventBlock changing: null
 
+    /// The shown column under `x`, or the nearest shown one past either edge.
     function columnAtX(x) {
-        for (let i = root.dayCount - 1; i >= 0; --i)
-            if (x >= root.columnX(i))
-                return i
-        return 0
+        let found = -1
+        for (let i = 0; i < root.dayCount; ++i) {
+            if (!root.shown[i])
+                continue
+            if (found < 0 || x >= root.columnX(i))
+                found = i
+        }
+        return Math.max(0, found)
     }
 
     function dragBlock(block, scenePosition) {

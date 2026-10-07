@@ -1,5 +1,6 @@
 #include "callie/MonthModel.h"
 
+#include <QSignalSpy>
 #include <QTest>
 
 using namespace callie;
@@ -47,7 +48,10 @@ void TestMonthModel::gridFollowsTheFirstDay()
     QCOMPARE(cell(model, 0, MonthModel::DayRole).toInt(), 1);
     QCOMPARE(model.rowCount(), 35);
     // Each row is numbered by the ISO week of its middle day.
-    QCOMPARE(model.weekNumbers(model.month(), model.firstDay()), (QList<int>{10, 11, 12, 13, 14}));
+    QCOMPARE(model.weekNumbers(), (QList<int>{10, 11, 12, 13, 14}));
+    QSignalSpy renumbered(&model, &MonthModel::weekNumbersChanged);
+    model.setMonth(QDate(2026, 4, 1));
+    QCOMPARE(renumbered.size(), 1);
 }
 
 void TestMonthModel::rowsCoverTheWholeMonth()

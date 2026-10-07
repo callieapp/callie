@@ -379,8 +379,14 @@ void GoogleSource::moveEvent(const Event &event, const QDateTime &start, const Q
         done(tr("That event's account is no longer connected."));
         return;
     }
+    // All-day events move by dates, as an edit of their days.
     if (event.allDay) {
-        done(tr("All-day events cannot be moved to a time yet."));
+        EventEdit edit;
+        edit.start = start;
+        edit.end = end;
+        edit.allDay = true;
+        updateEvent(event, edit, wholeSeries ? EditScope::AllEvents : EditScope::ThisEvent,
+                    std::move(done));
         return;
     }
     const auto &[account, calendarId] = *calendar;

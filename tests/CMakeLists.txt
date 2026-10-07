@@ -11,6 +11,7 @@ endfunction()
 
 callie_add_test(tst_eventmodel)
 callie_add_test(tst_todaymodel)
+callie_add_test(tst_invitesmodel)
 callie_add_test(tst_reminderscheduler)
 callie_add_test(tst_reminders)
 target_link_libraries(tst_reminders PRIVATE callieui)

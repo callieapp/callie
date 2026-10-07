@@ -47,6 +47,7 @@ private Q_SLOTS:
     void declinedOccurrenceIsMarked();
     void occurrencesCarryTheirIds();
     void invitationsAndPermissions();
+    void guestsListPeopleOrganizerFirst();
     void singleEventOverlapsRange();
     void weeklySeriesKeepsWallClockAcrossDst();
     void countLimitsSeries();
@@ -67,6 +68,31 @@ private Q_SLOTS:
     void allDayStartsAtMidnightInViewZone();
     void unreadableRuleFallsBackToFirstOccurrence();
 };
+
+void TestGoogleRecurrence::guestsListPeopleOrganizerFirst()
+{
+    const QList<Event> events =
+        expand({parsed(R"({"id":"g","start":{"dateTime":"2026-10-06T10:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T11:00:00Z"},"attendees":[
+            {"email":"me@example.com","self":true,"responseStatus":"tentative"},
+            {"email":"room@resource.example","resource":true,"responseStatus":"accepted"},
+            {"email":"boss@example.com","displayName":"Boss","organizer":true,
+             "responseStatus":"accepted"},
+            {"email":"pat@example.com"}]})")},
+               utc(2026, 10, 6), utc(2026, 10, 7));
+    QCOMPARE(events.size(), 1);
+    const QList<Guest> guests = events.first().guests;
+    QCOMPARE(guests.size(), 3);
+    QCOMPARE(guests.at(0).name, u"Boss"_s);
+    QVERIFY(guests.at(0).organizer);
+    QVERIFY(guests.at(1).self);
+    QCOMPARE(guests.at(1).response, u"tentative"_s);
+    // No answer given counts as waiting.
+    QCOMPARE(guests.at(2).email, u"pat@example.com"_s);
+    QCOMPARE(guests.at(2).response, u"needsAction"_s);
+    // The room is no guest to write to either.
+    QCOMPARE(events.first().attendees, (QStringList{u"boss@example.com"_s, u"pat@example.com"_s}));
+}
 
 void TestGoogleRecurrence::singleEventOverlapsRange()
 {

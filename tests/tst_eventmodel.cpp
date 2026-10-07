@@ -672,6 +672,8 @@ void TestEventModel::eventAtCarriesWhatActionsNeed()
     occurrence.seriesId = QStringLiteral("standup");
     occurrence.calendarId = QStringLiteral("work");
     occurrence.recurrenceId = QDateTime(kMonday, QTime(9, 0), QTimeZone::systemTimeZone());
+    occurrence.guests = {
+        {QStringLiteral("boss@example.com"), {}, QStringLiteral("accepted"), true, false}};
     auto [model, source] = modelFor({occurrence});
 
     const QVariantMap row = model->eventAt(0);
@@ -683,6 +685,10 @@ void TestEventModel::eventAtCarriesWhatActionsNeed()
     QVERIFY(model->eventAt(1).isEmpty());
     QVERIFY(model->eventAt(-1).isEmpty());
     QCOMPARE(model->rowOf(QStringLiteral("standup"), occurrence.start), 0);
+    // A guest without a name goes by their address.
+    const QVariantMap guest = row.value(QStringLiteral("guests")).toList().first().toMap();
+    QCOMPARE(guest.value(QStringLiteral("name")).toString(), QStringLiteral("boss@example.com"));
+    QVERIFY(guest.value(QStringLiteral("organizer")).toBool());
     QCOMPARE(model->rowOf(QStringLiteral("standup"), occurrence.start.addDays(1)), -1);
 }
 

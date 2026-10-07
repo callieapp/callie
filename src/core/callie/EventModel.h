@@ -54,6 +54,7 @@ public:
         SeriesIdRole,
         ResponseRole,
         AttendeesRole,
+        GuestsRole,
         CanEditRole,
         CanRespondRole,
         RecurrenceIdRole,

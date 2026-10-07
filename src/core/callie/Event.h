@@ -9,6 +9,19 @@
 
 namespace callie {
 
+/// Someone invited to an event, with their answer: "accepted", "tentative",
+/// "declined" or "needsAction".
+struct Guest
+{
+    QString email;
+    QString name;
+    QString response;
+    bool organizer = false;
+    bool self = false;
+
+    friend bool operator==(const Guest &, const Guest &) = default;
+};
+
 /// One occurrence of a calendar entry, already expanded from any recurrence
 /// rule. `recurrenceId` distinguishes occurrences sharing a `uid`.
 struct Event
@@ -43,6 +56,8 @@ public:
     QString responseStatus;
     /// The other guests' email addresses.
     QStringList attendees;
+    /// Everyone invited, the user included, organizer first.
+    QList<Guest> guests;
     /// The source's id for this one occurrence, and for the series it belongs
     /// to (empty for a one-off event), which actions on it need.
     QString eventId;

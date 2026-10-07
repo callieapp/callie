@@ -120,7 +120,7 @@ private Q_SLOTS:
     void changesShowAtOnceAndAreSent();
     void offlineChangesWaitAndSurviveARestart();
     void refusedChangeIsDroppedAndReported();
-    void deletionsWaitToBeTakenBack();
+    void changesCanBeTakenBack();
     void pendingCreationTakesLaterChanges();
     void changesGoOutInOrder();
     void passingFailuresAreTriedAgain();
@@ -132,7 +132,7 @@ private:
     QDateTime m_now;
     bool m_online = true;
 
-    /// Lets any hold on the changes run out, and sends what is ready.
+    /// Lets the hold on every change run out, and sends what is ready.
     void release(QueuedSource &source)
     {
         m_now = m_now.addSecs(QueuedSource::kHoldSecs);
@@ -169,9 +169,12 @@ void TestQueuedSource::changesShowAtOnceAndAreSent()
     source->moveEvent(makeEvent(u"standup"_s, 9), at(10), at(11), false,
                       [&error](const QString &e) { error = e; });
 
-    // Done at once, shown moved, and on its way.
+    // Done and shown at once, and held a moment before it goes.
     QCOMPARE(error, QString());
     QCOMPARE(shown(*source), (QStringList{u"lunch@12:00"_s, u"standup@10:00"_s}));
+    QVERIFY(m_server.calls.isEmpty());
+    QVERIFY(source->waitingChanges().isEmpty());
+    release(*source);
     QCOMPARE(m_server.calls, QStringList{u"move standup 10:00"_s});
     QCOMPARE(source->waitingChanges(), QStringList{u"Move standup"_s});
 
@@ -186,6 +189,7 @@ void TestQueuedSource::offlineChangesWaitAndSurviveARestart()
     {
         auto source = make();
         source->respond(makeEvent(u"lunch"_s, 12), u"accepted"_s, false, [](const QString &) {});
+        release(*source);
         QVERIFY(m_server.calls.isEmpty());
         QCOMPARE(source->waitingChanges(), QStringList{u"Answer lunch"_s});
     }
@@ -206,6 +210,7 @@ void TestQueuedSource::refusedChangeIsDroppedAndReported()
     m_server.refuseWith = u"not allowed"_s;
     QSignalSpy failed(source.get(), &CalendarSource::errorOccurred);
     source->moveEvent(makeEvent(u"standup"_s, 9), at(10), at(11), false, [](const QString &) {});
+    release(*source);
 
     QCOMPARE(failed.size(), 1);
     QVERIFY(source->lastError().contains(u"not allowed"_s));
@@ -216,26 +221,29 @@ void TestQueuedSource::refusedChangeIsDroppedAndReported()
     // The next change that goes through clears the complaint.
     m_server.refuseWith.clear();
     source->moveEvent(makeEvent(u"lunch"_s, 12), at(13), at(14), false, [](const QString &) {});
+    release(*source);
     QVERIFY(source->lastError().isEmpty());
 }
 
-void TestQueuedSource::deletionsWaitToBeTakenBack()
+void TestQueuedSource::changesCanBeTakenBack()
 {
     auto source = make();
-    QSignalSpy queued(source.get(), &QueuedSource::queued);
+    QSignalSpy made(source.get(), &CalendarSource::changeMade);
     source->deleteEvent(makeEvent(u"lunch"_s, 12), false, [](const QString &) {});
     QCOMPARE(shown(*source), QStringList{u"standup@09:00"_s});
     QVERIFY(m_server.calls.isEmpty());
+    QCOMPARE(made.first().at(1).toString(), u"Deleted lunch"_s);
 
     // Taken back in time: never sent.
-    QVERIFY(source->cancel(queued.first().first().toString()));
+    QVERIFY(source->undoChange(made.first().first().toString()));
     QCOMPARE(shown(*source), (QStringList{u"lunch@12:00"_s, u"standup@09:00"_s}));
 
     // Left alone, it goes once the hold is over.
     source->deleteEvent(makeEvent(u"lunch"_s, 12), false, [](const QString &) {});
-    m_now = at(8).addSecs(QueuedSource::kHoldSecs);
-    source->flush();
+    release(*source);
     QCOMPARE(m_server.calls, QStringList{u"delete lunch"_s});
+    // Gone out, so too late to take back.
+    QVERIFY(!source->undoChange(made.last().first().toString()));
 }
 
 void TestQueuedSource::pendingCreationTakesLaterChanges()
@@ -258,12 +266,12 @@ void TestQueuedSource::pendingCreationTakesLaterChanges()
 
     // Moving it changes what will be created; deleting it creates nothing.
     source->moveEvent(made, at(19), at(21), false, [](const QString &) {});
-    QCOMPARE(source->waitingChanges(), QStringList{u"Create Pottery"_s});
+    QCOMPARE(source->changes().size(), 1);
     QCOMPARE(source->changes().first().draft.start, at(19));
     source->deleteEvent(made, false, [](const QString &) {});
-    QVERIFY(source->waitingChanges().isEmpty());
+    QVERIFY(source->changes().isEmpty());
     m_online = true;
-    source->flush();
+    release(*source);
     QVERIFY(m_server.calls.isEmpty());
 }
 
@@ -273,10 +281,11 @@ void TestQueuedSource::changesGoOutInOrder()
     m_server.hold = true;
     source->moveEvent(makeEvent(u"standup"_s, 9), at(10), at(11), false, [](const QString &) {});
     source->moveEvent(makeEvent(u"lunch"_s, 12), at(13), at(14), false, [](const QString &) {});
+    release(*source);
     // One at a time: the second waits for the first's answer.
     QCOMPARE(m_server.calls.size(), 1);
     // A change already on its way cannot be taken back.
-    QVERIFY(!source->cancel(source->changes().first().id));
+    QVERIFY(!source->undoChange(source->changes().first().id));
     m_server.held.takeFirst().first({});
     QCOMPARE(m_server.calls.size(), 2);
     QCOMPARE(m_server.calls.last(), u"move lunch 13:00"_s);

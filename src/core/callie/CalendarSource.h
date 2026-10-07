@@ -123,10 +123,21 @@ public:
     [[nodiscard]] virtual QVariantList syncReport() const { return {}; }
     [[nodiscard]] virtual QStringList waitingChanges() const { return {}; }
 
+    /// Takes back the change `id`, named by changeMade, if it has not gone out
+    /// yet. False when it has, or the source cannot.
+    Q_INVOKABLE virtual bool undoChange(const QString &id)
+    {
+        Q_UNUSED(id)
+        return false;
+    }
+
 Q_SIGNALS:
     void changed();
     void errorOccurred(const QString &message);
     void statusChanged();
+    /// A change was made that undoChange(id) can take back for a little while;
+    /// `what` says what was done, such as "Moved Standup".
+    void changeMade(const QString &id, const QString &what);
 };
 
 } // namespace callie

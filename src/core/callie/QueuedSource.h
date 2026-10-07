@@ -31,6 +31,8 @@ struct PendingChange
 
     /// What the change does, such as "Move Standup".
     [[nodiscard]] QString describe() const;
+    /// What was done, such as "Moved Standup".
+    [[nodiscard]] QString describeDone() const;
 };
 
 /// Takes every change at once and sends it on in the background: what the
@@ -46,7 +48,8 @@ public:
     using Now = std::function<QDateTime()>;
     using Online = std::function<bool()>;
 
-    /// Keeps the queue in the JSON file at `path`.
+    /// Keeps the queue in the JSON file at `path`, or only in memory when it
+    /// is empty.
     QueuedSource(CalendarSource &inner, QString path, QObject *parent = nullptr);
 
     /// `$XDG_DATA_HOME/callie/pending.json`
@@ -77,7 +80,7 @@ public:
 
     [[nodiscard]] QList<PendingChange> changes() const { return m_changes; }
     /// Takes back a change that has not been sent; false once it has been.
-    bool cancel(const QString &id);
+    bool undoChange(const QString &id) override;
     /// Sends what is ready, in order, one at a time.
     void flush();
 
@@ -86,12 +89,8 @@ public:
                       const QList<CalendarInfo> &calendars, const QDateTime &from,
                       const QDateTime &to, const QTimeZone &tz);
 
-    /// How long a deletion waits, so it can be taken back.
+    /// How long every change waits before it is sent, so it can be taken back.
     static constexpr int kHoldSecs = 8;
-
-Q_SIGNALS:
-    /// A change was added; `id` names it for cancel().
-    void queued(const QString &id);
 
 private:
     void add(PendingChange change, const Created &done);

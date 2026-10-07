@@ -115,13 +115,20 @@ Item {
                                 "tnum": 1
                             }
                         }
-                        // The calendar's sticker color as a small bar.
+                        // The calendar's sticker color as a small bar, hollow for "maybe".
                         Rectangle {
+                            readonly property color fill: Theme.calendarColor(
+                                                              row.event.calendarColor,
+                                                              Theme.calendar)
+                            readonly property bool maybe: row.event.response === "tentative"
+
                             anchors.verticalCenter: parent.verticalCenter
                             width: 6
                             height: row.height - Theme.space4
                             radius: width / 2
-                            color: Theme.calendarColor(row.event.calendarColor, Theme.calendar)
+                            color: maybe ? "transparent" : fill
+                            border.width: maybe ? 2 : 0
+                            border.color: fill
                         }
                         Text {
                             id: title

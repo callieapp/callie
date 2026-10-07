@@ -89,7 +89,9 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
             if (!e.conferenceUrl.isEmpty()) {
                 e.attendees = {QStringLiteral("priya@example.com"),
                                QStringLiteral("sam@example.com")};
-                e.responseStatus = QStringLiteral("needsAction");
+                // One answered "maybe", to show how those look.
+                e.responseStatus = qstrcmp(s.summary, "Retro") == 0 ? QStringLiteral("tentative")
+                                                                    : QStringLiteral("needsAction");
                 e.canRespond = true;
             }
 

@@ -71,6 +71,7 @@ private Q_SLOTS:
     void splitEndsTheSeriesBeforeTheOccurrence();
     void splitSharesACount();
     void splitAllDaySeriesEndsOnADate();
+    void splitAfterAClockChangeEndsOnTheOldClock();
 };
 
 void TestGoogleRecurrence::guestsListPeopleOrganizerFirst()
@@ -475,6 +476,11 @@ void TestGoogleRecurrence::splitSharesACount()
     QCOMPARE(split.before, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T132959Z"_s});
     // Two came before, so three are left.
     QCOMPARE(split.after, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=3"_s});
+    // One of them deleted still counts.
+    series.recurrence << u"EXDATE;TZID=America/New_York:20261012T093000"_s;
+    QCOMPARE(splitRecurrence(series, QDateTime(QDate(2026, 10, 19), QTime(9, 30), kNewYork))
+                 .after.first(),
+             u"RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=3"_s);
 
     series.recurrence = {u"RRULE:FREQ=DAILY;UNTIL=20261231"_s};
     QCOMPARE(splitRecurrence(series, QDateTime(QDate(2026, 10, 19), QTime(9, 30), kNewYork)).after,
@@ -490,6 +496,15 @@ void TestGoogleRecurrence::splitAllDaySeriesEndsOnADate()
         splitRecurrence(series, QDateTime(QDate(2026, 10, 20), QTime(0, 0), kNewYork));
     QCOMPARE(split.before, QStringList{u"RRULE:FREQ=WEEKLY;UNTIL=20261019"_s});
     QCOMPARE(split.after, QStringList{u"RRULE:FREQ=WEEKLY"_s});
+}
+
+void TestGoogleRecurrence::splitAfterAClockChangeEndsOnTheOldClock()
+{
+    // New York falls back on 1 November, so 9:30 is 14:30 UTC after it.
+    const GoogleEvent series = parsed(kStandup);
+    const SplitRecurrence split =
+        splitRecurrence(series, QDateTime(QDate(2026, 11, 2), QTime(9, 30), kNewYork));
+    QCOMPARE(split.before, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261102T142959Z"_s});
 }
 
 QTEST_GUILESS_MAIN(TestGoogleRecurrence)

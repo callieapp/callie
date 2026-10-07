@@ -470,10 +470,13 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
         return;
     }
 
-    // The new series is the occurrence as edited, repeating as the series did.
+    // The new series is the occurrence as edited, repeating as the series did,
+    // with what the occurrence had if it had been changed on its own.
+    const std::optional<GoogleEvent> own = m_cache.event(account, calendarId, event.eventId);
+    const GoogleEvent base = own && own->recurringEventId == event.seriesId ? *own : *stored;
     EventEdit following = edit;
     following.allDay = edit.allDay.value_or(event.allDay);
-    const std::optional<EditFields> change = editFields(event, following, stored, false);
+    const std::optional<EditFields> change = editFields(event, following, base, false);
     if (!change) {
         done(tr("Callie does not have this series' times yet; try again after a sync."));
         return;
@@ -487,17 +490,17 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
                                 (event.seriesId + u'|' + at.toUTC().toString(Qt::ISODate)).toUtf8(),
                                 QCryptographicHash::Md5)
                                 .toHex()));
-    created.insert(u"summary"_s, stored->summary);
-    if (!stored->description.isEmpty())
-        created.insert(u"description"_s, stored->description);
-    if (!stored->location.isEmpty())
-        created.insert(u"location"_s, stored->location);
-    const QJsonArray guests = QJsonDocument::fromJson(stored->attendees).array();
+    created.insert(u"summary"_s, base.summary);
+    if (!base.description.isEmpty())
+        created.insert(u"description"_s, base.description);
+    if (!base.location.isEmpty())
+        created.insert(u"location"_s, base.location);
+    const QJsonArray guests = QJsonDocument::fromJson(base.attendees).array();
     if (!guests.isEmpty())
         created.insert(u"attendees"_s, guests);
-    if (!stored->remindersUseDefault) {
+    if (!base.remindersUseDefault) {
         QJsonArray overrides;
-        for (int minutes : stored->reminders)
+        for (int minutes : base.reminders)
             overrides.append(QJsonObject{{u"method"_s, u"popup"_s}, {u"minutes"_s, minutes}});
         created.insert(u"reminders"_s,
                        QJsonObject{{u"useDefault"_s, false}, {u"overrides"_s, overrides}});
@@ -505,7 +508,7 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
     created.insert(u"recurrence"_s, QJsonArray::fromStringList(split.after));
     bool conference = change->conference;
     // A Meet call carries over, so guests keep the link they have.
-    const QUrl call = stored->conferenceUrl;
+    const QUrl call = base.conferenceUrl;
     if (!edit.videoCall && call.host() == u"meet.google.com") {
         conference = true;
         created.insert(

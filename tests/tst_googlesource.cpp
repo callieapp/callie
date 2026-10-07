@@ -73,6 +73,8 @@ private Q_SLOTS:
     void followingEditsSplitTheSeries();
     void splitStopsWhenTheNewSeriesFails();
     void splitGoesOnWhenTheNewSeriesExists();
+    void splitKeepsWhatTheOccurrenceHad();
+    void splitAllDaySeriesByDates();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -759,6 +761,66 @@ void TestGoogleSource::splitGoesOnWhenTheNewSeriesExists()
     QCOMPARE(error, QString());
     QCOMPARE(requests.size(), 2);
     QCOMPARE(requests[1].method, QByteArray("PATCH"));
+}
+
+void TestGoogleSource::splitKeepsWhatTheOccurrenceHad()
+{
+    // Wednesday's standup was moved to another room on its own.
+    QVERIFY(m_cache->storeEvents(
+        kAccount, u"mine"_s,
+        {parsed(R"({"id":"standup_20261007T133000Z","recurringEventId":"standup",
+            "status":"confirmed","summary":"Standup","location":"Room 2",
+            "originalStartTime":{"dateTime":"2026-10-07T13:30:00Z"},
+            "start":{"dateTime":"2026-10-07T09:30:00-04:00","timeZone":"America/New_York"},
+            "end":{"dateTime":"2026-10-07T09:45:00-04:00","timeZone":"America/New_York"}})")}));
+    QString error;
+    const QList<FakeHttpServer::Request> requests = splitStandup(
+        [](const FakeHttpServer::Request &request) {
+            return FakeHttpServer::Response(request.method == "DELETE" ? 204 : 200,
+                                            R"({"id":"standup","status":"confirmed"})");
+        },
+        error);
+    QCOMPARE(error, QString());
+    const QJsonObject created = QJsonDocument::fromJson(requests.first().body).object();
+    QCOMPARE(created[u"summary"].toString(), u"Sync"_s);
+    QCOMPARE(created[u"location"].toString(), u"Room 2"_s);
+    // The changed occurrence was the old series', so it goes.
+    QVERIFY(requests.last().target.contains("/events/standup_20261007T133000Z?"));
+}
+
+void TestGoogleSource::splitAllDaySeriesByDates()
+{
+    QVERIFY(m_cache->storeEvents(
+        kAccount, u"mine"_s, {parsed(R"({"id":"bins","summary":"Bins","start":{"date":"2026-10-05"},
+                    "end":{"date":"2026-10-06"},"recurrence":["RRULE:FREQ=WEEKLY"]})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"bins","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 19), QTime(0, 0), kNewYork);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto bins = std::find_if(events.cbegin(), events.cend(),
+                                   [](const Event &e) { return e.summary == u"Bins"; });
+    QVERIFY(bins != events.cend());
+
+    EventEdit edit;
+    edit.summary = u"Recycling"_s;
+    QString error = u"unset"_s;
+    source.updateEvent(*bins, edit, EditScope::ThisAndFollowing,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    const QList<FakeHttpServer::Request> &requests = harness.apiServer.requests;
+    QCOMPARE(requests.size(), 2);
+    const QJsonObject created = QJsonDocument::fromJson(requests[0].body).object();
+    QCOMPARE(created[u"start"][u"date"].toString(), u"2026-10-19"_s);
+    QCOMPARE(created[u"end"][u"date"].toString(), u"2026-10-20"_s);
+    QVERIFY(!created[u"start"].toObject().contains(u"dateTime"));
+    QCOMPARE(created[u"recurrence"].toArray(), QJsonArray{u"RRULE:FREQ=WEEKLY"_s});
+    QCOMPARE(QJsonDocument::fromJson(requests[1].body).object(),
+             (QJsonObject{{u"recurrence"_s, QJsonArray{u"RRULE:FREQ=WEEKLY;UNTIL=20261018"_s}}}));
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

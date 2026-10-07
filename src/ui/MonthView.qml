@@ -44,6 +44,50 @@ Item {
         details.showNear(event, root.model.callService(event.conferenceUrl), item)
     }
 
+    // ---- Dragging events to other days ---------------------------------------
+    /// The day a chip is dragged from, and the one it would land on.
+    property int dragFrom: -1
+    property int dropIndex: -1
+
+    /// The day cell under a point in the scene, or -1.
+    function cellAt(scenePosition) {
+        const at = root.mapFromItem(null, scenePosition.x, scenePosition.y)
+        const row = Math.floor((at.y - weekdays.height) / root.cellHeight)
+        const shown = Math.floor(at.x / root.cellWidth)
+        if (row < 0 || row >= root.weeks || shown < 0 || shown >= root.shownColumns.length)
+            return -1
+        const index = row * 7 + root.shownColumns[shown]
+        return index < root.dayCount ? index : -1
+    }
+
+    function dragChip(from, scenePosition) {
+        root.dragFrom = from
+        root.dropIndex = root.cellAt(scenePosition)
+    }
+
+    /// Moves the chip's event by the days between where it was and where it landed.
+    function dropChip(chip) {
+        const days = root.dropIndex < 0 ? 0 : root.dropIndex - root.dragFrom
+        root.dragFrom = -1
+        root.dropIndex = -1
+        if (days === 0) {
+            chip.settle()
+            return
+        }
+        const event = chip.event
+        mover.move(chip, event, Settings.times.shifted(event.start, days, 0), Settings.times.shifted(event.end,
+                                                                                                     days, 0))
+    }
+
+    // Beside the item, on whichever side has room, kept inside the view.
+    function placeBeside(item, popup) {
+        const gap = Theme.space3
+        const right = item.mapToItem(root, item.width + gap, 0)
+        const left = item.mapToItem(root, -gap - popup.width, 0)
+        popup.x = right.x + popup.width <= root.width ? right.x : Math.max(0, left.x)
+        popup.y = Math.min(Math.max(0, right.y), root.height - popup.height - gap)
+    }
+
     Row {
         id: weekdays
         width: parent.width
@@ -95,12 +139,15 @@ Item {
                                                                     events.length
 
                 visible: root.shownColumns.indexOf(index % 7) >= 0
+                // A chip dragged out of the cell is drawn over the others.
+                z: root.dragFrom === index ? 1 : 0
                 width: root.cellWidth
                 height: root.cellHeight
                 color: today ? Theme.todayWash : root.model.isDayOff(date) ? Theme.dayOffWash :
                                                                              "transparent"
 
-                border.width: 0
+                border.width: root.dropIndex === index && root.dragFrom !== index ? 2 : 0
+                border.color: Theme.accent
 
                 Rectangle {
                     width: parent.width
@@ -190,6 +237,8 @@ Item {
                             id: chipItem
                             width: cell.width - 2 * Theme.space2
                             onClicked: root.showEvent(chipItem.event, chipItem)
+                            onDragged: scenePosition => root.dragChip(cell.index, scenePosition)
+                            onDropped: root.dropChip(chipItem)
                         }
                     }
 
@@ -211,6 +260,13 @@ Item {
         source: root.model.source
     }
 
+    EventMover {
+        id: mover
+        anchors.fill: parent
+        source: root.model.source
+        placeBeside: root.placeBeside
+    }
+
     /// One event in a day cell: all-day events as stickers, timed ones as a dot,
     /// the start time and the title.
     component MonthChip: AbstractButton {
@@ -220,12 +276,43 @@ Item {
         readonly property var event: modelData
         readonly property bool faded: event.declined || (Settings.dimPast && event.end < Clock.now)
 
+        /// Where the chip was dropped, held there while the move is saved.
+        property point held
+        property bool settling: false
+
+        signal dragged(point scenePosition)
+        signal dropped
+
+        function settle() {
+            settling = false
+        }
+
         height: Theme.monthChipHeight
         opacity: faded ? Theme.fadedOpacity : 1
         Accessible.name: event.summary
+        transform: Translate {
+            x: chip.settling ? chip.held.x : drag.activeTranslation.x
+            y: chip.settling ? chip.held.y : drag.activeTranslation.y
+        }
 
         HoverHandler {
-            cursorShape: Qt.PointingHandCursor
+            cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+        }
+        DragHandler {
+            id: drag
+            target: null
+            enabled: chip.event.canEdit === true && !chip.settling
+            onCentroidChanged: {
+                if (active)
+                    chip.dragged(centroid.scenePosition)
+            }
+            onActiveChanged: {
+                if (active)
+                    return
+                chip.held = Qt.point(activeTranslation.x, activeTranslation.y)
+                chip.settling = true
+                chip.dropped()
+            }
         }
 
         background: Rectangle {

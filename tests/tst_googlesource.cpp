@@ -76,6 +76,7 @@ private Q_SLOTS:
     void splitKeepsWhatTheOccurrenceHad();
     void splitAllDaySeriesByDates();
     void splitMovesDeletedDaysToTheNewClock();
+    void allDayMovesByDates();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -877,6 +878,35 @@ void TestGoogleSource::splitMovesDeletedDaysToTheNewClock()
         std::find_if(harness.apiServer.requests.crbegin(), harness.apiServer.requests.crend(),
                      [](const FakeHttpServer::Request &r) { return r.method == "POST"; });
     QCOMPARE(QJsonDocument::fromJson(posted->body).object()[u"recurrence"].toArray(), QJsonArray());
+}
+
+void TestGoogleSource::allDayMovesByDates()
+{
+    QVERIFY(m_cache->storeEvents(kAccount, u"mine"_s, {parsed(R"({"id":"trip","summary":"Trip",
+                    "start":{"date":"2026-10-06"},"end":{"date":"2026-10-08"}})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"trip","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 6), QTime(0, 0), kNewYork);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto trip = std::find_if(events.cbegin(), events.cend(),
+                                   [](const Event &e) { return e.summary == u"Trip"; });
+    QVERIFY(trip != events.cend());
+
+    // Two days later, and a day longer.
+    QString error = u"unset"_s;
+    source.moveEvent(*trip, trip->start.addDays(2), trip->end.addDays(3), false,
+                     [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    const QJsonObject body =
+        QJsonDocument::fromJson(harness.apiServer.requests.last().body).object();
+    QVERIFY(harness.apiServer.requests.last().target.contains("/events/trip?"));
+    QCOMPARE(body[u"start"][u"date"].toString(), u"2026-10-08"_s);
+    QCOMPARE(body[u"end"][u"date"].toString(), u"2026-10-11"_s);
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

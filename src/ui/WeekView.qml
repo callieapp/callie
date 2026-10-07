@@ -194,68 +194,12 @@ Item {
         Repeater {
             model: root.model
 
-            Rectangle {
+            AllDayChip {
                 id: chip
-                required property string summary
-                required property bool allDay
-                required property int firstDay
-                required property int daySpan
-                required property int lane
-                required property color calendarColor
-                required property bool declined
-                required property string response
-                required property date end
-                readonly property bool pending: response === "needsAction"
-
-                visible: allDay && width > 0
-                opacity: declined || (Settings.dimPast && end < Clock.now) ? Theme.fadedOpacity : 1
-                layer.enabled: opacity < 1
-                x: root.columnX(firstDay) + 3
-                y: Theme.space1 + lane * Theme.allDayRowHeight
-                width: root.columnX(firstDay + daySpan) - root.columnX(firstDay) - 6
-                height: Theme.allDayRowHeight - 3 - Theme.stickerEdge
-                radius: height / 2
-                // Hollow, outlined in the calendar's color, until answered.
-                color: pending ? Theme.surface : Theme.calendarColor(calendarColor, Theme.calendar)
-                border.width: pending ? Theme.inviteOutline : 0
-                border.color: Theme.calendarColor(calendarColor, Theme.calendar)
-
-                Rectangle {
-                    visible: !chip.pending
-                    z: -1
-                    anchors {
-                        fill: parent
-                        topMargin: Theme.stickerEdge
-                        bottomMargin: -Theme.stickerEdge
-                    }
-                    radius: parent.radius
-                    color: Theme.calendarEdge(chip.calendarColor, Theme.calendar)
-                }
-
-                Stripes {
-                    anchors.fill: parent
-                    radius: chip.radius
-                    calendarColor: chip.calendarColor
-                    response: chip.response
-                }
-
-                Text {
-                    anchors {
-                        fill: parent
-                        leftMargin: Theme.space3
-                        rightMargin: Theme.space2
-                    }
-                    verticalAlignment: Text.AlignVCenter
-                    text: chip.summary
-                    textFormat: Text.PlainText
-                    elide: Text.ElideRight
-                    color: chip.pending ? Theme.text : Theme.calendarInk(chip.calendarColor,
-                                                                         Theme.calendar)
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.textSm
-                    font.weight: Font.ExtraBold
-                    font.strikeout: chip.declined
-                }
+                columnX: root.columnX
+                columnAtX: root.columnAtX
+                onActivated: root.showDetails(chip)
+                onMoveRequested: (days, endDays) => root.commitChange(chip, 0, days, 0, endDays)
             }
         }
 
@@ -670,9 +614,6 @@ Item {
     }
 
     // ---- Moving and stretching events -----------------------------------------
-    /// The block whose change is being saved, so a failure can put it back.
-    property EventBlock changing: null
-
     /// The shown column under `x`, or the nearest shown one past either edge.
     function columnAtX(x) {
         let found = -1
@@ -694,57 +635,21 @@ Item {
         block.dayShiftX = root.columnX(column) - root.columnX(block.dayIndex)
     }
 
-    /// Saves a drop: `minutes` and `days` move the event, `length` stretches it.
-    function commitChange(block, minutes, days, length) {
-        if (changes.busy) {
-            block.settle()
-            return
-        }
+    /// Saves a drop: `minutes` and `days` move the event, `length` minutes and
+    /// `endDays` days stretch it.
+    function commitChange(block, minutes, days, length, endDays) {
         const event = root.model.eventAt(block.index)
         // The block already kept the shift within its day and the shown days.
         const from = Settings.times.shifted(event.start, days, minutes)
-        const to = Settings.times.shifted(event.end, days, minutes + length)
-        root.changing = block
-        if (event.seriesId !== "") {
-            root.placeBeside(block, moveChoice)
-            moveChoice.ask(event, from, to)
-        } else {
-            changes.move(event, from, to, false)
-        }
+        const to = Settings.times.shifted(event.end, days + (endDays || 0), minutes + length)
+        mover.move(block, event, from, to)
     }
 
-    function changeFailed(message) {
-        if (!root.changing)
-            return
-        if (message !== "") {
-            changeError.text = message
-            root.placeBeside(root.changing, changeError)
-            changeError.open()
-        }
-        root.changing.settle()
-        root.changing = null
-    }
-
-    EventActions {
-        id: changes
+    EventMover {
+        id: mover
+        anchors.fill: parent
         source: root.model.source
-        onErrorChanged: {
-            if (error !== "")
-                root.changeFailed(error)
-        }
-        // The reloaded model draws the event in its new place.
-        onMoved: root.changing = null
-    }
-
-    MoveChoice {
-        id: moveChoice
-        onChosen: (event, from, to, wholeSeries) => changes.move(event, from, to, wholeSeries)
-        onCancelled: root.changeFailed("")
-    }
-
-    Tip {
-        id: changeError
-        timeout: 5000
+        placeBeside: root.placeBeside
     }
 
     EventDetails {

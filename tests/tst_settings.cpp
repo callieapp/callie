@@ -212,6 +212,11 @@ void TestSettings::shiftsKeepTheWallClock()
              QDateTime(QDate(2026, 3, 27), QTime(23, 30), berlin));
     QCOMPARE(times.shifted(QDateTime(QDate(2026, 3, 28), QTime(23, 30), berlin), 0, 90),
              QDateTime(QDate(2026, 3, 29), QTime(1, 0), berlin));
+    // A drag stays on its day: no earlier than midnight, no later than the last slot.
+    const QDateTime evening(QDate(2026, 3, 28), QTime(22, 0), berlin);
+    QCOMPARE(times.shiftWithinDay(evening, 60, 23 * 60 + 45), 60);
+    QCOMPARE(times.shiftWithinDay(evening, 180, 23 * 60 + 45), 105);
+    QCOMPARE(times.shiftWithinDay(evening, -24 * 60, 23 * 60 + 45), -22 * 60);
 }
 
 QTEST_GUILESS_MAIN(TestSettings)

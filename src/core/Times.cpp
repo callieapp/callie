@@ -1,5 +1,7 @@
 #include "callie/Times.h"
 
+#include <algorithm>
+
 #include "callie/TimeFormat.h"
 
 namespace callie {
@@ -39,6 +41,12 @@ int Times::minutesIntoDay(const QDateTime &time) const
 QDateTime Times::shifted(const QDateTime &moment, int days, int minutes) const
 {
     return shiftWallClock(moment, m_zone, days, qint64(minutes) * 60);
+}
+
+int Times::shiftWithinDay(const QDateTime &moment, int minutes, int latest) const
+{
+    const int at = minutesIntoDay(moment);
+    return std::clamp(at + minutes, 0, std::max(at, latest)) - at;
 }
 
 QDateTime Times::shiftWallClock(const QDateTime &moment, const QTimeZone &zone, int days,

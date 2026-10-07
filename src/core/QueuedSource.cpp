@@ -157,6 +157,18 @@ bool networkUp()
 
 } // namespace
 
+QString PendingChange::describeDone() const
+{
+    const QString name = kind == Kind::Create ? draft.summary : event.summary;
+    switch (kind) {
+    case Kind::Create: return QObject::tr("Created %1").arg(name);
+    case Kind::Respond: return QObject::tr("Answered %1").arg(name);
+    case Kind::Delete: return QObject::tr("Deleted %1").arg(name);
+    case Kind::Move: return QObject::tr("Moved %1").arg(name);
+    }
+    return name;
+}
+
 QString PendingChange::describe() const
 {
     const QString name = kind == Kind::Create ? draft.summary : event.summary;
@@ -290,19 +302,24 @@ QString QueuedSource::lastError() const
 
 QStringList QueuedSource::waitingChanges() const
 {
+    // Those still held back can be undone and are not waiting on anything yet.
     QStringList list;
-    for (const PendingChange &change : m_changes)
-        list.append(change.describe());
+    const QDateTime now = m_now();
+    for (const PendingChange &change : m_changes) {
+        if (!change.notBefore.isValid() || change.notBefore <= now)
+            list.append(change.describe());
+    }
     return list;
 }
 
 void QueuedSource::add(PendingChange change, const Created &done)
 {
     change.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    change.notBefore = m_now().addSecs(kHoldSecs);
     m_changes.append(change);
     save();
     done({});
-    Q_EMIT queued(change.id);
+    Q_EMIT changeMade(change.id, change.describeDone());
     Q_EMIT statusChanged();
     Q_EMIT changed();
     flush();
@@ -361,7 +378,6 @@ void QueuedSource::deleteEvent(const Event &event, bool wholeSeries, Created don
     change.kind = PendingChange::Kind::Delete;
     change.event = event;
     change.wholeSeries = wholeSeries;
-    change.notBefore = m_now().addSecs(kHoldSecs);
     add(change, done);
 }
 
@@ -389,7 +405,7 @@ void QueuedSource::moveEvent(const Event &event, const QDateTime &start, const Q
     add(change, done);
 }
 
-bool QueuedSource::cancel(const QString &id)
+bool QueuedSource::undoChange(const QString &id)
 {
     if (id == m_sending)
         return false;
@@ -407,14 +423,16 @@ void QueuedSource::flush()
 {
     if (!m_sending.isEmpty() || m_changes.isEmpty())
         return;
-    if (!m_online()) {
-        m_retry.start(kRetryMs);
-        return;
-    }
     // In order, so a later change never overtakes the one it builds on.
     const PendingChange &next = m_changes.first();
     if (next.notBefore.isValid() && next.notBefore > m_now()) {
         m_retry.start(int(m_now().msecsTo(next.notBefore)) + 50);
+        return;
+    }
+    if (!m_online()) {
+        // Now waiting on the network rather than on its hold.
+        Q_EMIT statusChanged();
+        m_retry.start(kRetryMs);
         return;
     }
     send(next);
@@ -473,6 +491,8 @@ void QueuedSource::finished(const QString &id, const Outcome &outcome)
 
 void QueuedSource::save() const
 {
+    if (m_path.isEmpty())
+        return;
     if (m_changes.isEmpty()) {
         QFile::remove(m_path);
         return;
@@ -493,6 +513,8 @@ void QueuedSource::save() const
 
 void QueuedSource::restore()
 {
+    if (m_path.isEmpty())
+        return;
     QFile file(m_path);
     if (!file.open(QIODevice::ReadOnly))
         return;

@@ -4,6 +4,7 @@
 #include "callie/EventModel.h"
 #include "callie/InvitesModel.h"
 #include "callie/MonthModel.h"
+#include "callie/SearchModel.h"
 #include "callie/Settings.h"
 #include "callie/TodayModel.h"
 
@@ -33,6 +34,13 @@ struct InvitesModelForeign
     Q_GADGET
     QML_FOREIGN(callie::InvitesModel)
     QML_NAMED_ELEMENT(InvitesModel)
+};
+
+struct SearchModelForeign
+{
+    Q_GADGET
+    QML_FOREIGN(callie::SearchModel)
+    QML_NAMED_ELEMENT(SearchModel)
 };
 
 struct MonthModelForeign

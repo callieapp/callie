@@ -121,6 +121,7 @@ private Q_SLOTS:
     void offlineChangesWaitAndSurviveARestart();
     void refusedChangeIsDroppedAndReported();
     void changesCanBeTakenBack();
+    void changesFoldedIntoACreationCanBeTakenBack();
     void pendingCreationTakesLaterChanges();
     void changesGoOutInOrder();
     void passingFailuresAreTriedAgain();
@@ -244,6 +245,40 @@ void TestQueuedSource::changesCanBeTakenBack()
     QCOMPARE(m_server.calls, QStringList{u"delete lunch"_s});
     // Gone out, so too late to take back.
     QVERIFY(!source->undoChange(made.last().first().toString()));
+}
+
+void TestQueuedSource::changesFoldedIntoACreationCanBeTakenBack()
+{
+    auto source = make();
+    QSignalSpy made(source.get(), &CalendarSource::changeMade);
+    EventDraft draft;
+    draft.summary = u"Pottery"_s;
+    draft.calendarId = u"work"_s;
+    draft.start = at(18);
+    draft.end = at(20);
+    source->createEvent(draft, [](const QString &) {});
+    const Event pottery = source->eventsBetween(at(18), at(19), QTimeZone::UTC).first();
+
+    // A move into the creation gets its own toast, and undoing it moves it back.
+    source->moveEvent(pottery, at(19), at(21), false, [](const QString &) {});
+    QCOMPARE(made.size(), 2);
+    QCOMPARE(made.last().at(1).toString(), u"Moved Pottery"_s);
+    QVERIFY(source->undoChange(made.last().first().toString()));
+    QCOMPARE(source->changes().first().draft.start, at(18));
+
+    // Deleting it, then undoing that, brings the creation back.
+    source->deleteEvent(pottery, false, [](const QString &) {});
+    QVERIFY(source->changes().isEmpty());
+    QVERIFY(source->undoChange(made.last().first().toString()));
+    QCOMPARE(source->changes().size(), 1);
+
+    // Once the creation has gone out, a move folded into it earlier stays.
+    source->moveEvent(pottery, at(19), at(21), false, [](const QString &) {});
+    const QString moved = made.last().first().toString();
+    release(*source);
+    QVERIFY(source->changes().isEmpty());
+    QVERIFY(!source->undoChange(moved));
+    QCOMPARE(m_server.calls, QStringList{u"create Pottery"_s});
 }
 
 void TestQueuedSource::pendingCreationTakesLaterChanges()

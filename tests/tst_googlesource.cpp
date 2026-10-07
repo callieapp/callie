@@ -68,6 +68,8 @@ private Q_SLOTS:
     void moveShiftsTheOccurrenceOrTheSeries();
     void editPatchesOnlyWhatChanged();
     void editingTheSeriesKeepsItsFirstDay();
+    void editingOnlyTheEndKeepsTheSeriesClock();
+    void allDayClearsTheTime();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -585,6 +587,66 @@ void TestGoogleSource::editingTheSeriesKeepsItsFirstDay()
         QJsonDocument::fromJson(harness.apiServer.requests.last().body).object();
     QCOMPARE(body[u"start"][u"dateTime"].toString(), u"2026-10-05T10:15:00-04:00"_s);
     QCOMPARE(body[u"end"][u"dateTime"].toString(), u"2026-10-05T10:30:00-04:00"_s);
+}
+
+void TestGoogleSource::editingOnlyTheEndKeepsTheSeriesClock()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"standup","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    // Read in UTC, as a viewer far from New York would.
+    const QDateTime from(QDate(2026, 10, 7), QTime(0, 0), QTimeZone::UTC);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), QTimeZone::UTC);
+    const auto standup = std::find_if(events.cbegin(), events.cend(),
+                                      [](const Event &e) { return e.summary == u"Standup"; });
+    QVERIFY(standup != events.cend());
+
+    EventEdit edit;
+    edit.end = standup->end.addSecs(15 * 60);
+    QString error = u"unset"_s;
+    source.updateEvent(*standup, edit, EditScope::AllEvents,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    const QJsonObject body =
+        QJsonDocument::fromJson(harness.apiServer.requests.last().body).object();
+    // Still Monday 9:30 in New York, now half an hour long.
+    QCOMPARE(body[u"start"][u"dateTime"].toString(), u"2026-10-05T09:30:00-04:00"_s);
+    QCOMPARE(body[u"start"][u"timeZone"].toString(), u"America/New_York"_s);
+    QCOMPARE(body[u"end"][u"dateTime"].toString(), u"2026-10-05T10:00:00-04:00"_s);
+}
+
+void TestGoogleSource::allDayClearsTheTime()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"lunch","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 6), QTime(0, 0), kNewYork);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto lunch = std::find_if(events.cbegin(), events.cend(),
+                                    [](const Event &e) { return e.summary == u"Lunch"; });
+    QVERIFY(lunch != events.cend());
+
+    EventEdit edit;
+    edit.allDay = true;
+    QString error = u"unset"_s;
+    source.updateEvent(*lunch, edit, EditScope::ThisEvent,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    const QJsonObject body =
+        QJsonDocument::fromJson(harness.apiServer.requests.last().body).object();
+    // Google merges what it is sent, so the time is cleared outright.
+    QCOMPARE(body[u"start"][u"date"].toString(), u"2026-10-06"_s);
+    QVERIFY(body[u"start"].toObject().contains(u"dateTime"));
+    QVERIFY(body[u"start"][u"dateTime"].isNull());
+    QCOMPARE(body[u"end"][u"date"].toString(), u"2026-10-07"_s);
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

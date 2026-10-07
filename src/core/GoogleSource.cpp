@@ -336,8 +336,14 @@ void GoogleSource::updateEvent(const Event &event, const EventEdit &edit, EditSc
 
     if (edit.movesTimes()) {
         const bool allDay = edit.allDay.value_or(event.allDay);
-        const QDateTime start = edit.start.value_or(event.start);
-        const QDateTime end = edit.end.value_or(event.end);
+        // Times the edit leaves alone stay on the event's own clock, not the viewer's.
+        QTimeZone own(event.zone.toUtf8());
+        if (!own.isValid() && stored && !stored->start.timeZone.isEmpty())
+            own = QTimeZone(stored->start.timeZone.toUtf8());
+        if (!own.isValid())
+            own = event.start.timeZone();
+        const QDateTime start = edit.start.value_or(event.start.toTimeZone(own));
+        const QDateTime end = edit.end.value_or(event.end.toTimeZone(own));
         // A series keeps its first day: it moves by as many days as this
         // occurrence did, to the time of day this occurrence now has.
         QDate firstDay = start.date();
@@ -359,13 +365,20 @@ void GoogleSource::updateEvent(const Event &event, const EventEdit &edit, EditSc
         }
         if (allDay) {
             const qint64 length = std::max<qint64>(1, start.date().daysTo(end.date()));
-            fields.insert(u"start"_s, QJsonObject{{u"date"_s, firstDay.toString(Qt::ISODate)}});
-            fields.insert(u"end"_s,
-                          QJsonObject{{u"date"_s, firstDay.addDays(length).toString(Qt::ISODate)}});
+            // Google merges nested objects, so a timed event's time is cleared.
+            const auto day = [](QDate date) {
+                return QJsonObject{{u"date"_s, date.toString(Qt::ISODate)},
+                                   {u"dateTime"_s, QJsonValue::Null},
+                                   {u"timeZone"_s, QJsonValue::Null}};
+            };
+            fields.insert(u"start"_s, day(firstDay));
+            fields.insert(u"end"_s, day(firstDay.addDays(length)));
         } else {
             const QDateTime newEnd = newStart.addSecs(start.secsTo(end));
+            // And an all-day event's date, which would otherwise stay.
             const auto time = [](const QDateTime &moment) {
-                QJsonObject json{{u"dateTime"_s, moment.toString(Qt::ISODate)}};
+                QJsonObject json{{u"dateTime"_s, moment.toString(Qt::ISODate)},
+                                 {u"date"_s, QJsonValue::Null}};
                 if (moment.timeSpec() == Qt::TimeZone)
                     json.insert(u"timeZone"_s, QString::fromUtf8(moment.timeZone().id()));
                 return json;

@@ -48,6 +48,7 @@ private Q_SLOTS:
     void occurrencesCarryTheirIds();
     void invitationsAndPermissions();
     void guestsListPeopleOrganizerFirst();
+    void movedOccurrencesKeepTheSeriesRule();
     void singleEventOverlapsRange();
     void weeklySeriesKeepsWallClockAcrossDst();
     void countLimitsSeries();
@@ -92,6 +93,22 @@ void TestGoogleRecurrence::guestsListPeopleOrganizerFirst()
     QCOMPARE(guests.at(2).response, u"needsAction"_s);
     // The room is no guest to write to either.
     QCOMPARE(events.first().attendees, (QStringList{u"boss@example.com"_s, u"pat@example.com"_s}));
+}
+
+void TestGoogleRecurrence::movedOccurrencesKeepTheSeriesRule()
+{
+    const QList<Event> events =
+        expand({parsed(R"({"id":"s","start":{"dateTime":"2026-10-05T09:00:00Z"},
+                    "end":{"dateTime":"2026-10-05T10:00:00Z"},
+                    "recurrence":["RRULE:FREQ=DAILY;COUNT=3"]})"),
+                parsed(R"({"id":"s_x","recurringEventId":"s",
+                    "originalStartTime":{"dateTime":"2026-10-06T09:00:00Z"},
+                    "start":{"dateTime":"2026-10-06T11:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T12:00:00Z"}})")},
+               utc(2026, 10, 5), utc(2026, 10, 8));
+    QCOMPARE(events.size(), 3);
+    for (const Event &e : events)
+        QCOMPARE(e.recurrence, QStringList{u"RRULE:FREQ=DAILY;COUNT=3"_s});
 }
 
 void TestGoogleRecurrence::singleEventOverlapsRange()

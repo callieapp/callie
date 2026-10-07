@@ -505,6 +505,10 @@ void QueuedSource::folded(qsizetype index, const PendingChange &before, const QS
 void QueuedSource::updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
                                Created done)
 {
+    if (scope == EditScope::ThisAndFollowing) {
+        done(tr("Changing this and the following events is not possible yet."));
+        return;
+    }
     // An event not created yet is created as edited, if a creation can say it all.
     for (qsizetype i = 0; i < m_changes.size(); ++i) {
         PendingChange &change = m_changes[i];

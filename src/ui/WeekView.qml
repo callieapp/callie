@@ -27,8 +27,8 @@ Item {
     readonly property var shown: {
         const list = []
         for (let i = 0; i < dayCount; ++i)
-            list.push(dayCount < 7 || !Settings.hideWeekends || Settings.isWorkDay(dateForColumn(
-                                                                                       i)))
+            list.push(dayCount < 7 || !Settings.hideWeekends || !root.model.isDayOff(dateForColumn(
+                                                                                         i)))
 
         return list
     }

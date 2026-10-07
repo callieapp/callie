@@ -22,7 +22,7 @@ Item {
     readonly property var shownColumns: {
         const shown = []
         for (let i = 0; i < 7; ++i) {
-            if (!Settings.hideWeekends || Settings.isWorkDay(dateFor(i)))
+            if (!Settings.hideWeekends || !root.model.isDayOff(dateFor(i)))
                 shown.push(i)
         }
         return shown

@@ -91,8 +91,6 @@ public:
     void setHideWeekends(bool hide);
     [[nodiscard]] bool weekNumbers() const { return m_weekNumbers; }
     void setWeekNumbers(bool show);
-    /// Whether `day` is a working day in the region, so not a weekend.
-    Q_INVOKABLE static bool isWorkDay(const QDateTime &day);
 
     [[nodiscard]] int workStart() const { return m_workStart; }
     void setWorkStart(int minutes);

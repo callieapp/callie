@@ -33,9 +33,6 @@ void StartAtLogin::setup(Autostart *autostart, Settings *settings)
             if (!m_settings->keepRunning())
                 setEnabled(false);
         });
-        // An entry left from when Callie kept running would now start it for nothing.
-        if (!m_settings->keepRunning())
-            setEnabled(false);
     }
     Q_EMIT changed();
 }

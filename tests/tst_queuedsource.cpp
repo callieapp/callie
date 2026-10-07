@@ -259,8 +259,13 @@ void TestQueuedSource::changesFoldedIntoACreationCanBeTakenBack()
     source->createEvent(draft, [](const QString &) {});
     const Event pottery = source->eventsBetween(at(18), at(19), QTimeZone::UTC).first();
 
-    // A move into the creation gets its own toast, and undoing it moves it back.
+    // A move into the creation gets its own toast, and holds the creation
+    // again, so undoing it still works after the creation's own hold.
+    m_now = m_now.addSecs(QueuedSource::kHoldSecs - 1);
     source->moveEvent(pottery, at(19), at(21), false, [](const QString &) {});
+    m_now = m_now.addSecs(2);
+    source->flush();
+    QVERIFY(m_server.calls.isEmpty());
     QCOMPARE(made.size(), 2);
     QCOMPARE(made.last().at(1).toString(), u"Moved Pottery"_s);
     QVERIFY(source->undoChange(made.last().first().toString()));

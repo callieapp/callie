@@ -403,6 +403,8 @@ void QueuedSource::moveEvent(const Event &event, const QDateTime &start, const Q
             const PendingChange before = change;
             change.draft.start = change.event.start = start;
             change.draft.end = change.event.end = end;
+            // Held again, so the undo the toast offers for this still works.
+            change.notBefore = std::max(change.notBefore, m_now().addSecs(kHoldSecs));
             save();
             done({});
             folded(i, before, doneText(PendingChange::Kind::Move, event));

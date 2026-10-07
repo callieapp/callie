@@ -105,6 +105,7 @@ private Q_SLOTS:
     void outcomesAreRecorded();
     void forgottenAccountStoresNothing();
     void settingsAreReadAfterTheFirstSyncOnly();
+    void unreadableSettingsAreSkipped();
 
 private:
     QStringList runSync();
@@ -367,6 +368,24 @@ void TestGoogleSync::settingsAreReadAfterTheFirstSyncOnly()
     QTest::qWait(200);
     QCOMPARE(found.size(), 1);
     QCOMPARE(m_google->count(u"users/me/settings"_s), 2);
+}
+
+void TestGoogleSync::unreadableSettingsAreSkipped()
+{
+    // Signed in before Callie asked to read settings: Google says no.
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    m_google->on(
+        u"users/me/settings"_s, 403,
+        R"({"error":{"code":403,"message":"Request had insufficient authentication scopes."}})");
+    QSignalSpy found(m_sync.get(), &GoogleSync::settingsFound);
+
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(m_google->count(u"users/me/settings"_s), 1, 5000);
+    QTest::qWait(200);
+    QVERIFY(found.isEmpty());
+    // The account still counts as synced.
+    QVERIFY(m_cache->accountState(kAccount).lastSynced.isValid());
 }
 
 void TestGoogleSync::forgottenAccountStoresNothing()

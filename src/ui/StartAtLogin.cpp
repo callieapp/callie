@@ -33,6 +33,9 @@ void StartAtLogin::setup(Autostart *autostart, Settings *settings)
             if (!m_settings->keepRunning())
                 setEnabled(false);
         });
+        // An entry left from when Callie kept running would now start it for nothing.
+        if (!m_settings->keepRunning())
+            setEnabled(false);
     }
     Q_EMIT changed();
 }
@@ -44,8 +47,16 @@ bool StartAtLogin::enabled() const
 
 void StartAtLogin::setEnabled(bool enabled)
 {
-    if (!m_autostart || enabled == this->enabled())
+    if (!m_autostart)
         return;
+    if (enabled == this->enabled()) {
+        // Already so, perhaps from the desktop's own settings: nothing has failed.
+        if (!m_error.isEmpty()) {
+            m_error.clear();
+            Q_EMIT changed();
+        }
+        return;
+    }
     m_error = m_autostart->setEnabled(enabled) ? QString() : m_autostart->errorString();
     Q_EMIT changed();
 }

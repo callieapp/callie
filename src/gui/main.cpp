@@ -206,9 +206,11 @@ int main(int argc, char *argv[])
     callie::AccountsController::instance()->setUp(accountSetup);
 
     QQmlApplicationEngine engine;
-    // Started at login, Callie waits hidden until it is opened or a reminder is clicked.
+    // Started at login, Callie waits hidden until it is opened or a reminder is
+    // clicked; that only makes sense while it is set to keep running.
+    const bool hidden = parser.isSet(backgroundOption) && settings.keepRunning() && !standalone;
     engine.setInitialProperties({{QStringLiteral("source"), QVariant::fromValue(source)},
-                                 {QStringLiteral("visible"), !parser.isSet(backgroundOption)}});
+                                 {QStringLiteral("visible"), !hidden}});
     bool live = false;
 #ifdef CALLIE_LIVE_QML
     // A QML mistake while editing should wait for the fix, not end the session.

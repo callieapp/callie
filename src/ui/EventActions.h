@@ -48,6 +48,9 @@ public:
     Q_INVOKABLE static QDateTime dayOf(const QDateTime &time, const QString &zone);
     /// Minutes past midnight of `time` on the zone's clock.
     Q_INVOKABLE static int minutesOf(const QDateTime &time, const QString &zone);
+    /// Whole days from one local midnight to another, and a midnight that many on.
+    Q_INVOKABLE static int daysBetween(const QDateTime &from, const QDateTime &to);
+    Q_INVOKABLE static QDateTime addDays(const QDateTime &day, int days);
     /// The repeat choices for an event starting on `day`, as {id, label}.
     Q_INVOKABLE static QVariantList repeatChoices(const QDateTime &day);
     Q_INVOKABLE static QString repeatChoice(const QStringList &recurrence, const QDateTime &day);

@@ -21,6 +21,11 @@ QDate weekStart(QDate day, Qt::DayOfWeek firstDay)
     return day.addDays(-((day.dayOfWeek() - firstDay + 7) % 7));
 }
 
+int weekNumber(QDate day, Qt::DayOfWeek firstDay)
+{
+    return weekStart(day, firstDay).addDays(3).weekNumber();
+}
+
 View fromName(const QString &name)
 {
     if (name == u"day")

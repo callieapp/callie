@@ -93,8 +93,7 @@ Item {
             height: parent.height
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
-            text: qsTr("W%1").arg(Views.weekNumber(root.dateForColumn(Math.min(3, root.dayCount
-                                                                               - 1))))
+            text: qsTr("W%1").arg(Views.weekNumber(root.dateForColumn(0), Settings.firstDayOfWeek))
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs

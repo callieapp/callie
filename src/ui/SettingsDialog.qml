@@ -550,9 +550,17 @@ Popup {
             Accessible.name: qsTr("%1, half an hour earlier").arg(stepper.label)
             onClicked: stepper.stepped(stepper.minutes - 30)
         }
+        // As wide as the widest time it can show, so the buttons stay put.
+        TextMetrics {
+            id: widest
+            font: shown.font
+            text: Settings.times.time(Settings.times.at(Settings.times.date(Clock.now), 12 * 60
+                                                        + 30))
+        }
         Text {
+            id: shown
             anchors.verticalCenter: parent.verticalCenter
-            width: 72
+            width: widest.advanceWidth + Theme.space3
             horizontalAlignment: Text.AlignHCenter
             text: Settings.times.time(Settings.times.at(Settings.times.date(Clock.now),
                                                         stepper.minutes))

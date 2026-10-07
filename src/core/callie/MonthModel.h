@@ -33,8 +33,8 @@ public:
     [[nodiscard]] QDate today() const { return m_today; }
     void setToday(QDate today);
 
-    /// The ISO week number of each row, read from its middle day. QML passes
-    /// the month and first day so a binding updates when they change.
+    /// The ISO week number of each row. QML passes the month and first day so
+    /// a binding updates when they change.
     Q_INVOKABLE QList<int> weekNumbers(QDate month, int firstDay) const;
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;

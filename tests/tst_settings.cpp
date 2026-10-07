@@ -16,6 +16,7 @@ private Q_SLOTS:
     void defaultsWithoutAFile();
     void choicesSurviveARestart();
     void workingHoursStayInOrder();
+    void weekSettingsResetAndSignal();
     void unchangedValueEmitsNothing();
     void unknownZoneFollowsTheSystem();
     void unknownStoredZoneFollowsTheSystem();
@@ -98,6 +99,34 @@ void TestSettings::choicesSurviveARestart()
     QVERIFY(settings.weekNumbers());
     QCOMPARE(settings.workStart(), 8 * 60);
     QCOMPARE(settings.workEnd(), 18 * 60);
+}
+
+void TestSettings::weekSettingsResetAndSignal()
+{
+    Settings settings(path());
+    QSignalSpy week(&settings, &Settings::weekChanged);
+    QSignalSpy hours(&settings, &Settings::workHoursChanged);
+    // The defaults again change nothing.
+    settings.setWeekStart(0);
+    settings.setHideWeekends(false);
+    settings.setWeekNumbers(false);
+    settings.setWorkStart(9 * 60);
+    QCOMPARE(week.size(), 0);
+    QCOMPARE(hours.size(), 0);
+
+    settings.setWeekStart(7);
+    settings.setWorkStart(8 * 60);
+    settings.reset();
+    QCOMPARE(week.size(), 2);
+    QCOMPARE(hours.size(), 2);
+    QCOMPARE(settings.weekStart(), 0);
+    QCOMPARE(settings.workStart(), 9 * 60);
+
+    // The weekend follows the region.
+    const QDate saturday(2026, 10, 10);
+    QCOMPARE(Settings::isWorkDay(saturday.startOfDay()),
+             QLocale().weekdays().contains(Qt::Saturday));
+    QVERIFY(Settings::isWorkDay(QDate(2026, 10, 7).startOfDay()));
 }
 
 void TestSettings::workingHoursStayInOrder()

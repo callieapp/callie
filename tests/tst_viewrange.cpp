@@ -49,6 +49,9 @@ void TestViewRange::weeksCanStartOnAnyDay()
     // November 2026 starts on a Sunday and needs five weeks from Sunday, six from Monday.
     QCOMPARE(days(View::Month, QDate(2026, 11, 10), Qt::Sunday), 35);
     QCOMPARE(days(View::Month, QDate(2026, 11, 10), Qt::Monday), 42);
+    // A Sunday-first week takes the number most of its days have.
+    QCOMPARE(weekNumber(QDate(2026, 10, 4), Qt::Sunday), 41);
+    QCOMPARE(weekNumber(QDate(2026, 10, 4), Qt::Monday), 40);
 }
 
 void TestViewRange::monthsAreWholeWeeks()

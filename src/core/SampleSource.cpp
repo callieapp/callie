@@ -72,8 +72,10 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
         for (const Seed &s : kSeeds) {
             const QDate date = week.addDays(s.dayOfWeek - Qt::Monday);
             Event e;
+            // Each seed repeats weekly, so its occurrences share a uid, as a
+            // series' do; the event id names the one occurrence.
             e.uid = QStringLiteral("sample-%1-%2-%3")
-                        .arg(date.toString(Qt::ISODate), QString::number(s.startHour),
+                        .arg(QString::number(s.dayOfWeek), QString::number(s.startHour),
                              QString::number(s.startMinute));
             e.calendarId = m_calendars.at(s.calendar).id;
             e.color = m_calendars.at(s.calendar).color;
@@ -83,7 +85,7 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                 e.conferenceUrl = QUrl(QString::fromUtf8(s.conference));
             e.start = QDateTime(date, QTime(s.startHour, s.startMinute), tz);
             e.end = e.start.addSecs(s.durationMinutes * 60);
-            e.eventId = e.uid;
+            e.eventId = e.uid + u'-' + date.toString(Qt::ISODate);
             e.canEdit = true;
             // Calls are invitations, so their answers can be tried out.
             if (!e.conferenceUrl.isEmpty()) {

@@ -29,6 +29,8 @@ struct GoogleSync::Run
     bool retried = false;
     /// The account was removed; nothing more is written for it.
     bool forgotten = false;
+    /// The account had never synced, so its Google settings are read after.
+    bool first = false;
 };
 
 namespace {
@@ -63,6 +65,7 @@ void GoogleSync::sync(const Account &account, Done done)
     }
     auto run = std::make_shared<Run>();
     run->account = account;
+    run->first = !m_cache.accountState(account).lastSynced.isValid();
     run->waiting.append(std::move(done));
     m_running.insert(key, run);
     start(run);
@@ -347,6 +350,33 @@ void GoogleSync::forget(const Account &account)
         run->forgotten = true;
 }
 
+void GoogleSync::readSettings(const Account &account)
+{
+    const QPointer<GoogleSync> self(this);
+    withToken(
+        account, false,
+        [this, self, account](const QString &token, const Retry &retry) {
+            m_api.fetchSettings(
+                token, [this, self, account, retry](const QHash<QString, QString> &settings,
+                                                    const GoogleApiError &error) {
+                    if (!self)
+                        return;
+                    if (error.unauthorized()) {
+                        retry();
+                        return;
+                    }
+                    // Accounts signed in before Callie asked to read settings
+                    // cannot, until they sign in again; nothing else needs them.
+                    if (error) {
+                        qCInfo(lcSync) << "could not read Google settings:" << error.message;
+                        return;
+                    }
+                    Q_EMIT settingsFound(account, settings);
+                });
+        },
+        [](const QString &) {});
+}
+
 void GoogleSync::finish(const std::shared_ptr<Run> &run)
 {
     if (run->forgotten) {
@@ -376,6 +406,8 @@ void GoogleSync::finish(const std::shared_ptr<Run> &run)
         qCInfo(lcSync).noquote() << run->account.id + QStringLiteral(": ") + error;
 
     m_running.remove(keyFor(run->account));
+    if (run->first && run->accountError.isEmpty())
+        readSettings(run->account);
     for (const Done &done : std::as_const(run->waiting))
         done(run->errors);
 }

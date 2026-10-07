@@ -104,6 +104,7 @@ private Q_SLOTS:
     void calendarListChangeIsSignalled();
     void outcomesAreRecorded();
     void forgottenAccountStoresNothing();
+    void settingsAreReadAfterTheFirstSyncOnly();
 
 private:
     QStringList runSync();
@@ -344,6 +345,28 @@ void TestGoogleSync::syncOnce()
     m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
     m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
     QCOMPARE(runSync(), QStringList());
+}
+
+void TestGoogleSync::settingsAreReadAfterTheFirstSyncOnly()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    m_google->on(u"users/me/settings"_s, 200,
+                 R"({"items":[{"id":"weekStart","value":"0"}],"nextPageToken":"p2"})");
+    m_google->on(u"users/me/settings"_s, 200,
+                 R"({"items":[{"id":"hideWeekends","value":"true"}]})");
+    QSignalSpy found(m_sync.get(), &GoogleSync::settingsFound);
+
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
+    const auto settings = found.first().at(1).value<QHash<QString, QString>>();
+    QCOMPARE(settings.value(u"weekStart"_s), u"0"_s);
+    QCOMPARE(settings.value(u"hideWeekends"_s), u"true"_s);
+
+    QCOMPARE(runSync(), QStringList());
+    QTest::qWait(200);
+    QCOMPARE(found.size(), 1);
+    QCOMPARE(m_google->count(u"users/me/settings"_s), 2);
 }
 
 void TestGoogleSync::forgottenAccountStoresNothing()

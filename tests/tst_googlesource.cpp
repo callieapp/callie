@@ -348,8 +348,12 @@ void TestGoogleSource::refreshWhileSyncingStartsNothingNew()
     QTest::qWait(200);
 
     // One calendar list and one events request: the second refresh was ignored.
+    // A first sync also reads the account's settings, which is not counted.
     QCOMPARE(harness.store.reads, 1);
-    QCOMPARE(harness.apiServer.requests.size(), 2);
+    const auto calendarRequests = std::count_if(
+        harness.apiServer.requests.cbegin(), harness.apiServer.requests.cend(),
+        [](const FakeHttpServer::Request &r) { return !r.target.contains("/settings"); });
+    QCOMPARE(calendarRequests, 2);
 }
 
 void TestGoogleSource::syncReportsOneChangePerBurst()

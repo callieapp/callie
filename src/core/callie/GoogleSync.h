@@ -73,6 +73,8 @@ public:
 Q_SIGNALS:
     /// Emitted after each calendar's changes are stored.
     void changed(const callie::Account &account);
+    /// The account's Google Calendar settings, read after its first sync.
+    void settingsFound(const callie::Account &account, const QHash<QString, QString> &settings);
 
 private:
     struct Run;
@@ -83,6 +85,7 @@ private:
     void calendarDone(const std::shared_ptr<Run> &run);
     void finish(const std::shared_ptr<Run> &run);
     void record(bool stored);
+    void readSettings(const Account &account);
     /// Patches `fields` into an event and stores what Google returns.
     void patch(const Account &account, const QString &calendarId, const QString &eventId,
                const QJsonObject &fields, const QString &failure, Created done);

@@ -321,6 +321,26 @@ QStringList Settings::availableTimeZones()
     return ids;
 }
 
+void Settings::seedFromGoogle(const QHash<QString, QString> &google)
+{
+    const auto unset = [this, &google](const QString &ours, const QString &theirs) {
+        return !m_store.contains(ours) && google.contains(theirs);
+    };
+    const auto yes = [&google](const QString &id) { return google.value(id) == u"true"; };
+    if (unset(kWeekStart, u"weekStart"_s)) {
+        // Google counts from Sunday as 0; Qt from Monday as 1.
+        const int day = google.value(u"weekStart"_s).toInt();
+        setWeekStart(day == 0 ? int(Qt::Sunday) : std::clamp(day, 1, 6));
+    }
+    if (unset(kHideWeekends, u"hideWeekends"_s))
+        setHideWeekends(yes(u"hideWeekends"_s));
+    if (unset(kTimeFormat, u"format24HourTime"_s))
+        setTimeFormat(yes(u"format24HourTime"_s) ? TimeFormat::TwentyFourHour
+                                                 : TimeFormat::TwelveHour);
+    if (unset(kShowDeclined, u"showDeclinedEvents"_s))
+        setShowDeclined(yes(u"showDeclinedEvents"_s));
+}
+
 void Settings::reset()
 {
     m_store.clear();

@@ -51,6 +51,7 @@ qt_add_qml_module(callieui
         EventDetails.qml
         SoftShadow.qml
         Stripes.qml
+        CalendarMark.qml
         PillButton.qml
         StickerButton.qml
         Glyph.qml

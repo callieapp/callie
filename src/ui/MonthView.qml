@@ -205,10 +205,11 @@ Item {
                                        ? Theme.surfaceAlt : "transparent"
 
             Stripes {
-                visible: chip.event.allDay && chip.event.response === "tentative"
+                visible: chip.event.allDay && response === "tentative"
                 anchors.fill: parent
                 radius: parent.radius
-                color: Theme.tint(Theme.calendarEdge(chip.event.calendarColor, Theme.calendar), 0.5)
+                calendarColor: chip.event.calendarColor
+                response: chip.event.response
             }
         }
 
@@ -216,18 +217,13 @@ Item {
             leftPadding: Theme.space2
             spacing: Theme.space2
 
-            Rectangle {
+            CalendarMark {
                 visible: !chip.event.allDay
                 anchors.verticalCenter: parent.verticalCenter
                 width: 7
                 height: 7
-                radius: width / 2
-                // A ring rather than a dot for "maybe".
-                readonly property color fill: Theme.calendarColor(chip.event.calendarColor,
-                                                                  Theme.calendar)
-                color: chip.event.response === "tentative" ? "transparent" : fill
-                border.width: chip.event.response === "tentative" ? 2 : 0
-                border.color: fill
+                calendarColor: chip.event.calendarColor
+                response: chip.event.response
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter

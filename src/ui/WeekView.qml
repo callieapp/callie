@@ -196,10 +196,10 @@ Item {
                 }
 
                 Stripes {
-                    visible: chip.response === "tentative"
                     anchors.fill: parent
                     radius: chip.radius
-                    color: Theme.tint(Theme.calendarEdge(chip.calendarColor, Theme.calendar), 0.5)
+                    calendarColor: chip.calendarColor
+                    response: chip.response
                 }
 
                 Text {

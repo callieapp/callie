@@ -17,6 +17,7 @@ Event EventActions::toEvent(const QVariantMap &event)
     e.start = event.value(u"start"_s).toDateTime();
     e.end = event.value(u"end"_s).toDateTime();
     e.recurrenceId = event.value(u"recurrenceId"_s).toDateTime();
+    e.zone = event.value(u"zone"_s).toString();
     return e;
 }
 

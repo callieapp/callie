@@ -2,6 +2,7 @@
 
 #include "Account.h"
 #include "GoogleCalendarApi.h"
+#include "Outcome.h"
 
 #include <QHash>
 #include <QObject>
@@ -43,8 +44,8 @@ public:
     /// it ends quietly, as if it had nothing to report.
     void forget(const Account &account);
 
-    /// Called once a creation finishes; `error` is empty on success.
-    using Created = std::function<void(const QString &error)>;
+    /// Called once a change finishes; its error is empty on success.
+    using Created = std::function<void(const Outcome &outcome)>;
 
     /// Creates an event in one of the account's calendars and stores it, so it
     /// shows before the next sync.

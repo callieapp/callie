@@ -17,6 +17,8 @@ public:
     QList<Event> events;
     QStringList calls;
     QString refuseWith;
+    /// Fail in a way worth trying again, such as a busy server.
+    bool busy = false;
     /// Answers wait here until released.
     QList<std::pair<Created, QString>> held;
     bool hold = false;
@@ -42,6 +44,8 @@ public:
     {
         if (hold)
             held.append({done, refuseWith});
+        else if (busy)
+            done({u"try later"_s, true});
         else
             done(refuseWith);
     }
@@ -118,12 +122,21 @@ private Q_SLOTS:
     void deletionsWaitToBeTakenBack();
     void pendingCreationTakesLaterChanges();
     void changesGoOutInOrder();
+    void passingFailuresAreTriedAgain();
+    void seriesMovesOnItsOwnClock();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
     FakeServer m_server;
     QDateTime m_now;
     bool m_online = true;
+
+    /// Lets any hold on the changes run out, and sends what is ready.
+    void release(QueuedSource &source)
+    {
+        m_now = m_now.addSecs(QueuedSource::kHoldSecs);
+        source.flush();
+    }
 
     std::unique_ptr<QueuedSource> make()
     {
@@ -142,6 +155,7 @@ void TestQueuedSource::init()
     m_server.refuseWith.clear();
     m_server.held.clear();
     m_server.hold = false;
+    m_server.busy = false;
     m_now = at(8);
     m_online = true;
 }
@@ -261,6 +275,58 @@ void TestQueuedSource::changesGoOutInOrder()
     m_server.held.takeFirst().first({});
     QCOMPARE(m_server.calls.size(), 2);
     QCOMPARE(m_server.calls.last(), u"move lunch 13:00"_s);
+}
+
+void TestQueuedSource::passingFailuresAreTriedAgain()
+{
+    auto source = make();
+    m_server.busy = true;
+    source->moveEvent(makeEvent(u"standup"_s, 9), at(10), at(11), false, [](const QString &) {});
+    release(*source);
+    // Kept, shown moved, and no complaint, though online.
+    QCOMPARE(source->waitingChanges(), QStringList{u"Move standup"_s});
+    QVERIFY(source->lastError().isEmpty());
+    QCOMPARE(shown(*source), (QStringList{u"lunch@12:00"_s, u"standup@10:00"_s}));
+
+    m_server.busy = false;
+    source->flush();
+    QVERIFY(source->waitingChanges().isEmpty());
+    QCOMPARE(m_server.calls.last(), u"move standup 10:00"_s);
+}
+
+void TestQueuedSource::seriesMovesOnItsOwnClock()
+{
+    // A Berlin series, shown in UTC, around the start of summer time.
+    const QTimeZone berlin("Europe/Berlin");
+    const auto swim = [&berlin](int day) {
+        Event e;
+        e.uid = u"swim"_s;
+        e.eventId = u"swim_"_s + QString::number(day);
+        e.seriesId = u"swim"_s;
+        e.summary = u"Swim"_s;
+        e.calendarId = u"work"_s;
+        e.zone = u"Europe/Berlin"_s;
+        e.start = QDateTime(QDate(2026, 3, day), QTime(10, 0), berlin).toUTC();
+        e.end = e.start.addSecs(3600);
+        return e;
+    };
+    m_server.events = {swim(28), swim(30)};
+    // Not answered yet, so the move shows from the queue.
+    m_server.hold = true;
+    auto source = make();
+    // Saturday's swim dragged a day on, to Sunday 10:00 in Berlin: all move.
+    const Event saturday = swim(28);
+    const QDateTime sunday = QDateTime(QDate(2026, 3, 29), QTime(10, 0), berlin);
+    source->moveEvent(saturday, sunday, sunday.addSecs(3600), true, [](const QString &) {});
+
+    const QDateTime from(QDate(2026, 3, 27), QTime(0, 0), QTimeZone::UTC);
+    QList<QDateTime> starts;
+    for (const Event &e : source->eventsBetween(from, from.addDays(7), QTimeZone::UTC))
+        starts << e.start.toTimeZone(berlin);
+    std::sort(starts.begin(), starts.end());
+    // Still 10:00 in Berlin, though Berlin's offset changed in between.
+    QCOMPARE(starts, (QList<QDateTime>{QDateTime(QDate(2026, 3, 29), QTime(10, 0), berlin),
+                                       QDateTime(QDate(2026, 3, 31), QTime(10, 0), berlin)}));
 }
 
 QTEST_GUILESS_MAIN(TestQueuedSource)

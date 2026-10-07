@@ -33,6 +33,12 @@ struct GoogleSync::Run
 
 namespace {
 
+// No answer, a busy or failing server, or too many requests can all pass.
+bool worthRetrying(const GoogleApiError &error)
+{
+    return error.status == 0 || error.status == 408 || error.status == 429 || error.status >= 500;
+}
+
 QString keyFor(const Account &account)
 {
     return account.provider + u'/' + account.id;
@@ -87,7 +93,8 @@ void GoogleSync::createEvent(const Account &account, const QString &calendarId,
                         return;
                     }
                     if (error) {
-                        done(tr("Google could not create the event: %1").arg(error.message));
+                        done({tr("Google could not create the event: %1").arg(error.message),
+                              worthRetrying(error)});
                         return;
                     }
                     // Stored now so it shows at once, without counting as a sync.
@@ -110,15 +117,17 @@ void GoogleSync::withToken(const Account &account, bool retried, Call call, cons
                                    failed](const QString &token, const QString &error) {
         if (!self)
             return;
+        // No token yet: the network, the keyring, or a sign-in to renew,
+        // all of which can pass, so a change waits for them.
         if (!error.isEmpty()) {
-            failed(error);
+            failed({error, true});
             return;
         }
         const Retry retry = [this, self, account, retried, call, failed] {
             if (!self)
                 return;
             if (retried) {
-                failed(tr("Google rejected the access token"));
+                failed({tr("Google rejected the access token"), true});
                 return;
             }
             m_tokens.invalidate(account);
@@ -185,7 +194,7 @@ void GoogleSync::patch(const Account &account, const QString &calendarId, const 
                                      return;
                                  }
                                  if (error) {
-                                     done(failure.arg(error.message));
+                                     done({failure.arg(error.message), worthRetrying(error)});
                                      return;
                                  }
                                  if (!m_cache.storeEvents(account, calendarId, {changedEvent})) {
@@ -215,7 +224,8 @@ void GoogleSync::remove(const Account &account, const Target &target, Created do
                         return;
                     }
                     if (error) {
-                        done(tr("Google could not delete the event: %1").arg(error.message));
+                        done({tr("Google could not delete the event: %1").arg(error.message),
+                              worthRetrying(error)});
                         return;
                     }
                     // A cancelled occurrence hides just that one; a cancelled

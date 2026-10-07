@@ -139,6 +139,7 @@ Event toEvent(const GoogleEvent &source, const QTimeZone &viewZone)
     event.canRespond = invited && !source.organizerSelf;
     event.reminders = source.reminders;
     event.remindersKnown = true;
+    event.zone = source.start.timeZone;
     event.allDay = source.start.isAllDay();
     if (event.allDay) {
         event.start = QDateTime(source.start.date, QTime(0, 0), viewZone);

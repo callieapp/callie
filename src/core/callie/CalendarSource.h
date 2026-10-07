@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Event.h"
+#include "Outcome.h"
 #include "QuickAdd.h"
 
 #include <QDate>
@@ -75,8 +76,8 @@ public:
     /// Kick off a background refresh. Emits `changed` when new data lands.
     Q_INVOKABLE virtual void refresh() = 0;
 
-    /// Called once a creation finishes; `error` is empty on success.
-    using Created = std::function<void(const QString &error)>;
+    /// Called once a change finishes; its error is empty on success.
+    using Created = std::function<void(const Outcome &outcome)>;
 
     /// Creates `draft` in its calendar and emits `changed` once it shows.
     virtual void createEvent(const EventDraft &draft, Created done)

@@ -62,6 +62,7 @@ add_library(calliecore STATIC
     Autostart.cpp
     callie/LookedSource.h
     LookedSource.cpp
+    callie/Outcome.h
     callie/QueuedSource.h
     QueuedSource.cpp
     ReminderScheduler.cpp

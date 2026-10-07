@@ -495,6 +495,24 @@ Popup {
                 checked: Settings.keepRunning
                 onToggled: Settings.keepRunning = checked
             }
+            Toggle {
+                width: parent.width
+                visible: StartAtLogin.available
+                enabled: Settings.keepRunning
+                opacity: enabled ? 1 : Theme.fadedOpacity
+                text: qsTr("Start when I log in")
+                checked: StartAtLogin.enabled
+                onToggled: StartAtLogin.enabled = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                visible: StartAtLogin.error !== ""
+                text: StartAtLogin.error
+                color: Theme.danger
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+            }
             Text {
                 width: parent.width
                 wrapMode: Text.Wrap

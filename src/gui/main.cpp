@@ -5,10 +5,12 @@
 #include "NotificationServer.h"
 #include "Reminders.h"
 #include "SingleInstance.h"
+#include "StartAtLogin.h"
 #include "ThemeController.h"
 #include "ThemesController.h"
 
 #include "callie/AccountStore.h"
+#include "callie/Autostart.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSource.h"
@@ -71,6 +73,10 @@ int main(int argc, char *argv[])
                                   QStringLiteral("Window size in pixels, e.g. 1280x840."),
                                   QStringLiteral("size"));
     parser.addOption(sizeOption);
+    QCommandLineOption backgroundOption(
+        QString::fromLatin1(callie::Autostart::kBackgroundOption),
+        QStringLiteral("Start without showing the window, as when started at login."));
+    parser.addOption(backgroundOption);
 #ifdef CALLIE_LIVE_QML
     QCommandLineOption liveOption(QStringLiteral("live-qml"),
                                   QStringLiteral("Load QML from the source tree and reload it on "
@@ -184,6 +190,10 @@ int main(int argc, char *argv[])
         QObject::connect(&settings, &callie::Settings::keepRunningChanged, &app,
                          [&] { app.setQuitOnLastWindowClosed(!settings.keepRunning()); });
     }
+    callie::Autostart autostart(QStringLiteral(CALLIE_APP_ID),
+                                QCoreApplication::applicationFilePath());
+    if (!standalone)
+        callie::StartAtLogin::instance()->setup(&autostart, &settings);
 
     callie::AccountsController::Setup accountSetup{&store,   &tokens, &cache, &google,
                                                    &network, client,  {}};
@@ -196,7 +206,9 @@ int main(int argc, char *argv[])
     callie::AccountsController::instance()->setUp(accountSetup);
 
     QQmlApplicationEngine engine;
-    engine.setInitialProperties({{QStringLiteral("source"), QVariant::fromValue(source)}});
+    // Started at login, Callie waits hidden until it is opened or a reminder is clicked.
+    engine.setInitialProperties({{QStringLiteral("source"), QVariant::fromValue(source)},
+                                 {QStringLiteral("visible"), !parser.isSet(backgroundOption)}});
     bool live = false;
 #ifdef CALLIE_LIVE_QML
     // A QML mistake while editing should wait for the fix, not end the session.

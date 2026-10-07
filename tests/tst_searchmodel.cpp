@@ -94,6 +94,7 @@ private Q_SLOTS:
     void changesAreSearchedAfresh();
     void slowReadsAndStaleAnswers();
     void ticksKeepTheResults();
+    void readsInTheChosenZone();
 };
 
 void TestSearchModel::everyWordMustMatchSomewhere()
@@ -201,6 +202,34 @@ void TestSearchModel::ticksKeepTheResults()
     model.setNow(at(9, 12));
     QCOMPARE(reset.size(), 1);
     QVERIFY(!model.data(model.index(0), SearchModel::UpcomingRole).toBool());
+}
+
+void TestSearchModel::readsInTheChosenZone()
+{
+    // Records the zone it is asked to read in, as the views' source would use it.
+    class ZoneSource : public ListSource
+    {
+    public:
+        mutable QTimeZone asked;
+        QFuture<SourceSnapshot> load(const QDateTime &from, const QDateTime &to,
+                                     const QTimeZone &tz) const override
+        {
+            asked = tz;
+            return ListSource::load(from, to, tz);
+        }
+    };
+    ZoneSource source;
+    source.events = {makeEvent(u"p"_s, u"Planning"_s, at(9, 10))};
+    SearchModel model;
+    model.setNow(at(7, 12));
+    model.setTimeZoneId(u"Pacific/Auckland"_s);
+    model.setSource(&source);
+    model.setQuery(u"plan"_s);
+    QCOMPARE(source.asked, QTimeZone("Pacific/Auckland"));
+
+    // A new zone reads again.
+    model.setTimeZoneId(u"America/Denver"_s);
+    QCOMPARE(source.asked, QTimeZone("America/Denver"));
 }
 
 QTEST_GUILESS_MAIN(TestSearchModel)

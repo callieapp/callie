@@ -34,7 +34,10 @@ Rectangle {
     property int dayShift: 0
     property real dayShiftX: 0
     /// Minutes the drag or stretch moves the start, and adds to the length.
-    readonly property int minuteShift: drag.active || settling ? drag.minutes : 0
+    readonly property int minuteShift: drag.active || settling ? Settings.times.shiftWithinDay(start,
+                                                                                               drag.minutes,
+                                                                                               24 * 60 - Theme.snapMinutes) :
+                                                                 0
     readonly property int lengthChange: stretch.active || settling ? stretch.minutes : 0
     /// The change was dropped and waits to be saved; the event stays where it
     /// landed until the view reloads it or calls settle().
@@ -184,9 +187,9 @@ Rectangle {
         onActiveChanged: {
             if (active)
                 return
-            if (minutes !== 0 || root.dayShift !== 0) {
+            if (root.minuteShift !== 0 || root.dayShift !== 0) {
                 root.settling = true
-                root.moveRequested(minutes, root.dayShift)
+                root.moveRequested(root.minuteShift, root.dayShift)
             } else {
                 root.settle()
             }

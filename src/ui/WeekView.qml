@@ -641,13 +641,9 @@ Item {
             return
         }
         const event = root.model.eventAt(block.index)
-        const shiftDays = Math.max(0, Math.min(root.dayCount - 1, block.dayIndex + days))
-              - block.dayIndex
-        // Kept on its day: the start stays between midnight and the last slot.
-        const shiftMinutes = Math.max(0, Math.min(24 * 60 - Theme.snapMinutes, block.startMinutes
-                                                  + minutes)) - block.startMinutes
-        const from = Settings.times.shifted(event.start, shiftDays, shiftMinutes)
-        const to = Settings.times.shifted(event.end, shiftDays, shiftMinutes + length)
+        // The block already kept the shift within its day and the shown days.
+        const from = Settings.times.shifted(event.start, days, minutes)
+        const to = Settings.times.shifted(event.end, days, minutes + length)
         root.changing = block
         if (event.seriesId !== "") {
             root.placeBeside(block, moveChoice)

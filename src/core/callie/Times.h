@@ -34,6 +34,9 @@ public:
     /// `moment` moved `days` and `minutes` on the wall clock of the zone, so
     /// a drag across a daylight saving change keeps the time it shows.
     Q_INVOKABLE QDateTime shifted(const QDateTime &moment, int days, int minutes) const;
+    /// `minutes` cut down so that `moment` moved by them stays on its day, at
+    /// or before `latest` minutes past midnight.
+    Q_INVOKABLE int shiftWithinDay(const QDateTime &moment, int minutes, int latest) const;
 
     /// The same move in any zone, by seconds.
     [[nodiscard]] static QDateTime shiftWallClock(const QDateTime &moment, const QTimeZone &zone,

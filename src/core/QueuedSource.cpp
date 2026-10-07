@@ -148,6 +148,15 @@ bool targets(const Event &e, const PendingChange &c)
     return e.calendarId == c.event.calendarId && e.eventId == c.event.eventId;
 }
 
+// What a change of `kind` to `event` says once done, such as "Moved Standup".
+QString doneText(PendingChange::Kind kind, const Event &event)
+{
+    PendingChange change;
+    change.kind = kind;
+    change.event = event;
+    return change.describeDone();
+}
+
 bool networkUp()
 {
     QNetworkInformation *info = QNetworkInformation::instance();
@@ -366,9 +375,11 @@ void QueuedSource::deleteEvent(const Event &event, bool wholeSeries, Created don
         const PendingChange &change = m_changes.at(i);
         if (change.kind == PendingChange::Kind::Create && change.event.eventId == event.eventId &&
             change.id != m_sending) {
+            const PendingChange before = change;
             m_changes.removeAt(i);
             save();
             done({});
+            folded(i, before, doneText(PendingChange::Kind::Delete, event));
             Q_EMIT statusChanged();
             Q_EMIT changed();
             return;
@@ -385,13 +396,16 @@ void QueuedSource::moveEvent(const Event &event, const QDateTime &start, const Q
                              bool wholeSeries, Created done)
 {
     // An event not created yet is created at its new times instead.
-    for (PendingChange &change : m_changes) {
+    for (qsizetype i = 0; i < m_changes.size(); ++i) {
+        PendingChange &change = m_changes[i];
         if (change.kind == PendingChange::Kind::Create && change.event.eventId == event.eventId &&
             change.id != m_sending) {
+            const PendingChange before = change;
             change.draft.start = change.event.start = start;
             change.draft.end = change.event.end = end;
             save();
             done({});
+            folded(i, before, doneText(PendingChange::Kind::Move, event));
             Q_EMIT changed();
             return;
         }
@@ -405,8 +419,37 @@ void QueuedSource::moveEvent(const Event &event, const QDateTime &start, const Q
     add(change, done);
 }
 
+void QueuedSource::folded(qsizetype index, const PendingChange &before, const QString &what)
+{
+    // Only the latest few can still be undone from the toast.
+    constexpr qsizetype kKept = 16;
+    if (m_folded.size() >= kKept)
+        m_folded.clear();
+    const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_folded.insert(id, {index, before});
+    Q_EMIT changeMade(id, what);
+}
+
 bool QueuedSource::undoChange(const QString &id)
 {
+    if (const auto folded = m_folded.constFind(id); folded != m_folded.cend()) {
+        // The creation goes back to how it was, unless it has gone out since.
+        const auto [index, before] = *folded;
+        m_folded.erase(folded);
+        if (before.id == m_sending)
+            return false;
+        const auto current =
+            std::find_if(m_changes.begin(), m_changes.end(),
+                         [&before](const PendingChange &c) { return c.id == before.id; });
+        if (current != m_changes.end())
+            *current = before;
+        else
+            m_changes.insert(std::min(index, m_changes.size()), before);
+        save();
+        Q_EMIT statusChanged();
+        Q_EMIT changed();
+        return true;
+    }
     if (id == m_sending)
         return false;
     const qsizetype removed =
@@ -472,6 +515,8 @@ void QueuedSource::finished(const QString &id, const Outcome &outcome)
         m_retry.start(kRetryMs);
         return;
     }
+    // Gone out or dropped, so what folded into it can no longer be undone.
+    m_folded.removeIf([&id](const auto &entry) { return entry.value().second.id == id; });
     const auto found = std::find_if(m_changes.cbegin(), m_changes.cend(),
                                     [&id](const PendingChange &c) { return c.id == id; });
     if (found != m_changes.cend()) {

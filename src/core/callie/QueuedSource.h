@@ -94,6 +94,9 @@ public:
 
 private:
     void add(PendingChange change, const Created &done);
+    /// Notes how a creation not yet sent was before a later change folded into
+    /// it, and offers that change to be undone like any other.
+    void folded(qsizetype index, const PendingChange &before, const QString &what);
     void send(const PendingChange &change);
     void finished(const QString &id, const Outcome &outcome);
     void save() const;
@@ -104,6 +107,9 @@ private:
     QList<PendingChange> m_changes;
     /// The change on its way to the server, which can no longer be cancelled.
     QString m_sending;
+    /// Creations as they were before a change folded into them, by the id
+    /// that undoes that change, with where they stood in the queue.
+    QHash<QString, std::pair<qsizetype, PendingChange>> m_folded;
     QString m_error;
     Now m_now;
     Online m_online;

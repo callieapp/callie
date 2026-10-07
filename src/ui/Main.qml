@@ -540,7 +540,7 @@ ApplicationWindow {
 
                         Menu {
                             id: helpMenu
-                            padding: Theme.space1
+                            padding: Theme.space2
 
                             background: Rectangle {
                                 implicitWidth: 200
@@ -566,7 +566,12 @@ ApplicationWindow {
                                 text: qsTr("Report a bug...")
                                 onTriggered: Support.reportBug()
                             }
-                            MenuSeparator {}
+                            MenuSeparator {
+                                contentItem: Rectangle {
+                                    implicitHeight: 1
+                                    color: Theme.border
+                                }
+                            }
                             MenuEntry {
                                 text: qsTr("What's new")
                                 onTriggered: whatsNew.open()

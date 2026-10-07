@@ -65,6 +65,7 @@ qt_add_qml_module(callieui
         Tip.qml
         Toggle.qml
         ZonePicker.qml
+        InvitesTray.qml
         SettingsDialog.qml
         AccountsSection.qml
         ThemeEditor.qml

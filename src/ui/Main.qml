@@ -65,17 +65,29 @@ ApplicationWindow {
         view.showRow(row)
     }
 
+    /// Shows the event with this uid starting at `start` on its day, with its details.
+    function revealEvent(day, uid, start) {
+        window.show()
+        window.raise()
+        window.requestActivate()
+        window.revealUid = uid
+        window.revealStart = start
+        window.showDay(day)
+        window.reveal()
+    }
+
     Connections {
         target: Reminders
         function onOpenRequested(day, uid, start) {
-            window.show()
-            window.raise()
-            window.requestActivate()
-            window.revealUid = uid
-            window.revealStart = start
-            window.showDay(day)
-            window.reveal()
+            window.revealEvent(day, uid, start)
         }
+    }
+
+    InvitesModel {
+        id: invites
+        source: window.source
+        now: Clock.now
+        hiddenCalendars: Settings.hiddenCalendars
     }
 
     Connections {
@@ -317,6 +329,67 @@ ApplicationWindow {
                     rightMargin: Theme.space4
                 }
                 spacing: Theme.space4
+
+                // Invitations waiting for an answer, with their count.
+                AbstractButton {
+                    id: invitesButton
+                    anchors.verticalCenter: parent.verticalCenter
+                    // As tall as the sync chip beside it.
+                    width: syncStatus.height
+                    height: syncStatus.height
+                    Accessible.name: invites.count > 0 ? qsTr("%1 invitations waiting").arg(
+                                                             invites.count) : qsTr("Invitations")
+                    onClicked: invitesTray.opened ? invitesTray.close() : invitesTray.open()
+
+                    HoverHandler {
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
+                    background: Rectangle {
+                        radius: height / 2
+                        color: invitesButton.hovered ? Theme.surfaceAlt : "transparent"
+                        border.width: invitesButton.visualFocus ? 2 : 0
+                        border.color: Theme.text
+                    }
+                    contentItem: Item {
+                        Glyph {
+                            anchors.centerIn: parent
+                            width: 15
+                            height: 15
+                            stroke: Theme.fineGlyphStroke
+                            name: "bell"
+                            color: invites.count > 0 ? Theme.text : Theme.textFaint
+                        }
+                        Rectangle {
+                            visible: invites.count > 0
+                            x: parent.width - width + 2
+                            y: -2
+                            width: Math.max(height, badgeText.implicitWidth + Theme.space2)
+                            height: Theme.textXs + Theme.space1 * 2
+                            radius: height / 2
+                            color: Theme.accent
+
+                            Text {
+                                id: badgeText
+                                anchors.centerIn: parent
+                                text: invites.count > 99 ? "99+" : invites.count
+                                color: Theme.accentText
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.textXs
+                                font.weight: Font.ExtraBold
+                            }
+                        }
+                    }
+
+                    InvitesTray {
+                        id: invitesTray
+                        y: invitesButton.height + Theme.space3
+                        x: invitesButton.width - width
+                        model: invites
+                        source: window.source
+                        onJumpRequested: (day, uid, start) => window.revealEvent(day, uid, start)
+                    }
+                }
 
                 // Sync now; it turns while a sync runs.
                 AbstractButton {

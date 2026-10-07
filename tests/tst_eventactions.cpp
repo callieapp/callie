@@ -63,6 +63,7 @@ private Q_SLOTS:
     void moveGivesNewTimes();
     void changesBecomeAnEdit();
     void allDayKeepsItsDays();
+    void editorTimesFollowTheZone();
     void editsReachTheWholeSeries();
     void mailGoesToTheOtherGuests();
     void failureIsReportedForItsEvent();
@@ -189,6 +190,25 @@ void TestEventActions::allDayKeepsItsDays()
     QCOMPARE(edit.start->date(), QDate(2026, 10, 8));
     QCOMPARE(edit.end->date(), QDate(2026, 10, 9));
     QCOMPARE(edit.start->time(), QTime(0, 0));
+}
+
+void TestEventActions::editorTimesFollowTheZone()
+{
+    // New York springs forward on 8 March 2026.
+    const QString zone = u"America/New_York"_s;
+    const QDateTime day = QDate(2026, 3, 8).startOfDay();
+    const QDateTime ten = EventActions::at(day, 10 * 60, zone);
+    QCOMPARE(ten.toTimeZone(QTimeZone(zone.toUtf8())).time(), QTime(10, 0));
+    QCOMPARE(ten.toUTC().time(), QTime(14, 0));
+    QCOMPARE(EventActions::minutesOf(ten, zone), 10 * 60);
+    QCOMPARE(EventActions::dayOf(ten, zone).date(), QDate(2026, 3, 8));
+    // 23:30 in New York is the next day in UTC.
+    const QDateTime late = EventActions::at(day, 23 * 60 + 30, zone);
+    QCOMPARE(EventActions::dayOf(late, zone).date(), QDate(2026, 3, 8));
+    QCOMPARE(EventActions::dayOf(late, u"UTC"_s).date(), QDate(2026, 3, 9));
+
+    QCOMPARE(EventActions::daysBetween(day, EventActions::addDays(day, 3)), 3);
+    QCOMPARE(EventActions::addDays(day, 1).time(), QTime(0, 0));
 }
 
 void TestEventActions::editsReachTheWholeSeries()

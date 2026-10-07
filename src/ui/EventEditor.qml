@@ -77,10 +77,14 @@ Column {
             c.allDay = allDay
             c.zone = zone
         }
-        const was = root.actions.repeatChoice(event.recurrence || [], root.actions.dayOf(event.start,
-                                                                                         zone))
-        if (repeat !== was && repeat !== "custom")
-            c.recurrence = root.actions.repeatRule(repeat, startDay)
+        const day = root.actions.dayOf(event.start, zone)
+        const was = root.actions.repeatChoice(event.recurrence || [], day)
+        // A rule names its day, so a moved start day rewrites it.
+        const moved = root.actions.daysBetween(day, startDay) !== 0
+        const rule = root.actions.repeatRule(repeat, startDay)
+        const same = JSON.stringify(rule) === JSON.stringify(event.recurrence || [])
+        if (repeat !== "custom" && (repeat !== was || moved) && !same)
+            c.recurrence = rule
         if (JSON.stringify(guests) !== JSON.stringify(event.attendees || []))
             c.guests = guests
         if (videoCall !== ((event.conferenceUrl || "").toString() !== ""))
@@ -88,8 +92,14 @@ Column {
         return c
     }
 
+    /// The end comes after the start.
+    function valid() {
+        const days = root.actions.daysBetween(startDay, endDay)
+        return days > 0 || (days === 0 && (allDay || endMinutes > startMinutes))
+    }
+
     function save() {
-        if (title.trim() === "")
+        if (title.trim() === "" || !valid())
             return
         if (repeating && !asking) {
             asking = true
@@ -140,9 +150,9 @@ Column {
             day: root.startDay
             onPicked: day => {
                 // The end keeps its distance from the start.
-                const shift = day.getTime() - root.startDay.getTime()
+                const shift = root.actions.daysBetween(root.startDay, day)
                 root.startDay = day
-                root.endDay = new Date(root.endDay.getTime() + shift)
+                root.endDay = root.actions.addDays(root.endDay, shift)
             }
         }
         TimePicker {
@@ -181,7 +191,14 @@ Column {
         width: parent.width
         text: qsTr("All day")
         checked: root.allDay
-        onToggled: root.allDay = checked
+        onToggled: {
+            root.allDay = checked
+            // An all-day event's times are both midnight; give it an hour.
+            if (!checked && !root.valid()) {
+                root.startMinutes = 9 * 60
+                root.endMinutes = 10 * 60
+            }
+        }
     }
 
     // Repeat, from the choices for the start day.
@@ -390,6 +407,8 @@ Column {
             spacing: Theme.space2
 
             StickerButton {
+                // A rule belongs to the series, not one occurrence.
+                visible: root.changes().recurrence === undefined
                 text: qsTr("This event")
                 onClicked: root.saveFor("this")
             }
@@ -411,7 +430,7 @@ Column {
         StickerButton {
             accent: true
             text: qsTr("Save")
-            enabled: root.title.trim() !== "" && !root.actions.busy
+            enabled: root.title.trim() !== "" && root.valid() && !root.actions.busy
             onClicked: root.save()
         }
         StickerButton {

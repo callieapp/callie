@@ -73,9 +73,8 @@ AbstractButton {
                     glyph: "chevron-left"
                     Accessible.name: qsTr("Previous month")
                     onClicked: {
-                        const d = new Date(month.month)
-                        d.setMonth(d.getMonth() - 1)
-                        month.month = d
+                        const d = month.month
+                        month.month = new Date(d.getFullYear(), d.getMonth() - 1, 1)
                     }
                 }
                 Text {
@@ -92,9 +91,8 @@ AbstractButton {
                     glyph: "chevron-right"
                     Accessible.name: qsTr("Next month")
                     onClicked: {
-                        const d = new Date(month.month)
-                        d.setMonth(d.getMonth() + 1)
-                        month.month = d
+                        const d = month.month
+                        month.month = new Date(d.getFullYear(), d.getMonth() + 1, 1)
                     }
                 }
             }

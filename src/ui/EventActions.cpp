@@ -104,6 +104,16 @@ int EventActions::minutesOf(const QDateTime &time, const QString &zone)
     return clock.hour() * 60 + clock.minute();
 }
 
+int EventActions::daysBetween(const QDateTime &from, const QDateTime &to)
+{
+    return int(from.date().daysTo(to.date()));
+}
+
+QDateTime EventActions::addDays(const QDateTime &day, int days)
+{
+    return day.date().addDays(days).startOfDay();
+}
+
 QVariantList EventActions::repeatChoices(const QDateTime &day)
 {
     QVariantList list;

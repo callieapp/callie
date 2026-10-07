@@ -36,11 +36,15 @@ public:
     void respond(const Event &event, const QString &status, bool wholeSeries,
                  Created done) override;
     void deleteEvent(const Event &event, bool wholeSeries, Created done) override;
+    /// Moves only the occurrence, whatever `wholeSeries` says.
+    void moveEvent(const Event &event, const QDateTime &start, const QDateTime &end,
+                   bool wholeSeries, Created done) override;
 
 private:
     QList<Event> m_created;
     QHash<QString, QString> m_answers;
     QSet<QString> m_deleted;
+    QHash<QString, std::pair<QDateTime, QDateTime>> m_moved;
     std::function<QDateTime()> m_now;
     QDateTime m_synced;
     QList<CalendarInfo> m_calendars;

@@ -66,6 +66,10 @@ public:
     /// Deletes the target and drops it from the cache.
     void remove(const Account &account, const Target &target, Created done);
 
+    /// Gives an event, occurrence or series new times, in the zone they carry.
+    void move(const Account &account, const QString &calendarId, const QString &eventId,
+              const QDateTime &start, const QDateTime &end, Created done);
+
 Q_SIGNALS:
     /// Emitted after each calendar's changes are stored.
     void changed(const callie::Account &account);
@@ -79,6 +83,9 @@ private:
     void calendarDone(const std::shared_ptr<Run> &run);
     void finish(const std::shared_ptr<Run> &run);
     void record(bool stored);
+    /// Patches `fields` into an event and stores what Google returns.
+    void patch(const Account &account, const QString &calendarId, const QString &eventId,
+               const QJsonObject &fields, const QString &failure, Created done);
     /// Runs `call` with an access token. If Google rejects the token, `call`
     /// asks through `retry`, and the token is refreshed for one more try.
     using Retry = std::function<void()>;

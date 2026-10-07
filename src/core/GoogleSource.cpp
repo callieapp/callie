@@ -229,6 +229,44 @@ void GoogleSource::deleteEvent(const Event &event, bool wholeSeries, Created don
     m_sync->remove(calendar->first, target(calendar->second, event, wholeSeries), std::move(done));
 }
 
+void GoogleSource::moveEvent(const Event &event, const QDateTime &start, const QDateTime &end,
+                             bool wholeSeries, Created done)
+{
+    const auto calendar = splitCalendarId(event.calendarId);
+    if (!m_sync || !calendar) {
+        done(tr("Callie is not connected to that event's account right now."));
+        return;
+    }
+    if (event.allDay) {
+        done(tr("All-day events cannot be moved to a time yet."));
+        return;
+    }
+    const auto &[account, calendarId] = *calendar;
+    const bool series = wholeSeries && !event.seriesId.isEmpty();
+    // An occurrence never changed before is stored only as its series, whose
+    // zone it shares.
+    std::optional<GoogleEvent> stored =
+        m_cache.event(account, calendarId, series ? event.seriesId : event.eventId);
+    if (!stored && !event.seriesId.isEmpty())
+        stored = m_cache.event(account, calendarId, event.seriesId);
+    const QTimeZone zone = stored && !stored->start.timeZone.isEmpty()
+                               ? QTimeZone(stored->start.timeZone.toUtf8())
+                               : start.timeZone();
+    QDateTime newStart = start;
+    QDateTime newEnd = end;
+    if (series) {
+        if (!stored || !stored->start.dateTime.isValid()) {
+            done(tr("Callie does not have this series' times yet; try again after a sync."));
+            return;
+        }
+        // Every occurrence moves by the shift dragged on this one.
+        newStart = stored->start.dateTime.addSecs(event.start.secsTo(start));
+        newEnd = stored->end.dateTime.addSecs(event.end.secsTo(end));
+    }
+    m_sync->move(account, calendarId, series ? event.seriesId : event.eventId,
+                 newStart.toTimeZone(zone), newEnd.toTimeZone(zone), std::move(done));
+}
+
 QVariantList GoogleSource::syncReport() const
 {
     QVariantList report;

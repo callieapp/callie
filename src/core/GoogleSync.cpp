@@ -150,32 +150,51 @@ void GoogleSync::respond(const Account &account, const Target &target, const QSt
         done(tr("You are not a guest of this event."));
         return;
     }
-    const QJsonObject fields{{u"attendees"_s, attendees}};
+    patch(account, target.calendarId, target.eventId, {{u"attendees"_s, attendees}},
+          tr("Google could not save the answer: %1"), std::move(done));
+}
+
+void GoogleSync::move(const Account &account, const QString &calendarId, const QString &eventId,
+                      const QDateTime &start, const QDateTime &end, Created done)
+{
+    const auto time = [](const QDateTime &moment) {
+        QJsonObject json{{u"dateTime"_s, moment.toString(Qt::ISODate)}};
+        if (moment.timeSpec() == Qt::TimeZone)
+            json.insert(u"timeZone"_s, QString::fromUtf8(moment.timeZone().id()));
+        return json;
+    };
+    patch(account, calendarId, eventId, {{u"start"_s, time(start)}, {u"end"_s, time(end)}},
+          tr("Google could not move the event: %1"), std::move(done));
+}
+
+void GoogleSync::patch(const Account &account, const QString &calendarId, const QString &eventId,
+                       const QJsonObject &fields, const QString &failure, Created done)
+{
     const QPointer<GoogleSync> self(this);
     withToken(
         account, false,
-        [this, self, account, target, fields, done](const QString &token, const Retry &retry) {
-            m_api.patchEvent(
-                token, target.calendarId, target.eventId, fields,
-                [this, self, account, target, done, retry](const GoogleEvent &changedEvent,
-                                                           const GoogleApiError &error) {
-                    if (!self)
-                        return;
-                    if (error.unauthorized()) {
-                        retry();
-                        return;
-                    }
-                    if (error) {
-                        done(tr("Google could not save the answer: %1").arg(error.message));
-                        return;
-                    }
-                    if (!m_cache.storeEvents(account, target.calendarId, {changedEvent})) {
-                        done(m_cache.errorString());
-                        return;
-                    }
-                    Q_EMIT changed(account);
-                    done({});
-                });
+        [this, self, account, calendarId, eventId, fields, failure, done](const QString &token,
+                                                                          const Retry &retry) {
+            m_api.patchEvent(token, calendarId, eventId, fields,
+                             [this, self, account, calendarId, failure, done,
+                              retry](const GoogleEvent &changedEvent, const GoogleApiError &error) {
+                                 if (!self)
+                                     return;
+                                 if (error.unauthorized()) {
+                                     retry();
+                                     return;
+                                 }
+                                 if (error) {
+                                     done(failure.arg(error.message));
+                                     return;
+                                 }
+                                 if (!m_cache.storeEvents(account, calendarId, {changedEvent})) {
+                                     done(m_cache.errorString());
+                                     return;
+                                 }
+                                 Q_EMIT changed(account);
+                                 done({});
+                             });
         },
         done);
 }

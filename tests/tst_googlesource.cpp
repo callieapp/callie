@@ -64,6 +64,7 @@ private Q_SLOTS:
     void deleteAimsAtTheOccurrenceOrTheSeries();
     void answerAimsAtTheTimedOccurrence();
     void actionsNeedAKnownCalendar();
+    void moveShiftsTheOccurrenceOrTheSeries();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
     void accountsCanChangeWhileRunning();
@@ -491,6 +492,52 @@ void TestGoogleSource::answerAimsAtTheTimedOccurrence()
     // Addressed by the occurrence's UTC start, not the series or the local time.
     QVERIFY(harness.apiServer.requests.last().target.contains("/events/standup_20261006T133000Z?"));
     QCOMPARE(harness.apiServer.requests.last().method, QByteArray("PATCH"));
+}
+
+void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"x","status":"confirmed",
+            "start":{"dateTime":"2026-10-06T14:30:00Z"},"end":{"dateTime":"2026-10-06T14:45:00Z"}})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 6), QTime(0, 0), kNewYork);
+    const QList<Event> tuesday = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto standup = std::find_if(tuesday.cbegin(), tuesday.cend(),
+                                      [](const Event &e) { return e.summary == u"Standup"; });
+    QVERIFY(standup != tuesday.cend());
+    // An hour later, in Berlin terms, to show the series keeps its own zone.
+    const QTimeZone berlin("Europe/Berlin");
+    const QDateTime start = standup->start.addSecs(3600).toTimeZone(berlin);
+    const QDateTime end = standup->end.addSecs(3600).toTimeZone(berlin);
+
+    QString error;
+    const auto move = [&](bool wholeSeries) {
+        error = u"unset"_s;
+        source.moveEvent(*standup, start, end, wholeSeries,
+                         [&error](const QString &e) { error = e; });
+    };
+    const auto body = [&harness] {
+        return QJsonDocument::fromJson(harness.apiServer.requests.last().body).object();
+    };
+
+    move(false);
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    QCOMPARE(harness.apiServer.requests.last().method, QByteArray("PATCH"));
+    QVERIFY(harness.apiServer.requests.last().target.contains("/events/standup_20261006T133000Z?"));
+    QCOMPARE(body()[u"start"][u"dateTime"].toString(), u"2026-10-06T10:30:00-04:00"_s);
+    QCOMPARE(body()[u"start"][u"timeZone"].toString(), u"America/New_York"_s);
+    QCOMPARE(body()[u"end"][u"dateTime"].toString(), u"2026-10-06T10:45:00-04:00"_s);
+
+    // The whole series moves by the same hour from its first occurrence.
+    move(true);
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    QVERIFY(harness.apiServer.requests.last().target.contains("/events/standup?"));
+    QCOMPARE(body()[u"start"][u"dateTime"].toString(), u"2026-10-05T10:30:00-04:00"_s);
+    QCOMPARE(body()[u"end"][u"dateTime"].toString(), u"2026-10-05T10:45:00-04:00"_s);
 }
 
 void TestGoogleSource::actionsNeedAKnownCalendar()

@@ -101,6 +101,18 @@ public:
         done(tr("These calendars cannot delete events."));
     }
 
+    /// Moves this occurrence, or with `wholeSeries` every occurrence by the
+    /// same shift, to run from `start` to `end`.
+    virtual void moveEvent(const Event &event, const QDateTime &start, const QDateTime &end,
+                           bool wholeSeries, Created done)
+    {
+        Q_UNUSED(event)
+        Q_UNUSED(start)
+        Q_UNUSED(end)
+        Q_UNUSED(wholeSeries)
+        done(tr("These calendars cannot move events."));
+    }
+
     /// Sync status for the title bar. Sources that never sync keep the defaults.
     [[nodiscard]] virtual bool syncing() const { return false; }
     [[nodiscard]] virtual QDateTime lastSynced() const { return {}; }

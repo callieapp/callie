@@ -219,7 +219,7 @@ public:
         return (minEventHeight() * 60 + hourHeight() - 1) / hourHeight();
     }
     qreal fineGlyphStroke() const { return 1.6; }
-    int logoLift() const { return 2; }
+    int logoLift() const { return 1; }
     qreal todayShare() const { return 1.6; }
     int sidebarWidth() const { return 240; }
     int listRowHeight() const { return 28; }

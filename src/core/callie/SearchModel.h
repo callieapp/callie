@@ -22,6 +22,9 @@ class SearchModel : public QAbstractListModel
     Q_PROPERTY(QDateTime now READ now WRITE setNow NOTIFY nowChanged)
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars WRITE setHiddenCalendars NOTIFY
                    hiddenCalendarsChanged)
+    /// The IANA zone events are read in, as the views read them; empty follows
+    /// the system.
+    Q_PROPERTY(QString timeZoneId READ timeZoneId WRITE setTimeZoneId NOTIFY timeZoneIdChanged)
     Q_PROPERTY(int count READ count NOTIFY countChanged)
     /// Events are still being read; results will follow.
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
@@ -54,6 +57,8 @@ public:
     void setNow(const QDateTime &now);
     [[nodiscard]] QStringList hiddenCalendars() const { return m_hidden; }
     void setHiddenCalendars(const QStringList &calendars);
+    [[nodiscard]] QString timeZoneId() const { return m_timeZoneId; }
+    void setTimeZoneId(const QString &id);
     [[nodiscard]] int count() const { return int(m_results.size()); }
     [[nodiscard]] bool busy() const { return m_busy; }
 
@@ -69,6 +74,7 @@ Q_SIGNALS:
     void queryChanged();
     void nowChanged();
     void hiddenCalendarsChanged();
+    void timeZoneIdChanged();
     void countChanged();
     void busyChanged();
 
@@ -82,12 +88,15 @@ private:
     QString m_query;
     QDateTime m_now;
     QStringList m_hidden;
+    QString m_timeZoneId;
     QList<Event> m_pool;
     QDateTime m_loadedAt;
     bool m_stale = true;
     bool m_busy = false;
     quint64 m_generation = 0;
     QList<Event> m_results;
+    /// The clock when the results were last laid out, for telling past from upcoming.
+    QDateTime m_shownAt;
 };
 
 } // namespace callie

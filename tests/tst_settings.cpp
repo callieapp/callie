@@ -121,12 +121,6 @@ void TestSettings::weekSettingsResetAndSignal()
     QCOMPARE(hours.size(), 2);
     QCOMPARE(settings.weekStart(), 0);
     QCOMPARE(settings.workStart(), 9 * 60);
-
-    // The weekend follows the region.
-    const QDate saturday(2026, 10, 10);
-    QCOMPARE(Settings::isWorkDay(saturday.startOfDay()),
-             QLocale().weekdays().contains(Qt::Saturday));
-    QVERIFY(Settings::isWorkDay(QDate(2026, 10, 7).startOfDay()));
 }
 
 void TestSettings::workingHoursStayInOrder()

@@ -167,11 +167,6 @@ void Settings::setWeekNumbers(bool show)
     Q_EMIT weekChanged();
 }
 
-bool Settings::isWorkDay(const QDateTime &day)
-{
-    return QLocale().weekdays().contains(Qt::DayOfWeek(day.date().dayOfWeek()));
-}
-
 void Settings::setWorkStart(int minutes)
 {
     // Working hours are at least half an hour, so the end moves along if needed.

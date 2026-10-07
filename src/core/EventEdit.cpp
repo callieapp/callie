@@ -18,8 +18,22 @@ void applyEdit(Event &occurrence, const Event &edited, const EventEdit &edit)
         occurrence.description = *edit.description;
     if (edit.recurrence)
         occurrence.recurrence = *edit.recurrence;
-    if (edit.guests)
+    if (edit.guests) {
         occurrence.attendees = *edit.guests;
+        // Those who stay keep their answers; the user stays; the new have none yet.
+        QList<Guest> guests;
+        for (const Guest &guest : std::as_const(occurrence.guests)) {
+            if (guest.self || edit.guests->contains(guest.email, Qt::CaseInsensitive))
+                guests.append(guest);
+        }
+        for (const QString &email : *edit.guests) {
+            if (std::none_of(guests.cbegin(), guests.cend(), [&email](const Guest &g) {
+                    return g.email.compare(email, Qt::CaseInsensitive) == 0;
+                }))
+                guests.append({email, email, QStringLiteral("needsAction"), false, false});
+        }
+        occurrence.guests = guests;
+    }
     if (edit.videoCall && !*edit.videoCall)
         occurrence.conferenceUrl.clear();
 

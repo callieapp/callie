@@ -183,8 +183,12 @@ void GoogleCalendarApi::insertEvent(const QString &accessToken, const QString &c
 {
     QUrl url = m_baseUrl.resolved(
         QUrl(QStringLiteral("calendars/%1/events").arg(encoded(calendarId)), QUrl::StrictMode));
-    url.setQuery(conference ? QStringLiteral("sendUpdates=all&conferenceDataVersion=1")
-                            : QStringLiteral("sendUpdates=all"));
+    QStringList query;
+    if (event.contains(u"attendees"_s))
+        query << QStringLiteral("sendUpdates=all");
+    if (conference)
+        query << QStringLiteral("conferenceDataVersion=1");
+    url.setQuery(query.join(u'&'));
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));

@@ -71,6 +71,8 @@ private Q_SLOTS:
     void editingOnlyTheEndKeepsTheSeriesClock();
     void allDayClearsTheTime();
     void followingEditsSplitTheSeries();
+    void splitStopsWhenTheNewSeriesFails();
+    void splitGoesOnWhenTheNewSeriesExists();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -82,6 +84,11 @@ private Q_SLOTS:
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<GoogleCache> m_cache;
+
+    /// Renames Wednesday's standup and the ones after it, with `handler`
+    /// answering Google's part, and gives back what Google was asked.
+    QList<FakeHttpServer::Request> splitStandup(decltype(FakeHttpServer::handler) handler,
+                                                QString &error);
 };
 
 void TestGoogleSource::init()
@@ -650,31 +657,56 @@ void TestGoogleSource::allDayClearsTheTime()
     QCOMPARE(body[u"end"][u"date"].toString(), u"2026-10-07"_s);
 }
 
-void TestGoogleSource::followingEditsSplitTheSeries()
+QList<FakeHttpServer::Request>
+TestGoogleSource::splitStandup(decltype(FakeHttpServer::handler) handler, QString &error)
 {
     SyncHarness harness(*m_cache);
     harness.store.secrets.insert(kAccount.id, u"rt"_s);
-    harness.apiServer.handler = [](const FakeHttpServer::Request &request) {
-        return FakeHttpServer::Response(200, request.method == "POST"
-                                                 ? R"({"id":"split","status":"confirmed"})"
-                                                 : R"({"id":"standup","status":"confirmed"})");
-    };
+    harness.apiServer.handler = std::move(handler);
     GoogleSource source(*m_cache, {kAccount});
     source.setSync(&harness.sync);
     const QDateTime from(QDate(2026, 10, 7), QTime(0, 0), kNewYork);
     const QList<Event> events = source.eventsBetween(from, from.addDays(1), kNewYork);
     const auto standup = std::find_if(events.cbegin(), events.cend(),
                                       [](const Event &e) { return e.summary == u"Standup"; });
-    QVERIFY(standup != events.cend());
-
+    if (standup == events.cend())
+        return {};
     EventEdit edit;
     edit.summary = u"Sync"_s;
-    QString error = u"unset"_s;
+    bool done = false;
     source.updateEvent(*standup, edit, EditScope::ThisAndFollowing,
-                       [&error](const QString &e) { error = e; });
-    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
-    const QList<FakeHttpServer::Request> &requests = harness.apiServer.requests;
-    QCOMPARE(requests.size(), 2);
+                       [&error, &done](const QString &e) {
+                           error = e;
+                           done = true;
+                       });
+    QTest::qWaitFor([&done] { return done; }, 5000);
+    return harness.apiServer.requests;
+}
+
+void TestGoogleSource::followingEditsSplitTheSeries()
+{
+    // Occurrences moved on their own, one before the split and one after.
+    QVERIFY(m_cache->storeEvents(
+        kAccount, u"mine"_s,
+        {parsed(R"({"id":"standup_20261006T133000Z","recurringEventId":"standup",
+            "status":"confirmed","summary":"Standup",
+            "originalStartTime":{"dateTime":"2026-10-06T13:30:00Z"},
+            "start":{"dateTime":"2026-10-06T14:30:00Z"},"end":{"dateTime":"2026-10-06T14:45:00Z"}})"),
+         parsed(R"({"id":"standup_20261008T133000Z","recurringEventId":"standup",
+            "status":"confirmed","summary":"Standup",
+            "originalStartTime":{"dateTime":"2026-10-08T13:30:00Z"},
+            "start":{"dateTime":"2026-10-08T14:30:00Z"},"end":{"dateTime":"2026-10-08T14:45:00Z"}})")}));
+    QString error;
+    const QList<FakeHttpServer::Request> requests = splitStandup(
+        [](const FakeHttpServer::Request &request) {
+            return FakeHttpServer::Response(request.method == "DELETE" ? 204 : 200,
+                                            request.method == "POST"
+                                                ? R"({"id":"split","status":"confirmed"})"
+                                                : R"({"id":"standup","status":"confirmed"})");
+        },
+        error);
+    QCOMPARE(error, QString());
+    QCOMPARE(requests.size(), 3);
 
     // A new series from Wednesday with the three standups left, under the new name...
     QCOMPARE(requests[0].method, QByteArray("POST"));
@@ -686,12 +718,46 @@ void TestGoogleSource::followingEditsSplitTheSeries()
     QCOMPARE(created[u"recurrence"].toArray(), QJsonArray{u"RRULE:FREQ=DAILY;COUNT=3"_s});
     QCOMPARE(created[u"id"].toString().size(), 32);
 
-    // ...then the old one ends on Tuesday.
+    // ...then the old one ends on Tuesday...
     QCOMPARE(requests[1].method, QByteArray("PATCH"));
     QVERIFY(requests[1].target.contains("/events/standup?"));
     QCOMPARE(
         QJsonDocument::fromJson(requests[1].body).object(),
         (QJsonObject{{u"recurrence"_s, QJsonArray{u"RRULE:FREQ=DAILY;UNTIL=20261007T132959Z"_s}}}));
+
+    // ...and Thursday's moved standup, which it no longer has, goes.
+    QCOMPARE(requests[2].method, QByteArray("DELETE"));
+    QVERIFY(requests[2].target.contains("/events/standup_20261008T133000Z?"));
+}
+
+void TestGoogleSource::splitStopsWhenTheNewSeriesFails()
+{
+    QString error;
+    const QList<FakeHttpServer::Request> requests = splitStandup(
+        [](const FakeHttpServer::Request &) {
+            return FakeHttpServer::Response(403, R"({"error":{"message":"Forbidden"}})");
+        },
+        error);
+    QVERIFY(error.contains(u"Forbidden"_s));
+    // The old series is left whole.
+    QCOMPARE(requests.size(), 1);
+    QCOMPARE(requests[0].method, QByteArray("POST"));
+}
+
+void TestGoogleSource::splitGoesOnWhenTheNewSeriesExists()
+{
+    // An earlier try created it, though its answer was lost.
+    QString error;
+    const QList<FakeHttpServer::Request> requests = splitStandup(
+        [](const FakeHttpServer::Request &request) {
+            return request.method == "POST"
+                       ? FakeHttpServer::Response(409, R"({"error":{"message":"duplicate"}})")
+                       : FakeHttpServer::Response(200, R"({"id":"standup","status":"confirmed"})");
+        },
+        error);
+    QCOMPARE(error, QString());
+    QCOMPARE(requests.size(), 2);
+    QCOMPARE(requests[1].method, QByteArray("PATCH"));
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

@@ -71,6 +71,7 @@ qt_add_qml_module(callieui
         Field.qml
         LookEditor.qml
         SearchPopup.qml
+        UndoToast.qml
         SettingsDialog.qml
         AccountsSection.qml
         ThemeEditor.qml

@@ -228,4 +228,54 @@ QList<Event> expandGoogleEvents(const QList<GoogleEvent> &events, const QDateTim
     return result;
 }
 
+SplitRecurrence splitRecurrence(const GoogleEvent &series, const QDateTime &at)
+{
+    const bool allDay = series.start.isAllDay();
+    // An all-day series' UNTIL is a date, a timed one's a UTC time.
+    const QString until = allDay ? at.date().addDays(-1).toString(u"yyyyMMdd"_s)
+                                 : at.addSecs(-1).toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s);
+    // Occurrences before `at`, which a count no longer has to cover.
+    const auto passed = [&] {
+        const QTimeZone zone = series.start.timeZone.isEmpty()
+                                   ? at.timeZone()
+                                   : QTimeZone(series.start.timeZone.toUtf8());
+        const QDateTime start = allDay ? QDateTime(series.start.date, QTime(0, 0), at.timeZone())
+                                       : series.start.dateTime.toTimeZone(zone);
+        KCalendarCore::Recurrence recurrence;
+        buildRecurrence(recurrence, series, start, allDay);
+        return int(recurrence.timesInInterval(start, at.addSecs(-1)).size());
+    };
+
+    SplitRecurrence split;
+    for (const QString &line : series.recurrence) {
+        if (!line.startsWith(u"RRULE:"_s, Qt::CaseInsensitive)) {
+            split.before.append(line);
+            split.after.append(line);
+            continue;
+        }
+        QStringList parts;
+        int count = 0;
+        QString ends;
+        for (const QString &part : line.mid(6).split(u';', Qt::SkipEmptyParts)) {
+            const QString name = part.section(u'=', 0, 0).toUpper();
+            if (name == u"COUNT")
+                count = part.section(u'=', 1).toInt();
+            else if (name == u"UNTIL")
+                ends = part;
+            else
+                parts.append(part);
+        }
+        const QString rule = u"RRULE:"_s + parts.join(u';');
+        split.before.append(rule + u";UNTIL="_s + until);
+        if (count > 0)
+            split.after.append(rule + u";COUNT="_s +
+                               QString::number(std::max(1, count - passed())));
+        else if (!ends.isEmpty())
+            split.after.append(rule + u';' + ends);
+        else
+            split.after.append(rule);
+    }
+    return split;
+}
+
 } // namespace callie

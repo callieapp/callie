@@ -203,10 +203,19 @@ bool sameSeries(const Event &e, const PendingChange &c)
            (e.seriesId == c.event.seriesId || e.eventId == c.event.seriesId);
 }
 
+// Where an occurrence sat in its series before any move.
+QDateTime originalStart(const Event &e)
+{
+    return e.recurrenceId.isValid() ? e.recurrenceId : e.start;
+}
+
 bool targets(const Event &e, const PendingChange &c)
 {
     if (c.wholeSeries && sameSeries(e, c))
         return true;
+    if (c.kind == PendingChange::Kind::Update && c.scope == EditScope::ThisAndFollowing &&
+        sameSeries(e, c))
+        return originalStart(e) >= originalStart(c.event);
     return e.calendarId == c.event.calendarId && e.eventId == c.event.eventId;
 }
 
@@ -505,10 +514,6 @@ void QueuedSource::folded(qsizetype index, const PendingChange &before, const QS
 void QueuedSource::updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
                                Created done)
 {
-    if (scope == EditScope::ThisAndFollowing) {
-        done(tr("Changing this and the following events is not possible yet."));
-        return;
-    }
     // An event not created yet is created as edited, if a creation can say it all.
     for (qsizetype i = 0; i < m_changes.size(); ++i) {
         PendingChange &change = m_changes[i];

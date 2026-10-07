@@ -68,6 +68,9 @@ private Q_SLOTS:
     void dateExdateRemovesOccurrence();
     void allDayStartsAtMidnightInViewZone();
     void unreadableRuleFallsBackToFirstOccurrence();
+    void splitEndsTheSeriesBeforeTheOccurrence();
+    void splitSharesACount();
+    void splitAllDaySeriesEndsOnADate();
 };
 
 void TestGoogleRecurrence::guestsListPeopleOrganizerFirst()
@@ -444,6 +447,49 @@ void TestGoogleRecurrence::invitationsAndPermissions()
     QVERIFY(!organizer.canRespond);
     QVERIFY(organizer.canEdit);
     QCOMPARE(organizer.attendees, QStringList{u"pat@example.com"_s});
+}
+
+void TestGoogleRecurrence::splitEndsTheSeriesBeforeTheOccurrence()
+{
+    GoogleEvent series = parsed(kStandup);
+    series.recurrence << u"EXDATE;TZID=America/New_York:20261012T093000"_s;
+    const QDateTime at(QDate(2026, 10, 19), QTime(9, 30), kNewYork);
+    const SplitRecurrence split = splitRecurrence(series, at);
+    QCOMPARE(split.before, (QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T132959Z"_s,
+                                        series.recurrence[1]}));
+    QCOMPARE(split.after, (QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO"_s, series.recurrence[1]}));
+
+    // The old series stops just short of the split.
+    series.recurrence = split.before;
+    const QList<Event> left = expand({series}, utc(2026, 10, 1), utc(2026, 12, 1));
+    QCOMPARE(left.size(), 1);
+    QCOMPARE(left.first().start, QDateTime(QDate(2026, 10, 5), QTime(9, 30), kNewYork));
+}
+
+void TestGoogleRecurrence::splitSharesACount()
+{
+    GoogleEvent series = parsed(kStandup);
+    series.recurrence = {u"RRULE:FREQ=WEEKLY;COUNT=5;BYDAY=MO"_s};
+    const SplitRecurrence split =
+        splitRecurrence(series, QDateTime(QDate(2026, 10, 19), QTime(9, 30), kNewYork));
+    QCOMPARE(split.before, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261019T132959Z"_s});
+    // Two came before, so three are left.
+    QCOMPARE(split.after, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=3"_s});
+
+    series.recurrence = {u"RRULE:FREQ=DAILY;UNTIL=20261231"_s};
+    QCOMPARE(splitRecurrence(series, QDateTime(QDate(2026, 10, 19), QTime(9, 30), kNewYork)).after,
+             QStringList{u"RRULE:FREQ=DAILY;UNTIL=20261231"_s});
+}
+
+void TestGoogleRecurrence::splitAllDaySeriesEndsOnADate()
+{
+    const GoogleEvent series = parsed(R"({"id":"bins","summary":"Bins",
+        "start":{"date":"2026-10-06"},"end":{"date":"2026-10-07"},
+        "recurrence":["RRULE:FREQ=WEEKLY"]})");
+    const SplitRecurrence split =
+        splitRecurrence(series, QDateTime(QDate(2026, 10, 20), QTime(0, 0), kNewYork));
+    QCOMPARE(split.before, QStringList{u"RRULE:FREQ=WEEKLY;UNTIL=20261019"_s});
+    QCOMPARE(split.after, QStringList{u"RRULE:FREQ=WEEKLY"_s});
 }
 
 QTEST_GUILESS_MAIN(TestGoogleRecurrence)

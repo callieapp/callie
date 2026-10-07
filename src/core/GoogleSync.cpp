@@ -77,11 +77,17 @@ void GoogleSync::sync(const Account &account, Done done)
 void GoogleSync::createEvent(const Account &account, const QString &calendarId,
                              const EventDraft &draft, Created done)
 {
-    const QJsonObject event = googleEventJson(draft);
+    insert(account, calendarId, googleEventJson(draft), false, std::move(done));
+}
+
+void GoogleSync::insert(const Account &account, const QString &calendarId, const QJsonObject &event,
+                        bool conference, Created done)
+{
     const QPointer<GoogleSync> self(this);
     withToken(
         account, false,
-        [this, self, account, calendarId, event, done](const QString &token, const Retry &retry) {
+        [this, self, account, calendarId, event, conference, done](const QString &token,
+                                                                   const Retry &retry) {
             m_api.insertEvent(
                 token, calendarId, event,
                 [this, self, account, calendarId, done, retry](const GoogleEvent &created,
@@ -112,7 +118,8 @@ void GoogleSync::createEvent(const Account &account, const QString &calendarId,
                     qCInfo(lcSync) << "created an event in" << calendarId;
                     Q_EMIT changed(account);
                     done({});
-                });
+                },
+                conference);
         },
         done);
 }

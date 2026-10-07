@@ -406,7 +406,7 @@ Column {
         Text {
             width: parent.width
             wrapMode: Text.Wrap
-            text: qsTr("Change this event, or every one in the series?")
+            text: qsTr("Change this event, the ones after it too, or every one in the series?")
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
@@ -421,6 +421,10 @@ Column {
                 visible: root.asking && root.changes("this").recurrence === undefined
                 text: qsTr("This event")
                 onClicked: root.saveFor("this")
+            }
+            StickerButton {
+                text: qsTr("This and following")
+                onClicked: root.saveFor("following")
             }
             StickerButton {
                 text: qsTr("All events")

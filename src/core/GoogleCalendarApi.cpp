@@ -179,10 +179,13 @@ void GoogleCalendarApi::send(QNetworkReply *reply, Page page)
 }
 
 void GoogleCalendarApi::insertEvent(const QString &accessToken, const QString &calendarId,
-                                    const QJsonObject &event, EventResult result)
+                                    const QJsonObject &event, EventResult result, bool conference)
 {
-    QNetworkRequest request(m_baseUrl.resolved(
-        QUrl(QStringLiteral("calendars/%1/events").arg(encoded(calendarId)), QUrl::StrictMode)));
+    QUrl url = m_baseUrl.resolved(
+        QUrl(QStringLiteral("calendars/%1/events").arg(encoded(calendarId)), QUrl::StrictMode));
+    url.setQuery(conference ? QStringLiteral("sendUpdates=all&conferenceDataVersion=1")
+                            : QStringLiteral("sendUpdates=all"));
+    QNetworkRequest request(url);
     request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     send(m_network->post(request, QJsonDocument(event).toJson(QJsonDocument::Compact)),

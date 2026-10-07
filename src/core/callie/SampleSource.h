@@ -53,7 +53,7 @@ private:
     {
         Event edited;
         EventEdit edit;
-        bool wholeSeries = false;
+        EditScope scope = EditScope::ThisEvent;
     };
     QList<Edit> m_edits;
     std::function<QDateTime()> m_now;

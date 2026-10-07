@@ -135,9 +135,10 @@ public:
     void fetchEvents(const QString &accessToken, const QString &calendarId,
                      const QString &syncToken, EventsResult result);
 
-    /// Creates an event from googleEventJson() and returns it as Google stored it.
+    /// Creates an event from googleEventJson() and returns it as Google stored it,
+    /// inviting its guests. With `conference`, the event may ask for a video call.
     void insertEvent(const QString &accessToken, const QString &calendarId,
-                     const QJsonObject &event, EventResult result);
+                     const QJsonObject &event, EventResult result, bool conference = false);
 
     /// Changes `fields` of one event or occurrence and tells its guests. With
     /// `conference`, the fields may add or remove its video call.

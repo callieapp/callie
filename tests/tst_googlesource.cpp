@@ -70,6 +70,7 @@ private Q_SLOTS:
     void editingTheSeriesKeepsItsFirstDay();
     void editingOnlyTheEndKeepsTheSeriesClock();
     void allDayClearsTheTime();
+    void followingEditsSplitTheSeries();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -647,6 +648,50 @@ void TestGoogleSource::allDayClearsTheTime()
     QVERIFY(body[u"start"].toObject().contains(u"dateTime"));
     QVERIFY(body[u"start"][u"dateTime"].isNull());
     QCOMPARE(body[u"end"][u"date"].toString(), u"2026-10-07"_s);
+}
+
+void TestGoogleSource::followingEditsSplitTheSeries()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &request) {
+        return FakeHttpServer::Response(200, request.method == "POST"
+                                                 ? R"({"id":"split","status":"confirmed"})"
+                                                 : R"({"id":"standup","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 7), QTime(0, 0), kNewYork);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto standup = std::find_if(events.cbegin(), events.cend(),
+                                      [](const Event &e) { return e.summary == u"Standup"; });
+    QVERIFY(standup != events.cend());
+
+    EventEdit edit;
+    edit.summary = u"Sync"_s;
+    QString error = u"unset"_s;
+    source.updateEvent(*standup, edit, EditScope::ThisAndFollowing,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    const QList<FakeHttpServer::Request> &requests = harness.apiServer.requests;
+    QCOMPARE(requests.size(), 2);
+
+    // A new series from Wednesday with the three standups left, under the new name...
+    QCOMPARE(requests[0].method, QByteArray("POST"));
+    const QJsonObject created = QJsonDocument::fromJson(requests[0].body).object();
+    QCOMPARE(created[u"summary"].toString(), u"Sync"_s);
+    QCOMPARE(created[u"start"][u"dateTime"].toString(), u"2026-10-07T09:30:00-04:00"_s);
+    QCOMPARE(created[u"start"][u"timeZone"].toString(), u"America/New_York"_s);
+    QVERIFY(!created[u"start"].toObject().contains(u"date"));
+    QCOMPARE(created[u"recurrence"].toArray(), QJsonArray{u"RRULE:FREQ=DAILY;COUNT=3"_s});
+    QCOMPARE(created[u"id"].toString().size(), 32);
+
+    // ...then the old one ends on Tuesday.
+    QCOMPARE(requests[1].method, QByteArray("PATCH"));
+    QVERIFY(requests[1].target.contains("/events/standup?"));
+    QCOMPARE(
+        QJsonDocument::fromJson(requests[1].body).object(),
+        (QJsonObject{{u"recurrence"_s, QJsonArray{u"RRULE:FREQ=DAILY;UNTIL=20261007T132959Z"_s}}}));
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

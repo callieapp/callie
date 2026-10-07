@@ -70,6 +70,8 @@ void TestSettings::choicesSurviveARestart()
         settings.setView(u"month"_s);
         settings.setView(u"year"_s);
         settings.setDefaultCalendar(u"google/me/work"_s);
+        settings.setCalendarColor(u"google/me/work"_s, QColor(u"#e67c73"_s));
+        settings.setAccountName(u"me@example.com"_s, u"Work"_s);
         settings.setLastSeenVersion(u"0.1.0"_s);
         settings.setNotify(false);
         settings.setReminderMinutes(-5);
@@ -91,6 +93,10 @@ void TestSettings::choicesSurviveARestart()
     QCOMPARE(settings.theme(), u"/home/me/.config/callie/themes/mine.toml"_s);
     QCOMPARE(settings.view(), u"month"_s);
     QCOMPARE(settings.defaultCalendar(), u"google/me/work"_s);
+    QCOMPARE(settings.calendarLooks().value(u"google/me/work"_s).toMap().value(u"color"_s),
+             u"#e67c73"_s);
+    QCOMPARE(settings.accountName(u"me@example.com"_s), u"Work"_s);
+    QCOMPARE(settings.accountName(u"other@example.com"_s), u"other@example.com"_s);
     QCOMPARE(settings.lastSeenVersion(), u"0.1.0"_s);
     QVERIFY(!settings.notify());
     QCOMPARE(settings.reminderMinutes(), -1);
@@ -244,7 +250,11 @@ void TestSettings::resetForgetsEverything()
     settings.setTimeZoneId(u"Asia/Tokyo"_s);
     settings.setTheme(u"/somewhere/mine.toml"_s);
     settings.setDefaultCalendar(u"google/me/work"_s);
+    settings.setCalendarName(u"google/me/work"_s, u"Job"_s);
+    settings.setAccountName(u"me@example.com"_s, u"Work"_s);
     QSignalSpy widen(&settings, &Settings::widenTodayChanged);
+    QSignalSpy looks(&settings, &Settings::calendarLooksChanged);
+    QSignalSpy accounts(&settings, &Settings::accountNamesChanged);
     QSignalSpy calendar(&settings, &Settings::defaultCalendarChanged);
     QSignalSpy declined(&settings, &Settings::showDeclinedChanged);
 
@@ -257,6 +267,10 @@ void TestSettings::resetForgetsEverything()
     QCOMPARE(declined.size(), 0);
     QVERIFY(settings.defaultCalendar().isEmpty());
     QCOMPARE(calendar.size(), 1);
+    QVERIFY(settings.calendarLooks().isEmpty());
+    QCOMPARE(settings.accountName(u"me@example.com"_s), u"me@example.com"_s);
+    QCOMPARE(looks.size(), 1);
+    QCOMPARE(accounts.size(), 1);
     QVERIFY(!Settings(path()).widenToday());
 }
 

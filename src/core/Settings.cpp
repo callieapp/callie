@@ -24,6 +24,8 @@ const QString kWorkEnd = u"week/workEnd"_s;
 constexpr int kDayMinutes = 24 * 60;
 const QString kHiddenCalendars = u"calendars/hidden"_s;
 const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
+const QString kCalendarLooks = u"calendars/looks"_s;
+const QString kAccountNames = u"calendars/accountNames"_s;
 const QString kTheme = u"appearance/theme"_s;
 const QString kView = u"view/current"_s;
 const QString kLastSeenVersion = u"app/lastSeenVersion"_s;
@@ -67,6 +69,8 @@ void Settings::load()
     m_workEnd = std::clamp(m_store.value(kWorkEnd, 17 * 60).toInt(), m_workStart + 30, kDayMinutes);
     m_hiddenCalendars = m_store.value(kHiddenCalendars).toStringList();
     m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
+    m_calendarLooks = m_store.value(kCalendarLooks).toMap();
+    m_accountNames = m_store.value(kAccountNames).toMap();
     m_theme = m_store.value(kTheme).toString();
     const QString view = m_store.value(kView).toString();
     m_view = kViews.contains(view) ? view : u"week"_s;
@@ -350,6 +354,68 @@ void Settings::seedFromGoogle(const QHash<QString, QString> &google)
     }
 }
 
+void Settings::setCalendarName(const QString &id, const QString &name)
+{
+    QVariantMap look = m_calendarLooks.value(id).toMap();
+    const QString trimmed = name.trimmed();
+    if (look.value(u"name"_s).toString() == trimmed)
+        return;
+    if (trimmed.isEmpty())
+        look.remove(u"name"_s);
+    else
+        look.insert(u"name"_s, trimmed);
+    if (look.isEmpty())
+        m_calendarLooks.remove(id);
+    else
+        m_calendarLooks.insert(id, look);
+    m_store.setValue(kCalendarLooks, m_calendarLooks);
+    Q_EMIT calendarLooksChanged();
+}
+
+void Settings::setCalendarColor(const QString &id, const QColor &color)
+{
+    QVariantMap look = m_calendarLooks.value(id).toMap();
+    const QString name = color.isValid() ? color.name() : QString();
+    if (look.value(u"color"_s).toString() == name)
+        return;
+    if (name.isEmpty())
+        look.remove(u"color"_s);
+    else
+        look.insert(u"color"_s, name);
+    if (look.isEmpty())
+        m_calendarLooks.remove(id);
+    else
+        m_calendarLooks.insert(id, look);
+    m_store.setValue(kCalendarLooks, m_calendarLooks);
+    Q_EMIT calendarLooksChanged();
+}
+
+void Settings::resetCalendarLook(const QString &id)
+{
+    if (!m_calendarLooks.remove(id))
+        return;
+    m_store.setValue(kCalendarLooks, m_calendarLooks);
+    Q_EMIT calendarLooksChanged();
+}
+
+void Settings::setAccountName(const QString &account, const QString &name)
+{
+    const QString trimmed = name.trimmed();
+    if (m_accountNames.value(account).toString() == trimmed)
+        return;
+    if (trimmed.isEmpty())
+        m_accountNames.remove(account);
+    else
+        m_accountNames.insert(account, trimmed);
+    m_store.setValue(kAccountNames, m_accountNames);
+    Q_EMIT accountNamesChanged();
+}
+
+QString Settings::accountName(const QString &account) const
+{
+    return m_accountNames.value(account, account).toString();
+}
+
 void Settings::reset()
 {
     m_store.clear();
@@ -358,6 +424,7 @@ void Settings::reset()
     const bool declined = m_showDeclined, dim = m_dimPast, widen = m_widenToday;
     const QStringList hidden = m_hiddenCalendars;
     const QStringList collapsed = m_collapsedAccounts;
+    const QVariantMap looks = m_calendarLooks, accountNames = m_accountNames;
     const QString theme = m_theme;
     const QString view = m_view;
     const QString defaultCalendar = m_defaultCalendar;
@@ -380,6 +447,10 @@ void Settings::reset()
         Q_EMIT hiddenCalendarsChanged();
     if (collapsed != m_collapsedAccounts)
         Q_EMIT collapsedAccountsChanged();
+    if (looks != m_calendarLooks)
+        Q_EMIT calendarLooksChanged();
+    if (accountNames != m_accountNames)
+        Q_EMIT accountNamesChanged();
     if (theme != m_theme)
         Q_EMIT themeChanged();
     if (view != m_view)

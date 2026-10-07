@@ -8,7 +8,7 @@ MenuItem {
 
     /// The menu's padding around its entries. The highlight's corners follow
     /// the menu's rounded ones at that distance, so they never cross its border.
-    property int inset: Theme.space2
+    readonly property real inset: menu ? menu.padding : 0
 
     implicitHeight: 30
     leftPadding: Theme.space4

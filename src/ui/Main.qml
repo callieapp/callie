@@ -820,6 +820,23 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequences: [StandardKey.Undo]
+        onActivated: undoToast.undo()
+    }
+
+    UndoToast {
+        id: undoToast
+        source: window.source
+    }
+
+    Connections {
+        target: window.source
+        function onChangeMade(id, what) {
+            undoToast.show(id, what)
+        }
+    }
+
+    Shortcut {
         sequences: [StandardKey.Quit]
         onActivated: Qt.quit()
     }

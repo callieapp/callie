@@ -166,15 +166,16 @@ int main(int argc, char *argv[])
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
 
-    // Changes to real calendars go through a queue that shows them at once and
-    // sends them when it can. Sample data and screenshots never touch it, so
-    // they cannot send what a real Callie left waiting.
+    // Changes go through a queue that shows them at once, holds them a moment
+    // so they can be undone, and sends them when it can. Sample data gets one
+    // of its own that is never saved; screenshots change nothing, so need none.
     std::optional<callie::QueuedSource> queued;
-    if (!standalone)
+    if (useSample)
+        queued.emplace(sample, QString());
+    else if (!standalone)
         queued.emplace(google, callie::QueuedSource::defaultPath());
-    callie::CalendarSource *backend = useSample ? static_cast<callie::CalendarSource *>(&sample)
-                                      : queued  ? static_cast<callie::CalendarSource *>(&*queued)
-                                                : &google;
+    callie::CalendarSource *backend = queued ? static_cast<callie::CalendarSource *>(&*queued)
+                                             : &google;
     // Everything reads through the user's own names and colors for calendars.
     callie::LookedSource looked(*backend, settings);
     callie::CalendarSource *source = &looked;

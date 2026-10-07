@@ -26,6 +26,8 @@ qt_add_qml_module(callieui
         Reminders.cpp
         SingleInstance.h
         SingleInstance.cpp
+        StartAtLogin.h
+        StartAtLogin.cpp
         LiveQml.cpp
         SupportActions.h
         SupportActions.cpp

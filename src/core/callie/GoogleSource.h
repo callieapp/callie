@@ -59,6 +59,8 @@ private:
     /// it, with `edit` made.
     void splitSeries(const Account &account, const QString &calendarId, const Event &event,
                      const EventEdit &edit, Created done);
+    /// Deletes each target in turn, stopping at the first failure.
+    void removeAll(const Account &account, QList<GoogleSync::Target> targets, Created done);
     void flushChanges();
     /// The last sync time and errors the cache recorded for the accounts.
     void loadStatus();

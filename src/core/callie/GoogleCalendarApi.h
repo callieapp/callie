@@ -136,7 +136,8 @@ public:
                      const QString &syncToken, EventsResult result);
 
     /// Creates an event from googleEventJson() and returns it as Google stored it,
-    /// inviting its guests. With `conference`, the event may ask for a video call.
+    /// inviting its guests if it has any. With `conference`, the event may ask
+    /// for a video call.
     void insertEvent(const QString &accessToken, const QString &calendarId,
                      const QJsonObject &event, EventResult result, bool conference = false);
 

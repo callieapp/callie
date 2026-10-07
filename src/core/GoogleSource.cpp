@@ -532,10 +532,23 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
         created.insert(it.key(), value);
     }
 
+    // Occurrences changed on their own from the split on belong to the old
+    // series, which no longer has them, so they go once it is cut.
+    QList<GoogleSync::Target> stale;
+    for (const GoogleEvent &other : m_cache.events(account, calendarId)) {
+        if (other.recurringEventId != event.seriesId || other.isCancelled())
+            continue;
+        const bool after = other.originalStart.isAllDay() ? other.originalStart.date >= at.date()
+                                                          : other.originalStart.dateTime >= at;
+        if (after)
+            stale.append({calendarId, other.id, event.seriesId, other.originalStart});
+    }
+
+    // Created first, so a failure part way leaves an event twice, never missing.
     const QPointer<GoogleSource> self(this);
     m_sync->insert(account, calendarId, created, conference,
                    [this, self, account, calendarId, seriesId = event.seriesId,
-                    before = split.before, done](const Outcome &outcome) {
+                    before = split.before, stale, done](const Outcome &outcome) {
                        if (!self)
                            return;
                        if (!outcome.error.isEmpty() || !m_sync) {
@@ -545,8 +558,34 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
                        m_sync->update(
                            account, calendarId, seriesId,
                            QJsonObject{{u"recurrence"_s, QJsonArray::fromStringList(before)}},
-                           false, done);
+                           false, [this, self, account, stale, done](const Outcome &cut) {
+                               if (!self)
+                                   return;
+                               if (!cut.error.isEmpty())
+                                   done(cut);
+                               else
+                                   removeAll(account, stale, done);
+                           });
                    });
+}
+
+void GoogleSource::removeAll(const Account &account, QList<GoogleSync::Target> targets,
+                             Created done)
+{
+    if (targets.isEmpty() || !m_sync) {
+        done({});
+        return;
+    }
+    const GoogleSync::Target next = targets.takeFirst();
+    const QPointer<GoogleSource> self(this);
+    m_sync->remove(account, next, [this, self, account, targets, done](const Outcome &outcome) {
+        if (!self)
+            return;
+        if (!outcome.error.isEmpty())
+            done(outcome);
+        else
+            removeAll(account, targets, done);
+    });
 }
 
 QVariantList GoogleSource::syncReport() const

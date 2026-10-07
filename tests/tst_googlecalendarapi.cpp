@@ -357,6 +357,21 @@ void TestGoogleCalendarApi::insertPostsAndReturnsTheEvent()
     QVERIFY(request.target.contains("calendars/team%40group.calendar.google.com/events"));
     QCOMPARE(request.headers.value("authorization"), QByteArray("Bearer at-1"));
     QVERIFY(request.body.contains("\"summary\":\"Lunch\""));
+    // Nobody to tell, so no invitations.
+    QVERIFY(!request.target.contains("sendUpdates"));
+
+    // With guests, they are invited; a video call is asked for when wanted.
+    done = false;
+    m_server->respond(200, R"({"id":"new2","status":"confirmed"})");
+    m_api->insertEvent(
+        QStringLiteral("at-1"), QStringLiteral("team"),
+        QJsonObject{
+            {QStringLiteral("attendees"),
+             QJsonArray{QJsonObject{{QStringLiteral("email"), QStringLiteral("a@x.com")}}}}},
+        [&](const GoogleEvent &, const GoogleApiError &) { done = true; }, true);
+    QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
+    QVERIFY(m_server->requests.last().target.contains("sendUpdates=all"));
+    QVERIFY(m_server->requests.last().target.contains("conferenceDataVersion=1"));
 }
 
 void TestGoogleCalendarApi::patchAndDeleteTellGuests()

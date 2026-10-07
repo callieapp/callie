@@ -18,6 +18,7 @@ class TestStartAtLogin : public QObject
 private Q_SLOTS:
     void followsKeepRunning();
     void failureIsShownUntilResolved();
+    void existingEntryIsLeftAlone();
 };
 
 void TestStartAtLogin::followsKeepRunning()
@@ -67,6 +68,21 @@ void TestStartAtLogin::failureIsShownUntilResolved()
     QVERIFY(startAtLogin->error().isEmpty());
     QCOMPARE(changed.size(), 1);
     startAtLogin->setup(nullptr, nullptr);
+}
+
+void TestStartAtLogin::existingEntryIsLeftAlone()
+{
+    // An entry the user put there, while Callie is not set to keep running.
+    QTemporaryDir dir;
+    Settings settings(dir.filePath(u"settings.ini"_s));
+    const QString entry = dir.filePath(u"app.desktop"_s);
+    Autostart autostart(u"org.example.App"_s, u"/usr/bin/callie-gui"_s, entry);
+    QVERIFY(autostart.setEnabled(true));
+
+    StartAtLogin::instance()->setup(&autostart, &settings);
+    QVERIFY(QFile::exists(entry));
+    QVERIFY(StartAtLogin::instance()->enabled());
+    StartAtLogin::instance()->setup(nullptr, nullptr);
 }
 
 QTEST_GUILESS_MAIN(TestStartAtLogin)

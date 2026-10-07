@@ -18,6 +18,7 @@
 #include "callie/GoogleTokenProvider.h"
 #include "callie/LogFile.h"
 #include "callie/Logging.h"
+#include "callie/LookedSource.h"
 #include "callie/ReminderScheduler.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
@@ -163,8 +164,11 @@ int main(int argc, char *argv[])
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
 
-    callie::CalendarSource *source =
+    callie::CalendarSource *backend =
         useSample ? static_cast<callie::CalendarSource *>(&sample) : &google;
+    // Everything reads through the user's own names and colors for calendars.
+    callie::LookedSource looked(*backend, settings);
+    callie::CalendarSource *source = &looked;
     QTimer syncTimer;
     // Without a client every refresh would fail, so show the cache and say why once.
     const bool canSync = client.isValid();

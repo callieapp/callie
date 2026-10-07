@@ -4,7 +4,7 @@ import QtQuick
 
 /// A small line icon drawn from rounded bars, so icons need no image files and
 /// take the text color: chevron-left, chevron-right, minimize, maximize,
-/// restore, close, check, plus, refresh, bell, settings or video.
+/// restore, close, check, plus, refresh, bell, settings, video or more.
 Item {
     id: root
 
@@ -136,6 +136,23 @@ Item {
             function onStrokeChanged() {
                 arc.requestPaint()
             }
+        }
+    }
+
+    // More: three dots in a row.
+    Repeater {
+        model: root.name === "more" ? [0.2, 0.5, 0.8] : []
+
+        Rectangle {
+            required property real modelData
+
+            width: root.stroke * 1.5
+            height: width
+            radius: width / 2
+            color: root.color
+            antialiasing: true
+            x: root.width * modelData - width / 2
+            y: root.height / 2 - height / 2
         }
     }
 

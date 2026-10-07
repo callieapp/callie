@@ -331,8 +331,22 @@ Rectangle {
                                                                     !group.collapsed)
 
                             HoverHandler {
+                                id: headerHover
                                 cursorShape: Qt.PointingHandCursor
                             }
+
+                            MoreButton {
+                                anchors {
+                                    right: parent.right
+                                    verticalCenter: parent.verticalCenter
+                                }
+                                shown: headerHover.hovered || groupHeader.visualFocus
+                                Accessible.name: qsTr("Rename %1").arg(groupHeader.title)
+                                onClicked: root.editLook(this, true, group.modelData, "")
+                            }
+
+                            readonly property string title: Settings.accountNames[group.modelData]
+                                                            || group.modelData
 
                             background: Rectangle {
                                 radius: Theme.radiusSm
@@ -361,7 +375,8 @@ Rectangle {
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: groupHeader.width - Theme.smallGlyphSize - Theme.space2
-                                    text: group.modelData
+                                           - Theme.listRowHeight
+                                    text: groupHeader.title
                                     textFormat: Text.PlainText
                                     elide: Text.ElideMiddle
                                     color: Theme.textFaint
@@ -385,6 +400,52 @@ Rectangle {
         }
     }
 
+    /// Opens the editor for a calendar's or an account's own look, beside `item`.
+    function editLook(item, account, id, name) {
+        const at = item.mapToItem(root, item.width + Theme.space3, 0)
+        lookEditor.x = at.x
+        lookEditor.y = Math.min(at.y, root.height - lookEditor.height - Theme.space3)
+        if (account)
+            lookEditor.editAccount(id)
+        else
+            lookEditor.editCalendar(id, name)
+    }
+
+    LookEditor {
+        id: lookEditor
+    }
+
+    /// A small "..." button that shows on hover, for a row's own settings.
+    component MoreButton: AbstractButton {
+        id: more
+
+        property bool shown
+
+        width: Theme.listRowHeight
+        height: Theme.listRowHeight
+        opacity: shown || hovered || visualFocus ? 1 : 0
+        focusPolicy: Qt.TabFocus
+
+        HoverHandler {
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        background: Rectangle {
+            radius: Theme.radiusSm
+            color: more.hovered ? Theme.border : "transparent"
+        }
+        contentItem: Item {
+            Glyph {
+                anchors.centerIn: parent
+                width: Theme.smallGlyphSize + 2
+                height: Theme.smallGlyphSize + 2
+                stroke: Theme.smallGlyphStroke
+                name: "more"
+                color: Theme.textMuted
+            }
+        }
+    }
+
     /// One calendar: its color as a dot that fills when shown, and a click to
     /// show or hide it.
     component CalendarRow: AbstractButton {
@@ -402,7 +463,18 @@ Rectangle {
         onClicked: Settings.setCalendarVisible(modelData.id, !shown)
 
         HoverHandler {
+            id: rowHover
             cursorShape: Qt.PointingHandCursor
+        }
+
+        MoreButton {
+            anchors {
+                right: parent.right
+                verticalCenter: parent.verticalCenter
+            }
+            shown: rowHover.hovered || row.visualFocus
+            Accessible.name: qsTr("Rename or recolor %1").arg(row.modelData.name)
+            onClicked: root.editLook(this, false, row.modelData.id, row.modelData.name)
         }
 
         background: Rectangle {
@@ -440,6 +512,8 @@ Rectangle {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 width: row.width - Theme.textBase - Theme.space3 - Theme.space1
+                       - Theme.listRowHeight
+
                 text: row.modelData.name
                 textFormat: Text.PlainText
                 elide: Text.ElideRight

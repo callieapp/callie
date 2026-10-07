@@ -1,4 +1,5 @@
 #include "callie/LookedSource.h"
+#include "callie/QueuedSource.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 
@@ -17,6 +18,7 @@ private Q_SLOTS:
     void calendarsAndEventsTakeTheUsersLook();
     void backgroundLoadsTakeItToo();
     void changingALookReloads();
+    void undoPassesThrough();
 };
 
 namespace {
@@ -90,6 +92,21 @@ void TestLookedSource::changingALookReloads()
     QCOMPARE(changed.size(), 1);
     sample.refresh();
     QCOMPARE(changed.size(), 2);
+}
+
+void TestLookedSource::undoPassesThrough()
+{
+    QTemporaryDir dir;
+    Settings settings(dir.filePath(u"settings.ini"_s));
+    SampleSource sample;
+    QueuedSource queued(sample, {});
+    LookedSource source(queued, settings);
+    QSignalSpy made(&source, &CalendarSource::changeMade);
+    const Event first = source.eventsBetween(monday(), monday().addDays(1), QTimeZone::UTC).first();
+
+    source.deleteEvent(first, false, [](const QString &) {});
+    QCOMPARE(made.size(), 1);
+    QVERIFY(source.undoChange(made.first().first().toString()));
 }
 
 QTEST_GUILESS_MAIN(TestLookedSource)

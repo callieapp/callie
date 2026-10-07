@@ -12,6 +12,7 @@ LookedSource::LookedSource(CalendarSource &inner, Settings &settings, QObject *p
     connect(m_inner, &CalendarSource::changed, this, &CalendarSource::changed);
     connect(m_inner, &CalendarSource::statusChanged, this, &CalendarSource::statusChanged);
     connect(m_inner, &CalendarSource::errorOccurred, this, &CalendarSource::errorOccurred);
+    connect(m_inner, &CalendarSource::changeMade, this, &CalendarSource::changeMade);
     connect(m_settings, &Settings::calendarLooksChanged, this, &CalendarSource::changed);
 }
 

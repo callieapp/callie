@@ -174,8 +174,8 @@ int main(int argc, char *argv[])
         queued.emplace(sample, QString());
     else if (!standalone)
         queued.emplace(google, callie::QueuedSource::defaultPath());
-    callie::CalendarSource *backend = queued ? static_cast<callie::CalendarSource *>(&*queued)
-                                             : &google;
+    callie::CalendarSource *backend =
+        queued ? static_cast<callie::CalendarSource *>(&*queued) : &google;
     // Everything reads through the user's own names and colors for calendars.
     callie::LookedSource looked(*backend, settings);
     callie::CalendarSource *source = &looked;

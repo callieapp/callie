@@ -37,6 +37,7 @@ public:
     [[nodiscard]] QString lastError() const override { return m_inner->lastError(); }
     [[nodiscard]] QVariantList syncReport() const override { return m_inner->syncReport(); }
     [[nodiscard]] QStringList waitingChanges() const override { return m_inner->waitingChanges(); }
+    bool undoChange(const QString &id) override { return m_inner->undoChange(id); }
 
     /// Puts the looks in `looks` (as Settings::calendarLooks) on a snapshot.
     static void applyLooks(SourceSnapshot &snapshot, const QVariantMap &looks);

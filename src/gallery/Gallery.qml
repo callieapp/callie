@@ -301,6 +301,7 @@ ApplicationWindow {
                         end: new Date(2026, 9, 5, 11, 0)
                         declined: false
                         depth: 0
+                        canEdit: false
                         response: ""
                     }
 
@@ -318,6 +319,7 @@ ApplicationWindow {
                         declined: false
                         response: "tentative"
                         depth: 0
+                        canEdit: false
                     }
                 }
             }

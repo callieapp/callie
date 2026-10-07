@@ -10,8 +10,8 @@
 
 namespace callie {
 
-/// What the event details card can do to an event: answer the invitation,
-/// delete it, or write to its guests. Events come as EventModel's row maps.
+/// What can be done to an event: answer the invitation, delete it, move it,
+/// or write to its guests. Events come as EventModel's row maps.
 class EventActions : public QObject
 {
     Q_OBJECT
@@ -32,6 +32,9 @@ public:
     /// "accepted", "tentative" or "declined".
     Q_INVOKABLE void respond(const QVariantMap &event, const QString &status, bool wholeSeries);
     Q_INVOKABLE void remove(const QVariantMap &event, bool wholeSeries);
+    /// Gives the event new times, as dragging it on the grid does.
+    Q_INVOKABLE void move(const QVariantMap &event, const QDateTime &from, const QDateTime &to,
+                          bool wholeSeries);
     /// A mailto: link to every other guest, with the event's title as subject.
     Q_INVOKABLE static QUrl mailGuests(const QVariantMap &event);
     Q_INVOKABLE void clearError();
@@ -44,6 +47,7 @@ Q_SIGNALS:
     /// the card has moved on to another event.
     void responded(const QString &eventId, const QString &status);
     void removed(const QString &eventId);
+    void moved(const QString &eventId);
 
 private:
     [[nodiscard]] static Event toEvent(const QVariantMap &event);

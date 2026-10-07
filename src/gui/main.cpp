@@ -41,6 +41,10 @@ int main(int argc, char *argv[])
     app.setApplicationVersion(QStringLiteral(CALLIE_VERSION));
     // Lets Wayland associate the window with the .desktop entry.
     app.setDesktopFileName(QStringLiteral(CALLIE_APP_ID));
+    // Shown by desktops that read the window's own icon, such as KDE, even when
+    // no desktop entry is installed; the built-in logo stands in for the theme's.
+    app.setWindowIcon(QIcon::fromTheme(QStringLiteral(CALLIE_APP_ID),
+                                       QIcon(QStringLiteral(":/callie/assets/logo.png"))));
 
     QCommandLineParser parser;
     parser.addHelpOption();

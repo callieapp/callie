@@ -4,6 +4,8 @@
 
 #include <algorithm>
 
+using namespace Qt::StringLiterals;
+
 namespace callie {
 
 namespace {
@@ -86,6 +88,10 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
             e.start = QDateTime(date, QTime(s.startHour, s.startMinute), tz);
             e.end = e.start.addSecs(s.durationMinutes * 60);
             e.eventId = e.uid + u'-' + date.toString(Qt::ISODate);
+            // Every seed repeats weekly on its day.
+            static const char *const kDays[] = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"};
+            e.recurrence = {u"RRULE:FREQ=WEEKLY;BYDAY="_s +
+                            QLatin1StringView(kDays[s.dayOfWeek - 1])};
             e.canEdit = true;
             // Calls are invitations, so their answers can be tried out.
             if (!e.conferenceUrl.isEmpty()) {

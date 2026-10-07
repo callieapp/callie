@@ -305,8 +305,13 @@ void GoogleSource::updateEvent(const Event &event, const EventEdit &edit, EditSc
                                Created done)
 {
     const auto calendar = splitCalendarId(event.calendarId);
-    if (!m_sync || !calendar) {
-        done({tr("Callie is not connected to that event's account right now."), true});
+    // Not syncing yet can pass; an account that is gone will not come back.
+    if (!m_sync) {
+        done({tr("Callie is not connected to Google right now."), true});
+        return;
+    }
+    if (!calendar) {
+        done(tr("That event's account is no longer connected."));
         return;
     }
     if (scope == EditScope::ThisAndFollowing) {

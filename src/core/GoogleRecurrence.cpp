@@ -235,14 +235,18 @@ SplitRecurrence splitRecurrence(const GoogleEvent &series, const QDateTime &at)
     const QString until = allDay ? at.date().addDays(-1).toString(u"yyyyMMdd"_s)
                                  : at.addSecs(-1).toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s);
     // Occurrences before `at`, which a count no longer has to cover.
-    const auto passed = [&] {
+    // Occurrences of `rule` alone before `at`, which a count no longer has to
+    // cover: a count includes those EXDATE later removed, and no RDATE.
+    const auto passed = [&](const QString &rule) {
         const QTimeZone zone = series.start.timeZone.isEmpty()
                                    ? at.timeZone()
                                    : QTimeZone(series.start.timeZone.toUtf8());
         const QDateTime start = allDay ? QDateTime(series.start.date, QTime(0, 0), at.timeZone())
                                        : series.start.dateTime.toTimeZone(zone);
+        GoogleEvent alone = series;
+        alone.recurrence = {rule};
         KCalendarCore::Recurrence recurrence;
-        buildRecurrence(recurrence, series, start, allDay);
+        buildRecurrence(recurrence, alone, start, allDay);
         return int(recurrence.timesInInterval(start, at.addSecs(-1)).size());
     };
 
@@ -269,7 +273,7 @@ SplitRecurrence splitRecurrence(const GoogleEvent &series, const QDateTime &at)
         split.before.append(rule + u";UNTIL="_s + until);
         if (count > 0)
             split.after.append(rule + u";COUNT="_s +
-                               QString::number(std::max(1, count - passed())));
+                               QString::number(std::max(1, count - passed(line))));
         else if (!ends.isEmpty())
             split.after.append(rule + u';' + ends);
         else

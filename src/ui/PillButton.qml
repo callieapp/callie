@@ -36,7 +36,9 @@ AbstractButton {
         Rectangle {
             anchors.fill: parent
             radius: Theme.radiusMd
-            color: root.selected ? Theme.accent : root.hovered ? Theme.surfaceAlt : "transparent"
+            // Clear is the hover color with no alpha: "transparent" is clear black,
+            // which the fade would pass through as a dark flash.
+            color: root.selected ? Theme.accent : Theme.tint(Theme.surfaceAlt, root.hovered ? 1 : 0)
             border.width: root.visualFocus ? 2 : 0
             border.color: Theme.text
 

@@ -69,6 +69,8 @@ add_library(calliecore STATIC
     TodayModel.cpp
     callie/InvitesModel.h
     InvitesModel.cpp
+    callie/SearchModel.h
+    SearchModel.cpp
     callie/MonthModel.h
     MonthModel.cpp
     callie/Account.h

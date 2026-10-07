@@ -19,6 +19,7 @@
 #include "callie/LogFile.h"
 #include "callie/Logging.h"
 #include "callie/LookedSource.h"
+#include "callie/QueuedSource.h"
 #include "callie/ReminderScheduler.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
@@ -35,6 +36,7 @@
 #include <QTimer>
 
 #include <chrono>
+#include <optional>
 
 int main(int argc, char *argv[])
 {
@@ -164,8 +166,15 @@ int main(int argc, char *argv[])
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
 
-    callie::CalendarSource *backend =
-        useSample ? static_cast<callie::CalendarSource *>(&sample) : &google;
+    // Changes to real calendars go through a queue that shows them at once and
+    // sends them when it can. Sample data and screenshots never touch it, so
+    // they cannot send what a real Callie left waiting.
+    std::optional<callie::QueuedSource> queued;
+    if (!standalone)
+        queued.emplace(google, callie::QueuedSource::defaultPath());
+    callie::CalendarSource *backend = useSample ? static_cast<callie::CalendarSource *>(&sample)
+                                      : queued  ? static_cast<callie::CalendarSource *>(&*queued)
+                                                : &google;
     // Everything reads through the user's own names and colors for calendars.
     callie::LookedSource looked(*backend, settings);
     callie::CalendarSource *source = &looked;

@@ -446,17 +446,21 @@ ApplicationWindow {
                     readonly property bool failed: window.source.lastError !== "" &&
                                                    !window.source.syncing
 
-                    readonly property bool known: window.source.syncing || failed || !isNaN(
-                                                      window.source.lastSynced.getTime())
+                    readonly property bool known: window.source.syncing || failed || waiting > 0 ||
+                                                  !isNaN(window.source.lastSynced.getTime())
                     // Pink is kept for today and actions, so a healthy sync stays neutral.
                     readonly property color ink: failed ? Theme.danger : window.source.syncing
                                                           ? Theme.textFaint : Theme.textMuted
+                    readonly property int waiting: window.source.waitingChanges.length
                     readonly property string label: {
-                        return window.source.syncing ? qsTr("Syncing...") : failed ? qsTr(
-                                                                                         "Sync failed") :
-                                                                                     qsTr("Updated %1").arg(
-                                                                                         Settings.times.time(
-                                                                                             window.source.lastSynced))
+                        if (window.source.syncing)
+                            return qsTr("Syncing...")
+                        if (failed)
+                            return qsTr("Sync failed")
+                        if (waiting > 0)
+                            return waiting === 1 ? qsTr("1 change to send") : qsTr(
+                                                       "%1 changes to send").arg(waiting)
+                        return qsTr("Updated %1").arg(Settings.times.time(window.source.lastSynced))
                     }
                     // Room between the left side and the rest of the right side.
                     readonly property real spare: titleBar.width - leading.x - leading.width
@@ -485,6 +489,11 @@ ApplicationWindow {
                         // The cache may not hold the reason, if writing it failed too.
                         if (failed && !explained)
                             lines.push(window.source.lastError)
+                        if (waiting > 0) {
+                            lines.push(qsTr("Waiting to be sent:"))
+                            for (const change of window.source.waitingChanges)
+                                lines.push("    " + change)
+                        }
                         return lines.join("\n")
                     }
 

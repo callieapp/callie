@@ -28,6 +28,8 @@ Rectangle {
     /// The user's answer; "tentative" (maybe) shows striped.
     required property string response
     required property bool canEdit
+    /// The event's length, from the model, which stretching cannot go below one snap of.
+    property int lengthMinutes: 0
 
     /// Days the drag has carried the event, and the x distance to get there;
     /// the view sets both from draggedTo, since only it knows its columns.
@@ -221,10 +223,9 @@ Rectangle {
             onCentroidChanged: {
                 if (!active)
                     return
-                const length = (root.end.getTime() - root.start.getTime()) / 60000
                 // Never shorter than one snap.
-                minutes = Math.max(Theme.snapMinutes - length, root.snapped(centroid.scenePosition.y
-                                                                            - centroid.scenePressPosition.y))
+                minutes = Math.max(Theme.snapMinutes - root.lengthMinutes, root.snapped(
+                                       centroid.scenePosition.y - centroid.scenePressPosition.y))
             }
             onActiveChanged: {
                 if (active)

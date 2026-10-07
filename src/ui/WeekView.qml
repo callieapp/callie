@@ -461,6 +461,8 @@ Item {
                     onActivated: root.showDetails(block)
                     onHoveredChanged: root.blockHovered(block, hovered)
 
+                    lengthMinutes: durationMinutes
+
                     onDraggedTo: scenePosition => root.dragBlock(block, scenePosition)
                     onMoveRequested: (deltaMinutes, deltaDays) => root.commitChange(block,
                                                                                     deltaMinutes,

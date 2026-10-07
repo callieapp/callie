@@ -47,6 +47,8 @@ class CalendarSource : public QObject
     /// Per account: {account, lastSynced, error, problems}, where
     /// problems lists the calendars whose last sync failed, with the reason.
     Q_PROPERTY(QVariantList syncReport READ syncReport NOTIFY statusChanged)
+    /// Changes made in Callie that have not reached the server yet, described.
+    Q_PROPERTY(QStringList waitingChanges READ waitingChanges NOTIFY statusChanged)
 
 public:
     using QObject::QObject;
@@ -118,6 +120,7 @@ public:
     [[nodiscard]] virtual QDateTime lastSynced() const { return {}; }
     [[nodiscard]] virtual QString lastError() const { return {}; }
     [[nodiscard]] virtual QVariantList syncReport() const { return {}; }
+    [[nodiscard]] virtual QStringList waitingChanges() const { return {}; }
 
 Q_SIGNALS:
     void changed();

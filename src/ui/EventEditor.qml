@@ -55,8 +55,9 @@ Column {
         root.actions.clearError()
     }
 
-    /// Only the fields that differ from the event.
-    function changes() {
+    /// Only the fields that differ from the event, for the occurrences `scope`
+    /// names: "this" or "all".
+    function changes(scope) {
         const c = {}
         if (title.trim() !== (event.summary || ""))
             c.summary = title
@@ -79,8 +80,8 @@ Column {
         }
         const day = root.actions.dayOf(event.start, zone)
         const was = root.actions.repeatChoice(event.recurrence || [], day)
-        // A rule names its day, so a moved start day rewrites it.
-        const moved = root.actions.daysBetween(day, startDay) !== 0
+        // A rule names its day, so moving the series to another day rewrites it.
+        const moved = scope !== "this" && root.actions.daysBetween(day, startDay) !== 0
         const rule = root.actions.repeatRule(repeat, startDay)
         const same = JSON.stringify(rule) === JSON.stringify(event.recurrence || [])
         if (repeat !== "custom" && (repeat !== was || moved) && !same)
@@ -105,12 +106,12 @@ Column {
             asking = true
             return
         }
-        actions.update(event, changes(), "this")
+        actions.update(event, changes("this"), "this")
     }
 
     function saveFor(scope) {
         asking = false
-        actions.update(event, changes(), scope)
+        actions.update(event, changes(scope), scope)
     }
 
     function addGuest(text) {
@@ -408,7 +409,7 @@ Column {
 
             StickerButton {
                 // A rule belongs to the series, not one occurrence.
-                visible: root.changes().recurrence === undefined
+                visible: root.changes("this").recurrence === undefined
                 text: qsTr("This event")
                 onClicked: root.saveFor("this")
             }

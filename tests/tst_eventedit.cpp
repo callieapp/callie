@@ -153,19 +153,29 @@ void TestEventEdit::movedSeriesGetsItsRuleRewritten()
     // A day later, across a week boundary or not, the rule names the new day.
     form->setProperty("startDay", day.date().addDays(1).startOfDay());
     form->setProperty("endDay", end.date().addDays(1).startOfDay());
-    QVariant changes;
-    QVERIFY(QMetaObject::invokeMethod(form, "changes", Q_RETURN_ARG(QVariant, changes)));
-    const QStringList rule = changes.toMap().value(u"recurrence"_s).toStringList();
+    const auto changes = [form](const QString &scope) {
+        QVariant result;
+        QMetaObject::invokeMethod(form, "changes", Q_RETURN_ARG(QVariant, result),
+                                  Q_ARG(QVariant, scope));
+        return result.toMap();
+    };
     const QString code = QLocale(QLocale::C)
                              .dayName(day.date().addDays(1).dayOfWeek(), QLocale::ShortFormat)
                              .left(2)
                              .toUpper();
-    QCOMPARE(rule, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY="_s + code});
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             QStringList{u"RRULE:FREQ=WEEKLY;BYDAY="_s + code});
+    // One occurrence moves alone, leaving the rule.
+    QVERIFY(!changes(u"this"_s).contains(u"recurrence"_s));
+    QVERIFY(changes(u"this"_s).contains(u"start"_s));
 
-    // The rule belongs to the series, so only the whole series is offered.
+    // So every choice is offered.
     QVERIFY(QMetaObject::invokeMethod(form, "save"));
     QTRY_VERIFY(find(m_window->contentItem(), "StickerButton", "text", u"All events"_s));
-    QVERIFY(!find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
+    QVERIFY(find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
+    // A new repeat belongs to the series, so one occurrence cannot take it.
+    form->setProperty("repeat", u"daily"_s);
+    QTRY_VERIFY(!find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
 
     // An end before the start cannot be saved.
     form->setProperty("endDay", day.date().addDays(-1).startOfDay());

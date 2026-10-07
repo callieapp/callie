@@ -679,7 +679,8 @@ TestGoogleSource::splitStandup(decltype(FakeHttpServer::handler) handler, QStrin
                            error = e;
                            done = true;
                        });
-    QTest::qWaitFor([&done] { return done; }, 5000);
+    if (!QTest::qWaitFor([&done] { return done; }, 5000))
+        error = u"no answer"_s;
     return harness.apiServer.requests;
 }
 

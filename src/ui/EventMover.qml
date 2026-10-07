@@ -8,11 +8,18 @@ Item {
     id: root
 
     required property var source
-    /// Places a popup beside an item, as the view lays them out.
-    required property var placeBeside
 
     /// The item whose change is being saved, with a settle() that puts it back.
     property var moving: null
+
+    /// Places a popup beside the item, on whichever side has room, inside the view.
+    function placeBeside(item, popup) {
+        const gap = Theme.space3
+        const right = item.mapToItem(root, item.width + gap, 0)
+        const left = item.mapToItem(root, -gap - popup.width, 0)
+        popup.x = right.x + popup.width <= root.width ? right.x : Math.max(0, left.x)
+        popup.y = Math.min(Math.max(0, right.y), root.height - popup.height - gap)
+    }
 
     function move(item, event, from, to) {
         if (actions.busy) {

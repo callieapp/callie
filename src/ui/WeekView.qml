@@ -196,8 +196,7 @@ Item {
 
             AllDayChip {
                 id: chip
-                columnX: root.columnX
-                columnAtX: root.columnAtX
+                view: root
                 onActivated: root.showDetails(chip)
                 onMoveRequested: (days, endDays) => root.commitChange(chip, 0, days, 0, endDays)
             }
@@ -546,11 +545,7 @@ Item {
 
     // Beside the event, on whichever side has room, kept inside the view.
     function placeBeside(block, popup) {
-        const gap = Theme.space3
-        const right = block.mapToItem(root, block.width + gap, 0)
-        const left = block.mapToItem(root, -gap - popup.width, 0)
-        popup.x = right.x + popup.width <= root.width ? right.x : Math.max(0, left.x)
-        popup.y = Math.min(Math.max(0, right.y), root.height - popup.height - gap)
+        mover.placeBeside(block, popup)
     }
 
     property EventBlock hoveredBlock: null
@@ -649,7 +644,6 @@ Item {
         id: mover
         anchors.fill: parent
         source: root.model.source
-        placeBeside: root.placeBeside
     }
 
     EventDetails {

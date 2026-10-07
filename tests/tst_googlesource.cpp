@@ -77,6 +77,7 @@ private Q_SLOTS:
     void splitAllDaySeriesByDates();
     void splitMovesDeletedDaysToTheNewClock();
     void allDayMovesByDates();
+    void allDaySeriesMovesOneOrAll();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -907,6 +908,54 @@ void TestGoogleSource::allDayMovesByDates()
     QVERIFY(harness.apiServer.requests.last().target.contains("/events/trip?"));
     QCOMPARE(body[u"start"][u"date"].toString(), u"2026-10-08"_s);
     QCOMPARE(body[u"end"][u"date"].toString(), u"2026-10-11"_s);
+}
+
+void TestGoogleSource::allDaySeriesMovesOneOrAll()
+{
+    QVERIFY(m_cache->storeEvents(
+        kAccount, u"mine"_s, {parsed(R"({"id":"bins","summary":"Bins","start":{"date":"2026-10-05"},
+                    "end":{"date":"2026-10-06"},"recurrence":["RRULE:FREQ=WEEKLY"]})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    // Google answers with the event as it now is; here, as it was.
+    harness.apiServer.handler = [](const FakeHttpServer::Request &request) {
+        return FakeHttpServer::Response(
+            200, request.target.contains("bins_")
+                     ? R"({"id":"bins_20261012","recurringEventId":"bins","status":"confirmed",
+                          "originalStartTime":{"date":"2026-10-12"},
+                          "start":{"date":"2026-10-12"},"end":{"date":"2026-10-13"}})"
+                     : R"({"id":"bins","summary":"Bins","status":"confirmed",
+                          "start":{"date":"2026-10-05"},"end":{"date":"2026-10-06"},
+                          "recurrence":["RRULE:FREQ=WEEKLY"]})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 12), QTime(0, 0), kNewYork);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto bins = std::find_if(events.cbegin(), events.cend(),
+                                   [](const Event &e) { return e.summary == u"Bins"; });
+    QVERIFY(bins != events.cend());
+    const auto move = [&](bool wholeSeries) {
+        QString error = u"unset"_s;
+        source.moveEvent(*bins, bins->start.addDays(1), bins->end.addDays(1), wholeSeries,
+                         [&error](const QString &e) { error = e; });
+        [&] { QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000); }();
+        return harness.apiServer.requests.last();
+    };
+
+    // One occurrence moves to its own new day...
+    FakeHttpServer::Request request = move(false);
+    QVERIFY(request.target.contains("/events/bins_20261012?"));
+    QJsonObject body = QJsonDocument::fromJson(request.body).object();
+    QCOMPARE(body[u"start"][u"date"].toString(), u"2026-10-13"_s);
+    QCOMPARE(body[u"end"][u"date"].toString(), u"2026-10-14"_s);
+
+    // ...and the whole series by the same day from where it began.
+    request = move(true);
+    QVERIFY(request.target.contains("/events/bins?"));
+    body = QJsonDocument::fromJson(request.body).object();
+    QCOMPARE(body[u"start"][u"date"].toString(), u"2026-10-06"_s);
+    QCOMPARE(body[u"end"][u"date"].toString(), u"2026-10-07"_s);
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

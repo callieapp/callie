@@ -48,6 +48,9 @@ public:
     QDateTime start;
     QDateTime end;
     bool allDay = false;
+    /// The IANA zone the event was written in, whatever zone `start` is shown
+    /// in; a repeating event repeats on its clock. Empty when unknown.
+    QString zone;
     QColor color;
     /// The user was invited and said no.
     bool declined = false;

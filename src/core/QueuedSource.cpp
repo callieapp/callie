@@ -62,6 +62,7 @@ QJsonObject eventJson(const Event &e)
             {u"start"_s, timeJson(e.start)},
             {u"end"_s, timeJson(e.end)},
             {u"allDay"_s, e.allDay},
+            {u"zone"_s, e.zone},
             {u"response"_s, e.responseStatus}};
 }
 
@@ -78,6 +79,7 @@ Event eventFrom(const QJsonObject &json)
     e.start = timeFrom(json[u"start"]);
     e.end = timeFrom(json[u"end"]);
     e.allDay = json[u"allDay"].toBool();
+    e.zone = json[u"zone"].toString();
     e.responseStatus = json[u"response"].toString();
     return e;
 }
@@ -246,8 +248,10 @@ void QueuedSource::apply(QList<Event> &events, const QList<PendingChange> &chang
             }
             break;
         case PendingChange::Kind::Move: {
-            // The whole series moves by the shift dragged on the one, on its wall clock.
-            const QTimeZone zone = change.event.start.timeZone();
+            // The whole series moves by the shift dragged on the one, on the clock
+            // it repeats on, as the server will move it.
+            const QTimeZone own(change.event.zone.toUtf8());
+            const QTimeZone zone = own.isValid() ? own : change.event.start.timeZone();
             const QDateTime was = change.event.start.toTimeZone(zone);
             const QDateTime now = change.start.toTimeZone(zone);
             const int days = int(was.date().daysTo(now.date()));
@@ -415,9 +419,9 @@ void QueuedSource::send(const PendingChange &change)
     m_sending = change.id;
     const QPointer<QueuedSource> self(this);
     const QString id = change.id;
-    const auto done = [self, id](const QString &error) {
+    const auto done = [self, id](const Outcome &outcome) {
         if (self)
-            self->finished(id, error);
+            self->finished(id, outcome);
     };
     switch (change.kind) {
     case PendingChange::Kind::Create: m_inner->createEvent(change.draft, done); break;
@@ -433,12 +437,14 @@ void QueuedSource::send(const PendingChange &change)
     }
 }
 
-void QueuedSource::finished(const QString &id, const QString &error)
+void QueuedSource::finished(const QString &id, const Outcome &outcome)
 {
     m_sending.clear();
-    if (!error.isEmpty() && !m_online()) {
-        // Lost the network on the way: it waits for the next try.
-        qCInfo(lcSync) << "offline, keeping a change for later:" << error;
+    const QString &error = outcome.error;
+    if (!error.isEmpty() && (outcome.retry || !m_online())) {
+        // Something that can pass, such as the network: it waits for the next try.
+        qCInfo(lcSync) << "keeping a change for later:" << error;
+        Q_EMIT statusChanged();
         m_retry.start(kRetryMs);
         return;
     }

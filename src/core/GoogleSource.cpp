@@ -213,7 +213,7 @@ void GoogleSource::respond(const Event &event, const QString &status, bool whole
 {
     const auto calendar = splitCalendarId(event.calendarId);
     if (!m_sync || !calendar) {
-        done(tr("Callie is not connected to that event's account right now."));
+        done({tr("Callie is not connected to that event's account right now."), true});
         return;
     }
     m_sync->respond(calendar->first, target(calendar->second, event, wholeSeries), status,
@@ -224,7 +224,7 @@ void GoogleSource::deleteEvent(const Event &event, bool wholeSeries, Created don
 {
     const auto calendar = splitCalendarId(event.calendarId);
     if (!m_sync || !calendar) {
-        done(tr("Callie is not connected to that event's account right now."));
+        done({tr("Callie is not connected to that event's account right now."), true});
         return;
     }
     m_sync->remove(calendar->first, target(calendar->second, event, wholeSeries), std::move(done));
@@ -235,7 +235,7 @@ void GoogleSource::moveEvent(const Event &event, const QDateTime &start, const Q
 {
     const auto calendar = splitCalendarId(event.calendarId);
     if (!m_sync || !calendar) {
-        done(tr("Callie is not connected to that event's account right now."));
+        done({tr("Callie is not connected to that event's account right now."), true});
         return;
     }
     if (event.allDay) {

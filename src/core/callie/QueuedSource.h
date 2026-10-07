@@ -96,7 +96,7 @@ Q_SIGNALS:
 private:
     void add(PendingChange change, const Created &done);
     void send(const PendingChange &change);
-    void finished(const QString &id, const QString &error);
+    void finished(const QString &id, const Outcome &outcome);
     void save() const;
     void restore();
 

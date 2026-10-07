@@ -55,6 +55,7 @@ public:
         ResponseRole,
         AttendeesRole,
         GuestsRole,
+        ZoneRole,
         CanEditRole,
         CanRespondRole,
         RecurrenceIdRole,

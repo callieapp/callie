@@ -60,6 +60,7 @@ QJsonObject eventJson(const Event &e)
             {u"recurrenceId"_s, timeJson(e.recurrenceId)},
             {u"summary"_s, e.summary},
             {u"location"_s, e.location},
+            {u"description"_s, e.description},
             {u"start"_s, timeJson(e.start)},
             {u"end"_s, timeJson(e.end)},
             {u"allDay"_s, e.allDay},
@@ -77,6 +78,7 @@ Event eventFrom(const QJsonObject &json)
     e.recurrenceId = timeFrom(json[u"recurrenceId"]);
     e.summary = json[u"summary"].toString();
     e.location = json[u"location"].toString();
+    e.description = json[u"description"].toString();
     e.start = timeFrom(json[u"start"]);
     e.end = timeFrom(json[u"end"]);
     e.allDay = json[u"allDay"].toBool();

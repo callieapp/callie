@@ -49,6 +49,17 @@ public:
     {
         done(u"Google could not delete the event: Forbidden"_s);
     }
+    QList<CalendarInfo> calendars() const override
+    {
+        QList<CalendarInfo> list = SampleSource::calendars();
+        for (CalendarInfo &c : list)
+            c.writable = c.writable && !m_readOnly;
+        return list;
+    }
+    void setReadOnly() { m_readOnly = true; }
+
+private:
+    bool m_readOnly = false;
 };
 
 } // namespace
@@ -268,6 +279,14 @@ void TestEventActions::duplicateLandsInAWritableCalendar()
         }
     }
     QCOMPARE(copies, 1);
+
+    // With nowhere to put it, there is no copy, and the card says why.
+    RefusingSource readOnly;
+    readOnly.setReadOnly();
+    actions.setProperty("source", QVariant::fromValue<CalendarSource *>(&readOnly));
+    actions.duplicate(event, at, u"nope"_s);
+    QCOMPARE(duplicated.size(), 1);
+    QVERIFY(actions.error().contains(u"No calendar"_s));
 }
 
 void TestEventActions::editsReachTheWholeSeries()

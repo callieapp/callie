@@ -65,6 +65,7 @@ private Q_SLOTS:
     void answerAimsAtTheTimedOccurrence();
     void actionsNeedAKnownCalendar();
     void moveShiftsTheOccurrenceOrTheSeries();
+    void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
     void accountsCanChangeWhileRunning();
@@ -538,6 +539,39 @@ void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()
     QVERIFY(harness.apiServer.requests.last().target.contains("/events/standup?"));
     QCOMPARE(body()[u"start"][u"dateTime"].toString(), u"2026-10-05T10:30:00-04:00"_s);
     QCOMPARE(body()[u"end"][u"dateTime"].toString(), u"2026-10-05T10:45:00-04:00"_s);
+}
+
+void TestGoogleSource::seriesMoveKeepsTheWallClockAcrossDst()
+{
+    QVERIFY(m_cache->storeEvents(kAccount, u"mine"_s, {parsed(R"({"id":"swim","summary":"Swim",
+                    "start":{"dateTime":"2026-03-27T10:00:00+01:00","timeZone":"Europe/Berlin"},
+                    "end":{"dateTime":"2026-03-27T11:00:00+01:00","timeZone":"Europe/Berlin"},
+                    "recurrence":["RRULE:FREQ=DAILY;COUNT=5"]})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"swim","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QTimeZone berlin("Europe/Berlin");
+    const QDateTime saturday(QDate(2026, 3, 28), QTime(0, 0), berlin);
+    const QList<Event> events = source.eventsBetween(saturday, saturday.addDays(1), berlin);
+    const auto swim = std::find_if(events.cbegin(), events.cend(),
+                                   [](const Event &e) { return e.summary == u"Swim"; });
+    QVERIFY(swim != events.cend());
+
+    // Saturday's swim dragged to Sunday, the first day of summer time.
+    QString error = u"unset"_s;
+    source.moveEvent(*swim, swim->start.addDays(1), swim->end.addDays(1), true,
+                     [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+
+    // The series still starts at 10:00, a day later, not at 09:00.
+    const QJsonObject body =
+        QJsonDocument::fromJson(harness.apiServer.requests.last().body).object();
+    QCOMPARE(body[u"start"][u"dateTime"].toString(), u"2026-03-28T10:00:00+01:00"_s);
+    QCOMPARE(body[u"end"][u"dateTime"].toString(), u"2026-03-28T11:00:00+01:00"_s);
 }
 
 void TestGoogleSource::actionsNeedAKnownCalendar()

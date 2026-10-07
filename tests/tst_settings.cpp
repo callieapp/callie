@@ -23,6 +23,7 @@ private Q_SLOTS:
     void resetForgetsEverything();
     void timesAreReplacedOnChange();
     void gridTimesAreWallClock();
+    void shiftsKeepTheWallClock();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -197,6 +198,20 @@ void TestSettings::gridTimesAreWallClock()
              QDateTime(QDate(2026, 3, 29), QTime(13, 0), QTimeZone("Europe/Berlin")));
     QCOMPARE(times.at(day, 24 * 60),
              QDateTime(QDate(2026, 3, 30), QTime(0, 0), QTimeZone("Europe/Berlin")));
+}
+
+void TestSettings::shiftsKeepTheWallClock()
+{
+    const QTimeZone berlin("Europe/Berlin");
+    const Times times(berlin, true);
+    // A day later across the change to summer time is still 10:00, not 11:00.
+    QCOMPARE(times.shifted(QDateTime(QDate(2026, 3, 28), QTime(10, 0), berlin), 1, 0),
+             QDateTime(QDate(2026, 3, 29), QTime(10, 0), berlin));
+    // Earlier than midnight wraps into the day before.
+    QCOMPARE(times.shifted(QDateTime(QDate(2026, 3, 28), QTime(0, 30), berlin), 0, -60),
+             QDateTime(QDate(2026, 3, 27), QTime(23, 30), berlin));
+    QCOMPARE(times.shifted(QDateTime(QDate(2026, 3, 28), QTime(23, 30), berlin), 0, 90),
+             QDateTime(QDate(2026, 3, 29), QTime(1, 0), berlin));
 }
 
 QTEST_GUILESS_MAIN(TestSettings)

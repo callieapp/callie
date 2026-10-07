@@ -34,7 +34,11 @@ Popup {
     readonly property color fill: Theme.calendarColor(calendarColor, Theme.calendar)
     readonly property color ink: Theme.calendarInk(calendarColor, Theme.calendar)
     /// Fills the card from one of EventModel.eventsOn()'s maps and opens it.
+    /// The card has turned into a form to change the event.
+    property bool editing: false
+
     function show(event, service) {
+        editing = false
         const day = Qt.formatDate(Settings.times.date(event.start), "dddd, MMMM d")
         summary = event.summary
         when = event.allDay ? day : qsTr("%1, %2").arg(day).arg(qsTr("%1 to %2").arg(Settings.times.time(
@@ -109,7 +113,8 @@ Popup {
                                                                                              "Join Google Meet") :
                                                                                          qsTr("Join call")
 
-    width: 320
+    // Wider while it is a form, which has more to hold.
+    width: editing ? 400 : 320
     // Keeps the whole card inside the window, wherever its event sits.
     margins: Theme.space3
     padding: 0
@@ -117,7 +122,9 @@ Popup {
     // Dims the calendar without blocking it, so a click elsewhere still lands.
     dim: true
     focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    // A click elsewhere would lose what is being typed, so the form needs Cancel or Escape.
+    closePolicy: editing ? Popup.CloseOnEscape : Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    onClosed: editing = false
 
     enter: Transition {
         NumberAnimation {
@@ -163,8 +170,27 @@ Popup {
     }
 
     contentItem: Column {
+        // The form, in place of everything else while editing.
+        Column {
+            visible: root.editing
+            width: root.width
+            padding: Theme.space5
+
+            EventEditor {
+                id: editor
+                width: parent.width - 2 * parent.padding
+                actions: actions
+                onFinished: saved => {
+                    root.editing = false
+                    if (saved)
+                        root.close()
+                }
+            }
+        }
+
         // Header: the event's own colors.
         Rectangle {
+            visible: !root.editing
             width: root.width
             height: header.implicitHeight + 2 * Theme.space4
             topLeftRadius: Theme.radiusXl
@@ -240,7 +266,7 @@ Popup {
 
         // The user's answer, right under the header, when they were invited.
         Rectangle {
-            visible: root.event.canRespond === true
+            visible: root.event.canRespond === true && !root.editing
             width: root.width
             height: answers.implicitHeight + 2 * Theme.space3
             color: Theme.surfaceAlt
@@ -292,6 +318,7 @@ Popup {
         }
 
         Column {
+            visible: !root.editing
             width: root.width
             padding: Theme.space5
             spacing: Theme.space4
@@ -369,6 +396,14 @@ Popup {
                 width: parent.width - 2 * parent.padding
                 spacing: Theme.space2
 
+                StickerButton {
+                    visible: root.event.canEdit === true
+                    text: qsTr("Edit")
+                    onClicked: {
+                        editor.load(root.event)
+                        root.editing = true
+                    }
+                }
                 StickerButton {
                     visible: (root.event.attendees || []).length > 0
                     text: qsTr("Email guests")

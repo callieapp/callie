@@ -67,6 +67,9 @@ qt_add_qml_module(callieui
         Tip.qml
         Toggle.qml
         ZonePicker.qml
+        TimePicker.qml
+        DatePicker.qml
+        EventEditor.qml
         InvitesTray.qml
         Field.qml
         LookEditor.qml

@@ -1,5 +1,8 @@
 #include "EventActions.h"
 
+#include "callie/Repeat.h"
+#include "callie/Times.h"
+
 #include <QUrlQuery>
 
 using namespace Qt::StringLiterals;
@@ -71,6 +74,53 @@ void EventActions::move(const QVariantMap &event, const QDateTime &from, const Q
                             if (error.isEmpty())
                                 Q_EMIT moved(eventId);
                         });
+}
+
+namespace {
+
+QTimeZone zoneNamed(const QString &zone)
+{
+    const QTimeZone named(zone.toUtf8());
+    return named.isValid() ? named : QTimeZone::systemTimeZone();
+}
+
+} // namespace
+
+QDateTime EventActions::at(const QDateTime &day, int minutes, const QString &zone)
+{
+    const QTimeZone tz = zoneNamed(zone);
+    return Times::shiftWallClock(QDateTime(day.date(), QTime(0, 0), tz), tz, 0,
+                                 qint64(minutes) * 60);
+}
+
+QDateTime EventActions::dayOf(const QDateTime &time, const QString &zone)
+{
+    return time.toTimeZone(zoneNamed(zone)).date().startOfDay();
+}
+
+int EventActions::minutesOf(const QDateTime &time, const QString &zone)
+{
+    const QTime clock = time.toTimeZone(zoneNamed(zone)).time();
+    return clock.hour() * 60 + clock.minute();
+}
+
+QVariantList EventActions::repeatChoices(const QDateTime &day)
+{
+    QVariantList list;
+    for (const QString &choice : Repeat::choices())
+        list.append(
+            QVariantMap{{u"id"_s, choice}, {u"label"_s, Repeat::describe(choice, day.date())}});
+    return list;
+}
+
+QString EventActions::repeatChoice(const QStringList &recurrence, const QDateTime &day)
+{
+    return Repeat::choiceOf(recurrence, day.date());
+}
+
+QStringList EventActions::repeatRule(const QString &choice, const QDateTime &day)
+{
+    return Repeat::rule(choice, day.date());
 }
 
 EventEdit EventActions::toEdit(const QVariantMap &changes)

@@ -60,6 +60,8 @@ add_library(calliecore STATIC
     callie/ReminderScheduler.h
     callie/Autostart.h
     Autostart.cpp
+    callie/LookedSource.h
+    LookedSource.cpp
     ReminderScheduler.cpp
     callie/EventModel.h
     EventModel.cpp

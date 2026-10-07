@@ -2,11 +2,13 @@
 
 #include "Times.h"
 
+#include <QColor>
 #include <QDate>
 #include <QObject>
 #include <QSettings>
 #include <QStringList>
 #include <QTimeZone>
+#include <QVariantMap>
 
 namespace callie {
 
@@ -36,6 +38,11 @@ class Settings : public QObject
     /// A built-in theme id or a theme file path; empty is the default theme.
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(QStringList collapsedAccounts READ collapsedAccounts NOTIFY collapsedAccountsChanged)
+    /// The user's own name and color for calendars, by CalendarInfo::id, as
+    /// {"name", "color"}; either can be missing, which keeps the calendar's own.
+    Q_PROPERTY(QVariantMap calendarLooks READ calendarLooks NOTIFY calendarLooksChanged)
+    /// The user's own names for accounts, by account id.
+    Q_PROPERTY(QVariantMap accountNames READ accountNames NOTIFY accountNamesChanged)
     /// The calendar new events went into last, by CalendarInfo::id.
     Q_PROPERTY(QString newEventCalendar READ newEventCalendar WRITE setNewEventCalendar NOTIFY
                    newEventCalendarChanged)
@@ -108,6 +115,18 @@ public:
     [[nodiscard]] QStringList collapsedAccounts() const { return m_collapsedAccounts; }
     Q_INVOKABLE void setAccountCollapsed(const QString &account, bool collapsed);
 
+    [[nodiscard]] QVariantMap calendarLooks() const { return m_calendarLooks; }
+    /// An empty name or an invalid color goes back to the calendar's own.
+    Q_INVOKABLE void setCalendarName(const QString &id, const QString &name);
+    Q_INVOKABLE void setCalendarColor(const QString &id, const QColor &color);
+    Q_INVOKABLE void resetCalendarLook(const QString &id);
+
+    [[nodiscard]] QVariantMap accountNames() const { return m_accountNames; }
+    /// An empty name goes back to the account's own.
+    Q_INVOKABLE void setAccountName(const QString &account, const QString &name);
+    /// The user's name for `account`, or the account itself.
+    Q_INVOKABLE QString accountName(const QString &account) const;
+
     [[nodiscard]] QString theme() const { return m_theme; }
     void setTheme(const QString &idOrPath);
 
@@ -154,6 +173,8 @@ Q_SIGNALS:
     void timesChanged();
     void themeChanged();
     void collapsedAccountsChanged();
+    void calendarLooksChanged();
+    void accountNamesChanged();
     void viewChanged();
     void lastSeenVersionChanged();
     void newEventCalendarChanged();
@@ -181,6 +202,8 @@ private:
     Times *m_times = nullptr;
     QString m_theme;
     QStringList m_collapsedAccounts;
+    QVariantMap m_calendarLooks;
+    QVariantMap m_accountNames;
     QString m_view;
     QString m_lastSeenVersion;
     QString m_newEventCalendar;

@@ -137,6 +137,11 @@ public:
     /// Forgets every preference.
     Q_INVOKABLE void reset();
 
+    /// Takes the week start, weekend, clock and declined-event choices from
+    /// Google Calendar's settings, for whichever of them the user has not set
+    /// in Callie.
+    void seedFromGoogle(const QHash<QString, QString> &google);
+
 Q_SIGNALS:
     void timeFormatChanged();
     void timeZoneChanged();

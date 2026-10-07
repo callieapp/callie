@@ -75,7 +75,8 @@ GoogleAuth::~GoogleAuth() = default;
 QString GoogleAuth::scopes()
 {
     return QStringLiteral("https://www.googleapis.com/auth/calendar.events "
-                          "https://www.googleapis.com/auth/calendar.calendarlist.readonly");
+                          "https://www.googleapis.com/auth/calendar.calendarlist.readonly "
+                          "https://www.googleapis.com/auth/calendar.settings.readonly");
 }
 
 void GoogleAuth::setEndpoints(const QUrl &authorization, const QUrl &token)

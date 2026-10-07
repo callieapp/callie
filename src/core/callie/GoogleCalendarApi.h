@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDateTime>
+#include <QHash>
 #include <QList>
 #include <QObject>
 #include <QStringList>
@@ -111,6 +112,8 @@ public:
     using EventsResult =
         std::function<void(const GoogleEventChanges &changes, const GoogleApiError &error)>;
     using EventResult = std::function<void(const GoogleEvent &event, const GoogleApiError &error)>;
+    using SettingsResult =
+        std::function<void(const QHash<QString, QString> &settings, const GoogleApiError &error)>;
 
     explicit GoogleCalendarApi(QNetworkAccessManager *network, QObject *parent = nullptr);
 
@@ -122,6 +125,9 @@ public:
 
     /// The calendars in the user's list, hidden ones excluded.
     void fetchCalendars(const QString &accessToken, CalendarsResult result);
+
+    /// The user's Google Calendar settings, such as weekStart, by id.
+    void fetchSettings(const QString &accessToken, SettingsResult result);
 
     /// Every event in a calendar when `syncToken` is empty, otherwise only what
     /// changed since that token was issued, deletions included. Recurring
@@ -152,6 +158,8 @@ private:
     [[nodiscard]] QUrl eventUrl(const QString &calendarId, const QString &eventId) const;
     void fetchCalendarPage(const QString &accessToken, const QString &pageToken,
                            QList<GoogleCalendar> calendars, CalendarsResult result);
+    void fetchSettingsPage(const QString &accessToken, const QString &pageToken,
+                           QHash<QString, QString> settings, SettingsResult result);
     void fetchEventPage(const QString &accessToken, const QString &calendarId,
                         const QString &syncToken, const QString &pageToken,
                         GoogleEventChanges changes, EventsResult result);

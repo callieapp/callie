@@ -17,6 +17,7 @@ private Q_SLOTS:
     void choicesSurviveARestart();
     void workingHoursStayInOrder();
     void weekSettingsResetAndSignal();
+    void googleFillsOnlyWhatIsUnset();
     void unchangedValueEmitsNothing();
     void unknownZoneFollowsTheSystem();
     void unknownStoredZoneFollowsTheSystem();
@@ -121,6 +122,29 @@ void TestSettings::weekSettingsResetAndSignal()
     QCOMPARE(hours.size(), 2);
     QCOMPARE(settings.weekStart(), 0);
     QCOMPARE(settings.workStart(), 9 * 60);
+}
+
+void TestSettings::googleFillsOnlyWhatIsUnset()
+{
+    Settings settings(path());
+    settings.setShowDeclined(false);
+    QSignalSpy week(&settings, &Settings::weekChanged);
+    settings.seedFromGoogle({{u"weekStart"_s, u"0"_s},
+                             {u"hideWeekends"_s, u"true"_s},
+                             {u"format24HourTime"_s, u"true"_s},
+                             {u"showDeclinedEvents"_s, u"true"_s},
+                             {u"locale"_s, u"en"_s}});
+    QCOMPARE(settings.firstDayOfWeek(), int(Qt::Sunday));
+    QVERIFY(settings.hideWeekends());
+    QCOMPARE(settings.timeFormat(), Settings::TimeFormat::TwentyFourHour);
+    // Already chosen in Callie, so Google's choice does not override it.
+    QVERIFY(!settings.showDeclined());
+    QCOMPARE(week.size(), 2);
+
+    // A second account changes nothing that is now set.
+    settings.seedFromGoogle({{u"weekStart"_s, u"1"_s}, {u"hideWeekends"_s, u"false"_s}});
+    QCOMPARE(settings.firstDayOfWeek(), int(Qt::Sunday));
+    QVERIFY(settings.hideWeekends());
 }
 
 void TestSettings::workingHoursStayInOrder()

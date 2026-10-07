@@ -236,6 +236,34 @@ void GoogleCalendarApi::fetchCalendars(const QString &accessToken, CalendarsResu
     fetchCalendarPage(accessToken, {}, {}, std::move(result));
 }
 
+void GoogleCalendarApi::fetchSettings(const QString &accessToken, SettingsResult result)
+{
+    fetchSettingsPage(accessToken, {}, {}, std::move(result));
+}
+
+void GoogleCalendarApi::fetchSettingsPage(const QString &accessToken, const QString &pageToken,
+                                          QHash<QString, QString> settings, SettingsResult result)
+{
+    QList<QPair<QString, QString>> query;
+    if (!pageToken.isEmpty())
+        query.append({QStringLiteral("pageToken"), pageToken});
+    get(accessToken, QStringLiteral("users/me/settings"), query,
+        [this, accessToken, settings = std::move(settings),
+         result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) mutable {
+            if (error) {
+                result({}, error);
+                return;
+            }
+            for (const QJsonValue &item : body[u"items"].toArray())
+                settings.insert(item[u"id"].toString(), item[u"value"].toString());
+            const QString next = body[u"nextPageToken"].toString();
+            if (next.isEmpty())
+                result(settings, {});
+            else
+                fetchSettingsPage(accessToken, next, std::move(settings), std::move(result));
+        });
+}
+
 void GoogleCalendarApi::fetchCalendarPage(const QString &accessToken, const QString &pageToken,
                                           QList<GoogleCalendar> calendars, CalendarsResult result)
 {

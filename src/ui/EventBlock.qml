@@ -25,7 +25,8 @@ Rectangle {
     /// How many earlier events this one steps in over; deeper ones draw on top,
     /// outlined so they stand apart from what they cover.
     required property int depth
-    /// The user's answer; "tentative" (maybe) shows striped.
+    /// The user's answer: "tentative" (maybe) shows striped, and "needsAction"
+    /// (not answered yet) shows hollow, outlined in the calendar's color.
     required property string response
     required property bool canEdit
     /// The event's length, from the model, which stretching cannot go below one snap of.
@@ -67,12 +68,15 @@ Rectangle {
 
     readonly property bool compact: height < 34
     readonly property bool hovered: hover.hovered
-    readonly property color ink: shade(Theme.calendarInk(calendarColor, Theme.calendar))
+    readonly property bool pending: response === "needsAction"
+    readonly property color fill: Theme.calendarColor(calendarColor, Theme.calendar)
+    readonly property color ink: shade(pending ? Theme.text : Theme.calendarInk(calendarColor,
+                                                                                Theme.calendar))
     readonly property bool past: Settings.dimPast && end < Clock.now
     readonly property bool faded: declined || past
 
     radius: Theme.radiusMd
-    color: shade(Theme.calendarColor(calendarColor, Theme.calendar))
+    color: shade(pending ? Theme.surface : fill)
 
     opacity: drag.active ? 0.85 : 1
 
@@ -83,8 +87,8 @@ Rectangle {
     }
     scale: drag.active ? 1.02 : 1
     z: drag.active ? 100 : 1 + depth
-    border.width: depth > 0 ? 1 : 0
-    border.color: Theme.bg
+    border.width: pending ? 2 : depth > 0 ? 1 : 0
+    border.color: pending ? shade(fill) : Theme.bg
     transform: Translate {
         x: root.dayShiftX
         y: root.minuteShift / 60 * Theme.hourHeight
@@ -105,6 +109,7 @@ Rectangle {
 
     // The sticker's edge, showing below it.
     Rectangle {
+        visible: !root.pending
         z: -1
         anchors {
             fill: parent

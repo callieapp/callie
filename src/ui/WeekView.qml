@@ -205,6 +205,7 @@ Item {
                 required property bool declined
                 required property string response
                 required property date end
+                readonly property bool pending: response === "needsAction"
 
                 visible: allDay && width > 0
                 opacity: declined || (Settings.dimPast && end < Clock.now) ? Theme.fadedOpacity : 1
@@ -214,9 +215,13 @@ Item {
                 width: root.columnX(firstDay + daySpan) - root.columnX(firstDay) - 6
                 height: Theme.allDayRowHeight - 3 - Theme.stickerEdge
                 radius: height / 2
-                color: Theme.calendarColor(calendarColor, Theme.calendar)
+                // Hollow, outlined in the calendar's color, until answered.
+                color: pending ? Theme.surface : Theme.calendarColor(calendarColor, Theme.calendar)
+                border.width: pending ? 2 : 0
+                border.color: Theme.calendarColor(calendarColor, Theme.calendar)
 
                 Rectangle {
+                    visible: !chip.pending
                     z: -1
                     anchors {
                         fill: parent
@@ -244,7 +249,8 @@ Item {
                     text: chip.summary
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
-                    color: Theme.calendarInk(chip.calendarColor, Theme.calendar)
+                    color: chip.pending ? Theme.text : Theme.calendarInk(chip.calendarColor,
+                                                                         Theme.calendar)
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
                     font.weight: Font.ExtraBold

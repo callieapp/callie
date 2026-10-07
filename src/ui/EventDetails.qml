@@ -317,6 +317,11 @@ Popup {
                 label: qsTr("Calendar")
                 value: root.calendarName
             }
+            Guests {
+                width: parent.width - 2 * parent.padding
+                guests: root.event.guests || []
+                ownResponse: root.response
+            }
             Detail {
                 width: parent.width - 2 * parent.padding
                 label: qsTr("Notes")
@@ -405,6 +410,170 @@ Popup {
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
             }
+        }
+    }
+
+    /// Who is invited and how each answered, organizer first. Long lists show
+    /// the first few until asked for the rest.
+    component Guests: Row {
+        id: list
+
+        property var guests: []
+        /// The user's own answer as just given, which the list may not have yet.
+        property string ownResponse
+        property bool expanded: false
+        readonly property int shownCount: expanded ? guests.length : Math.min(guests.length, 6)
+
+        function answerOf(guest) {
+            return guest.self && ownResponse !== "" ? ownResponse : guest.response
+        }
+        function answerLabel(answer) {
+            switch (answer) {
+            case "accepted":
+                return qsTr("going")
+            case "tentative":
+                return qsTr("maybe")
+            case "declined":
+                return qsTr("not going")
+            default:
+                return qsTr("no answer yet")
+            }
+        }
+        function count(response) {
+            return guests.filter(g => answerOf(g) === response).length
+        }
+
+        visible: guests.length > 0
+        spacing: Theme.space4
+        onGuestsChanged: expanded = false
+
+        Text {
+            width: 64
+            text: qsTr("Guests")
+            color: Theme.textFaint
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textSm
+            font.weight: Font.ExtraBold
+        }
+        Column {
+            width: list.width - 64 - list.spacing
+            spacing: Theme.space2
+
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: {
+                    const parts = [list.guests.length === 1 ? qsTr("1 guest") : qsTr("%1 guests").arg(
+                                                                  list.guests.length)]
+                    const yes = list.count("accepted"), maybe = list.count("tentative")
+                    const no = list.count("declined"), waiting = list.count("needsAction")
+                    if (yes)
+                        parts.push(qsTr("%1 yes").arg(yes))
+                    if (maybe)
+                        parts.push(qsTr("%1 maybe").arg(maybe))
+                    if (no)
+                        parts.push(qsTr("%1 no").arg(no))
+                    if (waiting)
+                        parts.push(qsTr("%1 waiting").arg(waiting))
+                    return parts.join(", ")
+                }
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+                font.weight: Font.Bold
+            }
+
+            Repeater {
+                model: list.guests.slice(0, list.shownCount)
+
+                Row {
+                    id: guestRow
+
+                    required property var modelData
+                    readonly property string answer: list.answerOf(modelData)
+
+                    width: parent.width
+                    spacing: Theme.space2
+
+                    AnswerMark {
+                        anchors.verticalCenter: parent.verticalCenter
+                        answer: guestRow.answer
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - Theme.textBase - parent.spacing
+                        text: {
+                            let name = guestRow.modelData.name
+                            if (guestRow.modelData.self)
+                                name = qsTr("%1 (you)").arg(name)
+                            return guestRow.modelData.organizer ? qsTr("%1, organizer").arg(name) :
+                                                                  name
+                        }
+                        textFormat: Text.PlainText
+                        elide: Text.ElideRight
+                        color: guestRow.answer === "declined" ? Theme.textFaint : Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textMd
+                        font.weight: Font.DemiBold
+                        font.strikeout: guestRow.answer === "declined"
+                        Accessible.name: qsTr("%1: %2").arg(text).arg(list.answerLabel(
+                                                                          guestRow.answer))
+                    }
+                }
+            }
+
+            Text {
+                visible: list.guests.length > list.shownCount
+                text: qsTr("Show all %1").arg(list.guests.length)
+                color: Theme.accent
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+                font.weight: Font.ExtraBold
+
+                TapHandler {
+                    onTapped: list.expanded = true
+                }
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
+            }
+        }
+    }
+
+    /// A guest's answer as a small sign: a tick for yes, a cross for no, a
+    /// question mark for maybe, and an empty ring while they have not answered.
+    component AnswerMark: Item {
+        id: mark
+
+        property string answer
+
+        width: Theme.textBase
+        height: Theme.textBase
+
+        Rectangle {
+            anchors.fill: parent
+            radius: width / 2
+            color: mark.answer === "accepted" ? Theme.accent : "transparent"
+            border.width: mark.answer === "accepted" ? 0 : Theme.markRing
+            border.color: mark.answer === "declined" ? Theme.textFaint : Theme.textMuted
+        }
+        Glyph {
+            anchors.centerIn: parent
+            visible: mark.answer === "accepted" || mark.answer === "declined"
+            width: parent.width - 6
+            height: width
+            stroke: Theme.smallGlyphStroke
+            name: mark.answer === "accepted" ? "check" : "close"
+            color: mark.answer === "accepted" ? Theme.accentText : Theme.textFaint
+        }
+        Text {
+            anchors.centerIn: parent
+            visible: mark.answer === "tentative"
+            text: "?"
+            color: Theme.textMuted
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textXs
+            font.weight: Font.ExtraBold
         }
     }
 

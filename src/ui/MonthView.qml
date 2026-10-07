@@ -200,9 +200,15 @@ Item {
 
         background: Rectangle {
             radius: Theme.radiusSm
-            color: chip.event.allDay ? Theme.calendarColor(chip.event.calendarColor,
-                                                           Theme.calendar) : chip.hovered
-                                       ? Theme.surfaceAlt : "transparent"
+            readonly property bool pending: chip.event.allDay && chip.event.response
+                                            === "needsAction"
+
+            color: pending ? Theme.surface : chip.event.allDay ? Theme.calendarColor(chip.event.calendarColor,
+                                                                                     Theme.calendar) :
+                                                                 chip.hovered ? Theme.surfaceAlt :
+                                                                                "transparent"
+            border.width: pending ? 2 : 0
+            border.color: Theme.calendarColor(chip.event.calendarColor, Theme.calendar)
 
             Stripes {
                 visible: chip.event.allDay && response === "tentative"
@@ -233,8 +239,8 @@ Item {
                                               chip.event.summary)
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
-                color: chip.event.allDay ? Theme.calendarInk(chip.event.calendarColor,
-                                                             Theme.calendar) : Theme.text
+                color: chip.event.allDay && chip.event.response !== "needsAction"
+                       ? Theme.calendarInk(chip.event.calendarColor, Theme.calendar) : Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textXs
                 font.weight: Font.Bold

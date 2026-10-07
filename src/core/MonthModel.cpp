@@ -6,7 +6,11 @@
 
 namespace callie {
 
-MonthModel::MonthModel(QObject *parent) : QAbstractListModel(parent) {}
+MonthModel::MonthModel(QObject *parent) : QAbstractListModel(parent)
+{
+    // The rows are renumbered whenever they are rebuilt.
+    connect(this, &QAbstractItemModel::modelReset, this, &MonthModel::weekNumbersChanged);
+}
 
 void MonthModel::setMonth(QDate day)
 {
@@ -61,10 +65,8 @@ QDate MonthModel::gridStart() const
     return ViewRange::weekStart(m_first, Qt::DayOfWeek(m_firstDay));
 }
 
-QList<int> MonthModel::weekNumbers(QDate month, int firstDay) const
+QList<int> MonthModel::weekNumbers() const
 {
-    Q_UNUSED(month)
-    Q_UNUSED(firstDay)
     QList<int> numbers;
     for (int row = 0; row < rowCount() / 7; ++row)
         numbers.append(

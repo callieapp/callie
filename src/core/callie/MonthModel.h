@@ -15,6 +15,8 @@ class MonthModel : public QAbstractListModel
     Q_PROPERTY(QDate today READ today WRITE setToday NOTIFY todayChanged)
     /// The day weeks start on, 1 (Monday) to 7 (Sunday).
     Q_PROPERTY(int firstDay READ firstDay WRITE setFirstDay NOTIFY firstDayChanged)
+    /// The ISO week number of each row.
+    Q_PROPERTY(QList<int> weekNumbers READ weekNumbers NOTIFY weekNumbersChanged)
 
 public:
     enum Role { DateRole = Qt::UserRole + 1, DayRole, InMonthRole, InWeekRole, IsTodayRole };
@@ -33,9 +35,7 @@ public:
     [[nodiscard]] QDate today() const { return m_today; }
     void setToday(QDate today);
 
-    /// The ISO week number of each row. QML passes the month and first day so
-    /// a binding updates when they change.
-    Q_INVOKABLE QList<int> weekNumbers(QDate month, int firstDay) const;
+    [[nodiscard]] QList<int> weekNumbers() const;
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;
     [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
@@ -46,6 +46,7 @@ Q_SIGNALS:
     void weekStartChanged();
     void todayChanged();
     void firstDayChanged();
+    void weekNumbersChanged();
 
 private:
     [[nodiscard]] QDate gridStart() const;

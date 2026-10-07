@@ -115,6 +115,16 @@ void TestWeekDrag::dragMovesStretchesAndClickStillOpens()
     QTRY_VERIFY_WITH_TIMEOUT(detailsOpen(), 5000);
     const Event after = climbing(source);
     QCOMPARE(after.start, stretched.start);
+
+    // With weekends hidden, a drag past the last column lands on the last day
+    // shown, not on a hidden one.
+    QTest::keyClick(window, Qt::Key_Escape);
+    settings.setHideWeekends(true);
+    QTRY_VERIFY((block = findBlock(window->contentItem(), u"Climbing"_s)));
+    QTest::qWait(300);
+    const QPoint grip = block->mapToScene(QPointF(block->width() / 2, 10)).toPoint();
+    drag(window, grip, QPoint(window->width() - 4, grip.y()));
+    QCOMPARE(climbing(source).start.date(), QDate(2026, 10, 9));
 }
 
 QTEST_MAIN(TestWeekDrag)

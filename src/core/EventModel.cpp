@@ -408,6 +408,16 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case SeriesIdRole: return e.seriesId;
     case ResponseRole: return e.responseStatus;
     case AttendeesRole: return e.attendees;
+    case GuestsRole: {
+        QVariantList guests;
+        for (const Guest &guest : e.guests)
+            guests.append(QVariantMap{{u"email"_s, guest.email},
+                                      {u"name"_s, guest.name.isEmpty() ? guest.email : guest.name},
+                                      {u"response"_s, guest.response},
+                                      {u"organizer"_s, guest.organizer},
+                                      {u"self"_s, guest.self}});
+        return guests;
+    }
     case CanEditRole: return e.canEdit;
     case CanRespondRole: return e.canRespond;
     case RecurrenceIdRole: return e.recurrenceId;
@@ -447,6 +457,7 @@ QHash<int, QByteArray> EventModel::roleNames() const
         {SeriesIdRole, "seriesId"},
         {ResponseRole, "response"},
         {AttendeesRole, "attendees"},
+        {GuestsRole, "guests"},
         {CanEditRole, "canEdit"},
         {CanRespondRole, "canRespond"},
         {RecurrenceIdRole, "recurrenceId"},

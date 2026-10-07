@@ -88,10 +88,22 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
             // Calls are invitations, so their answers can be tried out.
             if (!e.conferenceUrl.isEmpty()) {
                 e.attendees = {QStringLiteral("priya@example.com"),
-                               QStringLiteral("sam@example.com")};
-                // One answered "maybe", to show how those look.
-                e.responseStatus = qstrcmp(s.summary, "Retro") == 0 ? QStringLiteral("tentative")
-                                                                    : QStringLiteral("needsAction");
+                               QStringLiteral("jordan@example.com")};
+                // Most are accepted; one is a maybe and two wait for an answer,
+                // to show how each looks.
+                const QByteArray summary(s.summary);
+                e.responseStatus = summary == "Retro"         ? QStringLiteral("tentative")
+                                   : summary == "Vendor call" ? QStringLiteral("needsAction")
+                                   : summary == "Berlin sync" ? QStringLiteral("needsAction")
+                                                              : QStringLiteral("accepted");
+                e.guests = {
+                    {QStringLiteral("priya@example.com"), QStringLiteral("Priya"),
+                     QStringLiteral("accepted"), true, false},
+                    {QStringLiteral("jordan@example.com"), QStringLiteral("Jordan"),
+                     QStringLiteral("needsAction"), false, false},
+                    {QStringLiteral("sam@work.example"), QStringLiteral("Sam"), e.responseStatus,
+                     false, true},
+                };
                 e.canRespond = true;
             }
 
@@ -101,6 +113,10 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
             }
             if (m_answers.contains(e.eventId)) {
                 e.responseStatus = m_answers.value(e.eventId);
+                for (Guest &guest : e.guests) {
+                    if (guest.self)
+                        guest.response = e.responseStatus;
+                }
                 e.declined = e.responseStatus == u"declined";
             }
             if (e.end > from && e.start < to && !m_deleted.contains(e.eventId))

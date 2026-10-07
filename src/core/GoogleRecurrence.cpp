@@ -115,10 +115,24 @@ Event toEvent(const GoogleEvent &source, const QTimeZone &viewZone)
     event.seriesId = source.recurringEventId;
     bool invited = false;
     for (const QJsonValue &attendee : QJsonDocument::fromJson(source.attendees).array()) {
-        if (attendee[u"self"].toBool())
+        // Rooms and other resources answer for themselves and are not people.
+        if (attendee[u"resource"].toBool())
+            continue;
+        const Guest guest{
+            .email = attendee[u"email"].toString(),
+            .name = attendee[u"displayName"].toString(),
+            .response = attendee[u"responseStatus"].toString(u"needsAction"_s),
+            .organizer = attendee[u"organizer"].toBool(),
+            .self = attendee[u"self"].toBool(),
+        };
+        if (guest.self)
             invited = true;
-        else if (const QString email = attendee[u"email"].toString(); !email.isEmpty())
-            event.attendees.append(email);
+        else if (!guest.email.isEmpty())
+            event.attendees.append(guest.email);
+        if (guest.organizer)
+            event.guests.prepend(guest);
+        else
+            event.guests.append(guest);
     }
     // Calendar access is checked by the source; this is what the event allows.
     event.canEdit = source.attendees.isEmpty() || source.organizerSelf || source.guestsCanModify;

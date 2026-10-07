@@ -96,6 +96,15 @@ void InvitesModel::apply(const QList<Event> &events)
         return false;
     });
 
+    // The clock ticks often; an unchanged list keeps the tray's place.
+    const auto key = [](const Event &e) {
+        return e.eventId + u'|' + e.start.toString(Qt::ISODate);
+    };
+    if (std::equal(invites.cbegin(), invites.cend(), m_invites.cbegin(), m_invites.cend(),
+                   [&key](const Event &a, const Event &b) {
+                       return key(a) == key(b) && a.summary == b.summary && a.color == b.color;
+                   }))
+        return;
     const bool counted = invites.size() != m_invites.size();
     beginResetModel();
     m_invites = invites;

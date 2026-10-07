@@ -26,6 +26,10 @@ constexpr int kAgendaDays = 30;
 /// The first day of the week holding `day`.
 [[nodiscard]] QDate weekStart(QDate day, Qt::DayOfWeek firstDay);
 
+/// The ISO number of the week holding `day`, read from that week's middle day
+/// so a week starting on Sunday or Saturday is numbered as most of it is.
+[[nodiscard]] int weekNumber(QDate day, Qt::DayOfWeek firstDay);
+
 /// The day `count` views later (or earlier, when negative). Months keep to
 /// the first, so stepping from 31 January does not skip February.
 [[nodiscard]] QDate step(View view, QDate focus, int count);

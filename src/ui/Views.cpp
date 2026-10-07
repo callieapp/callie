@@ -15,9 +15,9 @@ int Views::days(const QString &view, const QDateTime &focus, int firstDay) const
     return ViewRange::days(ViewRange::fromName(view), focus.date(), Qt::DayOfWeek(firstDay));
 }
 
-int Views::weekNumber(const QDateTime &day) const
+int Views::weekNumber(const QDateTime &day, int firstDay) const
 {
-    return day.date().weekNumber();
+    return ViewRange::weekNumber(day.date(), Qt::DayOfWeek(firstDay));
 }
 
 QDateTime Views::step(const QString &view, const QDateTime &focus, int count) const

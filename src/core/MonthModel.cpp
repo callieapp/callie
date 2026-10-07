@@ -67,7 +67,8 @@ QList<int> MonthModel::weekNumbers(QDate month, int firstDay) const
     Q_UNUSED(firstDay)
     QList<int> numbers;
     for (int row = 0; row < rowCount() / 7; ++row)
-        numbers.append(gridStart().addDays(row * 7 + 3).weekNumber());
+        numbers.append(
+            ViewRange::weekNumber(gridStart().addDays(row * 7), Qt::DayOfWeek(m_firstDay)));
     return numbers;
 }
 

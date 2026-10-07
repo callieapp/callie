@@ -126,8 +126,8 @@ Item {
                         topMargin: Theme.space3
                         rightMargin: Theme.space3
                     }
-                    text: qsTr("W%1").arg(Views.weekNumber(root.dateFor(cell.index - cell.index % 7
-                                                                        + 3)))
+                    text: qsTr("W%1").arg(Views.weekNumber(root.dateFor(cell.index),
+                                                           Settings.firstDayOfWeek))
                     color: Theme.textFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs

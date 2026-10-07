@@ -6,6 +6,10 @@ import QtQuick.Controls
 MenuItem {
     id: root
 
+    /// The menu's padding around its entries. The highlight's corners follow
+    /// the menu's rounded ones at that distance, so they never cross its border.
+    property int inset: Theme.space2
+
     implicitHeight: 30
     leftPadding: Theme.space4
     rightPadding: Theme.space4
@@ -19,7 +23,7 @@ MenuItem {
     }
 
     background: Rectangle {
-        radius: Theme.radiusSm
+        radius: Math.max(Theme.radiusSm, Theme.radiusLg - root.inset)
         color: root.highlighted ? Theme.surfaceAlt : "transparent"
     }
 }

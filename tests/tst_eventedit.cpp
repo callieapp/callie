@@ -1,4 +1,5 @@
 #include "Clock.h"
+#include "EventActions.h"
 #include "EventModelForeign.h"
 
 #include "callie/SampleSource.h"
@@ -8,6 +9,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QtQml/qqmlextensionplugin.h>
@@ -56,10 +58,12 @@ class TestEventEdit : public QObject
 {
     Q_OBJECT
 private Q_SLOTS:
+    void initTestCase() { QQuickStyle::setStyle(u"Basic"_s); }
     void init();
     void cleanup();
     void cardTurnsIntoAFormAndSaves();
     void movedSeriesGetsItsRuleRewritten();
+    void overnightKeepsItsLength();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -96,7 +100,6 @@ private:
 
 void TestEventEdit::init()
 {
-    QQuickStyle::setStyle(u"Basic"_s);
     m_dir = std::make_unique<QTemporaryDir>();
     m_settings = std::make_unique<Settings>(m_dir->filePath(u"s.ini"_s));
     SettingsForeign::s_instance = m_settings.get();
@@ -177,15 +180,34 @@ void TestEventEdit::movedSeriesGetsItsRuleRewritten()
     // not even by saving again while asked.
     form->setProperty("repeat", u"daily"_s);
     QTRY_VERIFY(!find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
+    std::vector<std::unique_ptr<QSignalSpy>> updates;
+    for (EventActions *actions : m_window->findChildren<EventActions *>())
+        updates.push_back(std::make_unique<QSignalSpy>(actions, &EventActions::updated));
+    QVERIFY(!updates.empty());
     QVERIFY(QMetaObject::invokeMethod(form, "save"));
     QVERIFY(form->property("asking").toBool());
-    QCOMPARE(named(*m_source, u"Standup"_s).summary, u"Standup"_s);
+    for (const auto &spy : updates)
+        QVERIFY(spy->isEmpty());
 
     // An end before the start cannot be saved.
     form->setProperty("endDay", day.date().addDays(-1).startOfDay());
     QVariant valid;
     QVERIFY(QMetaObject::invokeMethod(form, "valid", Q_RETURN_ARG(QVariant, valid)));
     QCOMPARE(valid, QVariant(false));
+}
+
+void TestEventEdit::overnightKeepsItsLength()
+{
+    QQuickItem *form = openEditor(u"Climbing"_s);
+    QVERIFY(form);
+    // 22:00 to 02:00 the next day, then started an hour later.
+    const QDateTime day = form->property("startDay").toDateTime();
+    form->setProperty("startMinutes", 22 * 60);
+    form->setProperty("endDay", day.date().addDays(1).startOfDay());
+    form->setProperty("endMinutes", 2 * 60);
+    QVERIFY(QMetaObject::invokeMethod(form, "moveStart", Q_ARG(QVariant, 23 * 60)));
+    QCOMPARE(form->property("endDay").toDateTime().date(), day.date().addDays(1));
+    QCOMPARE(form->property("endMinutes").toInt(), 3 * 60);
 }
 
 QTEST_MAIN(TestEventEdit)

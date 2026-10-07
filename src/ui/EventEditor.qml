@@ -93,6 +93,18 @@ Column {
         return c
     }
 
+    /// A new start time, with the end keeping its distance on the clock, into
+    /// the next day if it has to.
+    function moveStart(minutes) {
+        const day = 24 * 60
+        const length = Math.max(Theme.snapMinutes, root.actions.daysBetween(startDay, endDay) * day
+                                + endMinutes - startMinutes)
+        const end = minutes + length
+        startMinutes = minutes
+        endDay = root.actions.addDays(startDay, Math.floor(end / day))
+        endMinutes = end % day
+    }
+
     /// The end comes after the start.
     function valid() {
         const days = root.actions.daysBetween(startDay, endDay)
@@ -160,11 +172,7 @@ Column {
         TimePicker {
             visible: !root.allDay
             minutes: root.startMinutes
-            onPicked: minutes => {
-                const length = root.endMinutes - root.startMinutes
-                root.startMinutes = minutes
-                root.endMinutes = Math.min(24 * 60, minutes + Math.max(Theme.snapMinutes, length))
-            }
+            onPicked: minutes => root.moveStart(minutes)
         }
         Text {
             height: Theme.listRowHeight + Theme.space2

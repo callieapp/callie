@@ -16,6 +16,7 @@ private Q_SLOTS:
     void defaultsWithoutAFile();
     void choicesSurviveARestart();
     void workingHoursStayInOrder();
+    void keyboardSettingsKeepToWhatWorks();
     void weekSettingsResetAndSignal();
     void googleFillsOnlyWhatIsUnset();
     void unchangedValueEmitsNothing();
@@ -172,6 +173,28 @@ void TestSettings::workingHoursStayInOrder()
     QCOMPARE(settings.workStart(), 7 * 60 + 30);
     settings.setWorkEnd(30 * 60);
     QCOMPARE(settings.workEnd(), 24 * 60);
+}
+
+void TestSettings::keyboardSettingsKeepToWhatWorks()
+{
+    {
+        Settings settings(path());
+        QVERIFY(!settings.viMode());
+        QCOMPARE(settings.leaderKey(), u","_s);
+        QCOMPARE(settings.leaderTimeout(), 2000);
+        QSignalSpy changed(&settings, &Settings::keyboardChanged);
+        settings.setViMode(true);
+        settings.setLeaderKey(u"x"_s);
+        QCOMPARE(settings.leaderKey(), u","_s);
+        settings.setLeaderKey(u" "_s);
+        settings.setLeaderTimeout(-500);
+        QCOMPARE(settings.leaderTimeout(), 0);
+        QCOMPARE(changed.size(), 3);
+    }
+    Settings again(path());
+    QVERIFY(again.viMode());
+    QCOMPARE(again.leaderKey(), u" "_s);
+    QCOMPARE(again.leaderTimeout(), 0);
 }
 
 void TestSettings::unchangedValueEmitsNothing()

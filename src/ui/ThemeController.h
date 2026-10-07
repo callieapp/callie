@@ -94,6 +94,8 @@ class ThemeController : public QObject
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
     Q_PROPERTY(int allDayRowHeight READ allDayRowHeight CONSTANT)
     Q_PROPERTY(int snapMinutes READ snapMinutes CONSTANT)
+    /// How long the leader key waits before showing what can follow it, in ms.
+    Q_PROPERTY(int whichKeyDelay READ whichKeyDelay CONSTANT)
     /// Stripes over an event answered "maybe": line width and the distance
     /// from one stripe to the next.
     Q_PROPERTY(int stripeWidth READ stripeWidth CONSTANT)
@@ -223,6 +225,7 @@ public:
     int gutterWidth() const { return 52; }
     int allDayRowHeight() const { return 30; }
     int snapMinutes() const { return 15; }
+    int whichKeyDelay() const { return 300; }
     int stripeWidth() const { return 3; }
     int stripeStep() const { return 8; }
     int markRing() const { return 2; }

@@ -10,7 +10,8 @@ Popup {
     id: root
 
     anchors.centerIn: Overlay.overlay
-    width: 480
+    // Wide enough for every tab on one row.
+    width: 600
     padding: 0
     modal: true
     focus: true
@@ -118,6 +119,10 @@ Popup {
                         "label": qsTr("Appearance")
                     },
                     {
+                        "id": "keyboard",
+                        "label": qsTr("Keyboard")
+                    },
+                    {
                         "id": "accounts",
                         "label": qsTr("Accounts")
                     }
@@ -135,7 +140,7 @@ Popup {
 
         AccountsSection {
             visible: root.tab === "accounts"
-            width: 480 - 2 * Theme.space6
+            width: root.width - 2 * Theme.space6
             report: root.syncReport
         }
 
@@ -385,6 +390,105 @@ Popup {
         }
 
         Section {
+            title: qsTr("Vi mode")
+            visible: root.tab === "keyboard"
+
+            Toggle {
+                width: parent.width
+                text: qsTr("Move around and act with single keys")
+                checked: Settings.viMode
+                onToggled: Settings.viMode = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr(
+                          "j and k scroll, h and l step back and forward, t goes to today, / searches. The leader key starts a command; ? lists them all.")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+            }
+            Row {
+                enabled: Settings.viMode
+                opacity: enabled ? 1 : Theme.fadedOpacity
+                spacing: Theme.space2
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("Leader")
+                    color: Theme.textFaint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textSm
+                    font.weight: Font.ExtraBold
+                }
+                Repeater {
+                    model: [
+                        {
+                            "key": ",",
+                            "label": ","
+                        },
+                        {
+                            "key": ":",
+                            "label": ":"
+                        },
+                        {
+                            "key": " ",
+                            "label": qsTr("Space")
+                        }
+                    ]
+
+                    PillButton {
+                        required property var modelData
+                        label: modelData.label
+                        selected: Settings.leaderKey === modelData.key
+                        onClicked: Settings.leaderKey = modelData.key
+                    }
+                }
+            }
+            Row {
+                enabled: Settings.viMode
+                opacity: enabled ? 1 : Theme.fadedOpacity
+                spacing: Theme.space2
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("Wait for the next key")
+                    color: Theme.textFaint
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textSm
+                    font.weight: Font.ExtraBold
+                }
+                StickerButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: "minimize"
+                    Accessible.name: qsTr("Wait half a second less")
+                    enabled: Settings.leaderTimeout > 0
+                    onClicked: Settings.leaderTimeout = Math.max(0, Settings.leaderTimeout - 500)
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 90
+                    horizontalAlignment: Text.AlignHCenter
+                    text: Settings.leaderTimeout === 0 ? qsTr("until Esc") : qsTr("%1 s").arg(Number(
+                                                                                                  Settings.leaderTimeout
+                                                                                                  / 1000).toLocaleString(
+                                                                                                  Qt.locale(
+                                                                                                      ), "f", 1))
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textMd
+                    font.weight: Font.Bold
+                }
+                StickerButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: "plus"
+                    Accessible.name: qsTr("Wait half a second more")
+                    onClicked: Settings.leaderTimeout += 500
+                }
+            }
+        }
+
+        Section {
             title: qsTr("Working hours")
             visible: root.tab === "week"
 
@@ -605,7 +709,7 @@ Popup {
         property string title
         default property alias content: rows.data
 
-        width: 480 - 2 * Theme.space6
+        width: root.width - 2 * Theme.space6
         spacing: Theme.space3
 
         Text {

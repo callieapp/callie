@@ -33,6 +33,9 @@ class Settings : public QObject
     /// Working hours, as minutes past midnight; the grid shades the rest.
     Q_PROPERTY(int workStart READ workStart WRITE setWorkStart NOTIFY workHoursChanged)
     Q_PROPERTY(int workEnd READ workEnd WRITE setWorkEnd NOTIFY workHoursChanged)
+    Q_PROPERTY(bool viMode READ viMode WRITE setViMode NOTIFY keyboardChanged)
+    Q_PROPERTY(QString leaderKey READ leaderKey WRITE setLeaderKey NOTIFY keyboardChanged)
+    Q_PROPERTY(int leaderTimeout READ leaderTimeout WRITE setLeaderTimeout NOTIFY keyboardChanged)
     Q_PROPERTY(QStringList hiddenCalendars READ hiddenCalendars NOTIFY hiddenCalendarsChanged)
     Q_PROPERTY(callie::Times *times READ times NOTIFY timesChanged)
     /// A built-in theme id or a theme file path; empty is the default theme.
@@ -104,6 +107,20 @@ public:
     [[nodiscard]] int workEnd() const { return m_workEnd; }
     void setWorkEnd(int minutes);
 
+    /// Single keys move around and act, as in vi, with a leader key before
+    /// the commands that have no key of their own.
+    [[nodiscard]] bool viMode() const { return m_viMode; }
+    void setViMode(bool on);
+    /// "," (the default), ":" or " ".
+    [[nodiscard]] QString leaderKey() const { return m_leaderKey; }
+    void setLeaderKey(const QString &key);
+    /// How long, in milliseconds, the leader waits for the next key; 0 waits
+    /// until Escape.
+    [[nodiscard]] int leaderTimeout() const { return m_leaderTimeout; }
+    void setLeaderTimeout(int ms);
+    static inline const QStringList kLeaderKeys = {QStringLiteral(","), QStringLiteral(":"),
+                                                   QStringLiteral(" ")};
+
     /// Calendars the user hid in Callie, by CalendarInfo::id.
     [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
     Q_INVOKABLE void setCalendarVisible(const QString &id, bool visible);
@@ -169,6 +186,7 @@ Q_SIGNALS:
     void widenTodayChanged();
     void weekChanged();
     void workHoursChanged();
+    void keyboardChanged();
     void hiddenCalendarsChanged();
     void timesChanged();
     void themeChanged();
@@ -198,6 +216,9 @@ private:
     bool m_weekNumbers = false;
     int m_workStart = 9 * 60;
     int m_workEnd = 17 * 60;
+    bool m_viMode = false;
+    QString m_leaderKey = QStringLiteral(",");
+    int m_leaderTimeout = 2000;
     QStringList m_hiddenCalendars;
     Times *m_times = nullptr;
     QString m_theme;

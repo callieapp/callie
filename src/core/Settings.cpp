@@ -21,6 +21,9 @@ const QString kHideWeekends = u"week/hideWeekends"_s;
 const QString kWeekNumbers = u"week/numbers"_s;
 const QString kWorkStart = u"week/workStart"_s;
 const QString kWorkEnd = u"week/workEnd"_s;
+const QString kViMode = u"keyboard/viMode"_s;
+const QString kLeaderKey = u"keyboard/leaderKey"_s;
+const QString kLeaderTimeout = u"keyboard/leaderTimeout"_s;
 constexpr int kDayMinutes = 24 * 60;
 const QString kHiddenCalendars = u"calendars/hidden"_s;
 const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
@@ -67,6 +70,10 @@ void Settings::load()
     m_weekNumbers = m_store.value(kWeekNumbers, false).toBool();
     m_workStart = std::clamp(m_store.value(kWorkStart, 9 * 60).toInt(), 0, kDayMinutes - 30);
     m_workEnd = std::clamp(m_store.value(kWorkEnd, 17 * 60).toInt(), m_workStart + 30, kDayMinutes);
+    m_viMode = m_store.value(kViMode, false).toBool();
+    const QString leader = m_store.value(kLeaderKey).toString();
+    m_leaderKey = kLeaderKeys.contains(leader) ? leader : u","_s;
+    m_leaderTimeout = std::max(0, m_store.value(kLeaderTimeout, 2000).toInt());
     m_hiddenCalendars = m_store.value(kHiddenCalendars).toStringList();
     m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
     m_calendarLooks = m_store.value(kCalendarLooks).toMap();
@@ -169,6 +176,34 @@ void Settings::setWeekNumbers(bool show)
     m_weekNumbers = show;
     m_store.setValue(kWeekNumbers, show);
     Q_EMIT weekChanged();
+}
+
+void Settings::setViMode(bool on)
+{
+    if (m_viMode == on)
+        return;
+    m_viMode = on;
+    m_store.setValue(kViMode, on);
+    Q_EMIT keyboardChanged();
+}
+
+void Settings::setLeaderKey(const QString &key)
+{
+    if (m_leaderKey == key || !kLeaderKeys.contains(key))
+        return;
+    m_leaderKey = key;
+    m_store.setValue(kLeaderKey, key);
+    Q_EMIT keyboardChanged();
+}
+
+void Settings::setLeaderTimeout(int ms)
+{
+    ms = std::max(0, ms);
+    if (m_leaderTimeout == ms)
+        return;
+    m_leaderTimeout = ms;
+    m_store.setValue(kLeaderTimeout, ms);
+    Q_EMIT keyboardChanged();
 }
 
 void Settings::setWorkStart(int minutes)
@@ -432,6 +467,9 @@ void Settings::reset()
     const int minutes = m_reminderMinutes;
     const int weekStart = m_weekStart, workStart = m_workStart, workEnd = m_workEnd;
     const bool hideWeekends = m_hideWeekends, weekNumbers = m_weekNumbers;
+    const bool viMode = m_viMode;
+    const QString leaderKey = m_leaderKey;
+    const int leaderTimeout = m_leaderTimeout;
     load();
     if (format != m_timeFormat)
         Q_EMIT timeFormatChanged();
@@ -467,6 +505,8 @@ void Settings::reset()
         Q_EMIT weekChanged();
     if (workStart != m_workStart || workEnd != m_workEnd)
         Q_EMIT workHoursChanged();
+    if (viMode != m_viMode || leaderKey != m_leaderKey || leaderTimeout != m_leaderTimeout)
+        Q_EMIT keyboardChanged();
     rebuildTimes();
 }
 

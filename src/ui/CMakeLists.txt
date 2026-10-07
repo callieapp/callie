@@ -18,6 +18,8 @@ qt_add_qml_module(callieui
         Composer.cpp
         EventActions.h
         EventActions.cpp
+        KeyRouter.h
+        KeyRouter.cpp
         EventModelForeign.h
         LiveQml.h
         NotificationServer.h
@@ -65,6 +67,9 @@ qt_add_qml_module(callieui
         MenuEntry.qml
         MoveChoice.qml
         EventMover.qml
+        KeyCap.qml
+        WhichKey.qml
+        KeyHelp.qml
         AllDayChip.qml
         Tip.qml
         Toggle.qml

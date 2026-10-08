@@ -16,6 +16,7 @@ namespace callie {
 
 class AccountManager;
 class AccountStore;
+class ContactBook;
 class GoogleCache;
 class GoogleCalendarApi;
 class GoogleSource;
@@ -56,6 +57,8 @@ public:
         QUrl authUrl = {};
         QUrl tokenUrl = {};
         QUrl apiBaseUrl = {};
+        /// Loses an account's contacts when the account is removed.
+        ContactBook *contacts = nullptr;
     };
 
     static AccountsController *instance();

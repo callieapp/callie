@@ -191,10 +191,8 @@ int main(int argc, char *argv[])
     QObject::connect(
         &sync, &callie::GoogleSync::contactsFound, &contacts,
         [&contacts](const callie::Account &account, const QList<callie::Contact> &people) {
-            contacts.add(account.id, people);
+            contacts.setContacts(account.id, people);
         });
-    QObject::connect(&sync, &callie::GoogleSync::forgotten, &contacts,
-                     [&contacts](const callie::Account &account) { contacts.forget(account.id); });
     callie::ContactBookForeign::s_instance = &contacts;
     QTimer syncTimer;
     // Without a client every refresh would fail, so show the cache and say why once.
@@ -228,6 +226,7 @@ int main(int argc, char *argv[])
 
     callie::AccountsController::Setup accountSetup{&store,   &tokens, &cache, &google,
                                                    &network, client,  {}};
+    accountSetup.contacts = &contacts;
     // Sample data and screenshots never show or touch the user's accounts.
     if (standalone) {
         accountSetup = {};

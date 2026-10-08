@@ -436,10 +436,9 @@ void TestGoogleSync::contactsOfARemovedAccountAreDropped()
         return answer(request);
     };
     QSignalSpy found(m_sync.get(), &GoogleSync::contactsFound);
-    QSignalSpy forgotten(m_sync.get(), &GoogleSync::forgotten);
 
     QCOMPARE(runSync(), QStringList());
-    QTRY_COMPARE_WITH_TIMEOUT(forgotten.size(), 1, 5000);
+    QTRY_COMPARE_WITH_TIMEOUT(m_google->count(u"people:listDirectoryPeople"_s), 1, 5000);
     QTest::qWait(300);
     QVERIFY(found.isEmpty());
 }

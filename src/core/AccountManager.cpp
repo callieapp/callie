@@ -1,5 +1,7 @@
 #include "callie/AccountManager.h"
 
+#include "callie/ContactBook.h"
+
 #include "callie/AccountStore.h"
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCache.h"
@@ -106,6 +108,8 @@ void AccountManager::remove(const Account &account)
             Q_EMIT failed(m_store.errorString());
         else {
             qCInfo(lcAccounts) << "removed" << account.provider << account.id;
+            if (m_contacts)
+                m_contacts->forget(account.id);
             Q_EMIT removed(account);
         }
     });

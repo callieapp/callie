@@ -90,8 +90,9 @@ void ContactBook::readSource()
                                        QTimeZone::systemTimeZone()));
 }
 
-void ContactBook::add(const QString &account, const QList<Contact> &contacts)
+void ContactBook::setContacts(const QString &account, const QList<Contact> &contacts)
 {
+    drop(account);
     for (const Contact &contact : contacts) {
         const QString key = contact.email.toLower();
         if (key.isEmpty())
@@ -104,6 +105,19 @@ void ContactBook::add(const QString &account, const QList<Contact> &contacts)
     }
     save();
     Q_EMIT changed();
+}
+
+void ContactBook::drop(const QString &account)
+{
+    for (auto it = m_owners.begin(); it != m_owners.end();) {
+        it->remove(account);
+        if (it->isEmpty()) {
+            m_saved.remove(it.key());
+            it = m_owners.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void ContactBook::keepOnly(const QStringList &accounts)
@@ -121,15 +135,7 @@ void ContactBook::keepOnly(const QStringList &accounts)
 
 void ContactBook::forget(const QString &account)
 {
-    for (auto it = m_owners.begin(); it != m_owners.end();) {
-        it->remove(account);
-        if (it->isEmpty()) {
-            m_saved.remove(it.key());
-            it = m_owners.erase(it);
-        } else {
-            ++it;
-        }
-    }
+    drop(account);
     save();
     Q_EMIT changed();
 }

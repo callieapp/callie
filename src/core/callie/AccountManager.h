@@ -6,6 +6,8 @@
 
 namespace callie {
 
+class ContactBook;
+
 class AccountStore;
 class GoogleCache;
 class GoogleAuth;
@@ -22,6 +24,8 @@ public:
     /// `cache`, when given, loses an account's events when the account is removed.
     AccountManager(TokenStore &tokens, AccountStore &store, GoogleCache *cache = nullptr,
                    QObject *parent = nullptr);
+    /// `contacts`, when given, loses an account's contacts when the account is removed.
+    void setContacts(ContactBook *contacts) { m_contacts = contacts; }
 
     /// Signs in with Google and records the account. The token is stored before
     /// the account is listed, so a keyring failure never leaves an account
@@ -41,6 +45,7 @@ private:
     TokenStore &m_tokens;
     AccountStore &m_store;
     GoogleCache *m_cache;
+    ContactBook *m_contacts = nullptr;
 };
 
 } // namespace callie

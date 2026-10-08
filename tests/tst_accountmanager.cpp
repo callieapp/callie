@@ -2,6 +2,7 @@
 
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/ContactBook.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/TokenStore.h"
@@ -87,6 +88,7 @@ private Q_SLOTS:
     void removeKeepsAccountWhenKeyringFails();
     void removeUnknownAccountFails();
     void removeClearsCachedEvents();
+    void removeForgetsContacts();
     void removeKeepsAccountWhenCacheFails();
     void removeReportsCorruptList();
     void connectRefusesCorruptListBeforeSignIn();
@@ -259,6 +261,21 @@ void TestAccountManager::removeClearsCachedEvents()
     QVERIFY(removed.wait(2000));
     QVERIFY(cache.calendars(kAccount).isEmpty());
     QVERIFY(listed(*m_store).isEmpty());
+}
+
+void TestAccountManager::removeForgetsContacts()
+{
+    ContactBook contacts({});
+    contacts.setContacts(kAccount.id, {{QStringLiteral("Pat"), QStringLiteral("pat@example.com")}});
+    AccountManager manager(*m_tokens, *m_store);
+    manager.setContacts(&contacts);
+    QVERIFY(m_store->add(kAccount));
+    QSignalSpy removed(&manager, &AccountManager::removed);
+
+    manager.remove(kAccount);
+
+    QVERIFY(removed.wait(2000));
+    QVERIFY(contacts.suggest(QStringLiteral("pat"), {}).isEmpty());
 }
 
 void TestAccountManager::removeKeepsAccountWhenCacheFails()

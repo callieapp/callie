@@ -55,8 +55,11 @@ ContactBook::ContactBook(QString path, QObject *parent) : QObject(parent), m_pat
         return;
     for (const QJsonValue &person : QJsonDocument::fromJson(file.readAll()).array()) {
         const Contact contact{person[u"name"].toString(), person[u"email"].toString()};
-        if (!contact.email.isEmpty())
-            m_saved.insert(contact.email.toLower(), contact);
+        const QStringList accounts = person[u"accounts"].toVariant().toStringList();
+        if (contact.email.isEmpty() || accounts.isEmpty())
+            continue;
+        m_saved.insert(contact.email.toLower(), contact);
+        m_owners.insert(contact.email.toLower(), {accounts.cbegin(), accounts.cend()});
     }
 }
 
@@ -87,7 +90,7 @@ void ContactBook::readSource()
                                        QTimeZone::systemTimeZone()));
 }
 
-void ContactBook::add(const QList<Contact> &contacts)
+void ContactBook::add(const QString &account, const QList<Contact> &contacts)
 {
     for (const Contact &contact : contacts) {
         const QString key = contact.email.toLower();
@@ -97,6 +100,22 @@ void ContactBook::add(const QList<Contact> &contacts)
         kept.email = contact.email;
         if (!contact.name.isEmpty())
             kept.name = contact.name;
+        m_owners[key].insert(account);
+    }
+    save();
+    Q_EMIT changed();
+}
+
+void ContactBook::forget(const QString &account)
+{
+    for (auto it = m_owners.begin(); it != m_owners.end();) {
+        it->remove(account);
+        if (it->isEmpty()) {
+            m_saved.remove(it.key());
+            it = m_owners.erase(it);
+        } else {
+            ++it;
+        }
     }
     save();
     Q_EMIT changed();
@@ -181,8 +200,13 @@ void ContactBook::save() const
     if (m_path.isEmpty())
         return;
     QJsonArray people;
-    for (const Contact &contact : m_saved)
-        people.append(QJsonObject{{u"name"_s, contact.name}, {u"email"_s, contact.email}});
+    for (auto it = m_saved.cbegin(); it != m_saved.cend(); ++it) {
+        const QSet<QString> &owners = m_owners.value(it.key());
+        people.append(QJsonObject{{u"name"_s, it->name},
+                                  {u"email"_s, it->email},
+                                  {u"accounts"_s, QJsonArray::fromStringList(QStringList(
+                                                      owners.cbegin(), owners.cend()))}});
+    }
     QDir().mkpath(QFileInfo(m_path).absolutePath());
     QSaveFile file(m_path);
     if (file.open(QIODevice::WriteOnly)) {

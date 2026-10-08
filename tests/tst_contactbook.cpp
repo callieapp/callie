@@ -37,6 +37,7 @@ private Q_SLOTS:
     void matchesByAddressThenName();
     void contactsKeepTheirNamesAndSurvive();
     void sourceTeachesItsGuests();
+    void removedAccountsTakeTheirContacts();
 };
 
 void TestContactBook::guestsMetMoreComeFirst()
@@ -66,9 +67,9 @@ void TestContactBook::guestsMetMoreComeFirst()
 void TestContactBook::matchesByAddressThenName()
 {
     ContactBook book({});
-    book.add({{u"Alex Kim"_s, u"akim@example.com"_s},
-              {u"Kimberly Ross"_s, u"kross@example.com"_s},
-              {u"Jo"_s, u"jo.kim@example.com"_s}});
+    book.add(u"me@example.com"_s, {{u"Alex Kim"_s, u"akim@example.com"_s},
+                                   {u"Kimberly Ross"_s, u"kross@example.com"_s},
+                                   {u"Jo"_s, u"jo.kim@example.com"_s}});
     // The address starting with it, then a name word starting with it, then anywhere.
     QCOMPARE(emails(book.suggest(u"kim"_s, {})),
              (QStringList{u"akim@example.com"_s, u"kross@example.com"_s, u"jo.kim@example.com"_s}));
@@ -86,9 +87,9 @@ void TestContactBook::contactsKeepTheirNamesAndSurvive()
     {
         ContactBook book(path);
         QSignalSpy changed(&book, &ContactBook::changed);
-        book.add({{u"Priya Shah"_s, u"priya@example.com"_s}});
+        book.add(u"me@example.com"_s, {{u"Priya Shah"_s, u"priya@example.com"_s}});
         // An address alone does not wipe out the name known for it.
-        book.add({{{}, u"Priya@Example.com"_s}});
+        book.add(u"me@example.com"_s, {{{}, u"Priya@Example.com"_s}});
         QCOMPARE(changed.size(), 2);
         // A guest list's name gives way to the contact's.
         book.learn({meeting(u"a"_s, {{u"priya@example.com"_s, u"P."_s, {}, false, false}})});
@@ -107,6 +108,25 @@ void TestContactBook::sourceTeachesItsGuests()
     book.setSource(&sample);
     QTRY_VERIFY(!changed.isEmpty());
     QCOMPARE(emails(book.suggest(u"priya"_s, {})), QStringList{u"priya@example.com"_s});
+}
+
+void TestContactBook::removedAccountsTakeTheirContacts()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(u"contacts.json"_s);
+    {
+        ContactBook book(path);
+        book.add(u"work@example.com"_s,
+                 {{u"Pat"_s, u"pat@example.com"_s}, {u"Lee"_s, u"lee@example.com"_s}});
+        book.add(u"home@example.com"_s, {{u"Lee"_s, u"lee@example.com"_s}});
+        book.forget(u"work@example.com"_s);
+        // Lee is still a contact of the other account.
+        QCOMPARE(emails(book.suggest(u"e"_s, {})), QStringList{u"lee@example.com"_s});
+    }
+    ContactBook again(path);
+    QCOMPARE(emails(again.suggest(u"e"_s, {})), QStringList{u"lee@example.com"_s});
+    again.forget(u"home@example.com"_s);
+    QVERIFY(again.suggest(u"e"_s, {}).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestContactBook)

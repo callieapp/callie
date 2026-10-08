@@ -417,6 +417,11 @@ void TestGoogleSync::contactsAreReadOnceARun()
     QTest::qWait(200);
     QCOMPARE(found.size(), 1);
     QCOMPARE(m_google->count(u"otherContacts"_s), 1);
+
+    // Removed while a run is reading them, an account's contacts are dropped.
+    QSignalSpy forgotten(m_sync.get(), &GoogleSync::forgotten);
+    m_sync->forget(kAccount);
+    QCOMPARE(forgotten.size(), 1);
 }
 
 void TestGoogleSync::unreadableSettingsAreTriedAgain()

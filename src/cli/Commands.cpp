@@ -147,15 +147,16 @@ void Commands::print(const QList<Event> &events, bool json, bool byDay)
         return;
     QJsonArray list;
     for (const Event &e : events) {
-        const auto time = [&e, this](const QDateTime &t) {
-            return e.allDay ? t.toTimeZone(m_zone).date().toString(Qt::ISODate)
+        // An all-day event's end is its last day, as `callie edit --end` takes it.
+        const auto time = [&e, this](const QDateTime &t, int lastDay) {
+            return e.allDay ? t.toTimeZone(m_zone).date().addDays(lastDay).toString(Qt::ISODate)
                             : t.toTimeZone(m_zone).toString(Qt::ISODate);
         };
         list.append(QJsonObject{{u"id"_s, reference(e)},
                                 {u"calendar"_s, e.calendarId},
                                 {u"title"_s, e.summary},
-                                {u"start"_s, time(e.start)},
-                                {u"end"_s, time(e.end)},
+                                {u"start"_s, time(e.start, 0)},
+                                {u"end"_s, time(e.end, -1)},
                                 {u"allDay"_s, e.allDay},
                                 {u"location"_s, e.location},
                                 {u"response"_s, e.responseStatus},
@@ -172,13 +173,14 @@ QString Commands::reference(const Event &event)
 std::optional<QDateTime> Commands::when(const QString &text, QDate day) const
 {
     const QString trimmed = text.trimmed();
-    for (const QString &format :
-         {u"yyyy-MM-dd HH:mm"_s, u"yyyy-MM-dd'T'HH:mm"_s, u"yyyy-MM-dd HH:mm:ss"_s}) {
+    for (const QString &format : {u"yyyy-MM-dd HH:mm"_s, u"yyyy-MM-dd'T'HH:mm"_s,
+                                  u"yyyy-MM-dd HH:mm:ss"_s, u"yyyy-MM-dd'T'HH:mm:ss"_s}) {
         const QDateTime at = QDateTime::fromString(trimmed, format);
         if (at.isValid())
             return QDateTime(at.date(), at.time(), m_zone);
     }
-    if (const QDate date = QDate::fromString(trimmed, Qt::ISODate); date.isValid())
+    // The whole text a date, not a date with words after it.
+    if (const QDate date = QDate::fromString(trimmed, u"yyyy-MM-dd"_s); date.isValid())
         return QDateTime(date, QTime(0, 0), m_zone);
     if (const QTime time = QTime::fromString(trimmed, u"H:mm"_s); time.isValid() && day.isValid())
         return QDateTime(day, time, m_zone);

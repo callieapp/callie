@@ -30,7 +30,8 @@ struct KeyAction
 /// Turns typed keys into actions. Standard shortcuts are left to QML's
 /// Shortcut, made from actions(); in vi mode single keys act too, and the
 /// leader key starts a second key for the commands that have none of their
-/// own. Keys typed into a text field are left alone.
+/// own. Keys typed into a text field, or into anything open over the window,
+/// are left alone.
 class KeyRouter : public QObject
 {
     Q_OBJECT
@@ -40,8 +41,6 @@ class KeyRouter : public QObject
     Q_PROPERTY(QString leaderKey MEMBER m_leaderKey NOTIFY settingsChanged)
     /// Milliseconds the leader waits for the next key; 0 waits until Escape.
     Q_PROPERTY(int leaderTimeout MEMBER m_leaderTimeout NOTIFY settingsChanged)
-    /// Ignores every key, while a dialog is in front.
-    Q_PROPERTY(bool blocked MEMBER m_blocked NOTIFY settingsChanged)
     /// "leader" or "g" while waiting for the key that finishes a command, else empty.
     Q_PROPERTY(QString pending READ pending NOTIFY pendingChanged)
     Q_PROPERTY(QVariantList actions READ actionList CONSTANT)
@@ -79,7 +78,6 @@ private:
     bool m_viMode = false;
     QString m_leaderKey = QStringLiteral(",");
     int m_leaderTimeout = 2000;
-    bool m_blocked = false;
     QString m_pending;
     QTimer m_timeout;
 };

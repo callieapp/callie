@@ -19,7 +19,7 @@ private Q_SLOTS:
     void gStartsATwoKeyCommand();
     void leaderTakesTheNextKey();
     void leaderGivesUpAfterItsTimeout();
-    void offOrBlockedLetsKeysThrough();
+    void offLetsKeysThrough();
     void everyKeyMeansOneThing();
 
 private:
@@ -102,11 +102,8 @@ void TestKeyRouter::leaderGivesUpAfterItsTimeout()
     QCOMPARE(m_router->pending(), QString());
 }
 
-void TestKeyRouter::offOrBlockedLetsKeysThrough()
+void TestKeyRouter::offLetsKeysThrough()
 {
-    m_router->setProperty("blocked", true);
-    QVERIFY(!m_router->press(u"j"_s));
-    m_router->setProperty("blocked", false);
     m_router->press(u","_s);
     // Turning vi mode off drops a command half typed.
     m_router->setProperty("viMode", false);

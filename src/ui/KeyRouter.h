@@ -77,7 +77,7 @@ private:
     QPointer<QQuickWindow> m_window;
     bool m_viMode = false;
     QString m_leaderKey = QStringLiteral(",");
-    int m_leaderTimeout = 2000;
+    int m_leaderTimeout = 5000;
     QString m_pending;
     QTimer m_timeout;
 };

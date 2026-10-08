@@ -122,6 +122,8 @@ void TestKeyRouter::everyKeyMeansOneThing()
             QVERIFY2(!vi.contains(action.vi), qPrintable(action.vi));
             vi.insert(action.vi);
         }
+        // An action has a single key or a leader key, never both.
+        QVERIFY2(action.vi.isEmpty() || action.leader.isEmpty(), qPrintable(action.id));
         if (!action.leader.isEmpty()) {
             QVERIFY2(!leader.contains(action.leader), qPrintable(action.leader));
             leader.insert(action.leader);

@@ -218,7 +218,7 @@ private:
     int m_workEnd = 17 * 60;
     bool m_viMode = false;
     QString m_leaderKey = QStringLiteral(",");
-    int m_leaderTimeout = 2000;
+    int m_leaderTimeout = 5000;
     QStringList m_hiddenCalendars;
     Times *m_times = nullptr;
     QString m_theme;

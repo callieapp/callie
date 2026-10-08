@@ -73,7 +73,7 @@ void Settings::load()
     m_viMode = m_store.value(kViMode, false).toBool();
     const QString leader = m_store.value(kLeaderKey).toString();
     m_leaderKey = kLeaderKeys.contains(leader) ? leader : u","_s;
-    m_leaderTimeout = std::max(0, m_store.value(kLeaderTimeout, 2000).toInt());
+    m_leaderTimeout = std::max(0, m_store.value(kLeaderTimeout, 5000).toInt());
     m_hiddenCalendars = m_store.value(kHiddenCalendars).toStringList();
     m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
     m_calendarLooks = m_store.value(kCalendarLooks).toMap();

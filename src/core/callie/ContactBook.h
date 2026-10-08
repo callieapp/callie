@@ -35,6 +35,9 @@ public:
     void add(const QString &account, const QList<Contact> &contacts);
     /// Drops the contacts only `account` brought, once it is removed.
     void forget(const QString &account);
+    /// Drops the contacts of every account not in `accounts`, as for accounts
+    /// removed while Callie was not running.
+    void keepOnly(const QStringList &accounts);
     /// Learns the guests of `events`, replacing what earlier events taught.
     void learn(const QList<Event> &events);
 

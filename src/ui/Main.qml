@@ -917,6 +917,7 @@ ApplicationWindow {
 
     Popup {
         id: sidebarDrawer
+        objectName: "sidebarDrawer"
         x: 0
         y: titleBar.height
         width: Theme.sidebarWidth

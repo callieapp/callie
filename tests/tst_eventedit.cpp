@@ -460,7 +460,12 @@ void TestEventEdit::titleBarFitsNarrowWindows()
         }
         return false;
     }());
+    // Wide again, the drawer closes and the sidebar is back in its place.
+    auto *drawer = m_window->findChild<QObject *>(u"sidebarDrawer"_s);
+    QVERIFY(drawer);
+    QVERIFY(drawer->property("visible").toBool());
     m_window->resize(1280, 600);
+    QTRY_VERIFY(!drawer->property("visible").toBool());
     QTRY_VERIFY(!find(m_window->contentItem(), "StickerButton", "glyph", u"menu"_s));
 }
 

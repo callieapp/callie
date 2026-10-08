@@ -230,6 +230,15 @@ ApplicationWindow {
                     buttons: WindowButtons.left
                 }
 
+                // The sidebar, slid over the calendar, when the window is too narrow to keep it.
+                StickerButton {
+                    visible: !window.showSidebar
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: "menu"
+                    Accessible.name: qsTr("Calendars and today")
+                    onClicked: sidebarDrawer.open()
+                }
+
                 Logo {
                     visible: window.squeeze < 3
                     anchors.verticalCenter: parent.verticalCenter
@@ -901,6 +910,39 @@ ApplicationWindow {
         onErrorChanged: {
             if (error !== "")
                 undoToast.show("", error)
+        }
+    }
+
+    Popup {
+        id: sidebarDrawer
+        x: 0
+        y: titleBar.height
+        width: Theme.sidebarWidth
+        height: window.height - titleBar.height
+        padding: 0
+        modal: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        Overlay.modal: Scrim {}
+        // Wide enough again, the sidebar is back in its place.
+        Connections {
+            target: window
+            function onShowSidebarChanged() {
+                if (window.showSidebar)
+                    sidebarDrawer.close()
+            }
+        }
+
+        background: Rectangle {
+            color: Theme.surface
+        }
+        contentItem: Sidebar {
+            today: todayModel
+            month: monthModel
+            events: events
+            onDayPicked: day => {
+                window.focusDate = day
+                sidebarDrawer.close()
+            }
         }
     }
 

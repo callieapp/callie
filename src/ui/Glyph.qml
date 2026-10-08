@@ -4,7 +4,7 @@ import QtQuick
 
 /// A small line icon drawn from rounded bars, so icons need no image files and
 /// take the text color: chevron-left, chevron-right, minimize, maximize,
-/// restore, close, check, plus, refresh, bell, search, settings, video or more.
+/// restore, close, check, plus, refresh, bell, search, settings, menu, video or more.
 Item {
     id: root
 
@@ -33,6 +33,8 @@ Item {
             return [[0.3, -38, 0.78, 0.4], [0.3, 38, 0.78, 0.6], [0.34, 90, 0.92, 0.5]]
         case "plus":
             return [[0.7, 0, 0.5, 0.5], [0.7, 90, 0.5, 0.5]]
+        case "menu":
+            return [[0.8, 0, 0.5, 0.25], [0.8, 0, 0.5, 0.5], [0.8, 0, 0.5, 0.75]]
         case "settings":
             // Three sliders, each with its knob at a different setting.
             return [[0.84, 0, 0.5, 0.22], [0.84, 0, 0.5, 0.5], [0.84, 0, 0.5, 0.78], [0.3, 90, 0.32,

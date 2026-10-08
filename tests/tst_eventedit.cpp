@@ -418,7 +418,8 @@ void TestEventEdit::titleBarFitsNarrowWindows()
             for (QQuickItem *child : item->childItems())
                 controls(child, found);
         };
-    for (const int width : {1280, 1000, 800, 600}) {
+    // Each step's narrowest width, and the width just below it.
+    for (const int width : {1280, 1200, 1199, 1000, 999, 880, 879, 780, 779, 600}) {
         m_window->resize(width, 600);
         QTest::qWait(100);
         QList<QRectF> boxes;
@@ -432,6 +433,21 @@ void TestEventEdit::titleBarFitsNarrowWindows()
                          u"%1 px: controls overlap at x %2"_s.arg(width).arg(boxes.at(i).left())));
         QVERIFY(boxes.last().right() <= width);
     }
+
+    // Narrow, the sidebar is a button away.
+    QQuickItem *menu = find(m_window->contentItem(), "StickerButton", "glyph", u"menu"_s);
+    QVERIFY(menu);
+    click(m_window, menu);
+    QTRY_VERIFY([this] {
+        for (QObject *o : m_window->findChildren<QObject *>()) {
+            if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"Sidebar"_s) &&
+                o->property("visible").toBool())
+                return true;
+        }
+        return false;
+    }());
+    m_window->resize(1280, 600);
+    QTRY_VERIFY(!find(m_window->contentItem(), "StickerButton", "glyph", u"menu"_s));
 }
 
 QTEST_MAIN(TestEventEdit)

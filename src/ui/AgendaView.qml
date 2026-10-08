@@ -34,9 +34,7 @@ Item {
     /// Opens the details of the event in `row`, centered.
     function showRow(row) {
         const event = root.model.eventAt(row)
-        details.show(event, root.model.callService(event.conferenceUrl))
-        details.x = (root.width - details.width) / 2
-        details.y = Theme.space7
+        details.showCentered(event, root.model.callService(event.conferenceUrl))
     }
 
     /// Scrolls the list: "scrollDown" and "scrollUp" a step, "top" and "bottom" all the way.

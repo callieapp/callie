@@ -47,9 +47,7 @@ Item {
     /// Opens the details of the event in `row`, centered.
     function showRow(row) {
         const event = root.model.eventAt(row)
-        details.show(event, root.model.callService(event.conferenceUrl))
-        details.x = (root.width - details.width) / 2
-        details.y = Theme.space7
+        details.showCentered(event, root.model.callService(event.conferenceUrl))
     }
 
     /// The day under the pointer at `event`'s time of day, where a copy pasted

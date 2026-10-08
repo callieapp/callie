@@ -117,6 +117,14 @@ Popup {
         onActivated: root.duplicate()
     }
 
+    /// show(), then places the card centered near the top of the parent view,
+    /// for when there is no event under the pointer to place it by.
+    function showCentered(event, service) {
+        show(event, service)
+        x = (parent.width - width) / 2
+        y = Theme.space7
+    }
+
     /// show(), then places the card by `item`: to its right if there is room,
     /// else to its left, else below it, always inside the parent view.
     function showNear(event, service, item) {

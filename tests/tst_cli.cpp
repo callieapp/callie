@@ -479,7 +479,7 @@ void TestCli::calendarsAndAccountsTakeNewLooks()
 void TestCli::contactsFindGuestsAndContacts()
 {
     ContactBook book({});
-    book.add({{u"Priya Rao"_s, u"prao@example.org"_s}});
+    book.add(u"me@example.com"_s, {{u"Priya Rao"_s, u"prao@example.org"_s}});
     QCOMPARE(m_commands->contacts(book, u"priya"_s, false), 0);
     m_outStream->flush();
     // The sample's Priya from her events, and the contact.

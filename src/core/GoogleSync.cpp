@@ -381,6 +381,7 @@ void GoogleSync::forget(const Account &account)
         run->forgotten = true;
     m_settingsRead.remove(keyFor(account));
     m_contactsRead.remove(keyFor(account));
+    Q_EMIT forgotten(account);
 }
 
 void GoogleSync::readSettings(const Account &account)
@@ -430,7 +431,8 @@ void GoogleSync::readContacts(const Account &account)
         if (!self)
             return;
         if (i == kinds.size()) {
-            if (!found->isEmpty())
+            // Not for an account removed while its contacts were being read.
+            if (!found->isEmpty() && m_contactsRead.contains(keyFor(account)))
                 Q_EMIT contactsFound(account, *found);
             *next = nullptr;
             return;

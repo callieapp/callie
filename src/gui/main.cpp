@@ -182,10 +182,13 @@ int main(int argc, char *argv[])
     // People to suggest as guests: from the events, and from Google's contacts.
     callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());
     contacts.setSource(source);
-    QObject::connect(&sync, &callie::GoogleSync::contactsFound, &contacts,
-                     [&contacts](const callie::Account &, const QList<callie::Contact> &people) {
-                         contacts.add(people);
-                     });
+    QObject::connect(
+        &sync, &callie::GoogleSync::contactsFound, &contacts,
+        [&contacts](const callie::Account &account, const QList<callie::Contact> &people) {
+            contacts.add(account.id, people);
+        });
+    QObject::connect(&sync, &callie::GoogleSync::forgotten, &contacts,
+                     [&contacts](const callie::Account &account) { contacts.forget(account.id); });
     callie::ContactBookForeign::s_instance = &contacts;
     QTimer syncTimer;
     // Without a client every refresh would fail, so show the cache and say why once.

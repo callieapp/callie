@@ -90,6 +90,8 @@ Q_SIGNALS:
     /// The people the account can invite, from its contacts and, for a
     /// Workspace account, its directory; read once a run, like the settings.
     void contactsFound(const callie::Account &account, const QList<callie::Contact> &contacts);
+    /// The account was removed, so what was read for it should go too.
+    void forgotten(const callie::Account &account);
 
 private:
     struct Run;

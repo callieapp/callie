@@ -31,8 +31,10 @@ public:
     /// Learns the guests of the source's events, again whenever they change.
     void setSource(CalendarSource *source);
 
-    /// Adds contacts from Google, keeping the names already known.
-    void add(const QList<Contact> &contacts);
+    /// Adds an account's contacts from Google, keeping the names already known.
+    void add(const QString &account, const QList<Contact> &contacts);
+    /// Drops the contacts only `account` brought, once it is removed.
+    void forget(const QString &account);
     /// Learns the guests of `events`, replacing what earlier events taught.
     void learn(const QList<Event> &events);
 
@@ -51,6 +53,8 @@ private:
     QString m_path;
     /// By lowercase address.
     QHash<QString, Contact> m_saved;
+    /// The accounts each saved contact came from.
+    QHash<QString, QSet<QString>> m_owners;
     QHash<QString, Contact> m_met;
     QHash<QString, int> m_times;
     QPointer<CalendarSource> m_source;

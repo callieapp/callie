@@ -11,6 +11,7 @@
 
 namespace callie {
 
+class ContactBook;
 class Settings;
 
 namespace cli {
@@ -56,6 +57,9 @@ public:
     int search(const QString &query, bool json);
     /// Invitations not answered yet, in the next 90 days.
     int invites(bool json);
+    /// People to invite whose name or address matches `text`, from `book`
+    /// and the guests of the events a year either side.
+    int contacts(ContactBook &book, const QString &text, bool json);
 
     /// Creates an event from a line such as "Lunch with Alex tomorrow 12-1pm".
     void add(const QString &text, const QString &calendarId, const Done &done);

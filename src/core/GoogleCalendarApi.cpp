@@ -278,6 +278,65 @@ void GoogleCalendarApi::fetchSettingsPage(const QString &accessToken, const QStr
         });
 }
 
+void GoogleCalendarApi::fetchPeople(const QString &accessToken, People kind, PeopleResult result)
+{
+    fetchPeoplePage(accessToken, kind, {}, {}, std::move(result));
+}
+
+void GoogleCalendarApi::fetchPeoplePage(const QString &accessToken, People kind,
+                                        const QString &pageToken, QList<Contact> people,
+                                        PeopleResult result)
+{
+    const QString fields = QStringLiteral("names,emailAddresses");
+    QString path;
+    QString list;
+    QList<QPair<QString, QString>> query{{QStringLiteral("pageSize"), QStringLiteral("1000")}};
+    switch (kind) {
+    case People::Contacts:
+        path = QStringLiteral("people/me/connections");
+        list = QStringLiteral("connections");
+        query.append({QStringLiteral("personFields"), fields});
+        break;
+    case People::OtherContacts:
+        path = QStringLiteral("otherContacts");
+        list = QStringLiteral("otherContacts");
+        query.append({QStringLiteral("readMask"), fields});
+        break;
+    case People::Directory:
+        path = QStringLiteral("people:listDirectoryPeople");
+        list = QStringLiteral("people");
+        query.append({QStringLiteral("readMask"), fields});
+        query.append(
+            {QStringLiteral("sources"), QStringLiteral("DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE")});
+        break;
+    }
+    if (!pageToken.isEmpty())
+        query.append({QStringLiteral("pageToken"), pageToken});
+    // Joined as text: "people:listDirectoryPeople" alone would read as a URL scheme.
+    get(accessToken, m_peopleUrl.toString() + path, query,
+        [this, accessToken, kind, list, people = std::move(people),
+         result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) mutable {
+            if (error) {
+                result({}, error);
+                return;
+            }
+            for (const QJsonValue &person : body[list].toArray()) {
+                const QString name = person[u"names"].toArray().first()[u"displayName"].toString();
+                // Each address is someone to invite, under the person's name.
+                for (const QJsonValue &address : person[u"emailAddresses"].toArray()) {
+                    const QString email = address[u"value"].toString().trimmed();
+                    if (!email.isEmpty())
+                        people.append({name, email});
+                }
+            }
+            const QString next = body[u"nextPageToken"].toString();
+            if (next.isEmpty())
+                result(people, {});
+            else
+                fetchPeoplePage(accessToken, kind, next, std::move(people), std::move(result));
+        });
+}
+
 void GoogleCalendarApi::fetchCalendarPage(const QString &accessToken, const QString &pageToken,
                                           QList<GoogleCalendar> calendars, CalendarsResult result)
 {

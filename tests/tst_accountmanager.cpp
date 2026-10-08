@@ -126,6 +126,7 @@ void TestAccountManager::runConnect(int tokenStatus, const QByteArray &tokenBody
     GoogleAuthDriver::useTokenServer(auth, tokenServer);
     GoogleCalendarApi api(&network);
     api.setBaseUrl(apiServer.url(QStringLiteral("/calendar/v3/")));
+    api.setPeopleBaseUrl(apiServer.url(QStringLiteral("/people/v1/")));
 
     QSignalSpy connected(m_manager.get(), &AccountManager::connected);
     QSignalSpy failed(m_manager.get(), &AccountManager::failed);

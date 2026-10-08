@@ -31,7 +31,9 @@
   so it can show and edit your events. When you connect a CalDAV account, Callie accesses
   the calendars on the server you specify. Callie requests the narrowest permissions that
   allow it to function. It also reads your Google Calendar display settings, such as the
-  day your week starts on, so Callie can match them.
+  day your week starts on, so Callie can match them, and the names and email addresses of
+  your Google contacts, the people you have been in touch with, and, for a Google Workspace
+  account, your organization's directory, so it can suggest guests as you type them.
 </p>
 
 <h2>How that information is used</h2>
@@ -44,6 +46,7 @@
 <h2>Where information is stored</h2>
 <ul>
   <li>Calendar data is cached in a local database in your user directory, so the app works offline.</li>
+  <li>Contact names and email addresses are cached in a file in your user directory, for guest suggestions.</li>
   <li>Authentication tokens are stored in your system keyring through the Secret Service API, not in plain text.</li>
   <li>Nothing is stored on any server operated by Callie, because there is none.</li>
 </ul>

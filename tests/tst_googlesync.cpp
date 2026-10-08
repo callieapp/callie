@@ -106,10 +106,19 @@ private Q_SLOTS:
     void outcomesAreRecorded();
     void forgottenAccountStoresNothing();
     void settingsAreReadOnceARun();
+    void contactsAreReadOnceARun();
     void unreadableSettingsAreTriedAgain();
     void rejectedTokenForSettingsIsRefreshed();
 
 private:
+    /// The last request about calendars, since a sync goes on to read contacts.
+    [[nodiscard]] const FakeHttpServer::Request &lastCalendarRequest() const
+    {
+        const auto &requests = m_apiServer->requests;
+        return *std::find_if(requests.crbegin(), requests.crend(), [](const auto &r) {
+            return !r.target.contains("people") && !r.target.contains("otherContacts");
+        });
+    }
     QStringList runSync();
     QString create(const QString &calendarId);
     void syncOnce();
@@ -143,6 +152,7 @@ void TestGoogleSync::init()
     m_tokens->setTokenUrl(m_tokenServer->url(u"/token"_s));
     m_api = std::make_unique<GoogleCalendarApi>(m_network.get());
     m_api->setBaseUrl(m_apiServer->url(u"/v3/"_s));
+    m_api->setPeopleBaseUrl(m_apiServer->url(u"/v3/"_s));
     m_cache = std::make_unique<GoogleCache>(m_dir->filePath(u"google.sqlite"_s));
     QVERIFY(m_cache->open());
     m_sync = std::make_unique<GoogleSync>(*m_tokens, *m_api, *m_cache);
@@ -372,6 +382,43 @@ void TestGoogleSync::settingsAreReadOnceARun()
     QCOMPARE(m_google->count(u"users/me/settings"_s), 2);
 }
 
+void TestGoogleSync::contactsAreReadOnceARun()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    m_google->on(u"people/me/connections"_s, 200,
+                 R"({"connections":[{"names":[{"displayName":"Priya Shah"}],
+                     "emailAddresses":[{"value":"priya@example.com"},{"value":"p@home.example"}]}],
+                     "nextPageToken":"c2"})");
+    m_google->on(u"people/me/connections"_s, 200,
+                 R"({"connections":[{"emailAddresses":[{"value":"lee@example.com"}]}]})");
+    m_google->on(u"otherContacts"_s, 200,
+                 R"({"otherContacts":[{"emailAddresses":[{"value":"vendor@example.org"}]}]})");
+    // A personal account has no directory.
+    m_google->on(u"people:listDirectoryPeople"_s, 403,
+                 R"({"error":{"code":403,"message":"Must be a G Suite domain user."}})");
+    QSignalSpy found(m_sync.get(), &GoogleSync::contactsFound);
+
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
+    const auto people = found.first().at(1).value<QList<Contact>>();
+    QCOMPARE(people, (QList<Contact>{{u"Priya Shah"_s, u"priya@example.com"_s},
+                                     {u"Priya Shah"_s, u"p@home.example"_s},
+                                     {{}, u"lee@example.com"_s},
+                                     {{}, u"vendor@example.org"_s}}));
+    const auto asked =
+        std::find_if(m_google->requests.cbegin(), m_google->requests.cend(),
+                     [](const auto &r) { return r.first.endsWith(u"otherContacts"_s); });
+    QCOMPARE(asked->second.queryItemValue(u"readMask"_s, QUrl::FullyDecoded),
+             u"names,emailAddresses"_s);
+
+    // Once a run is enough.
+    QCOMPARE(runSync(), QStringList());
+    QTest::qWait(200);
+    QCOMPARE(found.size(), 1);
+    QCOMPARE(m_google->count(u"otherContacts"_s), 1);
+}
+
 void TestGoogleSync::unreadableSettingsAreTriedAgain()
 {
     // Signed in before Callie asked to read settings: Google says no.
@@ -514,7 +561,7 @@ void TestGoogleSync::createWithTakenIdIsAlreadyMade()
     m_sync->createEvent(kAccount, u"team"_s, draft, [&result](const QString &e) { result = e; });
     QTRY_VERIFY_WITH_TIMEOUT(result != u"unset", 5000);
     QCOMPARE(result, QString());
-    const QJsonObject sent = QJsonDocument::fromJson(m_apiServer->requests.last().body).object();
+    const QJsonObject sent = QJsonDocument::fromJson(lastCalendarRequest().body).object();
     QCOMPARE(sent[u"id"].toString(), u"0123456789abcdefuv"_s);
 }
 
@@ -577,7 +624,7 @@ void TestGoogleSync::answerKeepsOtherGuestsIntact()
              QString());
 
     // Only our own answer changed; the organizer's entry went back as it was.
-    const QByteArray body = m_apiServer->requests.last().body;
+    const QByteArray body = lastCalendarRequest().body;
     QVERIFY(body.contains(R"("responseStatus":"accepted")"));
     QVERIFY(body.contains(R"("comment":"keep me")"));
     const QList<Event> events = week(*m_cache, kAccount);
@@ -605,7 +652,7 @@ void TestGoogleSync::deletingAnOccurrenceKeepsTheRest()
     QCOMPARE(act([&](GoogleSync::Created done) { m_sync->remove(kAccount, occurrence(), done); }),
              QString());
 
-    QCOMPARE(m_apiServer->requests.last().method, QByteArray("DELETE"));
+    QCOMPARE(lastCalendarRequest().method, QByteArray("DELETE"));
     const QList<Event> events = week(*m_cache, kAccount);
     QCOMPARE(events.size(), 1);
     QCOMPARE(events.first().start.date(), QDate(2026, 10, 5));

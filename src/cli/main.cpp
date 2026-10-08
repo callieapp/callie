@@ -1,5 +1,6 @@
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/ContactBook.h"
 #include "callie/Diagnostics.h"
 #include "callie/EventModel.h"
 #include "callie/GoogleAuth.h"
@@ -464,7 +465,8 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         return parser.isSet(option) ? std::optional(parser.value(option)) : std::nullopt;
     };
     const bool reading = command == u"agenda" || command == u"search" || command == u"invites" ||
-                         command == u"calendars" || command == u"accounts";
+                         command == u"contacts" || command == u"calendars" ||
+                         command == u"accounts";
     // Sample data and scripts that only read leave the user's settings alone.
     QTemporaryDir scratch;
     Settings settings(sample ? scratch.filePath(u"settings.ini"_s) : Settings::defaultPath());
@@ -490,6 +492,10 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         return commands.search(args.mid(1).join(u' '), json);
     if (command == u"invites")
         return commands.invites(json);
+    if (command == u"contacts") {
+        ContactBook book(sample ? QString() : ContactBook::defaultPath());
+        return commands.contacts(book, args.mid(1).join(u' '), json);
+    }
 
     const QString scope = parser.value(u"scope"_s);
     std::optional<int> result;
@@ -568,6 +574,7 @@ int main(int argc, char *argv[])
         "  agenda     Upcoming events (default); --json for scripts, with ids\n"
         "  search     Events with every word given\n"
         "  invites    Invitations waiting for an answer\n"
+        "  contacts   People to invite whose name or address matches\n"
         "  add        Create an event: callie add \"Lunch tomorrow 12-1pm\"\n"
         "  edit       Change an event: callie edit <id> --start \"friday 3pm\"\n"
         "  delete     Delete an event\n"
@@ -606,32 +613,31 @@ int main(int argc, char *argv[])
     QCommandLineOption reportOption(QStringLiteral("report"),
                                     QStringLiteral("With doctor: open a new GitHub issue."));
     parser.addOption(reportOption);
-    for (const auto &[names, description, valueName] :
-         std::initializer_list<std::tuple<QStringList, QString, QString>>{
-             {{u"json"_s},
-              u"With agenda, search and invites: print JSON, with the ids other commands take."_s,
-              {}},
-             {{u"calendar"_s}, u"With add: the calendar, by name or id."_s, u"name"_s},
-             {{u"scope"_s},
-              u"With edit, delete and respond on a repeating event: this, following or all."_s,
-              u"which"_s},
-             {{u"title"_s}, u"With edit: a new title."_s, u"text"_s},
-             {{u"where"_s}, u"With edit: a new place."_s, u"text"_s},
-             {{u"notes"_s}, u"With edit: new notes."_s, u"text"_s},
-             {{u"start"_s},
-              u"With edit and duplicate: a new start, such as \"2026-10-08 15:00\"."_s,
-              u"when"_s},
-             {{u"end"_s},
-              u"With edit: a new end; for an all-day event, its last day."_s,
-              u"when"_s},
-             {{u"all-day"_s}, u"With edit: make it all day."_s, {}},
-             {{u"timed"_s}, u"With edit: give it times."_s, {}},
-             {{u"repeat"_s},
-              u"With edit: none, daily, weekdays, weekly, monthly, monthlyWeekday or yearly."_s,
-              u"rule"_s},
-             {{u"guests"_s}, u"With edit: every guest's address, comma separated."_s, u"list"_s},
-             {{u"video"_s}, u"With edit: on or off, to add or remove a video call."_s, u"on"_s},
-         }) {
+    for (
+        const auto &[names, description, valueName] :
+        std::initializer_list<std::tuple<QStringList, QString, QString>>{
+            {{u"json"_s},
+             u"With agenda, search, invites and contacts: print JSON, with ids for other commands."_s,
+             {}},
+            {{u"calendar"_s}, u"With add: the calendar, by name or id."_s, u"name"_s},
+            {{u"scope"_s},
+             u"With edit, delete and respond on a repeating event: this, following or all."_s,
+             u"which"_s},
+            {{u"title"_s}, u"With edit: a new title."_s, u"text"_s},
+            {{u"where"_s}, u"With edit: a new place."_s, u"text"_s},
+            {{u"notes"_s}, u"With edit: new notes."_s, u"text"_s},
+            {{u"start"_s},
+             u"With edit and duplicate: a new start, such as \"2026-10-08 15:00\"."_s,
+             u"when"_s},
+            {{u"end"_s}, u"With edit: a new end; for an all-day event, its last day."_s, u"when"_s},
+            {{u"all-day"_s}, u"With edit: make it all day."_s, {}},
+            {{u"timed"_s}, u"With edit: give it times."_s, {}},
+            {{u"repeat"_s},
+             u"With edit: none, daily, weekdays, weekly, monthly, monthlyWeekday or yearly."_s,
+             u"rule"_s},
+            {{u"guests"_s}, u"With edit: every guest's address, comma separated."_s, u"list"_s},
+            {{u"video"_s}, u"With edit: on or off, to add or remove a video call."_s, u"on"_s},
+        }) {
         parser.addOption(QCommandLineOption(names, description, valueName));
     }
     parser.process(app);
@@ -642,9 +648,9 @@ int main(int argc, char *argv[])
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
 
-    static const QStringList kEventCommands = {u"agenda"_s,  u"search"_s,   u"invites"_s,
-                                               u"add"_s,     u"edit"_s,     u"delete"_s,
-                                               u"respond"_s, u"duplicate"_s};
+    static const QStringList kEventCommands = {u"agenda"_s,  u"search"_s,    u"invites"_s,
+                                               u"add"_s,     u"edit"_s,      u"delete"_s,
+                                               u"respond"_s, u"duplicate"_s, u"contacts"_s};
     if (kEventCommands.contains(command))
         return runEvents(app, command, args, parser, parser.isSet(sampleOption));
 

@@ -380,6 +380,7 @@ void GoogleSync::forget(const Account &account)
     if (const std::shared_ptr<Run> run = m_running.take(keyFor(account)))
         run->forgotten = true;
     m_settingsRead.remove(keyFor(account));
+    m_contactsRead.remove(keyFor(account));
 }
 
 void GoogleSync::readSettings(const Account &account)
@@ -414,6 +415,50 @@ void GoogleSync::readSettings(const Account &account)
         [](const QString &) {});
 }
 
+void GoogleSync::readContacts(const Account &account)
+{
+    // Read once a run even when some kinds are refused: a personal account has
+    // no directory, and one signed in before Callie asked for contacts has none
+    // of them until it signs in again.
+    m_contactsRead.insert(keyFor(account));
+    using People = GoogleCalendarApi::People;
+    auto found = std::make_shared<QList<Contact>>();
+    auto next = std::make_shared<std::function<void(qsizetype)>>();
+    const QList<People> kinds = {People::Contacts, People::OtherContacts, People::Directory};
+    const QPointer<GoogleSync> self(this);
+    *next = [this, self, account, kinds, found, next](qsizetype i) {
+        if (!self)
+            return;
+        if (i == kinds.size()) {
+            if (!found->isEmpty())
+                Q_EMIT contactsFound(account, *found);
+            *next = nullptr;
+            return;
+        }
+        withToken(
+            account, false,
+            [this, self, i, kinds, found, next](const QString &token, const Retry &retry) {
+                m_api.fetchPeople(token, kinds.at(i),
+                                  [self, i, found, next, retry](const QList<Contact> &people,
+                                                                const GoogleApiError &error) {
+                                      if (!self)
+                                          return;
+                                      if (error.unauthorized()) {
+                                          retry();
+                                          return;
+                                      }
+                                      if (error)
+                                          qCDebug(lcSync)
+                                              << "people not readable:" << error.message;
+                                      found->append(people);
+                                      (*next)(i + 1);
+                                  });
+            },
+            [next, i](const QString &) { (*next)(i + 1); });
+    };
+    (*next)(0);
+}
+
 void GoogleSync::finish(const std::shared_ptr<Run> &run)
 {
     if (run->forgotten) {
@@ -445,6 +490,8 @@ void GoogleSync::finish(const std::shared_ptr<Run> &run)
     m_running.remove(keyFor(run->account));
     if (run->accountError.isEmpty() && !m_settingsRead.contains(keyFor(run->account)))
         readSettings(run->account);
+    if (run->accountError.isEmpty() && !m_contactsRead.contains(keyFor(run->account)))
+        readContacts(run->account);
     for (const Done &done : std::as_const(run->waiting))
         done(run->errors);
 }

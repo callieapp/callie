@@ -306,6 +306,7 @@ struct SyncHarness
         };
         tokens.setTokenUrl(tokenServer.url(u"/token"_s));
         api.setBaseUrl(apiServer.url(u"/v3/"_s));
+        api.setPeopleBaseUrl(apiServer.url(u"/people/v1/"_s));
     }
 
     FakeHttpServer tokenServer;
@@ -366,11 +367,13 @@ void TestGoogleSource::refreshWhileSyncingStartsNothingNew()
     QTest::qWait(200);
 
     // One calendar list and one events request: the second refresh was ignored.
-    // A first sync also reads the account's settings, which is not counted.
+    // A first sync also reads the account's settings and contacts, which are not counted.
     QCOMPARE(harness.store.reads, 1);
     const auto calendarRequests = std::count_if(
         harness.apiServer.requests.cbegin(), harness.apiServer.requests.cend(),
-        [](const FakeHttpServer::Request &r) { return !r.target.contains("/settings"); });
+        [](const FakeHttpServer::Request &r) {
+            return !r.target.contains("/settings") && !r.target.startsWith("/people/");
+        });
     QCOMPARE(calendarRequests, 2);
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Contact.h"
+
 #include <QDateTime>
 #include <QHash>
 #include <QList>
@@ -99,8 +101,9 @@ struct GoogleEventChanges
     QString nextSyncToken;
 };
 
-/// Google Calendar API v3. Every call takes an access token and follows
-/// pagination itself, so a result is always complete.
+/// Google Calendar API v3, and the People API for the people to invite. Every
+/// call takes an access token and follows pagination itself, so a result is
+/// always complete.
 class GoogleCalendarApi : public QObject
 {
     Q_OBJECT
@@ -114,11 +117,24 @@ public:
     using EventResult = std::function<void(const GoogleEvent &event, const GoogleApiError &error)>;
     using SettingsResult =
         std::function<void(const QHash<QString, QString> &settings, const GoogleApiError &error)>;
+    using PeopleResult =
+        std::function<void(const QList<Contact> &people, const GoogleApiError &error)>;
+
+    /// Where the People API finds people.
+    enum class People {
+        /// The user's saved contacts.
+        Contacts,
+        /// People the user has written to or met, but not saved.
+        OtherContacts,
+        /// Everyone in the user's organization, for a Workspace account.
+        Directory,
+    };
 
     explicit GoogleCalendarApi(QNetworkAccessManager *network, QObject *parent = nullptr);
 
     /// Points requests at a fake server in tests. Must end with a slash.
     void setBaseUrl(const QUrl &url) { m_baseUrl = url; }
+    void setPeopleBaseUrl(const QUrl &url) { m_peopleUrl = url; }
 
     /// The primary calendar's id, which Google sets to the account's email.
     void fetchPrimaryCalendarId(const QString &accessToken, IdResult result);
@@ -128,6 +144,9 @@ public:
 
     /// The user's Google Calendar settings, such as weekStart, by id.
     void fetchSettings(const QString &accessToken, SettingsResult result);
+
+    /// The people of one kind with an email address, as name and address.
+    void fetchPeople(const QString &accessToken, People kind, PeopleResult result);
 
     /// Every event in a calendar when `syncToken` is empty, otherwise only what
     /// changed since that token was issued, deletions included. Recurring
@@ -163,12 +182,15 @@ private:
                            QList<GoogleCalendar> calendars, CalendarsResult result);
     void fetchSettingsPage(const QString &accessToken, const QString &pageToken,
                            QHash<QString, QString> settings, SettingsResult result);
+    void fetchPeoplePage(const QString &accessToken, People kind, const QString &pageToken,
+                         QList<Contact> people, PeopleResult result);
     void fetchEventPage(const QString &accessToken, const QString &calendarId,
                         const QString &syncToken, const QString &pageToken,
                         GoogleEventChanges changes, EventsResult result);
 
     QNetworkAccessManager *m_network;
     QUrl m_baseUrl{QStringLiteral("https://www.googleapis.com/calendar/v3/")};
+    QUrl m_peopleUrl{QStringLiteral("https://people.googleapis.com/v1/")};
 };
 
 /// Parses one item of an events list. Exposed for tests.

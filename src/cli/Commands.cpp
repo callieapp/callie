@@ -1,5 +1,6 @@
 #include "Commands.h"
 
+#include "callie/ContactBook.h"
 #include "callie/QuickAdd.h"
 #include "callie/Repeat.h"
 #include "callie/SearchModel.h"
@@ -109,6 +110,31 @@ int Commands::invites(bool json)
         return 0;
     }
     print(pending, json, false);
+    return 0;
+}
+
+int Commands::contacts(ContactBook &book, const QString &text, bool json)
+{
+    if (text.trimmed().isEmpty()) {
+        m_err << tr("usage: callie contacts <name or address>") << "\n";
+        return 2;
+    }
+    book.learn(
+        m_source.eventsBetween(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround), m_zone));
+    const QVariantList people = book.suggest(text, {}, 20);
+    if (json) {
+        m_out << QJsonDocument(QJsonArray::fromVariantList(people)).toJson(QJsonDocument::Indented);
+        return 0;
+    }
+    if (people.isEmpty())
+        m_err << tr("No one matches.") << "\n";
+    for (const QVariant &person : people) {
+        const QVariantMap p = person.toMap();
+        m_out << p.value(u"email"_s).toString();
+        if (!p.value(u"name"_s).toString().isEmpty())
+            m_out << "\t" << p.value(u"name"_s).toString();
+        m_out << "\n";
+    }
     return 0;
 }
 

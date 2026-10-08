@@ -76,7 +76,11 @@ QString GoogleAuth::scopes()
 {
     return QStringLiteral("https://www.googleapis.com/auth/calendar.events "
                           "https://www.googleapis.com/auth/calendar.calendarlist.readonly "
-                          "https://www.googleapis.com/auth/calendar.settings.readonly");
+                          "https://www.googleapis.com/auth/calendar.settings.readonly "
+                          // Names and addresses of people to invite.
+                          "https://www.googleapis.com/auth/contacts.readonly "
+                          "https://www.googleapis.com/auth/contacts.other.readonly "
+                          "https://www.googleapis.com/auth/directory.readonly");
 }
 
 void GoogleAuth::setEndpoints(const QUrl &authorization, const QUrl &token)

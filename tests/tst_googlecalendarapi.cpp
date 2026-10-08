@@ -61,6 +61,7 @@ void TestGoogleCalendarApi::init()
     m_network = std::make_unique<QNetworkAccessManager>();
     m_api = std::make_unique<GoogleCalendarApi>(m_network.get());
     m_api->setBaseUrl(m_server->url(QStringLiteral("/calendar/v3/")));
+    m_api->setPeopleBaseUrl(m_server->url(QStringLiteral("/people/v1/")));
 }
 
 GoogleEventChanges TestGoogleCalendarApi::fetchEvents(const QString &calendarId,

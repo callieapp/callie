@@ -179,6 +179,14 @@ int main(int argc, char *argv[])
     // Everything reads through the user's own names and colors for calendars.
     callie::LookedSource looked(*backend, settings);
     callie::CalendarSource *source = &looked;
+    // People to suggest as guests: from the events, and from Google's contacts.
+    callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());
+    contacts.setSource(source);
+    QObject::connect(&sync, &callie::GoogleSync::contactsFound, &contacts,
+                     [&contacts](const callie::Account &, const QList<callie::Contact> &people) {
+                         contacts.add(people);
+                     });
+    callie::ContactBookForeign::s_instance = &contacts;
     QTimer syncTimer;
     // Without a client every refresh would fail, so show the cache and say why once.
     const bool canSync = client.isValid();

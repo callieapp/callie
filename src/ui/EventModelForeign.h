@@ -1,6 +1,7 @@
 #pragma once
 
 #include "callie/CalendarSource.h"
+#include "callie/ContactBook.h"
 #include "callie/EventModel.h"
 #include "callie/InvitesModel.h"
 #include "callie/MonthModel.h"
@@ -78,6 +79,27 @@ struct TimesForeign
     QML_FOREIGN(callie::Times)
     QML_NAMED_ELEMENT(Times)
     QML_UNCREATABLE("Times come from Settings.times.")
+};
+
+/// People to suggest as guests, as a QML singleton. main.cpp picks the instance;
+/// without one, such as in tests, it is an empty book in memory.
+struct ContactBookForeign
+{
+    Q_GADGET
+    QML_FOREIGN(callie::ContactBook)
+    QML_NAMED_ELEMENT(Contacts)
+    QML_SINGLETON
+
+public:
+    static callie::ContactBook *create(QQmlEngine *, QJSEngine *)
+    {
+        if (!s_instance)
+            s_instance = new callie::ContactBook({}, QCoreApplication::instance());
+        QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
+        return s_instance;
+    }
+
+    static inline callie::ContactBook *s_instance = nullptr;
 };
 
 /// Lets QML name the source type; sources are created in C++ only.

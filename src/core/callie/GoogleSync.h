@@ -87,6 +87,9 @@ Q_SIGNALS:
     /// The account's Google Calendar settings, read once a run of Callie after
     /// the account's first successful sync, and again after a failed read.
     void settingsFound(const callie::Account &account, const QHash<QString, QString> &settings);
+    /// The people the account can invite, from its contacts and, for a
+    /// Workspace account, its directory; read once a run, like the settings.
+    void contactsFound(const callie::Account &account, const QList<callie::Contact> &contacts);
 
 private:
     struct Run;
@@ -98,6 +101,7 @@ private:
     void finish(const std::shared_ptr<Run> &run);
     void record(bool stored);
     void readSettings(const Account &account);
+    void readContacts(const Account &account);
     /// Patches `fields` into an event and stores what Google returns.
     void patch(const Account &account, const QString &calendarId, const QString &eventId,
                const QJsonObject &fields, const QString &failure, Created done,
@@ -114,6 +118,7 @@ private:
     QHash<QString, std::shared_ptr<Run>> m_running;
     /// Accounts whose settings were read in this run.
     QSet<QString> m_settingsRead;
+    QSet<QString> m_contactsRead;
 };
 
 } // namespace callie

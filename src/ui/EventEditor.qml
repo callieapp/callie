@@ -315,12 +315,115 @@ Column {
     }
     Field {
         id: guestField
-        width: parent.width
-        placeholderText: qsTr("Add guests by email")
-        Accessible.name: qsTr("Add a guest")
-        onAccepted: {
-            root.addGuest(text)
+
+        /// People matching what is typed, as Contacts.suggest gives them.
+        property var suggestions: []
+        property int highlighted: 0
+        /// A suggestion was picked with the arrows, so Enter takes it over a typed address.
+        property bool picking: false
+
+        function take(email) {
+            root.addGuest(email)
             text = ""
+            suggestions = []
+        }
+        // A typed address goes in as typed unless a suggestion was picked.
+        function accept() {
+            const typed = text.trim()
+            if (suggestions.length > 0 && (picking || typed.indexOf("@") < 0))
+                take(suggestions[highlighted].email)
+            else if (typed !== "")
+                take(typed)
+        }
+
+        width: parent.width
+        placeholderText: qsTr("Add guests by name or email")
+        Accessible.name: qsTr("Add a guest")
+        onTextEdited: {
+            suggestions = Contacts.suggest(text, root.guests)
+            highlighted = 0
+            picking = false
+        }
+        onAccepted: accept()
+        Keys.onDownPressed: {
+            highlighted = Math.min(suggestions.length - 1, highlighted + 1)
+            picking = true
+        }
+        Keys.onUpPressed: {
+            highlighted = Math.max(0, highlighted - 1)
+            picking = true
+        }
+        Keys.onTabPressed: event => {
+            event.accepted = suggestions.length > 0
+            if (event.accepted)
+                take(suggestions[highlighted].email)
+        }
+        Keys.onEscapePressed: event => {
+            event.accepted = suggestions.length > 0
+            suggestions = []
+        }
+    }
+
+    // The suggestions, under the box, best first.
+    Column {
+        visible: guestField.suggestions.length > 0
+        width: parent.width
+
+        Repeater {
+            model: guestField.suggestions
+
+            Rectangle {
+                id: suggestion
+
+                required property var modelData
+                required property int index
+
+                width: parent.width
+                height: Theme.listRowHeight + Theme.space2
+                radius: Theme.radiusMd
+                color: index === guestField.highlighted || pointer.hovered ? Theme.surfaceAlt :
+                                                                             "transparent"
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData.name ? qsTr("%1, %2").arg(modelData.name).arg(
+                                                      modelData.email) : modelData.email
+
+                HoverHandler {
+                    id: pointer
+                    cursorShape: Qt.PointingHandCursor
+                }
+                TapHandler {
+                    onTapped: guestField.take(suggestion.modelData.email)
+                }
+
+                Row {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: Theme.space3
+                        verticalCenter: parent.verticalCenter
+                    }
+                    spacing: Theme.space2
+
+                    Text {
+                        visible: text !== ""
+                        text: suggestion.modelData.name
+                        textFormat: Text.PlainText
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textSm
+                        font.weight: Font.Bold
+                    }
+                    Text {
+                        width: parent.width - x
+                        elide: Text.ElideRight
+                        text: suggestion.modelData.email
+                        textFormat: Text.PlainText
+                        color: Theme.textMuted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textSm
+                    }
+                }
+            }
         }
     }
 

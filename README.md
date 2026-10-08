@@ -62,6 +62,7 @@ callie agenda --sample                   # a made-up week, for trying things out
 callie agenda --json                     # for scripts; each event's id is what edit and others take
 callie search dentist                    # events with every word, a year either side
 callie invites                           # invitations waiting for an answer
+callie contacts priya                    # people to invite, from guests and Google contacts
 callie add "Lunch with Alex fri 12-1pm"  # --calendar picks one by name
 callie edit <id> --start "friday 3pm"    # also --end, --title, --where, --notes, --all-day,
                                          # --repeat, --guests, --video; --scope all for a series

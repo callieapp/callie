@@ -3,6 +3,7 @@
 #include "EventModelForeign.h"
 #include "ThemeController.h"
 
+#include "callie/ContactBook.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 
@@ -74,11 +75,13 @@ private Q_SLOTS:
     void clickOutsideOnlyCloses();
     void topOfACascadeOpens();
     void titleBarFitsNarrowWindows();
+    void guestsComeFromSuggestions();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<Settings> m_settings;
     std::unique_ptr<SampleSource> m_source;
+    std::unique_ptr<ContactBook> m_contacts;
     std::unique_ptr<QQmlApplicationEngine> m_engine;
     QQuickWindow *m_window = nullptr;
 
@@ -115,6 +118,9 @@ void TestEventEdit::init()
     SettingsForeign::s_instance = m_settings.get();
     Clock::instance()->freeze(QDateTime(QDate(2026, 10, 7), QTime(13, 40)));
     m_source = std::make_unique<SampleSource>();
+    m_contacts = std::make_unique<ContactBook>(QString());
+    m_contacts->setSource(m_source.get());
+    ContactBookForeign::s_instance = m_contacts.get();
     m_engine = std::make_unique<QQmlApplicationEngine>();
     m_engine->setInitialProperties(
         {{u"source"_s, QVariant::fromValue<CalendarSource *>(m_source.get())}});
@@ -131,6 +137,8 @@ void TestEventEdit::init()
 void TestEventEdit::cleanup()
 {
     m_engine.reset();
+    ContactBookForeign::s_instance = nullptr;
+    m_contacts.reset();
     m_source.reset();
 }
 
@@ -467,6 +475,30 @@ void TestEventEdit::titleBarFitsNarrowWindows()
     m_window->resize(1280, 600);
     QTRY_VERIFY(!drawer->property("visible").toBool());
     QTRY_VERIFY(!find(m_window->contentItem(), "StickerButton", "glyph", u"menu"_s));
+}
+
+void TestEventEdit::guestsComeFromSuggestions()
+{
+    QQuickItem *form = openEditor(u"Climbing"_s);
+    QVERIFY(form);
+    QQuickItem *guest =
+        find(m_window->contentItem(), "Field", "placeholderText", u"Add guests by name or email"_s);
+    QVERIFY(guest);
+    // Priya is a guest at the sample's calls, so typing her name finds her.
+    QTRY_VERIFY(!m_contacts->suggest(u"pri"_s, {}).isEmpty());
+    guest->setProperty("text", u"pri"_s);
+    QMetaObject::invokeMethod(guest, "textEdited");
+    QTRY_VERIFY(!guest->property("suggestions").toList().isEmpty());
+    QMetaObject::invokeMethod(guest, "accepted");
+    QCOMPARE(form->property("guests").toStringList(), QStringList{u"priya@example.com"_s});
+    QCOMPARE(guest->property("text").toString(), QString());
+
+    // A whole address that matches no one goes in as typed.
+    guest->setProperty("text", u"sam@new.example"_s);
+    QMetaObject::invokeMethod(guest, "textEdited");
+    QMetaObject::invokeMethod(guest, "accepted");
+    QCOMPARE(form->property("guests").toStringList(),
+             (QStringList{u"priya@example.com"_s, u"sam@new.example"_s}));
 }
 
 QTEST_MAIN(TestEventEdit)

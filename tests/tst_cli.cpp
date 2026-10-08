@@ -1,5 +1,6 @@
 #include "Commands.h"
 
+#include "callie/ContactBook.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 
@@ -62,6 +63,7 @@ private Q_SLOTS:
     void respondAndDelete();
     void duplicateKeepsTheLength();
     void whenReadsDaysAndTimes();
+    void contactsFindGuestsAndContacts();
     void idsNameTheirCalendar();
     void allDayKeepsItsDaysAcrossAClockChange();
     void timedKeepsTheEndGiven();
@@ -472,6 +474,17 @@ void TestCli::calendarsAndAccountsTakeNewLooks()
     QCOMPARE(m_commands->renameAccount(u"sam@work.example"_s, u"Work"_s), 0);
     QCOMPARE(m_settings->accountName(u"sam@work.example"_s), u"Work"_s);
     QCOMPARE(m_commands->renameAccount(u"nobody@example.com"_s, u"Nobody"_s), 1);
+}
+
+void TestCli::contactsFindGuestsAndContacts()
+{
+    ContactBook book({});
+    book.add({{u"Priya Rao"_s, u"prao@example.org"_s}});
+    QCOMPARE(m_commands->contacts(book, u"priya"_s, false), 0);
+    m_outStream->flush();
+    // The sample's Priya from her events, and the contact.
+    QCOMPARE(m_out, u"priya@example.com\tPriya\nprao@example.org\tPriya Rao\n"_s);
+    QCOMPARE(m_commands->contacts(book, {}, false), 2);
 }
 
 QTEST_GUILESS_MAIN(TestCli)

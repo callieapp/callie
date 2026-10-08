@@ -409,7 +409,8 @@ struct Backend
 std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
 {
     auto backend = std::make_unique<Backend>();
-    code = 0;
+    // Nothing to read is no error, but nothing to change is.
+    code = writing ? 1 : 0;
     if (sample) {
         backend->source = std::make_unique<SampleSource>();
         return backend;

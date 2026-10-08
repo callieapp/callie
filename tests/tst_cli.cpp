@@ -199,6 +199,18 @@ void TestCli::editAllDayEndsOnItsLastDay()
         0);
     const Event trip = named(u"Dentist"_s, QDate(2026, 10, 8));
     QVERIFY(trip.allDay);
+    // --json gives the last day back, as --end took it.
+    QCOMPARE(m_commands->agenda(3, true), 0);
+    m_outStream->flush();
+    bool listed = false;
+    for (const QJsonValue &e : QJsonDocument::fromJson(m_out.toUtf8()).array()) {
+        if (e[u"title"].toString() == u"Dentist" && e[u"allDay"].toBool()) {
+            listed = true;
+            QCOMPARE(e[u"start"].toString(), u"2026-10-08"_s);
+            QCOMPARE(e[u"end"].toString(), u"2026-10-09"_s);
+        }
+    }
+    QVERIFY(listed);
     QCOMPARE(trip.start.date(), QDate(2026, 10, 8));
     QCOMPARE(trip.end.date(), QDate(2026, 10, 10));
 }
@@ -278,6 +290,9 @@ void TestCli::whenReadsDaysAndTimes()
     QCOMPARE(*m_commands->when(u"9:15"_s, day), at(7, 9, 15));
     QCOMPARE(*m_commands->when(u"tomorrow 3pm"_s, day), at(8, 15));
     QVERIFY(!m_commands->when(u"someday"_s, day));
+    QCOMPARE(*m_commands->when(u"2026-10-08T15:00:00"_s, day), at(8, 15));
+    // A date with words after it is read as words, not cut to midnight.
+    QCOMPARE(*m_commands->when(u"2026-10-08 3pm"_s, day), at(8, 15));
 }
 
 void TestCli::idsNameTheirCalendar()

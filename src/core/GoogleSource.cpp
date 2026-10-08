@@ -554,7 +554,15 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
         if (!line.toString().startsWith(u"EXDATE"_s, Qt::CaseInsensitive))
             recurrence.append(line);
     }
+    // A new series that does not repeat has no days to take out.
+    const bool repeats =
+        std::any_of(recurrence.cbegin(), recurrence.cend(), [](const QJsonValue &line) {
+            return line.toString().startsWith(u"RRULE"_s, Qt::CaseInsensitive) ||
+                   line.toString().startsWith(u"RDATE"_s, Qt::CaseInsensitive);
+        });
     const auto exclude = [&](QDate day) {
+        if (!repeats)
+            return;
         recurrence.append(newAllDay
                               ? u"EXDATE;VALUE=DATE:"_s + day.toString(u"yyyyMMdd"_s)
                               : u"EXDATE:"_s + QDateTime(day, firstNew.time(), firstNew.timeZone())

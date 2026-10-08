@@ -868,7 +868,6 @@ ApplicationWindow {
     // ---- Keyboard ----------------------------------------------------------------
     /// Does what the keyboard asked for, by KeyRouter's action id.
     function run(id) {
-        const view = window.shownView()
         switch (id) {
         case "newEvent":
             quickAdd.open()

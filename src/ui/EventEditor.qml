@@ -332,8 +332,11 @@ Column {
             const typed = text.trim()
             if (suggestions.length > 0 && (picking || typed.indexOf("@") < 0))
                 take(suggestions[highlighted].email)
-            else if (typed !== "")
-                take(typed)
+            else
+                // A name that matches no one stays to be corrected, rather than
+                // going in as an address.
+                if (typed.indexOf("@") > 0)
+                    take(typed)
         }
 
         width: parent.width

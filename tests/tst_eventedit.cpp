@@ -15,6 +15,8 @@
 #include <QTest>
 #include <QtQml/qqmlextensionplugin.h>
 
+#include <functional>
+
 Q_IMPORT_QML_PLUGIN(Callie_UiPlugin)
 
 using namespace callie;
@@ -71,6 +73,7 @@ private Q_SLOTS:
     void agendaScrollsWithKeys();
     void clickOutsideOnlyCloses();
     void topOfACascadeOpens();
+    void titleBarFitsNarrowWindows();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -395,6 +398,40 @@ void TestEventEdit::topOfACascadeOpens()
     QTRY_COMPARE(openCard(m_window), u"Quick sync w/ Sam"_s);
     QTest::qWait(300);
     QCOMPARE(openCard(m_window), u"Quick sync w/ Sam"_s);
+}
+
+void TestEventEdit::titleBarFitsNarrowWindows()
+{
+    // Every control in the title bar, wherever it sits in the item tree.
+    const std::function<void(QQuickItem *, QList<QRectF> &)> controls =
+        [&controls](QQuickItem *item, QList<QRectF> &found) {
+            const QString type = QString::fromLatin1(item->metaObject()->className());
+            if (!item->isVisible() || item->width() <= 0)
+                return;
+            if (type.startsWith(u"StickerButton"_s) || type.startsWith(u"PillButton"_s) ||
+                type.startsWith(u"QQuickAbstractButton"_s)) {
+                const QRectF box = item->mapRectToScene(item->boundingRect());
+                if (box.top() < 56)
+                    found.append(box);
+                return;
+            }
+            for (QQuickItem *child : item->childItems())
+                controls(child, found);
+        };
+    for (const int width : {1280, 1000, 800, 600}) {
+        m_window->resize(width, 600);
+        QTest::qWait(100);
+        QList<QRectF> boxes;
+        controls(m_window->contentItem(), boxes);
+        QVERIFY(boxes.size() >= 6);
+        std::sort(boxes.begin(), boxes.end(),
+                  [](const QRectF &a, const QRectF &b) { return a.left() < b.left(); });
+        for (qsizetype i = 1; i < boxes.size(); ++i)
+            QVERIFY2(boxes.at(i - 1).right() <= boxes.at(i).left() + 0.5,
+                     qPrintable(
+                         u"%1 px: controls overlap at x %2"_s.arg(width).arg(boxes.at(i).left())));
+        QVERIFY(boxes.last().right() <= width);
+    }
 }
 
 QTEST_MAIN(TestEventEdit)

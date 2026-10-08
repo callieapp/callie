@@ -11,6 +11,7 @@
 #include <QJsonObject>
 
 #include <QPointer>
+#include <QTimer>
 
 using namespace Qt::StringLiterals;
 
@@ -381,6 +382,7 @@ void GoogleSync::forget(const Account &account)
         run->forgotten = true;
     m_settingsRead.remove(keyFor(account));
     m_contactsRead.remove(keyFor(account));
+    m_contactsReading.remove(keyFor(account));
 }
 
 void GoogleSync::readSettings(const Account &account)
@@ -421,21 +423,29 @@ void GoogleSync::readContacts(const Account &account)
     // no directory, and one signed in before Callie asked for contacts has none
     // of them until it signs in again. Refused counts as empty; a read that
     // fails for now leaves what was read last time alone.
-    m_contactsRead.insert(keyFor(account));
+    const QString key = keyFor(account);
+    m_contactsRead.insert(key);
+    m_contactsReading.insert(key);
     using People = GoogleCalendarApi::People;
     auto found = std::make_shared<QList<Contact>>();
     auto failed = std::make_shared<bool>(false);
     auto next = std::make_shared<std::function<void(qsizetype)>>();
     const QList<People> kinds = {People::Contacts, People::OtherContacts, People::Directory};
     const QPointer<GoogleSync> self(this);
-    *next = [this, self, account, kinds, found, failed, next](qsizetype i) {
+    *next = [this, self, account, key, kinds, found, failed, next](qsizetype i) {
         if (!self)
             return;
         if (i == kinds.size()) {
-            // Not for an account removed while its contacts were being read.
-            if (!*failed && m_contactsRead.contains(keyFor(account)))
-                Q_EMIT contactsFound(account, *found);
-            *next = nullptr;
+            // Nothing for an account removed while its contacts were being read.
+            if (m_contactsReading.remove(key)) {
+                // Tried again after the next sync, rather than leaving a short list.
+                if (*failed)
+                    m_contactsRead.remove(key);
+                else
+                    Q_EMIT contactsFound(account, *found);
+            }
+            // Freed once it has returned, since it is this very function.
+            QTimer::singleShot(0, [next] { *next = nullptr; });
             return;
         }
         const auto read = [self, i, found, failed, next](const QList<Contact> &people,

@@ -140,7 +140,8 @@ int main(int argc, char *argv[])
     // Everything the source reads from or syncs with lives as long as the app.
     QList<callie::Account> accounts;
     callie::AccountStore store(callie::AccountStore::defaultPath());
-    if (!store.load(accounts))
+    const bool accountsRead = store.load(accounts);
+    if (!accountsRead)
         err << "callie-gui: " << store.errorString() << "\n";
     callie::GoogleCache cache(callie::GoogleCache::defaultPath());
     // Sample data never touches the real cache. Without accounts it is still
@@ -182,7 +183,9 @@ int main(int argc, char *argv[])
     // People to suggest as guests: from the events, and from Google's contacts.
     callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());
     contacts.setSource(source);
-    {
+    // Accounts removed while Callie was closed take their contacts, but an
+    // account list that cannot be read says nothing about which are gone.
+    if (accountsRead) {
         QStringList ids;
         for (const callie::Account &account : std::as_const(accounts))
             ids << account.id;

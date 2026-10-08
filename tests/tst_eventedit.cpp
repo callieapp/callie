@@ -493,6 +493,13 @@ void TestEventEdit::guestsComeFromSuggestions()
     QCOMPARE(form->property("guests").toStringList(), QStringList{u"priya@example.com"_s});
     QCOMPARE(guest->property("text").toString(), QString());
 
+    // A name that matches no one is not taken for an address.
+    guest->setProperty("text", u"Nobody Here"_s);
+    QMetaObject::invokeMethod(guest, "textEdited");
+    QMetaObject::invokeMethod(guest, "accepted");
+    QCOMPARE(form->property("guests").toStringList(), QStringList{u"priya@example.com"_s});
+    QCOMPARE(guest->property("text").toString(), u"Nobody Here"_s);
+
     // A whole address that matches no one goes in as typed.
     guest->setProperty("text", u"sam@new.example"_s);
     QMetaObject::invokeMethod(guest, "textEdited");

@@ -119,6 +119,8 @@ private:
     /// Accounts whose settings were read in this run.
     QSet<QString> m_settingsRead;
     QSet<QString> m_contactsRead;
+    /// Accounts whose contacts are being read; forgetting one drops its read.
+    QSet<QString> m_contactsReading;
 };
 
 } // namespace callie

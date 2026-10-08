@@ -108,6 +108,7 @@ private Q_SLOTS:
     void settingsAreReadOnceARun();
     void contactsAreReadOnceARun();
     void contactsOfARemovedAccountAreDropped();
+    void contactsThatFailToReadAreTriedAgain();
     void unreadableSettingsAreTriedAgain();
     void rejectedTokenForSettingsIsRefreshed();
 
@@ -441,6 +442,29 @@ void TestGoogleSync::contactsOfARemovedAccountAreDropped()
     QTRY_COMPARE_WITH_TIMEOUT(m_google->count(u"people:listDirectoryPeople"_s), 1, 5000);
     QTest::qWait(300);
     QVERIFY(found.isEmpty());
+}
+
+void TestGoogleSync::contactsThatFailToReadAreTriedAgain()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    m_google->on(u"people/me/connections"_s, 200,
+                 R"({"connections":[{"emailAddresses":[{"value":"lee@example.com"}]}]})");
+    // Other contacts are busy this time, so a list without them would be short.
+    m_google->on(u"otherContacts"_s, 503, R"({"error":{"code":503,"message":"busy"}})");
+    m_google->on(u"otherContacts"_s, 200, R"({})");
+    m_google->on(u"people:listDirectoryPeople"_s, 200, R"({})");
+    QSignalSpy found(m_sync.get(), &GoogleSync::contactsFound);
+
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(m_google->count(u"people:listDirectoryPeople"_s), 1, 5000);
+    QTest::qWait(300);
+    QVERIFY(found.isEmpty());
+
+    // The next sync reads them again, and this time they all come.
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
+    QCOMPARE(found.first().at(1).value<QList<Contact>>().size(), 1);
 }
 
 void TestGoogleSync::unreadableSettingsAreTriedAgain()

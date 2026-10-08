@@ -383,8 +383,11 @@ void TestCli::settingsReadAndChange()
     // Callie's own bookkeeping is not for the user.
     QVERIFY(!m_out.contains(u"lastSeenVersion"_s));
 
+    m_out.clear();
     QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"viMode"_s, u"on"_s), 0);
     QVERIFY(m_settings->viMode());
+    m_outStream->flush();
+    QVERIFY(m_out.isEmpty());
     QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"timeFormat"_s,
                                 u"TwelveHour"_s),
              0);
@@ -418,6 +421,10 @@ void TestCli::calendarsAndAccountsTakeNewLooks()
     QVERIFY(m_settings->calendarLooks().isEmpty());
     QCOMPARE(m_commands->calendarLook(u"hide"_s, u"Nope"_s, {}), 1);
     QCOMPARE(m_commands->calendarLook(u"paint"_s, u"focus"_s, {}), 2);
+    QCOMPARE(m_commands->calendarLook(u"list"_s, {}, {}), 2);
+    // Quiet on success: only what was asked for goes to stdout.
+    m_outStream->flush();
+    QVERIFY(m_out.isEmpty());
 
     QCOMPARE(m_commands->renameAccount(u"sam@work.example"_s, u"Work"_s), 0);
     QCOMPARE(m_settings->accountName(u"sam@work.example"_s), u"Work"_s);

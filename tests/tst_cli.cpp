@@ -3,6 +3,9 @@
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -38,6 +41,8 @@ private Q_SLOTS:
     void respondAndDelete();
     void duplicateKeepsTheLength();
     void whenReadsDaysAndTimes();
+    void idsNameTheirCalendar();
+    void allDayKeepsItsDaysAcrossAClockChange();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -87,23 +92,36 @@ void TestCli::agendaGivesIdsToScripts()
 {
     QCOMPARE(m_commands->agenda(1, true), 0);
     m_outStream->flush();
-    const QStringList lines = m_out.split(u'\n', Qt::SkipEmptyParts);
-    QVERIFY(lines.contains(u"sample-3-16-0-2026-10-07\t2026-10-07 16:00\tDentist"_s));
-    // Only today's.
-    for (const QString &line : lines)
-        QVERIFY2(line.section(u'\t', 1).startsWith(u"2026-10-07"_s), qPrintable(line));
+    const QJsonArray events = QJsonDocument::fromJson(m_out.toUtf8()).array();
+    QVERIFY(!events.isEmpty());
+    bool dentist = false;
+    for (const QJsonValue &e : events) {
+        // Only today's.
+        QVERIFY(e[u"start"].toString().startsWith(u"2026-10-07"_s));
+        if (e[u"title"].toString() == u"Dentist") {
+            dentist = true;
+            QCOMPARE(e[u"id"].toString(), u"personal/sample-3-16-0-2026-10-07"_s);
+            QCOMPARE(e[u"start"].toString(), u"2026-10-07T16:00:00Z"_s);
+            QVERIFY(!e[u"repeats"].toBool());
+        }
+    }
+    QVERIFY(dentist);
 }
 
 void TestCli::searchListsASeriesOnce()
 {
     QCOMPARE(m_commands->search(u"standup"_s, true), 0);
     m_outStream->flush();
-    const QStringList lines = m_out.split(u'\n', Qt::SkipEmptyParts);
+    const QJsonArray found = QJsonDocument::fromJson(m_out.toUtf8()).array();
     // The standups are one series, listed once by the next of them.
-    QCOMPARE(lines.size(), 1);
-    QVERIFY(lines.first().contains(u"2026-10-08 09:30"_s));
+    QCOMPARE(found.size(), 1);
+    QCOMPARE(found.first()[u"start"].toString(), u"2026-10-08T09:30:00Z"_s);
 
-    QCOMPARE(m_commands->search(u"standup nowhere"_s, false), 1);
+    // Finding nothing is not an error, and says so off stdout.
+    m_out.clear();
+    QCOMPARE(m_commands->search(u"standup nowhere"_s, false), 0);
+    m_outStream->flush();
+    QVERIFY(m_out.isEmpty());
     QCOMPARE(m_commands->search(u" "_s, false), 2);
 }
 
@@ -123,7 +141,8 @@ void TestCli::addGoesInTheDefaultCalendar()
     const Event pottery = named(u"Pottery"_s, QDate(2026, 10, 9));
     QCOMPARE(pottery.calendarId, u"personal"_s);
     QCOMPARE(pottery.start, at(9, 18));
-    QVERIFY(m_out.contains(u"Added Pottery"_s));
+    // Quiet on success.
+    QVERIFY(m_out.isEmpty());
 
     // A calendar by name, and one that is not there.
     QCOMPARE(run([this](auto done) { m_commands->add(u"Gym saturday 9am"_s, u"focus"_s, done); }),
@@ -140,7 +159,6 @@ void TestCli::editMovesAndKeepsTheLength()
     options.start = u"friday 3pm"_s;
     options.where = u"New clinic"_s;
     QCOMPARE(run([&](auto done) { m_commands->edit(id, options, {}, done); }), 0);
-    QVERIFY(m_out.contains(u"Changed Dentist"_s));
     const Event moved = named(u"Dentist"_s, QDate(2026, 10, 9));
     QCOMPARE(moved.start, at(9, 15));
     QCOMPARE(moved.end, at(9, 16));
@@ -182,7 +200,7 @@ void TestCli::repeatIsForTheWholeSeries()
 void TestCli::mistakesAreReportedNotMade()
 {
     QCOMPARE(run([this](auto done) { m_commands->edit(u"nope"_s, {}, {}, done); }), 1);
-    QVERIFY(m_err.contains(u"--ids"_s));
+    QVERIFY(m_err.contains(u"--json"_s));
     const QString id = u"sample-3-16-0-2026-10-07"_s;
     QCOMPARE(run([&](auto done) { m_commands->edit(id, {}, {}, done); }), 2);
     EditOptions backwards;
@@ -237,6 +255,49 @@ void TestCli::whenReadsDaysAndTimes()
     QCOMPARE(*m_commands->when(u"9:15"_s, day), at(7, 9, 15));
     QCOMPARE(*m_commands->when(u"tomorrow 3pm"_s, day), at(8, 15));
     QVERIFY(!m_commands->when(u"someday"_s, day));
+}
+
+void TestCli::idsNameTheirCalendar()
+{
+    EditOptions rename;
+    rename.title = u"Orthodontist"_s;
+    QCOMPARE(run([&](auto done) {
+                 m_commands->edit(u"work/sample-3-16-0-2026-10-07"_s, rename, {}, done);
+             }),
+             1);
+    QCOMPARE(run([&](auto done) {
+                 m_commands->edit(u"personal/sample-3-16-0-2026-10-07"_s, rename, {}, done);
+             }),
+             0);
+    QCOMPARE(named(u"Orthodontist"_s, QDate(2026, 10, 7)).calendarId, u"personal"_s);
+}
+
+void TestCli::allDayKeepsItsDaysAcrossAClockChange()
+{
+    // New York springs forward on 8 March 2026, a 23-hour day.
+    const QTimeZone york("America/New_York");
+    Commands commands(*m_source, *m_settings, *m_outStream, *m_errStream,
+                      QDateTime(QDate(2026, 3, 1), QTime(12, 0), york), york);
+    QCOMPARE(run([&](auto done) { commands.add(u"Trip 2026-03-05"_s, {}, done); }), 0);
+    const QDateTime from(QDate(2026, 3, 5), QTime(0, 0), york);
+    QString id;
+    for (const Event &e : m_source->eventsBetween(from, from.addDays(1), york)) {
+        if (e.summary == u"Trip")
+            id = e.calendarId + u'/' + e.eventId;
+    }
+    QVERIFY(!id.isEmpty());
+    EditOptions options;
+    options.start = u"2026-03-08"_s;
+    QCOMPARE(run([&](auto done) { commands.edit(id, options, {}, done); }), 0);
+    const QDateTime moved(QDate(2026, 3, 8), QTime(0, 0), york);
+    for (const Event &e : m_source->eventsBetween(moved, moved.addDays(1), york)) {
+        if (e.summary == u"Trip") {
+            QCOMPARE(e.start.date(), QDate(2026, 3, 8));
+            QCOMPARE(e.end.toTimeZone(york).date(), QDate(2026, 3, 9));
+            return;
+        }
+    }
+    QFAIL("the trip did not move");
 }
 
 QTEST_GUILESS_MAIN(TestCli)

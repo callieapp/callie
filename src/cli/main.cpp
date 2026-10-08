@@ -463,7 +463,8 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         const QString option = QString::fromLatin1(name);
         return parser.isSet(option) ? std::optional(parser.value(option)) : std::nullopt;
     };
-    const bool reading = command == u"agenda" || command == u"search" || command == u"invites";
+    const bool reading = command == u"agenda" || command == u"search" || command == u"invites" ||
+                         command == u"calendars" || command == u"accounts";
     // Sample data and scripts that only read leave the user's settings alone.
     QTemporaryDir scratch;
     Settings settings(sample ? scratch.filePath(u"settings.ini"_s) : Settings::defaultPath());
@@ -479,6 +480,10 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     commands.setColor(useColor());
     const bool json = parser.isSet(u"json"_s);
 
+    if (command == u"calendars")
+        return commands.calendarLook(args.value(1), args.value(2), args.mid(3).join(u' '));
+    if (command == u"accounts")
+        return commands.renameAccount(args.value(2), args.mid(3).join(u' '));
     if (command == u"agenda")
         return commands.agenda(parser.value(u"days"_s).toInt(), json);
     if (command == u"search")
@@ -541,7 +546,9 @@ int runAccounts(QCoreApplication &app, const QStringList &args)
     if (action == QLatin1String("remove") && provider == kGoogle && args.size() == 4)
         return runAccountsRemove(app, Account{kGoogle, args.at(3)});
 
-    err << QObject::tr("usage: callie accounts [list | add google | remove google <id>]") << "\n";
+    err << QObject::tr("usage: callie accounts [list | add google | remove google <id> | rename "
+                       "<id> <name>]")
+        << "\n";
     return 2;
 }
 
@@ -554,26 +561,28 @@ int main(int argc, char *argv[])
     app.setApplicationVersion(QStringLiteral(CALLIE_VERSION));
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(
-        QStringLiteral("Callie: an elegant calendar for Linux.\n"
-                       "\n"
-                       "Commands:\n"
-                       "  agenda     Upcoming events (default); --json for scripts, with ids\n"
-                       "  search     Events with every word given\n"
-                       "  invites    Invitations waiting for an answer\n"
-                       "  add        Create an event: callie add \"Lunch tomorrow 12-1pm\"\n"
-                       "  edit       Change an event: callie edit <id> --start \"friday 3pm\"\n"
-                       "  delete     Delete an event\n"
-                       "  respond    Answer an invitation: callie respond <id> yes|maybe|no\n"
-                       "  duplicate  Copy an event, to --start if given\n"
-                       "  accounts   List, add or remove calendar accounts\n"
-                       "  calendars  List the calendars in each account\n"
-                       "  logs       Show, follow (-f) or open (--open) the log files\n"
-                       "  status     Sync state, keyring and configuration\n"
-                       "  doctor     Details for a bug report; --report opens a new issue\n"
-                       "  sync       Refresh all accounts now\n"
-                       "  daemon     Run background sync and notifications\n"
-                       "  gui        Launch the desktop app"));
+    parser.setApplicationDescription(QStringLiteral(
+        "Callie: an elegant calendar for Linux.\n"
+        "\n"
+        "Commands:\n"
+        "  agenda     Upcoming events (default); --json for scripts, with ids\n"
+        "  search     Events with every word given\n"
+        "  invites    Invitations waiting for an answer\n"
+        "  add        Create an event: callie add \"Lunch tomorrow 12-1pm\"\n"
+        "  edit       Change an event: callie edit <id> --start \"friday 3pm\"\n"
+        "  delete     Delete an event\n"
+        "  respond    Answer an invitation: callie respond <id> yes|maybe|no\n"
+        "  duplicate  Copy an event, to --start if given\n"
+        "  accounts   List, add, remove or rename calendar accounts\n"
+        "  calendars  List the calendars in each account; hide, show, rename,\n"
+        "             color or reset one\n"
+        "  settings   List settings, or read or change one: callie settings viMode true\n"
+        "  logs       Show, follow (-f) or open (--open) the log files\n"
+        "  status     Sync state, keyring and configuration\n"
+        "  doctor     Details for a bug report; --report opens a new issue\n"
+        "  sync       Refresh all accounts now\n"
+        "  daemon     Run background sync and notifications\n"
+        "  gui        Launch the desktop app"));
     parser.addHelpOption();
     parser.addVersionOption();
     parser.addPositionalArgument(QStringLiteral("command"), QStringLiteral("Command to run."));
@@ -639,8 +648,16 @@ int main(int argc, char *argv[])
     if (kEventCommands.contains(command))
         return runEvents(app, command, args, parser, parser.isSet(sampleOption));
 
+    // Renaming changes only how Callie shows the account, so it needs no sign-in.
+    if (command == QLatin1String("accounts") && args.value(1) == u"rename" && args.size() >= 3)
+        return runEvents(app, command, args, parser, parser.isSet(sampleOption));
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
+    if (command == QLatin1String("settings") && args.size() <= 3) {
+        Settings settings(Settings::defaultPath());
+        return cli::Commands::settings(settings, out, err, args.value(1),
+                                       args.size() == 3 ? std::optional(args.at(2)) : std::nullopt);
+    }
 
     if (command == QLatin1String("doctor") && args.size() == 1)
         return runDoctor(app, parser.isSet(reportOption));
@@ -654,8 +671,9 @@ int main(int argc, char *argv[])
     if (command == QLatin1String("sync") && args.size() == 1)
         return runSync(app);
 
-    if (command == QLatin1String("calendars") && args.size() == 1)
-        return runCalendars(app);
+    if (command == QLatin1String("calendars"))
+        return args.size() == 1 ? runCalendars(app)
+                                : runEvents(app, command, args, parser, parser.isSet(sampleOption));
 
     if (command == QLatin1String("gui"))
         return QProcess::execute(QStringLiteral("callie-gui"), {});

@@ -415,6 +415,10 @@ void TestCli::settingsReadAndChange()
     QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"workStart"_s, u"5000"_s),
              2);
     QCOMPARE(m_settings->workStart(), 9 * 60);
+    QCOMPARE(m_settings->workEnd(), 17 * 60);
+    QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"workEnd"_s, u"0"_s), 2);
+    QCOMPARE(m_settings->workStart(), 9 * 60);
+    QCOMPARE(m_settings->workEnd(), 17 * 60);
     // An empty zone means the system's, and is taken.
     QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"timeZoneId"_s,
                                 std::optional(QString())),

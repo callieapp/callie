@@ -534,13 +534,22 @@ int Commands::settings(Settings &settings, QTextStream &out, QTextStream &err, c
     }
     const QMetaProperty property = meta->property(meta->indexOfProperty(name.toLatin1()));
     if (value) {
-        const QVariant before = property.read(&settings);
+        // Some settings move others along, as working hours do, so all are kept.
+        QList<std::pair<QMetaProperty, QVariant>> before;
+        for (int i = meta->propertyOffset(); i < meta->propertyCount(); ++i) {
+            if (meta->property(i).isWritable())
+                before.append({meta->property(i), meta->property(i).read(&settings)});
+        }
         const std::optional<QVariant> wanted = parsed(property, *value);
         // A setter that refuses, clamps or replaces a value keeps something
-        // other than what was asked, so that is put back and refused.
+        // other than what was asked, so everything is put back and it is refused.
         if (!wanted || !property.write(&settings, *wanted) ||
             shown(property, property.read(&settings)) != shown(property, *wanted)) {
-            property.write(&settings, before);
+            // Twice, since putting one back can move another again.
+            for (int pass = 0; pass < 2; ++pass) {
+                for (const auto &[setting, was] : before)
+                    setting.write(&settings, was);
+            }
             err << tr("callie: %1 cannot be %2").arg(name, *value) << "\n";
             return 2;
         }

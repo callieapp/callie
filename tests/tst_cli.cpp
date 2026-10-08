@@ -15,8 +15,8 @@ using namespace Qt::StringLiterals;
 
 namespace {
 
-/// The sample, with Dentist in a second calendar under the same id, as an
-/// event both calendars were invited to would be.
+/// The sample, with Dentist and the vendor call also in a second calendar
+/// under the same ids, as events both calendars were invited to would be.
 class SharedSource : public SampleSource
 {
 public:
@@ -26,9 +26,9 @@ public:
         QList<Event> events = SampleSource::eventsBetween(from, to, tz);
         const qsizetype count = events.size();
         for (qsizetype i = 0; i < count; ++i) {
-            if (events.at(i).summary == u"Dentist") {
+            if (events.at(i).summary == u"Dentist" || events.at(i).summary == u"Vendor call") {
                 Event copy = events.at(i);
-                copy.calendarId = u"work"_s;
+                copy.calendarId = copy.calendarId == u"work" ? u"personal"_s : u"work"_s;
                 events.append(copy);
             }
         }
@@ -346,6 +346,13 @@ void TestCli::sharedIdsNeedTheirCalendar()
     Commands commands(shared, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
     QCOMPARE(run([&](auto done) { commands.remove(u"sample-3-16-0-2026-10-07"_s, {}, done); }), 1);
     QVERIFY(m_err.contains(u"more than one calendar"_s));
+
+    // An invitation in two calendars is listed in each, so either can be answered.
+    m_out.clear();
+    QCOMPARE(commands.invites(true), 0);
+    m_outStream->flush();
+    QCOMPARE(m_out.count(u"\"Vendor call\""_s), 2);
+
     QCOMPARE(run([&](auto done) { commands.remove(u"work/sample-3-16-0-2026-10-07"_s, {}, done); }),
              0);
 }

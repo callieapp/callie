@@ -94,7 +94,7 @@ int Commands::invites(bool json)
         if (e.responseStatus != u"needsAction" || !e.canRespond)
             continue;
         // A repeating invitation is answered once, so it is listed once.
-        const QString key = e.seriesId.isEmpty() ? e.eventId : e.seriesId;
+        const QString key = e.calendarId + u'/' + (e.seriesId.isEmpty() ? e.eventId : e.seriesId);
         if (series.contains(key))
             continue;
         series.insert(key);

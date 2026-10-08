@@ -614,21 +614,9 @@ ApplicationWindow {
                         Accessible.name: qsTr("View: %1").arg(text)
                         onClicked: viewMenu.popup(viewButton, 0, viewButton.height + Theme.space3)
 
-                        Menu {
+                        MenuCard {
                             id: viewMenu
-                            padding: Theme.space2
-
-                            background: Rectangle {
-                                implicitWidth: 160
-                                color: Theme.surface
-                                border.color: Theme.border
-                                radius: Theme.radiusLg
-
-                                SoftShadow {
-                                    anchors.fill: parent
-                                    radius: parent.radius
-                                }
-                            }
+                            minimumWidth: 160
 
                             Repeater {
                                 model: window.views
@@ -684,21 +672,9 @@ ApplicationWindow {
                             }
                         }
 
-                        Menu {
+                        MenuCard {
                             id: helpMenu
-                            padding: Theme.space2
-
-                            background: Rectangle {
-                                implicitWidth: 200
-                                color: Theme.surface
-                                border.color: Theme.border
-                                radius: Theme.radiusLg
-
-                                SoftShadow {
-                                    anchors.fill: parent
-                                    radius: parent.radius
-                                }
-                            }
+                            minimumWidth: 200
 
                             // Here when the title bar has no room for its own button.
                             MenuEntry {

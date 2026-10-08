@@ -10,7 +10,31 @@ ApplicationWindow {
 
     width: 1280
     height: 840
-    minimumWidth: 880
+    minimumWidth: 600
+    readonly property var views: [
+        {
+            "id": "day",
+            "label": qsTr("Day")
+        },
+        {
+            "id": "week",
+            "label": qsTr("Week")
+        },
+        {
+            "id": "month",
+            "label": qsTr("Month")
+        },
+        {
+            "id": "agenda",
+            "label": qsTr("Agenda")
+        }
+    ]
+    /// How much the title bar gives up to fit: 0 shows everything; 1 folds the
+    /// view switcher into a menu; 2 shortens the month and the New button; 3
+    /// drops the logo and year and moves Settings into the ? menu.
+    readonly property int squeeze: width >= 1200 ? 0 : width >= 1000 ? 1 : width >= 780 ? 2 : 3
+    /// The sidebar gives way to the calendar in a narrow window.
+    readonly property bool showSidebar: width >= 880
     minimumHeight: 560
     visible: true
     title: qsTr("Callie")
@@ -198,7 +222,7 @@ ApplicationWindow {
                     verticalCenter: parent.verticalCenter
                     leftMargin: WindowButtons.left.length > 0 ? Theme.space4 : Theme.space5
                 }
-                spacing: Theme.space4
+                spacing: window.squeeze >= 3 ? Theme.space2 : Theme.space4
 
                 WindowControls {
                     anchors.verticalCenter: parent.verticalCenter
@@ -207,6 +231,7 @@ ApplicationWindow {
                 }
 
                 Logo {
+                    visible: window.squeeze < 3
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.verticalCenterOffset: -Theme.logoLift
                 }
@@ -215,7 +240,8 @@ ApplicationWindow {
                 // arrows stay put while paging.
                 Item {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: monthNames.implicitWidth + Theme.space3 + yearWidth.advanceWidth
+                    width: (window.squeeze >= 2 ? month.implicitWidth : monthNames.implicitWidth) + (
+                               year.visible ? Theme.space3 + yearWidth.advanceWidth : 0)
                     height: month.implicitHeight
 
                     Column {
@@ -245,7 +271,8 @@ ApplicationWindow {
                     Text {
                         id: month
                         text: Qt.formatDate(window.view === "week" ? window.rangeStart :
-                                                                     window.focusDate, "MMMM")
+                                                                     window.focusDate,
+                                            window.squeeze >= 2 ? "MMM" : "MMMM")
                         color: Theme.text
                         font.family: Theme.displayFontFamily
                         font.pixelSize: Theme.textDisplay
@@ -253,6 +280,7 @@ ApplicationWindow {
                     }
                     Text {
                         id: year
+                        visible: window.squeeze < 3
                         anchors {
                             left: month.right
                             leftMargin: Theme.space3
@@ -306,7 +334,7 @@ ApplicationWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     accent: true
                     glyph: "plus"
-                    text: qsTr("New")
+                    text: window.squeeze >= 2 ? "" : qsTr("New")
                     Accessible.name: qsTr("New event")
                     onClicked: quickAdd.open()
 
@@ -333,7 +361,7 @@ ApplicationWindow {
                     verticalCenter: parent.verticalCenter
                     rightMargin: Theme.space4
                 }
-                spacing: Theme.space4
+                spacing: window.squeeze >= 3 ? Theme.space2 : Theme.space4
 
                 // Invitations waiting for an answer, with their count.
                 AbstractButton {
@@ -558,37 +586,58 @@ ApplicationWindow {
                 Row {
                     id: trailingFixed
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: Theme.space4
+                    spacing: window.squeeze >= 3 ? Theme.space2 : Theme.space4
 
                     Row {
+                        visible: window.squeeze < 1
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: Theme.space2
 
                         Repeater {
-                            model: [
-                                {
-                                    "id": "day",
-                                    "label": qsTr("Day")
-                                },
-                                {
-                                    "id": "week",
-                                    "label": qsTr("Week")
-                                },
-                                {
-                                    "id": "month",
-                                    "label": qsTr("Month")
-                                },
-                                {
-                                    "id": "agenda",
-                                    "label": qsTr("Agenda")
-                                }
-                            ]
+                            model: window.views
 
                             PillButton {
                                 required property var modelData
                                 label: modelData.label
                                 selected: window.view === modelData.id
                                 onClicked: Settings.view = modelData.id
+                            }
+                        }
+                    }
+
+                    // The views as a menu, when there is no room for all four.
+                    StickerButton {
+                        id: viewButton
+                        visible: window.squeeze >= 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: window.views.find(v => v.id === window.view).label
+                        Accessible.name: qsTr("View: %1").arg(text)
+                        onClicked: viewMenu.popup(viewButton, 0, viewButton.height + Theme.space3)
+
+                        Menu {
+                            id: viewMenu
+                            padding: Theme.space2
+
+                            background: Rectangle {
+                                implicitWidth: 160
+                                color: Theme.surface
+                                border.color: Theme.border
+                                radius: Theme.radiusLg
+
+                                SoftShadow {
+                                    anchors.fill: parent
+                                    radius: parent.radius
+                                }
+                            }
+
+                            Repeater {
+                                model: window.views
+
+                                MenuEntry {
+                                    required property var modelData
+                                    text: modelData.label
+                                    onTriggered: Settings.view = modelData.id
+                                }
                             }
                         }
                     }
@@ -602,6 +651,7 @@ ApplicationWindow {
                     }
 
                     StickerButton {
+                        visible: window.squeeze < 3
                         anchors.verticalCenter: parent.verticalCenter
                         glyph: "settings"
                         glyphStroke: Theme.fineGlyphStroke
@@ -650,6 +700,13 @@ ApplicationWindow {
                                 }
                             }
 
+                            // Here when the title bar has no room for its own button.
+                            MenuEntry {
+                                text: qsTr("Settings")
+                                visible: window.squeeze >= 3
+                                height: visible ? implicitHeight : 0
+                                onTriggered: settingsDialog.open()
+                            }
                             MenuEntry {
                                 text: qsTr("Copy debug info")
                                 onTriggered: Support.copyDebugInfo()
@@ -719,6 +776,7 @@ ApplicationWindow {
             spacing: 0
 
             Sidebar {
+                visible: window.showSidebar
                 width: Theme.sidebarWidth
                 height: parent.height
                 today: todayModel
@@ -728,7 +786,7 @@ ApplicationWindow {
             }
 
             Item {
-                width: parent.width - Theme.sidebarWidth
+                width: parent.width - (window.showSidebar ? Theme.sidebarWidth : 0)
                 height: parent.height
 
                 // Only the view on screen exists, so hidden ones cost nothing.

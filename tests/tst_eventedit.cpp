@@ -287,6 +287,21 @@ void TestEventEdit::viKeysDriveTheWindow()
     QCOMPARE(m_settings->view(), u"month"_s);
     QTest::keyClick(m_window, Qt::Key_Escape);
 
+    // With Space as the leader, a focused button still takes Space.
+    m_settings->setLeaderKey(u" "_s);
+    QQuickItem *today = find(m_window->contentItem(), "StickerButton", "text", u"Today"_s);
+    QVERIFY(today);
+    today->forceActiveFocus();
+    QTest::keyClick(m_window, Qt::Key_Space);
+    QObject *router = nullptr;
+    for (QObject *o : m_window->findChildren<QObject *>()) {
+        if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"callie::KeyRouter"_s) &&
+            o->property("window").value<QObject *>() == m_window)
+            router = o;
+    }
+    QVERIFY(router);
+    QCOMPARE(router->property("pending").toString(), QString());
+
     // Off again, the keys do nothing.
     m_settings->setViMode(false);
     QTRY_VERIFY(!m_window->activeFocusItem() ||

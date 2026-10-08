@@ -184,8 +184,13 @@ bool KeyRouter::eventFilter(QObject *watched, QEvent *event)
         cancel();
         return true;
     }
-    // Shortcuts with Ctrl or Alt are QML's.
+    // Shortcuts with Ctrl or Alt are QML's, and Space presses a focused button
+    // unless a command is under way.
     if (key->modifiers() & ~(Qt::ShiftModifier | Qt::KeypadModifier))
+        return QObject::eventFilter(watched, event);
+    const QQuickItem *focus = m_window ? m_window->activeFocusItem() : nullptr;
+    if (key->key() == Qt::Key_Space && m_pending.isEmpty() && focus &&
+        focus->inherits("QQuickAbstractButton"))
         return QObject::eventFilter(watched, event);
     return press(key->text()) || QObject::eventFilter(watched, event);
 }

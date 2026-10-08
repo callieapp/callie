@@ -98,14 +98,21 @@ Popup {
     /// The event was copied, to be pasted elsewhere.
     signal copied(var event)
 
-    // In the card, since an open card keeps the window's shortcuts from working.
+    // In the card, since an open card keeps the window's shortcuts from working,
+    // with the keys from the table the help lists.
+    KeyRouter {
+        id: keyTable
+    }
+    function keysFor(id) {
+        return keyTable.actions.find(a => a.id === id).standard
+    }
     Shortcut {
-        sequences: [StandardKey.Copy]
+        sequences: root.keysFor("copy")
         enabled: root.opened && !root.editing
         onActivated: root.copied(root.event)
     }
     Shortcut {
-        sequence: "Ctrl+D"
+        sequences: root.keysFor("duplicate")
         enabled: root.opened && !root.editing && !actions.busy
         onActivated: root.duplicate()
     }

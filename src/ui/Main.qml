@@ -249,8 +249,8 @@ ApplicationWindow {
                 // arrows stay put while paging.
                 Item {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: (window.squeeze >= 2 ? month.implicitWidth : monthNames.implicitWidth) + (
-                               year.visible ? Theme.space3 + yearWidth.advanceWidth : 0)
+                    width: monthNames.implicitWidth + (year.visible ? Theme.space3
+                                                                      + yearWidth.advanceWidth : 0)
                     height: month.implicitHeight
 
                     Column {
@@ -263,10 +263,12 @@ ApplicationWindow {
 
                             Text {
                                 required property int index
-                                text: index < 12 ? Qt.locale().standaloneMonthName(index,
-                                                                                   Locale.LongFormat) :
-                                                   Qt.locale().monthName(index - 12,
-                                                                         Locale.LongFormat)
+                                // Short names once the title bar is tight, as the title shows then.
+                                readonly property int format: window.squeeze >= 2
+                                                              ? Locale.ShortFormat :
+                                                                Locale.LongFormat
+                                text: index < 12 ? Qt.locale().standaloneMonthName(index, format) :
+                                                   Qt.locale().monthName(index - 12, format)
                                 font: month.font
                             }
                         }

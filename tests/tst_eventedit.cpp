@@ -434,6 +434,20 @@ void TestEventEdit::titleBarFitsNarrowWindows()
         QVERIFY(boxes.last().right() <= width);
     }
 
+    // Paging leaves the arrows where they were, even with short month names.
+    m_window->resize(800, 600);
+    QTest::qWait(100);
+    QQuickItem *next = find(m_window->contentItem(), "StickerButton", "glyph", u"chevron-right"_s);
+    QVERIFY(next);
+    m_settings->setView(u"month"_s);
+    QTest::qWait(50);
+    const qreal arrow = next->mapToScene(QPointF()).x();
+    for (int month = 0; month < 12; ++month) {
+        click(m_window, next);
+        QTest::qWait(50);
+        QCOMPARE(next->mapToScene(QPointF()).x(), arrow);
+    }
+
     // Narrow, the sidebar is a button away.
     QQuickItem *menu = find(m_window->contentItem(), "StickerButton", "glyph", u"menu"_s);
     QVERIFY(menu);

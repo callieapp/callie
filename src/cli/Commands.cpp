@@ -339,9 +339,11 @@ void Commands::edit(const QString &id, const EditOptions &options, const QString
             start = QDateTime(first, QTime(0, 0), m_zone);
             end = QDateTime(std::max(after, first.addDays(1)), QTime(0, 0), m_zone);
         } else if (event.allDay && !options.start) {
-            // Timed now, with no time given: an hour from nine.
+            // Timed now, with no start given: from nine, for an hour unless an
+            // end was given.
             start = QDateTime(wasStart.date(), QTime(9, 0), m_zone);
-            end = start->addSecs(3600);
+            if (!options.end)
+                end = start->addSecs(3600);
         }
         if (*end <= *start)
             return mistake(tr("the end must come after the start"));

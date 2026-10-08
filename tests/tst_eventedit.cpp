@@ -67,6 +67,8 @@ private Q_SLOTS:
     void overnightKeepsItsLength();
     void copyPastesUnderThePointer();
     void viKeysDriveTheWindow();
+    void foundEventsOpenInTheViewShown();
+    void agendaScrollsWithKeys();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -309,6 +311,42 @@ void TestEventEdit::viKeysDriveTheWindow()
     QTest::keyClick(m_window, ',');
     QTest::keyClick(m_window, 'w');
     QCOMPARE(m_settings->view(), u"month"_s);
+}
+
+void TestEventEdit::foundEventsOpenInTheViewShown()
+{
+    // As a search result, or a reminder, asks to see the event.
+    m_settings->setView(u"month"_s);
+    const Event climbing = named(*m_source, u"Climbing"_s);
+    QTRY_VERIFY(find(m_window->contentItem(), "MonthView", "visible", u"true"_s));
+    QVERIFY(QMetaObject::invokeMethod(m_window, "revealEvent", Q_ARG(QVariant, climbing.start),
+                                      Q_ARG(QVariant, climbing.uid),
+                                      Q_ARG(QVariant, climbing.start)));
+    QCOMPARE(m_settings->view(), u"month"_s);
+    const auto cardOpen = [this] {
+        for (QObject *o : m_window->findChildren<QObject *>()) {
+            if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"EventDetails"_s) &&
+                o->property("opened").toBool())
+                return o->property("summary").toString();
+        }
+        return QString();
+    };
+    QTRY_COMPARE(cardOpen(), u"Climbing"_s);
+}
+
+void TestEventEdit::agendaScrollsWithKeys()
+{
+    m_settings->setViMode(true);
+    m_settings->setView(u"agenda"_s);
+    QQuickItem *list = nullptr;
+    QTRY_VERIFY((list = find(m_window->contentItem(), "QQuickListView", "visible", u"true"_s)));
+    m_window->resize(1280, 400);
+    QTest::qWait(200);
+    const qreal top = list->property("contentY").toReal();
+    QTest::keyClick(m_window, 'j');
+    QTRY_VERIFY(list->property("contentY").toReal() > top);
+    QTest::keyClick(m_window, 'k');
+    QTRY_COMPARE(list->property("contentY").toReal(), top);
 }
 
 QTEST_MAIN(TestEventEdit)

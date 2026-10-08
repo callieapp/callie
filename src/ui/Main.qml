@@ -55,24 +55,29 @@ ApplicationWindow {
     property date revealStart
 
     function reveal() {
-        if (revealUid === "" || !weekLoader.item)
+        if (revealUid === "")
             return
         const row = events.rowOf(revealUid, revealStart)
         if (row < 0)
             return
-        const view = weekLoader.item as WeekView
         revealUid = ""
-        view.showRow(row)
+        if (weekLoader.item)
+            (weekLoader.item as WeekView).showRow(row)
+        else if (monthLoader.item)
+            (monthLoader.item as MonthView).showRow(row)
+        else if (agendaLoader.item)
+            (agendaLoader.item as AgendaView).showRow(row)
     }
 
-    /// Shows the event with this uid starting at `start` on its day, with its details.
+    /// Shows the event with this uid starting at `start`, with its details, in
+    /// the view already chosen.
     function revealEvent(day, uid, start) {
         window.show()
         window.raise()
         window.requestActivate()
         window.revealUid = uid
         window.revealStart = start
-        window.showDay(day)
+        window.focusDate = day
         window.reveal()
     }
 
@@ -896,6 +901,8 @@ ApplicationWindow {
         case "bottom":
             if (weekLoader.item)
                 (weekLoader.item as WeekView).scroll(id)
+            else if (agendaLoader.item)
+                (agendaLoader.item as AgendaView).scroll(id)
             break
         case "dayView":
             Settings.view = "day"

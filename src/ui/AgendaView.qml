@@ -31,6 +31,29 @@ Item {
         details.showNear(event, root.model.callService(event.conferenceUrl), item)
     }
 
+    /// Opens the details of the event in `row`, centered.
+    function showRow(row) {
+        const event = root.model.eventAt(row)
+        details.show(event, root.model.callService(event.conferenceUrl))
+        details.x = (root.width - details.width) / 2
+        details.y = Theme.space7
+    }
+
+    /// Scrolls the list: "scrollDown" and "scrollUp" a step, "top" and "bottom" all the way.
+    function scroll(how) {
+        if (how === "top") {
+            list.positionViewAtBeginning()
+        } else if (how === "bottom") {
+            list.positionViewAtEnd()
+        } else {
+            const step = (how === "scrollUp" ? -1 : 1) * Theme.hourHeight
+            const top = list.originY - list.topMargin
+            const end = Math.max(top, list.originY + list.contentHeight + list.bottomMargin
+                                 - list.height)
+            list.contentY = Math.max(top, Math.min(end, list.contentY + step))
+        }
+    }
+
     Text {
         anchors.centerIn: parent
         visible: root.days.length === 0
@@ -42,6 +65,7 @@ Item {
     }
 
     ListView {
+        id: list
         anchors {
             fill: parent
             leftMargin: Theme.space7

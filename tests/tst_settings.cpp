@@ -181,7 +181,7 @@ void TestSettings::keyboardSettingsKeepToWhatWorks()
         Settings settings(path());
         QVERIFY(!settings.viMode());
         QCOMPARE(settings.leaderKey(), u","_s);
-        QCOMPARE(settings.leaderTimeout(), 2000);
+        QCOMPARE(settings.leaderTimeout(), 5000);
         QSignalSpy changed(&settings, &Settings::keyboardChanged);
         settings.setViMode(true);
         settings.setLeaderKey(u"x"_s);

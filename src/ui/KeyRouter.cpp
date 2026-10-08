@@ -47,18 +47,17 @@ QList<KeyAction> KeyRouter::actions()
 {
     using K = QKeySequence;
     return {
-        act(u"newEvent"_s, tr("New event"), u"events"_s, {int(K::New)}, u"n"_s, u"n"_s),
-        act(u"search"_s, tr("Search events"), u"general"_s, {int(K::Find)}, u"/"_s, u"/"_s),
-        act(u"undo"_s, tr("Undo the last change"), u"events"_s, {int(K::Undo)}, u"u"_s, u"u"_s),
+        act(u"newEvent"_s, tr("New event"), u"events"_s, {int(K::New)}, u"n"_s, {}),
+        act(u"search"_s, tr("Search events"), u"general"_s, {int(K::Find)}, u"/"_s, {}),
+        act(u"undo"_s, tr("Undo the last change"), u"events"_s, {int(K::Undo)}, u"u"_s, {}),
         act(u"copy"_s, tr("Copy the open event"), u"events"_s, {int(K::Copy)}, {}, {}, true),
         act(u"duplicate"_s, tr("Duplicate the open event"), u"events"_s, {u"Ctrl+D"_s}, {}, {},
             true),
-        act(u"paste"_s, tr("Paste under the pointer"), u"events"_s, {int(K::Paste)}, u"p"_s,
-            u"p"_s),
+        act(u"paste"_s, tr("Paste under the pointer"), u"events"_s, {int(K::Paste)}, u"p"_s, {}),
         act(u"previous"_s, tr("Previous day, week or month"), u"views"_s, {u"Alt+Left"_s}, u"h"_s,
             {}),
         act(u"next"_s, tr("Next day, week or month"), u"views"_s, {u"Alt+Right"_s}, u"l"_s, {}),
-        act(u"today"_s, tr("Go to today"), u"views"_s, {u"Alt+Home"_s}, u"t"_s, u"t"_s),
+        act(u"today"_s, tr("Go to today"), u"views"_s, {u"Alt+Home"_s}, u"t"_s, {}),
         act(u"scrollDown"_s, tr("Scroll down the day"), u"views"_s, {}, u"j"_s, {}),
         act(u"scrollUp"_s, tr("Scroll up the day"), u"views"_s, {}, u"k"_s, {}),
         act(u"top"_s, tr("Go to the start of the day"), u"views"_s, {}, u"gg"_s, {}),
@@ -71,8 +70,7 @@ QList<KeyAction> KeyRouter::actions()
         act(u"refresh"_s, tr("Sync now"), u"general"_s, {int(K::Refresh)}, {}, u"r"_s),
         act(u"settings"_s, tr("Settings"), u"general"_s, {int(K::Preferences), u"Ctrl+,"_s}, {},
             u"s"_s),
-        act(u"help"_s, tr("Keyboard shortcuts"), u"general"_s, {int(K::HelpContents)}, u"?"_s,
-            u"?"_s),
+        act(u"help"_s, tr("Keyboard shortcuts"), u"general"_s, {int(K::HelpContents)}, u"?"_s, {}),
         act(u"quit"_s, tr("Quit Callie"), u"general"_s, {int(K::Quit)}, {}, {}),
     };
 }

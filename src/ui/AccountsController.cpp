@@ -38,6 +38,7 @@ void AccountsController::setUp(const Setup &setup)
     m_api = nullptr;
     if (m_setup.store && m_setup.tokens) {
         m_manager = new AccountManager(*m_setup.tokens, *m_setup.store, m_setup.cache, this);
+        m_manager->setContacts(m_setup.contacts);
         connect(m_manager, &AccountManager::connected, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "connected" << account.id;
             const bool current = !m_auth.isNull();

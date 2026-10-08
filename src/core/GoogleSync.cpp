@@ -381,7 +381,6 @@ void GoogleSync::forget(const Account &account)
         run->forgotten = true;
     m_settingsRead.remove(keyFor(account));
     m_contactsRead.remove(keyFor(account));
-    Q_EMIT forgotten(account);
 }
 
 void GoogleSync::readSettings(const Account &account)
@@ -420,43 +419,52 @@ void GoogleSync::readContacts(const Account &account)
 {
     // Read once a run even when some kinds are refused: a personal account has
     // no directory, and one signed in before Callie asked for contacts has none
-    // of them until it signs in again.
+    // of them until it signs in again. Refused counts as empty; a read that
+    // fails for now leaves what was read last time alone.
     m_contactsRead.insert(keyFor(account));
     using People = GoogleCalendarApi::People;
     auto found = std::make_shared<QList<Contact>>();
+    auto failed = std::make_shared<bool>(false);
     auto next = std::make_shared<std::function<void(qsizetype)>>();
     const QList<People> kinds = {People::Contacts, People::OtherContacts, People::Directory};
     const QPointer<GoogleSync> self(this);
-    *next = [this, self, account, kinds, found, next](qsizetype i) {
+    *next = [this, self, account, kinds, found, failed, next](qsizetype i) {
         if (!self)
             return;
         if (i == kinds.size()) {
             // Not for an account removed while its contacts were being read.
-            if (!found->isEmpty() && m_contactsRead.contains(keyFor(account)))
+            if (!*failed && m_contactsRead.contains(keyFor(account)))
                 Q_EMIT contactsFound(account, *found);
             *next = nullptr;
             return;
         }
+        const auto read = [self, i, found, failed, next](const QList<Contact> &people,
+                                                         const GoogleApiError &error) {
+            if (!self)
+                return;
+            if (error) {
+                qCDebug(lcSync) << "people not readable:" << error.message;
+                *failed = *failed || error.status != 403;
+            }
+            found->append(people);
+            (*next)(i + 1);
+        };
         withToken(
             account, false,
-            [this, self, i, kinds, found, next](const QString &token, const Retry &retry) {
-                m_api.fetchPeople(token, kinds.at(i),
-                                  [self, i, found, next, retry](const QList<Contact> &people,
-                                                                const GoogleApiError &error) {
-                                      if (!self)
-                                          return;
-                                      if (error.unauthorized()) {
-                                          retry();
-                                          return;
-                                      }
-                                      if (error)
-                                          qCDebug(lcSync)
-                                              << "people not readable:" << error.message;
-                                      found->append(people);
-                                      (*next)(i + 1);
-                                  });
+            [this, i, kinds, read](const QString &token, const Retry &retry) {
+                m_api.fetchPeople(
+                    token, kinds.at(i),
+                    [read, retry](const QList<Contact> &people, const GoogleApiError &error) {
+                        if (error.unauthorized())
+                            retry();
+                        else
+                            read(people, error);
+                    });
             },
-            [next, i](const QString &) { (*next)(i + 1); });
+            [failed, next, i](const QString &) {
+                *failed = true;
+                (*next)(i + 1);
+            });
     };
     (*next)(0);
 }

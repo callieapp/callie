@@ -146,12 +146,10 @@ int runAccountsRemove(QCoreApplication &app, const Account &account)
     if (!cacheOpen)
         err << QStringLiteral("callie: skipping cached events: %1\n").arg(cache.errorString());
     AccountManager manager(tokens, store, cacheOpen ? &cache : nullptr);
+    ContactBook contacts(ContactBook::defaultPath());
+    manager.setContacts(&contacts);
 
-    QObject::connect(&manager, &AccountManager::removed, [&account] {
-        // Its contacts go with it, so they are not suggested any more.
-        ContactBook(ContactBook::defaultPath()).forget(account.id);
-        finish(0);
-    });
+    QObject::connect(&manager, &AccountManager::removed, [] { finish(0); });
     QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
         err << QStringLiteral("callie: %1\n").arg(message);
         finish(1);

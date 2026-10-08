@@ -31,8 +31,9 @@ public:
     /// Learns the guests of the source's events, again whenever they change.
     void setSource(CalendarSource *source);
 
-    /// Adds an account's contacts from Google, keeping the names already known.
-    void add(const QString &account, const QList<Contact> &contacts);
+    /// Sets what Google lists for an account, replacing what it listed before,
+    /// so people deleted there are no longer suggested.
+    void setContacts(const QString &account, const QList<Contact> &contacts);
     /// Drops the contacts only `account` brought, once it is removed.
     void forget(const QString &account);
     /// Drops the contacts of every account not in `accounts`, as for accounts
@@ -51,6 +52,8 @@ Q_SIGNALS:
 
 private:
     void readSource();
+    /// Takes `account` off every contact, and drops those no account has.
+    void drop(const QString &account);
     void save() const;
 
     QString m_path;

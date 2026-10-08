@@ -934,8 +934,6 @@ ApplicationWindow {
         viMode: Settings.viMode
         leaderKey: Settings.leaderKey
         leaderTimeout: Settings.leaderTimeout
-        blocked: settingsDialog.opened || searchPopup.opened || quickAdd.opened || keyHelp.opened
-                 || themeEditor.opened || about.opened || whatsNew.opened
         onTriggered: id => window.run(id)
     }
 

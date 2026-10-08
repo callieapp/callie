@@ -10,11 +10,18 @@ namespace callie {
 
 namespace {
 
-// A text field takes its own keys.
-bool typing(const QQuickWindow *window)
+// A text field takes its own keys, and so does anything open over the
+// window, such as an event's card or a menu.
+bool keysTaken(const QQuickWindow *window)
 {
     const QQuickItem *item = window ? window->activeFocusItem() : nullptr;
-    return item && (item->inherits("QQuickTextInput") || item->inherits("QQuickTextEdit"));
+    if (item && (item->inherits("QQuickTextInput") || item->inherits("QQuickTextEdit")))
+        return true;
+    for (; item; item = item->parentItem()) {
+        if (item->inherits("QQuickPopupItem"))
+            return true;
+    }
+    return false;
 }
 
 KeyAction act(const QString &id, const QString &label, const QString &group,
@@ -31,7 +38,7 @@ KeyRouter::KeyRouter(QObject *parent) : QObject(parent)
     m_timeout.setSingleShot(true);
     connect(&m_timeout, &QTimer::timeout, this, &KeyRouter::cancel);
     connect(this, &KeyRouter::settingsChanged, this, [this] {
-        if (!m_viMode || m_blocked)
+        if (!m_viMode)
             cancel();
     });
 }
@@ -108,7 +115,7 @@ void KeyRouter::setWindow(QQuickWindow *window)
 
 bool KeyRouter::press(const QString &text)
 {
-    if (!m_viMode || m_blocked || text.isEmpty())
+    if (!m_viMode || text.isEmpty())
         return false;
     const QList<KeyAction> all = actions();
     const auto find = [&all](auto matches) -> QString {
@@ -170,7 +177,7 @@ void KeyRouter::setPending(const QString &pending)
 
 bool KeyRouter::eventFilter(QObject *watched, QEvent *event)
 {
-    if (event->type() != QEvent::KeyPress || !m_viMode || m_blocked || typing(m_window))
+    if (event->type() != QEvent::KeyPress || !m_viMode || keysTaken(m_window))
         return QObject::eventFilter(watched, event);
     const auto *key = static_cast<QKeyEvent *>(event);
     if (key->key() == Qt::Key_Escape && !m_pending.isEmpty()) {

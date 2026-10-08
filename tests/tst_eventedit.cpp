@@ -276,6 +276,17 @@ void TestEventEdit::viKeysDriveTheWindow()
     QCOMPARE(m_settings->view(), u"month"_s);
     QTest::keyClick(m_window, Qt::Key_Escape);
 
+    // Nor while an event's card is open.
+    QQuickItem *block = nullptr;
+    QTRY_VERIFY((block = find(m_window->contentItem(), "MonthChip", "visible", u"true"_s)));
+    click(m_window, block);
+    QTRY_VERIFY(find(m_window->contentItem(), "StickerButton", "text", u"Duplicate"_s));
+    QTest::qWait(400);
+    QTest::keyClick(m_window, ',');
+    QTest::keyClick(m_window, 'w');
+    QCOMPARE(m_settings->view(), u"month"_s);
+    QTest::keyClick(m_window, Qt::Key_Escape);
+
     // Off again, the keys do nothing.
     m_settings->setViMode(false);
     QTRY_VERIFY(!m_window->activeFocusItem() ||

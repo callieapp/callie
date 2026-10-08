@@ -229,17 +229,10 @@ Column {
                                                                           === root.repeat).label
             onClicked: repeatMenu.open()
 
-            Menu {
+            MenuCard {
                 id: repeatMenu
                 y: parent.height + Theme.space1
-                padding: Theme.space2
-
-                background: Rectangle {
-                    implicitWidth: 240
-                    color: Theme.surface
-                    border.color: Theme.border
-                    radius: Theme.radiusLg
-                }
+                minimumWidth: 240
 
                 Repeater {
                     model: root.actions.repeatChoices(root.startDay)

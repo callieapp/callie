@@ -688,10 +688,13 @@ TestGoogleSource::splitStandup(decltype(FakeHttpServer::handler) handler, QStrin
 
 void TestGoogleSource::followingEditsSplitTheSeries()
 {
-    // Occurrences moved on their own, one before the split and one after.
+    // Occurrences moved on their own, one before the split and one after, and
+    // Friday's deleted.
     QVERIFY(m_cache->storeEvents(
         kAccount, u"mine"_s,
-        {parsed(R"({"id":"standup_20261006T133000Z","recurringEventId":"standup",
+        {parsed(R"({"id":"standup_20261009T133000Z","recurringEventId":"standup",
+            "status":"cancelled","originalStartTime":{"dateTime":"2026-10-09T13:30:00Z"}})"),
+         parsed(R"({"id":"standup_20261006T133000Z","recurringEventId":"standup",
             "status":"confirmed","summary":"Standup",
             "originalStartTime":{"dateTime":"2026-10-06T13:30:00Z"},
             "start":{"dateTime":"2026-10-06T14:30:00Z"},"end":{"dateTime":"2026-10-06T14:45:00Z"}})"),
@@ -718,7 +721,9 @@ void TestGoogleSource::followingEditsSplitTheSeries()
     QCOMPARE(created[u"start"][u"dateTime"].toString(), u"2026-10-07T09:30:00-04:00"_s);
     QCOMPARE(created[u"start"][u"timeZone"].toString(), u"America/New_York"_s);
     QVERIFY(!created[u"start"].toObject().contains(u"date"));
-    QCOMPARE(created[u"recurrence"].toArray(), QJsonArray{u"RRULE:FREQ=DAILY;COUNT=3"_s});
+    // Friday stays deleted.
+    QCOMPARE(created[u"recurrence"].toArray(),
+             (QJsonArray{u"RRULE:FREQ=DAILY;COUNT=3"_s, u"EXDATE:20261009T133000Z"_s}));
     QCOMPARE(created[u"id"].toString().size(), 32);
 
     // ...then the old one ends on Tuesday...

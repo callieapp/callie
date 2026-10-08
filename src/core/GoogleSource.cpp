@@ -536,16 +536,41 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
     }
 
     // Occurrences changed on their own from the split on belong to the old
-    // series, which no longer has them, so they go once it is cut.
+    // series, which no longer has them, so they go once it is cut. Those
+    // deleted stay deleted in the new series, on its own days and clock.
+    const QJsonObject newStart = created[u"start"].toObject();
+    const bool newAllDay = newStart.contains(u"date"_s);
+    const QTimeZone newZone(newStart[u"timeZone"].toString().toUtf8());
+    const QDateTime firstNew =
+        newAllDay ? QDateTime(QDate::fromString(newStart[u"date"].toString(), Qt::ISODate),
+                              QTime(0, 0), at.timeZone())
+                  : QDateTime::fromString(newStart[u"dateTime"].toString(), Qt::ISODate)
+                        .toTimeZone(newZone.isValid() ? newZone : at.timeZone());
+    const qint64 shift = at.date().daysTo(firstNew.date());
+    QJsonArray recurrence = created[u"recurrence"].toArray();
     QList<GoogleSync::Target> stale;
     for (const GoogleEvent &other : m_cache.events(account, calendarId)) {
-        if (other.recurringEventId != event.seriesId || other.isCancelled())
+        if (other.recurringEventId != event.seriesId)
             continue;
-        const bool after = other.originalStart.isAllDay() ? other.originalStart.date >= at.date()
-                                                          : other.originalStart.dateTime >= at;
-        if (after)
+        const QDate was = other.originalStart.isAllDay()
+                              ? other.originalStart.date
+                              : other.originalStart.dateTime.toTimeZone(at.timeZone()).date();
+        const bool after =
+            other.originalStart.isAllDay() ? was >= at.date() : other.originalStart.dateTime >= at;
+        if (!after)
+            continue;
+        if (!other.isCancelled()) {
             stale.append({calendarId, other.id, event.seriesId, other.originalStart});
+            continue;
+        }
+        const QDate day = was.addDays(shift);
+        recurrence.append(newAllDay
+                              ? u"EXDATE;VALUE=DATE:"_s + day.toString(u"yyyyMMdd"_s)
+                              : u"EXDATE:"_s + QDateTime(day, firstNew.time(), firstNew.timeZone())
+                                                   .toUTC()
+                                                   .toString(u"yyyyMMdd'T'HHmmss'Z'"_s));
     }
+    created.insert(u"recurrence"_s, recurrence);
 
     // Created first, so a failure part way leaves an event twice, never missing.
     const QPointer<GoogleSource> self(this);

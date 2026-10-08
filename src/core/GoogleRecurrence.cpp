@@ -234,7 +234,6 @@ SplitRecurrence splitRecurrence(const GoogleEvent &series, const QDateTime &at)
     // An all-day series' UNTIL is a date, a timed one's a UTC time.
     const QString until = allDay ? at.date().addDays(-1).toString(u"yyyyMMdd"_s)
                                  : at.addSecs(-1).toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s);
-    // Occurrences before `at`, which a count no longer has to cover.
     // Occurrences of `rule` alone before `at`, which a count no longer has to
     // cover: a count includes those EXDATE later removed, and no RDATE.
     const auto passed = [&](const QString &rule) {

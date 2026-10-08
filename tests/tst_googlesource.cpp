@@ -832,12 +832,12 @@ void TestGoogleSource::splitAllDaySeriesByDates()
 void TestGoogleSource::splitMovesDeletedDaysToTheNewClock()
 {
     // Tuesday and Friday were taken out of the series itself.
-    QVERIFY(
-        m_cache->storeEvents(kAccount, u"mine"_s, {parsed(R"({"id":"standup","summary":"Standup",
+    const GoogleEvent series = parsed(R"({"id":"standup","summary":"Standup",
         "start":{"dateTime":"2026-10-05T09:30:00-04:00","timeZone":"America/New_York"},
         "end":{"dateTime":"2026-10-05T09:45:00-04:00","timeZone":"America/New_York"},
         "recurrence":["RRULE:FREQ=DAILY;COUNT=5",
-                      "EXDATE;TZID=America/New_York:20261006T093000,20261009T093000"]})")}));
+                      "EXDATE;TZID=America/New_York:20261006T093000,20261009T093000"]})");
+    QVERIFY(m_cache->storeEvents(kAccount, u"mine"_s, {series}));
     SyncHarness harness(*m_cache);
     harness.store.secrets.insert(kAccount.id, u"rt"_s);
     harness.apiServer.handler = [](const FakeHttpServer::Request &) {
@@ -864,6 +864,19 @@ void TestGoogleSource::splitMovesDeletedDaysToTheNewClock()
     // Friday stays out, at the new time; Tuesday was before the split.
     QCOMPARE(created[u"recurrence"].toArray(),
              (QJsonArray{u"RRULE:FREQ=DAILY;COUNT=3"_s, u"EXDATE:20261009T140000Z"_s}));
+
+    // From here on not repeating: a one-off, with nothing taken out. The fake
+    // server's answer replaced the series, so it is put back first.
+    QVERIFY(m_cache->storeEvents(kAccount, u"mine"_s, {series}));
+    edit.recurrence = QStringList{};
+    error = u"unset"_s;
+    source.updateEvent(*standup, edit, EditScope::ThisAndFollowing,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    const auto posted =
+        std::find_if(harness.apiServer.requests.crbegin(), harness.apiServer.requests.crend(),
+                     [](const FakeHttpServer::Request &r) { return r.method == "POST"; });
+    QCOMPARE(QJsonDocument::fromJson(posted->body).object()[u"recurrence"].toArray(), QJsonArray());
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

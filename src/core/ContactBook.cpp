@@ -106,6 +106,19 @@ void ContactBook::add(const QString &account, const QList<Contact> &contacts)
     Q_EMIT changed();
 }
 
+void ContactBook::keepOnly(const QStringList &accounts)
+{
+    QSet<QString> gone;
+    for (const QSet<QString> &owners : std::as_const(m_owners)) {
+        for (const QString &owner : owners) {
+            if (!accounts.contains(owner))
+                gone.insert(owner);
+        }
+    }
+    for (const QString &account : std::as_const(gone))
+        forget(account);
+}
+
 void ContactBook::forget(const QString &account)
 {
     for (auto it = m_owners.begin(); it != m_owners.end();) {

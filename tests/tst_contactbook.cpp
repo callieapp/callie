@@ -125,7 +125,8 @@ void TestContactBook::removedAccountsTakeTheirContacts()
     }
     ContactBook again(path);
     QCOMPARE(emails(again.suggest(u"e"_s, {})), QStringList{u"lee@example.com"_s});
-    again.forget(u"home@example.com"_s);
+    // Removed while Callie was closed, an account is not among those it starts with.
+    again.keepOnly({u"work@example.com"_s});
     QVERIFY(again.suggest(u"e"_s, {}).isEmpty());
 }
 

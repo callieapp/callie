@@ -107,6 +107,7 @@ private Q_SLOTS:
     void forgottenAccountStoresNothing();
     void settingsAreReadOnceARun();
     void contactsAreReadOnceARun();
+    void contactsOfARemovedAccountAreDropped();
     void unreadableSettingsAreTriedAgain();
     void rejectedTokenForSettingsIsRefreshed();
 
@@ -417,11 +418,30 @@ void TestGoogleSync::contactsAreReadOnceARun()
     QTest::qWait(200);
     QCOMPARE(found.size(), 1);
     QCOMPARE(m_google->count(u"otherContacts"_s), 1);
+}
 
-    // Removed while a run is reading them, an account's contacts are dropped.
+void TestGoogleSync::contactsOfARemovedAccountAreDropped()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    m_google->on(u"people/me/connections"_s, 200,
+                 R"({"connections":[{"emailAddresses":[{"value":"lee@example.com"}]}]})");
+    m_google->on(u"otherContacts"_s, 200, R"({})");
+    m_google->on(u"people:listDirectoryPeople"_s, 200, R"({})");
+    // The account is removed while its contacts are still being read.
+    const auto answer = m_apiServer->handler;
+    m_apiServer->handler = [this, answer](const FakeHttpServer::Request &request) {
+        if (request.target.contains("listDirectoryPeople"))
+            m_sync->forget(kAccount);
+        return answer(request);
+    };
+    QSignalSpy found(m_sync.get(), &GoogleSync::contactsFound);
     QSignalSpy forgotten(m_sync.get(), &GoogleSync::forgotten);
-    m_sync->forget(kAccount);
-    QCOMPARE(forgotten.size(), 1);
+
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(forgotten.size(), 1, 5000);
+    QTest::qWait(300);
+    QVERIFY(found.isEmpty());
 }
 
 void TestGoogleSync::unreadableSettingsAreTriedAgain()

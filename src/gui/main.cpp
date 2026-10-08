@@ -182,6 +182,12 @@ int main(int argc, char *argv[])
     // People to suggest as guests: from the events, and from Google's contacts.
     callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());
     contacts.setSource(source);
+    {
+        QStringList ids;
+        for (const callie::Account &account : std::as_const(accounts))
+            ids << account.id;
+        contacts.keepOnly(ids);
+    }
     QObject::connect(
         &sync, &callie::GoogleSync::contactsFound, &contacts,
         [&contacts](const callie::Account &account, const QList<callie::Contact> &people) {

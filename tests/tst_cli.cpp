@@ -15,6 +15,27 @@ using namespace Qt::StringLiterals;
 
 namespace {
 
+/// The sample, with Dentist in a second calendar under the same id, as an
+/// event both calendars were invited to would be.
+class SharedSource : public SampleSource
+{
+public:
+    QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
+                               const QTimeZone &tz) const override
+    {
+        QList<Event> events = SampleSource::eventsBetween(from, to, tz);
+        const qsizetype count = events.size();
+        for (qsizetype i = 0; i < count; ++i) {
+            if (events.at(i).summary == u"Dentist") {
+                Event copy = events.at(i);
+                copy.calendarId = u"work"_s;
+                events.append(copy);
+            }
+        }
+        return events;
+    }
+};
+
 const QDateTime kNow(QDate(2026, 10, 7), QTime(13, 40), QTimeZone::UTC);
 
 QDateTime at(int day, int hour, int minute = 0)
@@ -43,6 +64,8 @@ private Q_SLOTS:
     void whenReadsDaysAndTimes();
     void idsNameTheirCalendar();
     void allDayKeepsItsDaysAcrossAClockChange();
+    void timedKeepsTheEndGiven();
+    void sharedIdsNeedTheirCalendar();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -298,6 +321,33 @@ void TestCli::allDayKeepsItsDaysAcrossAClockChange()
         }
     }
     QFAIL("the trip did not move");
+}
+
+void TestCli::timedKeepsTheEndGiven()
+{
+    // Dentist made all day, then given times again with only an end.
+    const QString id = u"personal/sample-3-16-0-2026-10-07"_s;
+    EditOptions allDay;
+    allDay.allDay = true;
+    QCOMPARE(run([&](auto done) { m_commands->edit(id, allDay, {}, done); }), 0);
+    EditOptions timed;
+    timed.allDay = false;
+    timed.end = u"11:30"_s;
+    QCOMPARE(run([&](auto done) { m_commands->edit(id, timed, {}, done); }), 0);
+    const Event dentist = named(u"Dentist"_s, QDate(2026, 10, 7));
+    QVERIFY(!dentist.allDay);
+    QCOMPARE(dentist.start, at(7, 9));
+    QCOMPARE(dentist.end, at(7, 11, 30));
+}
+
+void TestCli::sharedIdsNeedTheirCalendar()
+{
+    SharedSource shared;
+    Commands commands(shared, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
+    QCOMPARE(run([&](auto done) { commands.remove(u"sample-3-16-0-2026-10-07"_s, {}, done); }), 1);
+    QVERIFY(m_err.contains(u"more than one calendar"_s));
+    QCOMPARE(run([&](auto done) { commands.remove(u"work/sample-3-16-0-2026-10-07"_s, {}, done); }),
+             0);
 }
 
 QTEST_GUILESS_MAIN(TestCli)

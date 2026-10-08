@@ -49,13 +49,13 @@ public:
     /// Colors the output for a terminal.
     void setColor(bool color) { m_color = color; }
 
-    /// The next `days` days, by day. With `ids`, each event starts with its
-    /// id and a tab, for the commands that take one.
-    int agenda(int days, bool ids);
+    /// The next `days` days, by day. With `json`, a JSON array whose ids are
+    /// what the other commands take.
+    int agenda(int days, bool json);
     /// Events with every word of `query`, a year either side, upcoming first.
-    int search(const QString &query, bool ids);
+    int search(const QString &query, bool json);
     /// Invitations not answered yet, in the next 90 days.
-    int invites(bool ids);
+    int invites(bool json);
 
     /// Creates an event from a line such as "Lunch with Alex tomorrow 12-1pm".
     void add(const QString &text, const QString &calendarId, const Done &done);
@@ -75,9 +75,11 @@ public:
 private:
     [[nodiscard]] std::optional<Event> find(const QString &id);
     [[nodiscard]] std::optional<EditScope> scopeOf(const QString &scope);
-    void print(const QList<Event> &events, bool ids, bool byDay);
+    void print(const QList<Event> &events, bool json, bool byDay);
+    /// The id the commands take: the calendar, a slash, and the event.
+    [[nodiscard]] static QString reference(const Event &event);
     [[nodiscard]] QString writableCalendar(const QString &wanted) const;
-    void report(const QString &error, const QString &doneText, const Done &done);
+    void report(const Outcome &outcome, const Done &done);
 
     CalendarSource &m_source;
     Settings &m_settings;

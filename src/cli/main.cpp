@@ -476,14 +476,14 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     cli::Commands commands(*backend->source, settings, out, err, QDateTime::currentDateTime(),
                            zone);
     commands.setColor(useColor());
-    const bool ids = parser.isSet(u"ids"_s);
+    const bool json = parser.isSet(u"json"_s);
 
     if (command == u"agenda")
-        return commands.agenda(parser.value(u"days"_s).toInt(), ids);
+        return commands.agenda(parser.value(u"days"_s).toInt(), json);
     if (command == u"search")
-        return commands.search(args.mid(1).join(u' '), ids);
+        return commands.search(args.mid(1).join(u' '), json);
     if (command == u"invites")
-        return commands.invites(ids);
+        return commands.invites(json);
 
     const QString scope = parser.value(u"scope"_s);
     std::optional<int> result;
@@ -505,8 +505,14 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         options.repeat = value("repeat");
         if (const auto guests = value("guests"))
             options.guests = guests->split(u',', Qt::SkipEmptyParts);
-        if (const auto video = value("video"))
-            options.video = *video == u"on" || *video == u"yes" || *video == u"true";
+        if (const auto video = value("video")) {
+            const QString answer = video->toLower();
+            if (!QStringList{u"on"_s, u"off"_s, u"yes"_s, u"no"_s}.contains(answer)) {
+                err << QObject::tr("callie: --video is on or off") << "\n";
+                return 2;
+            }
+            options.video = answer == u"on" || answer == u"yes";
+        }
         commands.edit(args.at(1), options, scope, done);
     } else if (command == u"delete" && args.size() == 2) {
         commands.remove(args.at(1), scope, done);
@@ -551,7 +557,7 @@ int main(int argc, char *argv[])
         QStringLiteral("Callie: an elegant calendar for Linux.\n"
                        "\n"
                        "Commands:\n"
-                       "  agenda     Upcoming events (default); --ids adds each event's id\n"
+                       "  agenda     Upcoming events (default); --json for scripts, with ids\n"
                        "  search     Events with every word given\n"
                        "  invites    Invitations waiting for an answer\n"
                        "  add        Create an event: callie add \"Lunch tomorrow 12-1pm\"\n"
@@ -592,7 +598,9 @@ int main(int argc, char *argv[])
     parser.addOption(reportOption);
     for (const auto &[names, description, valueName] :
          std::initializer_list<std::tuple<QStringList, QString, QString>>{
-             {{u"ids"_s}, u"With agenda, search and invites: start lines with the event id."_s, {}},
+             {{u"json"_s},
+              u"With agenda, search and invites: print JSON, with the ids other commands take."_s,
+              {}},
              {{u"calendar"_s}, u"With add: the calendar, by name or id."_s, u"name"_s},
              {{u"scope"_s},
               u"With edit, delete and respond on a repeating event: this, following or all."_s,

@@ -59,7 +59,7 @@ running app as soon as you save it.
 callie                                   # upcoming events, same as `callie agenda`
 callie agenda --days 3                   # reads the cache; run `callie sync` to refresh it
 callie agenda --sample                   # a made-up week, for trying things out
-callie agenda --ids                      # id, start and title per event, tab-separated
+callie agenda --json                     # for scripts; each event's id is what edit and others take
 callie search dentist                    # events with every word, a year either side
 callie invites                           # invitations waiting for an answer
 callie add "Lunch with Alex fri 12-1pm"  # --calendar picks one by name

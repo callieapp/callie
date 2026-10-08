@@ -5,6 +5,9 @@
 #include "callie/SearchModel.h"
 #include "callie/Settings.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLocale>
 
 #include <algorithm>
@@ -31,20 +34,20 @@ Commands::Commands(CalendarSource &source, Settings &settings, QTextStream &out,
       m_zone(std::move(zone))
 {}
 
-int Commands::agenda(int days, bool ids)
+int Commands::agenda(int days, bool json)
 {
     const QDateTime from(m_now.toTimeZone(m_zone).date(), QTime(0, 0), m_zone);
     QList<Event> events = m_source.eventsBetween(from, from.addDays(std::max(1, days)), m_zone);
     std::sort(events.begin(), events.end(), byStart);
-    if (events.isEmpty() && !ids) {
-        m_out << tr("Nothing scheduled.") << "\n";
+    if (events.isEmpty() && !json) {
+        m_err << tr("Nothing scheduled.") << "\n";
         return 0;
     }
-    print(events, ids, true);
+    print(events, json, true);
     return 0;
 }
 
-int Commands::search(const QString &query, bool ids)
+int Commands::search(const QString &query, bool json)
 {
     const QStringList words = query.split(u' ', Qt::SkipEmptyParts);
     if (words.isEmpty()) {
@@ -58,7 +61,7 @@ int Commands::search(const QString &query, bool ids)
     for (const Event &e : all) {
         if (!SearchModel::matches(e, words))
             continue;
-        const QString key = e.seriesId.isEmpty() ? e.uid : e.seriesId;
+        const QString key = e.calendarId + u'/' + (e.seriesId.isEmpty() ? e.uid : e.seriesId);
         const auto seen = found.constFind(key);
         const bool upcoming = e.end > m_now;
         if (seen == found.cend() || (upcoming ? (seen->end <= m_now || e.start < seen->start)
@@ -74,15 +77,16 @@ int Commands::search(const QString &query, bool ids)
         return aUp ? a.start < b.start : a.start > b.start;
     });
     if (results.isEmpty()) {
-        if (!ids)
-            m_out << tr("No events match.") << "\n";
-        return ids ? 0 : 1;
+        if (!json) {
+            m_err << tr("No events match.") << "\n";
+            return 0;
+        }
     }
-    print(results, ids, false);
+    print(results, json, false);
     return 0;
 }
 
-int Commands::invites(bool ids)
+int Commands::invites(bool json)
 {
     QList<Event> pending;
     QSet<QString> series;
@@ -97,15 +101,15 @@ int Commands::invites(bool ids)
         pending.append(e);
     }
     std::sort(pending.begin(), pending.end(), byStart);
-    if (pending.isEmpty() && !ids) {
-        m_out << tr("No invitations waiting.") << "\n";
+    if (pending.isEmpty() && !json) {
+        m_err << tr("No invitations waiting.") << "\n";
         return 0;
     }
-    print(pending, ids, false);
+    print(pending, json, false);
     return 0;
 }
 
-void Commands::print(const QList<Event> &events, bool ids, bool byDay)
+void Commands::print(const QList<Event> &events, bool json, bool byDay)
 {
     const auto paint = [this](const char *code, const QString &s) {
         return m_color ? u"\033["_s + QLatin1StringView(code) + u'm' + s + u"\033[0m"_s : s;
@@ -115,13 +119,8 @@ void Commands::print(const QList<Event> &events, bool ids, bool byDay)
     for (const Event &e : events) {
         const QDateTime start = e.start.toTimeZone(m_zone);
         const QDateTime end = e.end.toTimeZone(m_zone);
-        if (ids) {
-            // For scripts: the id, then when, then what, between tabs.
-            const QString when =
-                e.allDay ? start.toString(u"yyyy-MM-dd"_s) : start.toString(u"yyyy-MM-dd HH:mm"_s);
-            m_out << e.eventId << "\t" << when << "\t" << e.summary << "\n";
+        if (json)
             continue;
-        }
         // Events already under way when the range starts are listed under today.
         const QDate day = byDay ? std::max(start.date(), today) : start.date();
         if (byDay && day != current) {
@@ -142,8 +141,32 @@ void Commands::print(const QList<Event> &events, bool ids, bool byDay)
             m_out << "  " << paint("2", e.location);
         m_out << "\n";
     }
-    if (byDay && !ids)
+    if (byDay && !json)
         m_out << "\n";
+    if (!json)
+        return;
+    QJsonArray list;
+    for (const Event &e : events) {
+        const auto time = [&e, this](const QDateTime &t) {
+            return e.allDay ? t.toTimeZone(m_zone).date().toString(Qt::ISODate)
+                            : t.toTimeZone(m_zone).toString(Qt::ISODate);
+        };
+        list.append(QJsonObject{{u"id"_s, reference(e)},
+                                {u"calendar"_s, e.calendarId},
+                                {u"title"_s, e.summary},
+                                {u"start"_s, time(e.start)},
+                                {u"end"_s, time(e.end)},
+                                {u"allDay"_s, e.allDay},
+                                {u"location"_s, e.location},
+                                {u"response"_s, e.responseStatus},
+                                {u"repeats"_s, !e.seriesId.isEmpty()}});
+    }
+    m_out << QJsonDocument(list).toJson(QJsonDocument::Indented);
+}
+
+QString Commands::reference(const Event &event)
+{
+    return event.calendarId + u'/' + event.eventId;
 }
 
 std::optional<QDateTime> Commands::when(const QString &text, QDate day) const
@@ -168,13 +191,27 @@ std::optional<QDateTime> Commands::when(const QString &text, QDate day) const
 
 std::optional<Event> Commands::find(const QString &id)
 {
+    // "calendar/event", as --json gives it, or the event alone when only one
+    // calendar has it.
+    const qsizetype slash = id.lastIndexOf(u'/');
+    const QString calendar = slash < 0 ? QString() : id.left(slash);
+    const QString eventId = id.mid(slash + 1);
     const QList<Event> all =
         m_source.eventsBetween(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround), m_zone);
+    QList<Event> found;
     for (const Event &e : all) {
-        if (e.eventId == id)
-            return e;
+        if (e.eventId == eventId && (calendar.isEmpty() || e.calendarId == calendar))
+            found.append(e);
     }
-    m_err << tr("callie: no event with the id %1; callie agenda --ids lists them").arg(id) << "\n";
+    if (found.size() == 1)
+        return found.first();
+    if (found.isEmpty())
+        m_err << tr("callie: no event with the id %1; callie agenda --json lists them").arg(id)
+              << "\n";
+    else
+        m_err << tr("callie: %1 is in more than one calendar; give it as %2")
+                     .arg(id, reference(found.first()))
+              << "\n";
     return std::nullopt;
 }
 
@@ -212,15 +249,14 @@ QString Commands::writableCalendar(const QString &wanted) const
     return first == calendars.cend() ? QString() : first->id;
 }
 
-void Commands::report(const QString &error, const QString &doneText, const Done &done)
+void Commands::report(const Outcome &outcome, const Done &done)
 {
-    if (!error.isEmpty()) {
-        m_err << "callie: " << error << "\n";
-        done(1);
+    if (outcome.error.isEmpty()) {
+        done(0);
         return;
     }
-    m_out << doneText << "\n";
-    done(0);
+    m_err << "callie: " << outcome.error << "\n";
+    done(1);
 }
 
 void Commands::add(const QString &text, const QString &calendarId, const Done &done)
@@ -242,13 +278,7 @@ void Commands::add(const QString &text, const QString &calendarId, const Done &d
         return;
     }
     m_settings.setNewEventCalendar(draft.calendarId);
-    const QDateTime start = draft.start.toTimeZone(m_zone);
-    const QString when = draft.allDay ? QLocale().toString(start.date(), u"ddd d MMM"_s)
-                                      : QLocale().toString(start, u"ddd d MMM HH:mm"_s);
-    const QString doneText = tr("Added %1, %2.").arg(draft.summary, when);
-    m_source.createEvent(draft, [this, doneText, done](const Outcome &outcome) {
-        report(outcome.error, doneText, done);
-    });
+    m_source.createEvent(draft, [this, done](const Outcome &outcome) { report(outcome, done); });
 }
 
 void Commands::edit(const QString &id, const EditOptions &options, const QString &scopeText,
@@ -296,9 +326,10 @@ void Commands::edit(const QString &id, const EditOptions &options, const QString
             if (allDay)
                 end = end->addDays(1);
         } else if (options.start) {
-            // A new start keeps the length.
-            end = allDay == event.allDay ? start->addSecs(wasStart.secsTo(wasEnd))
-                                         : start->addSecs(3600);
+            // A new start keeps the length, in days for an all-day event.
+            end = allDay != event.allDay ? start->addSecs(3600)
+                  : allDay               ? start->addDays(wasStart.date().daysTo(wasEnd.date()))
+                                         : start->addSecs(wasStart.secsTo(wasEnd));
         } else {
             end = wasEnd;
         }
@@ -330,10 +361,8 @@ void Commands::edit(const QString &id, const EditOptions &options, const QString
 
     if (edit.isEmpty())
         return mistake(tr("nothing to change; callie edit --help lists what can be"));
-    const QString doneText = tr("Changed %1.").arg(edit.summary.value_or(event.summary));
-    m_source.updateEvent(event, edit, *scope, [this, doneText, done](const Outcome &outcome) {
-        report(outcome.error, doneText, done);
-    });
+    m_source.updateEvent(event, edit, *scope,
+                         [this, done](const Outcome &outcome) { report(outcome, done); });
 }
 
 void Commands::remove(const QString &id, const QString &scopeText, const Done &done)
@@ -350,10 +379,8 @@ void Commands::remove(const QString &id, const QString &scopeText, const Done &d
         done(2);
         return;
     }
-    const QString doneText = tr("Deleted %1.").arg(event->summary);
-    m_source.deleteEvent(
-        *event, *scope == EditScope::AllEvents,
-        [this, doneText, done](const Outcome &outcome) { report(outcome.error, doneText, done); });
+    m_source.deleteEvent(*event, *scope == EditScope::AllEvents,
+                         [this, done](const Outcome &outcome) { report(outcome, done); });
 }
 
 void Commands::respond(const QString &id, const QString &answer, const QString &scopeText,
@@ -386,10 +413,8 @@ void Commands::respond(const QString &id, const QString &answer, const QString &
         done(2);
         return;
     }
-    const QString doneText = tr("Answered %1 for %2.").arg(answer.toLower(), event->summary);
-    m_source.respond(
-        *event, status, *scope == EditScope::AllEvents,
-        [this, doneText, done](const Outcome &outcome) { report(outcome.error, doneText, done); });
+    m_source.respond(*event, status, *scope == EditScope::AllEvents,
+                     [this, done](const Outcome &outcome) { report(outcome, done); });
 }
 
 void Commands::duplicate(const QString &id, const std::optional<QString> &start, const Done &done)
@@ -433,12 +458,7 @@ void Commands::duplicate(const QString &id, const std::optional<QString> &start,
         done(1);
         return;
     }
-    const QString doneText =
-        tr("Copied %1 to %2.")
-            .arg(draft.summary, QLocale().toString(draft.start, u"ddd d MMM HH:mm"_s));
-    m_source.createEvent(draft, [this, doneText, done](const Outcome &outcome) {
-        report(outcome.error, doneText, done);
-    });
+    m_source.createEvent(draft, [this, done](const Outcome &outcome) { report(outcome, done); });
 }
 
 } // namespace callie::cli

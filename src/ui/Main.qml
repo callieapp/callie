@@ -955,7 +955,15 @@ ApplicationWindow {
         }
     }
 
+    // Dims the calendar while the leader's keys are shown, as a popup does.
+    Scrim {
+        anchors.fill: parent
+        z: 899
+        opacity: whichKey.shown ? 1 : 0
+        visible: opacity > 0
+    }
     WhichKey {
+        id: whichKey
         router: keys
     }
 

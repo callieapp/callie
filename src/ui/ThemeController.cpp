@@ -138,6 +138,11 @@ QColor ThemeController::todayWash() const
     return tint(m_spec.colors.accent, 0.04);
 }
 
+QColor ThemeController::answerHover() const
+{
+    return tint(m_spec.colors.accent, 0.22);
+}
+
 QColor ThemeController::dayOffWash() const
 {
     // Darker on a dark theme and on a light one alike.

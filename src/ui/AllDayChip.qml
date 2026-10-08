@@ -108,6 +108,7 @@ Rectangle {
         cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
     }
     TapHandler {
+        gesturePolicy: TapHandler.ReleaseWithinBounds
         onTapped: chip.activated()
     }
 

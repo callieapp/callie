@@ -89,6 +89,8 @@ class ThemeController : public QObject
     /// Washes over day columns: a hint of pink on today, a shade on days off.
     Q_PROPERTY(QColor todayWash READ todayWash NOTIFY changed)
     Q_PROPERTY(QColor dayOffWash READ dayOffWash NOTIFY changed)
+    /// Behind an invitation's answer on hover, where rows are already surfaceAlt.
+    Q_PROPERTY(QColor answerHover READ answerHover NOTIFY changed)
 
     Q_PROPERTY(int hourHeight READ hourHeight CONSTANT)
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
@@ -219,6 +221,7 @@ public:
     int text2xl() const { return 28; }
 
     QColor todayWash() const;
+    QColor answerHover() const;
     QColor dayOffWash() const;
 
     int hourHeight() const { return 62; }

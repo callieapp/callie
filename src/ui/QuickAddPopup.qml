@@ -15,6 +15,8 @@ Popup {
     padding: Theme.space5
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    modal: true
+    Overlay.modal: Scrim {}
     /// A time drawn on the grid, handed to the composer when the popup opens.
     property var pickedStart: null
     property var pickedEnd: null

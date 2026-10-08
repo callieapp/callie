@@ -174,7 +174,9 @@ Rectangle {
         id: hover
         cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
     }
+    // Takes the tap for itself, so the event under it in a cascade does not open too.
     TapHandler {
+        gesturePolicy: TapHandler.ReleaseWithinBounds
         onTapped: root.activated()
     }
 

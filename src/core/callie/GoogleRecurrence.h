@@ -16,6 +16,9 @@ namespace callie {
                                               const QDateTime &from, const QDateTime &to,
                                               const QTimeZone &viewZone);
 
+/// The days the series' EXDATE lines take out, in `zone`.
+[[nodiscard]] QList<QDate> excludedDays(const GoogleEvent &series, const QTimeZone &zone);
+
 /// A series' recurrence lines split at one of its occurrences.
 struct SplitRecurrence
 {

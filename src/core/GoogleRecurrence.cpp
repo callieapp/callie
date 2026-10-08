@@ -228,6 +228,21 @@ QList<Event> expandGoogleEvents(const QList<GoogleEvent> &events, const QDateTim
     return result;
 }
 
+QList<QDate> excludedDays(const GoogleEvent &series, const QTimeZone &zone)
+{
+    const QTimeZone own =
+        series.start.timeZone.isEmpty() ? zone : QTimeZone(series.start.timeZone.toUtf8());
+    KCalendarCore::Recurrence recurrence;
+    for (const QString &line : series.recurrence) {
+        if (line.section(u':', 0, 0).section(u';', 0, 0).toUpper() == u"EXDATE")
+            addDates(recurrence, line, true, own);
+    }
+    QList<QDate> days = recurrence.exDates();
+    for (const QDateTime &time : recurrence.exDateTimes())
+        days.append(time.toTimeZone(zone).date());
+    return days;
+}
+
 SplitRecurrence splitRecurrence(const GoogleEvent &series, const QDateTime &at)
 {
     const bool allDay = series.start.isAllDay();

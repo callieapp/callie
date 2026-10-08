@@ -547,7 +547,24 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
                   : QDateTime::fromString(newStart[u"dateTime"].toString(), Qt::ISODate)
                         .toTimeZone(newZone.isValid() ? newZone : at.timeZone());
     const qint64 shift = at.date().daysTo(firstNew.date());
-    QJsonArray recurrence = created[u"recurrence"].toArray();
+    // The series' own EXDATE lines name its old days and clock, so they are
+    // written again for the new series' days and clock.
+    QJsonArray recurrence;
+    for (const QJsonValue &line : created[u"recurrence"].toArray()) {
+        if (!line.toString().startsWith(u"EXDATE"_s, Qt::CaseInsensitive))
+            recurrence.append(line);
+    }
+    const auto exclude = [&](QDate day) {
+        recurrence.append(newAllDay
+                              ? u"EXDATE;VALUE=DATE:"_s + day.toString(u"yyyyMMdd"_s)
+                              : u"EXDATE:"_s + QDateTime(day, firstNew.time(), firstNew.timeZone())
+                                                   .toUTC()
+                                                   .toString(u"yyyyMMdd'T'HHmmss'Z'"_s));
+    };
+    for (const QDate day : excludedDays(*stored, at.timeZone())) {
+        if (day >= at.date())
+            exclude(day.addDays(shift));
+    }
     QList<GoogleSync::Target> stale;
     for (const GoogleEvent &other : m_cache.events(account, calendarId)) {
         if (other.recurringEventId != event.seriesId)
@@ -563,12 +580,7 @@ void GoogleSource::splitSeries(const Account &account, const QString &calendarId
             stale.append({calendarId, other.id, event.seriesId, other.originalStart});
             continue;
         }
-        const QDate day = was.addDays(shift);
-        recurrence.append(newAllDay
-                              ? u"EXDATE;VALUE=DATE:"_s + day.toString(u"yyyyMMdd"_s)
-                              : u"EXDATE:"_s + QDateTime(day, firstNew.time(), firstNew.timeZone())
-                                                   .toUTC()
-                                                   .toString(u"yyyyMMdd'T'HHmmss'Z'"_s));
+        exclude(was.addDays(shift));
     }
     created.insert(u"recurrence"_s, recurrence);
 

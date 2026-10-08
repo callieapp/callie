@@ -75,6 +75,7 @@ private Q_SLOTS:
     void splitGoesOnWhenTheNewSeriesExists();
     void splitKeepsWhatTheOccurrenceHad();
     void splitAllDaySeriesByDates();
+    void splitMovesDeletedDaysToTheNewClock();
     void seriesMoveKeepsTheWallClockAcrossDst();
     void statusStartsFromTheCache();
     void reportDescribesEachAccount();
@@ -826,6 +827,43 @@ void TestGoogleSource::splitAllDaySeriesByDates()
     QCOMPARE(created[u"recurrence"].toArray(), QJsonArray{u"RRULE:FREQ=WEEKLY"_s});
     QCOMPARE(QJsonDocument::fromJson(requests[1].body).object(),
              (QJsonObject{{u"recurrence"_s, QJsonArray{u"RRULE:FREQ=WEEKLY;UNTIL=20261018"_s}}}));
+}
+
+void TestGoogleSource::splitMovesDeletedDaysToTheNewClock()
+{
+    // Tuesday and Friday were taken out of the series itself.
+    QVERIFY(
+        m_cache->storeEvents(kAccount, u"mine"_s, {parsed(R"({"id":"standup","summary":"Standup",
+        "start":{"dateTime":"2026-10-05T09:30:00-04:00","timeZone":"America/New_York"},
+        "end":{"dateTime":"2026-10-05T09:45:00-04:00","timeZone":"America/New_York"},
+        "recurrence":["RRULE:FREQ=DAILY;COUNT=5",
+                      "EXDATE;TZID=America/New_York:20261006T093000,20261009T093000"]})")}));
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    harness.apiServer.handler = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Response(200, R"({"id":"standup","status":"confirmed"})");
+    };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    const QDateTime from(QDate(2026, 10, 7), QTime(0, 0), kNewYork);
+    const QList<Event> events = source.eventsBetween(from, from.addDays(1), kNewYork);
+    const auto standup = std::find_if(events.cbegin(), events.cend(),
+                                      [](const Event &e) { return e.summary == u"Standup"; });
+    QVERIFY(standup != events.cend());
+
+    // From Wednesday on, at 10:00.
+    EventEdit edit;
+    edit.start = QDateTime(QDate(2026, 10, 7), QTime(10, 0), kNewYork);
+    edit.end = QDateTime(QDate(2026, 10, 7), QTime(10, 15), kNewYork);
+    QString error = u"unset"_s;
+    source.updateEvent(*standup, edit, EditScope::ThisAndFollowing,
+                       [&error](const QString &e) { error = e; });
+    QTRY_COMPARE_WITH_TIMEOUT(error, QString(), 5000);
+    const QJsonObject created =
+        QJsonDocument::fromJson(harness.apiServer.requests.first().body).object();
+    // Friday stays out, at the new time; Tuesday was before the split.
+    QCOMPARE(created[u"recurrence"].toArray(),
+             (QJsonArray{u"RRULE:FREQ=DAILY;COUNT=3"_s, u"EXDATE:20261009T140000Z"_s}));
 }
 
 void TestGoogleSource::moveShiftsTheOccurrenceOrTheSeries()

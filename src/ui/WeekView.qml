@@ -614,9 +614,7 @@ Item {
     /// block under the pointer to place them by.
     function showRow(row) {
         const event = root.model.eventAt(row)
-        details.show(event, root.model.callService(event.conferenceUrl))
-        details.x = (root.width - details.width) / 2
-        details.y = Theme.space7
+        details.showCentered(event, root.model.callService(event.conferenceUrl))
     }
 
     Timer {

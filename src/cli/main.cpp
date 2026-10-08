@@ -10,7 +10,10 @@
 #include "callie/GoogleTokenProvider.h"
 #include "callie/LogFile.h"
 #include "callie/SampleSource.h"
+#include "callie/Settings.h"
 #include "callie/TokenStore.h"
+
+#include "Commands.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
@@ -18,11 +21,14 @@
 #include <QDir>
 #include <QNetworkAccessManager>
 #include <QProcess>
+#include <QTemporaryDir>
 #include <QTextStream>
 #include <QTimer>
 
 #include <algorithm>
+#include <memory>
 #include <optional>
+#include <tuple>
 
 #include <unistd.h>
 
@@ -52,82 +58,8 @@ QString warn(const QString &s)
 {
     return useColor() ? QStringLiteral("\033[31m%1\033[0m").arg(s) : s;
 }
-QString accent(const QString &s)
-{
-    return useColor() ? QStringLiteral("\033[36m%1\033[0m").arg(s) : s;
-}
 
 const QString kGoogle = QStringLiteral("google");
-
-int runAgenda(int days, bool sample)
-{
-    const QTimeZone tz = QTimeZone::systemTimeZone();
-    const QDate today = QDate::currentDate();
-    const QDateTime from(today, QTime(0, 0), tz);
-    const QDateTime to(today.addDays(days), QTime(0, 0), tz);
-
-    QList<Event> events;
-    if (sample) {
-        events = SampleSource().eventsBetween(from, to, tz);
-    } else {
-        AccountStore store(AccountStore::defaultPath());
-        QList<Account> accounts;
-        if (!store.load(accounts)) {
-            err << QStringLiteral("callie: %1\n").arg(store.errorString());
-            return 1;
-        }
-        accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
-        if (accounts.isEmpty()) {
-            err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
-            return 0;
-        }
-        GoogleCache cache(GoogleCache::defaultPath());
-        if (!cache.open()) {
-            err << QStringLiteral("callie: %1\n").arg(cache.errorString());
-            return 1;
-        }
-        const GoogleSource source(cache, accounts);
-        if (source.calendars().isEmpty()) {
-            err << QObject::tr("Nothing synced yet. Run: callie sync") << "\n";
-            return 0;
-        }
-        events = source.eventsBetween(from, to, tz);
-    }
-    std::sort(events.begin(), events.end(),
-              [](const Event &a, const Event &b) { return a.start < b.start; });
-
-    if (events.isEmpty()) {
-        out << dim(QObject::tr("Nothing scheduled.")) << "\n";
-        return 0;
-    }
-
-    QDate current;
-    for (const Event &e : std::as_const(events)) {
-        // Events already under way when the range starts are listed under today.
-        const QDate day = std::max(e.start.date(), today);
-        if (day != current) {
-            current = day;
-            const QString label = current == today
-                                      ? QObject::tr("Today")
-                                      : QLocale().toString(current, QStringLiteral("ddd d MMM"));
-            out << "\n" << bold(label) << "\n";
-        }
-
-        const QString time =
-            e.allDay ? QStringLiteral("all-day")
-                     : QStringLiteral("%1–%2").arg(e.start.toString(QStringLiteral("HH:mm")),
-                                                   e.end.toString(QStringLiteral("HH:mm")));
-
-        out << QStringLiteral("  %1  %2").arg(dim(time.leftJustified(11)), e.summary);
-        if (!e.conferenceUrl.isEmpty())
-            out << "  " << accent(QStringLiteral("↗"));
-        else if (!e.location.isEmpty())
-            out << "  " << dim(e.location);
-        out << "\n";
-    }
-    out << "\n";
-    return 0;
-}
 
 /// Ends the event loop with `code` after flushing, since exit codes are the
 /// only signal a script gets.
@@ -459,6 +391,137 @@ int runCalendars(QCoreApplication &app)
     return app.exec();
 }
 
+/// Where the event commands read and write: sample data, or the Google
+/// accounts through the cache, with the network for changes.
+struct Backend
+{
+    QList<Account> accounts;
+    std::unique_ptr<GoogleCache> cache;
+    std::unique_ptr<KeychainTokenStore> tokens;
+    std::unique_ptr<GoogleTokenProvider> provider;
+    std::unique_ptr<QNetworkAccessManager> network;
+    std::unique_ptr<GoogleCalendarApi> api;
+    std::unique_ptr<GoogleSync> sync;
+    std::unique_ptr<CalendarSource> source;
+};
+
+/// Opens the backend, or says why it cannot and returns null with `code` set.
+std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
+{
+    auto backend = std::make_unique<Backend>();
+    code = 0;
+    if (sample) {
+        backend->source = std::make_unique<SampleSource>();
+        return backend;
+    }
+    AccountStore store(AccountStore::defaultPath());
+    if (!store.load(backend->accounts)) {
+        err << QStringLiteral("callie: %1\n").arg(store.errorString());
+        code = 1;
+        return nullptr;
+    }
+    backend->accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
+    if (backend->accounts.isEmpty()) {
+        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        return nullptr;
+    }
+    backend->cache = std::make_unique<GoogleCache>(GoogleCache::defaultPath());
+    if (!backend->cache->open()) {
+        err << QStringLiteral("callie: %1\n").arg(backend->cache->errorString());
+        code = 1;
+        return nullptr;
+    }
+    auto google = std::make_unique<GoogleSource>(*backend->cache, backend->accounts);
+    if (google->calendars().isEmpty()) {
+        err << QObject::tr("Nothing synced yet. Run: callie sync") << "\n";
+        return nullptr;
+    }
+    if (writing) {
+        const std::optional<GoogleClientConfig> client = googleClient();
+        if (!client) {
+            code = 1;
+            return nullptr;
+        }
+        backend->tokens = std::make_unique<KeychainTokenStore>();
+        backend->provider = std::make_unique<GoogleTokenProvider>(*client, *backend->tokens);
+        backend->network = std::make_unique<QNetworkAccessManager>();
+        backend->api = std::make_unique<GoogleCalendarApi>(backend->network.get());
+        backend->sync =
+            std::make_unique<GoogleSync>(*backend->provider, *backend->api, *backend->cache);
+        google->setSync(backend->sync.get());
+    }
+    backend->source = std::move(google);
+    return backend;
+}
+
+/// The event commands: agenda, search, invites, add, edit, delete, respond and duplicate.
+int runEvents(QCoreApplication &app, const QString &command, const QStringList &args,
+              const QCommandLineParser &parser, bool sample)
+{
+    const auto value = [&parser](const char *name) -> std::optional<QString> {
+        const QString option = QString::fromLatin1(name);
+        return parser.isSet(option) ? std::optional(parser.value(option)) : std::nullopt;
+    };
+    const bool reading = command == u"agenda" || command == u"search" || command == u"invites";
+    // Sample data and scripts that only read leave the user's settings alone.
+    QTemporaryDir scratch;
+    Settings settings(sample ? scratch.filePath(u"settings.ini"_s) : Settings::defaultPath());
+    int code = 0;
+    const std::unique_ptr<Backend> backend = openBackend(sample, !reading, code);
+    if (!backend)
+        return code;
+    const QTimeZone zone = settings.timeZoneId().isEmpty()
+                               ? QTimeZone::systemTimeZone()
+                               : QTimeZone(settings.timeZoneId().toUtf8());
+    cli::Commands commands(*backend->source, settings, out, err, QDateTime::currentDateTime(),
+                           zone);
+    commands.setColor(useColor());
+    const bool ids = parser.isSet(u"ids"_s);
+
+    if (command == u"agenda")
+        return commands.agenda(parser.value(u"days"_s).toInt(), ids);
+    if (command == u"search")
+        return commands.search(args.mid(1).join(u' '), ids);
+    if (command == u"invites")
+        return commands.invites(ids);
+
+    const QString scope = parser.value(u"scope"_s);
+    std::optional<int> result;
+    const cli::Commands::Done done = [&result](int c) {
+        result = c;
+        finish(c);
+    };
+    if (command == u"add" && args.size() >= 2) {
+        commands.add(args.mid(1).join(u' '), parser.value(u"calendar"_s), done);
+    } else if (command == u"edit" && args.size() == 2) {
+        cli::EditOptions options;
+        options.title = value("title");
+        options.where = value("where");
+        options.notes = value("notes");
+        options.start = value("start");
+        options.end = value("end");
+        if (parser.isSet(u"all-day"_s) || parser.isSet(u"timed"_s))
+            options.allDay = parser.isSet(u"all-day"_s);
+        options.repeat = value("repeat");
+        if (const auto guests = value("guests"))
+            options.guests = guests->split(u',', Qt::SkipEmptyParts);
+        if (const auto video = value("video"))
+            options.video = *video == u"on" || *video == u"yes" || *video == u"true";
+        commands.edit(args.at(1), options, scope, done);
+    } else if (command == u"delete" && args.size() == 2) {
+        commands.remove(args.at(1), scope, done);
+    } else if (command == u"respond" && args.size() == 3) {
+        commands.respond(args.at(1), args.at(2), scope, done);
+    } else if (command == u"duplicate" && args.size() == 2) {
+        commands.duplicate(args.at(1), value("start"), done);
+    } else {
+        err << QObject::tr("usage: callie %1; see callie --help").arg(command) << "\n";
+        return 2;
+    }
+    // Sample data answers at once; Google answers over the network.
+    return result ? *result : app.exec();
+}
+
 int runAccounts(QCoreApplication &app, const QStringList &args)
 {
     const QString action = args.value(1, QStringLiteral("list"));
@@ -488,13 +551,19 @@ int main(int argc, char *argv[])
         QStringLiteral("Callie: an elegant calendar for Linux.\n"
                        "\n"
                        "Commands:\n"
-                       "  agenda     Upcoming events (default)\n"
+                       "  agenda     Upcoming events (default); --ids adds each event's id\n"
+                       "  search     Events with every word given\n"
+                       "  invites    Invitations waiting for an answer\n"
+                       "  add        Create an event: callie add \"Lunch tomorrow 12-1pm\"\n"
+                       "  edit       Change an event: callie edit <id> --start \"friday 3pm\"\n"
+                       "  delete     Delete an event\n"
+                       "  respond    Answer an invitation: callie respond <id> yes|maybe|no\n"
+                       "  duplicate  Copy an event, to --start if given\n"
                        "  accounts   List, add or remove calendar accounts\n"
                        "  calendars  List the calendars in each account\n"
                        "  logs       Show, follow (-f) or open (--open) the log files\n"
                        "  status     Sync state, keyring and configuration\n"
                        "  doctor     Details for a bug report; --report opens a new issue\n"
-                       "  add        Create an event from natural language\n"
                        "  sync       Refresh all accounts now\n"
                        "  daemon     Run background sync and notifications\n"
                        "  gui        Launch the desktop app"));
@@ -521,6 +590,32 @@ int main(int argc, char *argv[])
     QCommandLineOption reportOption(QStringLiteral("report"),
                                     QStringLiteral("With doctor: open a new GitHub issue."));
     parser.addOption(reportOption);
+    for (const auto &[names, description, valueName] :
+         std::initializer_list<std::tuple<QStringList, QString, QString>>{
+             {{u"ids"_s}, u"With agenda, search and invites: start lines with the event id."_s, {}},
+             {{u"calendar"_s}, u"With add: the calendar, by name or id."_s, u"name"_s},
+             {{u"scope"_s},
+              u"With edit, delete and respond on a repeating event: this, following or all."_s,
+              u"which"_s},
+             {{u"title"_s}, u"With edit: a new title."_s, u"text"_s},
+             {{u"where"_s}, u"With edit: a new place."_s, u"text"_s},
+             {{u"notes"_s}, u"With edit: new notes."_s, u"text"_s},
+             {{u"start"_s},
+              u"With edit and duplicate: a new start, such as \"2026-10-08 15:00\"."_s,
+              u"when"_s},
+             {{u"end"_s},
+              u"With edit: a new end; for an all-day event, its last day."_s,
+              u"when"_s},
+             {{u"all-day"_s}, u"With edit: make it all day."_s, {}},
+             {{u"timed"_s}, u"With edit: give it times."_s, {}},
+             {{u"repeat"_s},
+              u"With edit: none, daily, weekdays, weekly, monthly, monthlyWeekday or yearly."_s,
+              u"rule"_s},
+             {{u"guests"_s}, u"With edit: every guest's address, comma separated."_s, u"list"_s},
+             {{u"video"_s}, u"With edit: on or off, to add or remove a video call."_s, u"on"_s},
+         }) {
+        parser.addOption(QCommandLineOption(names, description, valueName));
+    }
     parser.process(app);
     logfile::install(QStringLiteral("callie"));
     logfile::setVerboseTerminal(parser.isSet(verboseOption) ||
@@ -529,8 +624,11 @@ int main(int argc, char *argv[])
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
 
-    if (command == QLatin1String("agenda"))
-        return runAgenda(parser.value(daysOption).toInt(), parser.isSet(sampleOption));
+    static const QStringList kEventCommands = {u"agenda"_s,  u"search"_s,   u"invites"_s,
+                                               u"add"_s,     u"edit"_s,     u"delete"_s,
+                                               u"respond"_s, u"duplicate"_s};
+    if (kEventCommands.contains(command))
+        return runEvents(app, command, args, parser, parser.isSet(sampleOption));
 
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
@@ -553,7 +651,7 @@ int main(int argc, char *argv[])
     if (command == QLatin1String("gui"))
         return QProcess::execute(QStringLiteral("callie-gui"), {});
 
-    if (command == QLatin1String("add") || command == QLatin1String("daemon")) {
+    if (command == QLatin1String("daemon")) {
         err << QStringLiteral("callie: '%1' is not implemented yet.\n").arg(command);
         return 2;
     }

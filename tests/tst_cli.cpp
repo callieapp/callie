@@ -404,6 +404,22 @@ void TestCli::settingsReadAndChange()
           std::pair(u"nope"_s, u"1"_s)})
         QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, name, value), 2);
     QCOMPARE(m_settings->leaderKey(), u","_s);
+
+    // A zone or time a setting would change into something else is refused,
+    // and what was there stays.
+    m_settings->setTimeZoneId(u"Europe/Berlin"_s);
+    QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"timeZoneId"_s,
+                                u"Nowhere/Nope"_s),
+             2);
+    QCOMPARE(m_settings->timeZoneId(), u"Europe/Berlin"_s);
+    QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"workStart"_s, u"5000"_s),
+             2);
+    QCOMPARE(m_settings->workStart(), 9 * 60);
+    // An empty zone means the system's, and is taken.
+    QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"timeZoneId"_s,
+                                std::optional(QString())),
+             0);
+    QVERIFY(m_settings->timeZoneId().isEmpty());
 }
 
 void TestCli::calendarsAndAccountsTakeNewLooks()

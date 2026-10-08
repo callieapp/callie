@@ -536,9 +536,11 @@ int Commands::settings(Settings &settings, QTextStream &out, QTextStream &err, c
     if (value) {
         const QVariant before = property.read(&settings);
         const std::optional<QVariant> wanted = parsed(property, *value);
-        // A setter that refuses a value leaves it as it was.
-        if (!wanted || (!property.write(&settings, *wanted)) ||
-            (property.read(&settings) == before && *wanted != before)) {
+        // A setter that refuses, clamps or replaces a value keeps something
+        // other than what was asked, so that is put back and refused.
+        if (!wanted || !property.write(&settings, *wanted) ||
+            shown(property, property.read(&settings)) != shown(property, *wanted)) {
+            property.write(&settings, before);
             err << tr("callie: %1 cannot be %2").arg(name, *value) << "\n";
             return 2;
         }

@@ -440,6 +440,29 @@ void TestCli::calendarsAndAccountsTakeNewLooks()
     QCOMPARE(m_commands->calendarLook(u"reset"_s, u"focus"_s, {}), 0);
     QVERIFY(m_settings->calendarLooks().isEmpty());
     QCOMPARE(m_commands->calendarLook(u"hide"_s, u"Nope"_s, {}), 1);
+    // A name two calendars share needs the id instead.
+    {
+        // Names as the sidebar shows them, which the source reads through its looks.
+        class Named : public SampleSource
+        {
+        public:
+            QList<CalendarInfo> calendars() const override
+            {
+                QList<CalendarInfo> list = SampleSource::calendars();
+                for (CalendarInfo &c : list) {
+                    if (c.id != u"personal")
+                        c.displayName = u"Shared"_s;
+                }
+                return list;
+            }
+        } named;
+        Commands commands(named, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
+        QCOMPARE(commands.calendarLook(u"hide"_s, u"shared"_s, {}), 2);
+        QVERIFY(m_err.contains(u"work, focus"_s));
+        QVERIFY(m_settings->hiddenCalendars().isEmpty());
+        QCOMPARE(commands.calendarLook(u"hide"_s, u"work"_s, {}), 0);
+    }
+    m_settings->setCalendarVisible(u"work"_s, true);
     QCOMPARE(m_commands->calendarLook(u"paint"_s, u"focus"_s, {}), 2);
     QCOMPARE(m_commands->calendarLook(u"list"_s, {}, {}), 2);
     // Quiet on success: only what was asked for goes to stdout.

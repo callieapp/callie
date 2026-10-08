@@ -574,15 +574,30 @@ int Commands::calendarLook(const QString &action, const QString &calendar, const
         return 2;
     }
     const QList<CalendarInfo> calendars = m_source.calendars();
-    const auto found =
-        std::find_if(calendars.cbegin(), calendars.cend(), [&](const CalendarInfo &c) {
-            return c.id == calendar || c.displayName.compare(calendar, Qt::CaseInsensitive) == 0;
-        });
-    if (found == calendars.cend()) {
+    // An id names one calendar; a name may be shared across accounts.
+    QList<CalendarInfo> found;
+    for (const CalendarInfo &c : calendars) {
+        if (c.id == calendar) {
+            found = {c};
+            break;
+        }
+        if (c.displayName.compare(calendar, Qt::CaseInsensitive) == 0)
+            found.append(c);
+    }
+    if (found.isEmpty()) {
         m_err << tr("callie: no calendar is called %1").arg(calendar) << "\n";
         return 1;
     }
-    const QString id = found->id;
+    if (found.size() > 1) {
+        QStringList ids;
+        for (const CalendarInfo &c : found)
+            ids << c.id;
+        m_err << tr("callie: more than one calendar is called %1; give its id: %2")
+                     .arg(calendar, ids.join(u", "_s))
+              << "\n";
+        return 2;
+    }
+    const QString id = found.first().id;
     if (action == u"hide" || action == u"show")
         m_settings.setCalendarVisible(id, action == u"show");
     else if (action == u"rename")

@@ -68,6 +68,7 @@ qt_add_qml_module(callieui
         MoveChoice.qml
         EventMover.qml
         KeyCap.qml
+        Scrim.qml
         WhichKey.qml
         KeyHelp.qml
         AllDayChip.qml

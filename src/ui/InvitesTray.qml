@@ -16,9 +16,11 @@ Popup {
 
     width: 340
     padding: Theme.space5
-    modal: false
+    // A click elsewhere only closes the tray.
+    modal: true
     focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    Overlay.modal: Scrim {}
 
     EventActions {
         id: actions
@@ -178,6 +180,7 @@ Popup {
                             PillButton {
                                 required property var modelData
                                 label: modelData.label
+                                hoverColor: Theme.answerHover
                                 enabled: !actions.busy
                                 Accessible.name: qsTr("%1 to %2").arg(modelData.label).arg(
                                                      invite.summary)

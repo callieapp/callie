@@ -69,6 +69,8 @@ private Q_SLOTS:
     void viKeysDriveTheWindow();
     void foundEventsOpenInTheViewShown();
     void agendaScrollsWithKeys();
+    void clickOutsideOnlyCloses();
+    void topOfACascadeOpens();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -347,6 +349,52 @@ void TestEventEdit::agendaScrollsWithKeys()
     QTRY_VERIFY(list->property("contentY").toReal() > top);
     QTest::keyClick(m_window, 'k');
     QTRY_COMPARE(list->property("contentY").toReal(), top);
+}
+
+namespace {
+
+/// The summary on the event card that is open, or empty.
+QString openCard(QQuickWindow *window)
+{
+    for (QObject *o : window->findChildren<QObject *>()) {
+        if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"EventDetails"_s) &&
+            o->property("opened").toBool())
+            return o->property("summary").toString();
+    }
+    return {};
+}
+
+} // namespace
+
+void TestEventEdit::clickOutsideOnlyCloses()
+{
+    QQuickItem *climbing = nullptr;
+    QTRY_VERIFY((climbing = find(m_window->contentItem(), "EventBlock", "summary", u"Climbing"_s)));
+    QQuickItem *lunch =
+        find(m_window->contentItem(), "EventBlock", "summary", u"Lunch with Alex"_s);
+    QVERIFY(lunch);
+    QTest::qWait(300);
+    click(m_window, climbing);
+    QTRY_COMPARE(openCard(m_window), u"Climbing"_s);
+    QTest::qWait(300);
+    // Another event, outside the card: the card closes, and nothing else opens.
+    click(m_window, lunch);
+    QTRY_COMPARE(openCard(m_window), QString());
+    QTest::qWait(500);
+    QCOMPARE(openCard(m_window), QString());
+}
+
+void TestEventEdit::topOfACascadeOpens()
+{
+    // Wednesday's quick sync sits over the vendor call, over the roadmap workshop.
+    QQuickItem *top = nullptr;
+    QTRY_VERIFY(
+        (top = find(m_window->contentItem(), "EventBlock", "summary", u"Quick sync w/ Sam"_s)));
+    QTest::qWait(300);
+    click(m_window, top);
+    QTRY_COMPARE(openCard(m_window), u"Quick sync w/ Sam"_s);
+    QTest::qWait(300);
+    QCOMPARE(openCard(m_window), u"Quick sync w/ Sam"_s);
 }
 
 QTEST_MAIN(TestEventEdit)

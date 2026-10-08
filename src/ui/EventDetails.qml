@@ -155,9 +155,8 @@ Popup {
     // Keeps the whole card inside the window, wherever its event sits.
     margins: Theme.space3
     padding: 0
-    modal: false
-    // Dims the calendar without blocking it, so a click elsewhere still lands.
-    dim: true
+    // A click elsewhere only closes the card, rather than landing on what is under it.
+    modal: true
     focus: true
     // A click elsewhere would lose what is being typed, so the form needs Cancel or Escape.
     closePolicy: editing ? Popup.CloseOnEscape : Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -180,20 +179,7 @@ Popup {
         }
     }
 
-    Overlay.modeless: Rectangle {
-        // The attached Window type is not the QML Window type, so this stays untyped.
-        readonly property var appWindow: Window.window
-
-        // Follows the window's rounded corners rather than filling them in.
-        radius: appWindow && appWindow.cornerRadius ? appWindow.cornerRadius : 0
-        color: Theme.tint(Theme.shadowColor, 0.35)
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Theme.durFast
-            }
-        }
-    }
+    Overlay.modal: Scrim {}
 
     background: Rectangle {
         radius: Theme.radiusXl
@@ -347,6 +333,7 @@ Popup {
                         required property var modelData
                         label: answer.modelData.label
                         selected: root.response === answer.modelData.status
+                        hoverColor: Theme.answerHover
                         enabled: !actions.busy
                         onClicked: root.act(answer.modelData.status)
                     }

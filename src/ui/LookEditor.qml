@@ -44,9 +44,10 @@ Popup {
 
     width: 300
     padding: Theme.space5
-    modal: false
+    modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    Overlay.modal: Scrim {}
     onOpened: {
         field.text = name
         field.selectAll()

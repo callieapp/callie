@@ -18,13 +18,7 @@ Popup {
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    Overlay.modal: Rectangle {
-        // The attached Window type is not the QML Window type, so this stays untyped.
-        readonly property var appWindow: Window.window
-
-        radius: appWindow && appWindow.cornerRadius ? appWindow.cornerRadius : 0
-        color: Theme.tint(Theme.shadowColor, 0.35)
-    }
+    Overlay.modal: Scrim {}
 
     background: Rectangle {
         radius: Theme.radiusXl

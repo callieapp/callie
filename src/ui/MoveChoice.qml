@@ -24,9 +24,10 @@ Popup {
 
     width: 280
     padding: Theme.space5
-    modal: false
+    modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    Overlay.modal: Scrim {}
     // Closing any way but a choice keeps the event where it was.
     onClosed: if (event)
                   cancelled()

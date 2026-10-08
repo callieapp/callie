@@ -543,12 +543,25 @@ int Commands::settings(Settings &settings, QTextStream &out, QTextStream &err, c
             return 2;
         }
     }
-    out << name << "\t" << shown(property, property.read(&settings)) << "\n";
+    if (!value)
+        out << name << "\t" << shown(property, property.read(&settings)) << "\n";
     return 0;
 }
 
 int Commands::calendarLook(const QString &action, const QString &calendar, const QString &value)
 {
+    static const QStringList kActions = {u"hide"_s, u"show"_s, u"rename"_s, u"color"_s, u"reset"_s};
+    const QColor color = QColor::fromString(value);
+    if (!kActions.contains(action) || calendar.isEmpty()) {
+        m_err << tr("usage: callie calendars [hide | show | reset <calendar> | rename <calendar> "
+                    "<name> | color <calendar> <color>]")
+              << "\n";
+        return 2;
+    }
+    if (action == u"color" && !color.isValid()) {
+        m_err << tr("callie: %1 is not a color; try #e86a92").arg(value) << "\n";
+        return 2;
+    }
     const QList<CalendarInfo> calendars = m_source.calendars();
     const auto found =
         std::find_if(calendars.cbegin(), calendars.cend(), [&](const CalendarInfo &c) {
@@ -559,26 +572,14 @@ int Commands::calendarLook(const QString &action, const QString &calendar, const
         return 1;
     }
     const QString id = found->id;
-    if (action == u"hide" || action == u"show") {
+    if (action == u"hide" || action == u"show")
         m_settings.setCalendarVisible(id, action == u"show");
-    } else if (action == u"rename") {
+    else if (action == u"rename")
         m_settings.setCalendarName(id, value);
-    } else if (action == u"color") {
-        const QColor color = QColor::fromString(value);
-        if (!color.isValid()) {
-            m_err << tr("callie: %1 is not a color; try #e86a92").arg(value) << "\n";
-            return 2;
-        }
+    else if (action == u"color")
         m_settings.setCalendarColor(id, color);
-    } else if (action == u"reset") {
+    else
         m_settings.resetCalendarLook(id);
-    } else {
-        m_err << tr("usage: callie calendars [hide | show | reset <calendar> | rename <calendar> "
-                    "<name> | color <calendar> <color>]")
-              << "\n";
-        return 2;
-    }
-    m_out << tr("%1: done.").arg(found->displayName) << "\n";
     return 0;
 }
 
@@ -594,7 +595,6 @@ int Commands::renameAccount(const QString &account, const QString &name)
         return 1;
     }
     m_settings.setAccountName(account, name);
-    m_out << tr("%1 shows as %2.").arg(account, m_settings.accountName(account)) << "\n";
     return 0;
 }
 

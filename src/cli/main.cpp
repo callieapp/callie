@@ -653,7 +653,11 @@ int main(int argc, char *argv[])
         return runEvents(app, command, args, parser, parser.isSet(sampleOption));
     if (command == QLatin1String("accounts"))
         return runAccounts(app, args);
-    if (command == QLatin1String("settings") && args.size() <= 3) {
+    if (command == QLatin1String("settings") && args.size() > 3) {
+        err << QObject::tr("usage: callie settings [name [value]]") << "\n";
+        return 2;
+    }
+    if (command == QLatin1String("settings")) {
         Settings settings(Settings::defaultPath());
         return cli::Commands::settings(settings, out, err, args.value(1),
                                        args.size() == 3 ? std::optional(args.at(2)) : std::nullopt);

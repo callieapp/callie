@@ -69,7 +69,7 @@ public:
     void duplicate(const QString &id, const std::optional<QString> &start, const Done &done);
 
     /// With no name, every setting and its value; with a name, its value; with
-    /// a value too, changes it. The app reads settings when it starts.
+    /// a value too, changes it quietly. The app reads settings when it starts.
     static int settings(Settings &settings, QTextStream &out, QTextStream &err, const QString &name,
                         const std::optional<QString> &value);
     /// Hides, shows, renames, recolors or resets the look of a calendar, given

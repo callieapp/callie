@@ -68,6 +68,16 @@ public:
     /// A copy of the event, at `start` if given, else at the same time.
     void duplicate(const QString &id, const std::optional<QString> &start, const Done &done);
 
+    /// With no name, every setting and its value; with a name, its value; with
+    /// a value too, changes it. The app reads settings when it starts.
+    static int settings(Settings &settings, QTextStream &out, QTextStream &err, const QString &name,
+                        const std::optional<QString> &value);
+    /// Hides, shows, renames, recolors or resets the look of a calendar, given
+    /// by its id or name: `action` is hide, show, rename, color or reset.
+    int calendarLook(const QString &action, const QString &calendar, const QString &value);
+    /// The name Callie shows for an account; empty goes back to its own.
+    int renameAccount(const QString &account, const QString &name);
+
     /// Reads a day and time: "2026-10-08 15:00", "2026-10-08", "15:00" on
     /// `day`, or anything `callie add` understands, such as "friday 3pm".
     [[nodiscard]] std::optional<QDateTime> when(const QString &text, QDate day) const;

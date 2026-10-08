@@ -5,10 +5,13 @@
 #include "callie/SearchModel.h"
 #include "callie/Settings.h"
 
+#include <QColor>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QMetaEnum>
+#include <QMetaProperty>
 
 #include <algorithm>
 
@@ -463,6 +466,136 @@ void Commands::duplicate(const QString &id, const std::optional<QString> &start,
         return;
     }
     m_source.createEvent(draft, [this, done](const Outcome &outcome) { report(outcome, done); });
+}
+
+namespace {
+
+// Settings Callie keeps for itself rather than for the user to choose.
+bool internal(const QByteArray &name)
+{
+    return name == "lastSeenVersion" || name == "newEventCalendar";
+}
+
+QString shown(const QMetaProperty &property, const QVariant &value)
+{
+    if (property.isEnumType())
+        return QString::fromLatin1(property.enumerator().valueToKey(value.toInt()));
+    if (value.typeId() == QMetaType::Bool)
+        return value.toBool() ? u"true"_s : u"false"_s;
+    return value.toString();
+}
+
+std::optional<QVariant> parsed(const QMetaProperty &property, const QString &text)
+{
+    if (property.isEnumType()) {
+        bool ok = false;
+        const int value = property.enumerator().keyToValue(text.toLatin1().constData(), &ok);
+        return ok ? std::optional<QVariant>(value) : std::nullopt;
+    }
+    switch (property.typeId()) {
+    case QMetaType::Bool: {
+        static const QStringList yes = {u"true"_s, u"on"_s, u"yes"_s, u"1"_s};
+        static const QStringList no = {u"false"_s, u"off"_s, u"no"_s, u"0"_s};
+        if (yes.contains(text.toLower()))
+            return true;
+        if (no.contains(text.toLower()))
+            return false;
+        return std::nullopt;
+    }
+    case QMetaType::Int: {
+        bool ok = false;
+        const int value = text.toInt(&ok);
+        return ok ? std::optional<QVariant>(value) : std::nullopt;
+    }
+    default: return QVariant(text);
+    }
+}
+
+} // namespace
+
+int Commands::settings(Settings &settings, QTextStream &out, QTextStream &err, const QString &name,
+                       const std::optional<QString> &value)
+{
+    const QMetaObject *meta = settings.metaObject();
+    QStringList names;
+    for (int i = meta->propertyOffset(); i < meta->propertyCount(); ++i) {
+        const QMetaProperty property = meta->property(i);
+        if (!property.isWritable() || internal(property.name()))
+            continue;
+        names << QString::fromLatin1(property.name());
+        if (name.isEmpty())
+            out << property.name() << "\t" << shown(property, property.read(&settings)) << "\n";
+    }
+    if (name.isEmpty())
+        return 0;
+    if (!names.contains(name)) {
+        err << tr("callie: no setting is called %1; callie settings lists them").arg(name) << "\n";
+        return 2;
+    }
+    const QMetaProperty property = meta->property(meta->indexOfProperty(name.toLatin1()));
+    if (value) {
+        const QVariant before = property.read(&settings);
+        const std::optional<QVariant> wanted = parsed(property, *value);
+        // A setter that refuses a value leaves it as it was.
+        if (!wanted || (!property.write(&settings, *wanted)) ||
+            (property.read(&settings) == before && *wanted != before)) {
+            err << tr("callie: %1 cannot be %2").arg(name, *value) << "\n";
+            return 2;
+        }
+    }
+    out << name << "\t" << shown(property, property.read(&settings)) << "\n";
+    return 0;
+}
+
+int Commands::calendarLook(const QString &action, const QString &calendar, const QString &value)
+{
+    const QList<CalendarInfo> calendars = m_source.calendars();
+    const auto found =
+        std::find_if(calendars.cbegin(), calendars.cend(), [&](const CalendarInfo &c) {
+            return c.id == calendar || c.displayName.compare(calendar, Qt::CaseInsensitive) == 0;
+        });
+    if (found == calendars.cend()) {
+        m_err << tr("callie: no calendar is called %1").arg(calendar) << "\n";
+        return 1;
+    }
+    const QString id = found->id;
+    if (action == u"hide" || action == u"show") {
+        m_settings.setCalendarVisible(id, action == u"show");
+    } else if (action == u"rename") {
+        m_settings.setCalendarName(id, value);
+    } else if (action == u"color") {
+        const QColor color = QColor::fromString(value);
+        if (!color.isValid()) {
+            m_err << tr("callie: %1 is not a color; try #e86a92").arg(value) << "\n";
+            return 2;
+        }
+        m_settings.setCalendarColor(id, color);
+    } else if (action == u"reset") {
+        m_settings.resetCalendarLook(id);
+    } else {
+        m_err << tr("usage: callie calendars [hide | show | reset <calendar> | rename <calendar> "
+                    "<name> | color <calendar> <color>]")
+              << "\n";
+        return 2;
+    }
+    m_out << tr("%1: done.").arg(found->displayName) << "\n";
+    return 0;
+}
+
+int Commands::renameAccount(const QString &account, const QString &name)
+{
+    const QList<CalendarInfo> calendars = m_source.calendars();
+    const bool known =
+        std::any_of(calendars.cbegin(), calendars.cend(),
+                    [&account](const CalendarInfo &c) { return c.account == account; });
+    if (!known) {
+        m_err << tr("callie: no account is called %1; callie accounts lists them").arg(account)
+              << "\n";
+        return 1;
+    }
+    m_settings.setAccountName(account, name);
+    m_out << tr("%1 shows as %2.").arg(account, m_settings.accountName(account)) << "\n";
+    return 0;
 }
 
 } // namespace callie::cli

@@ -66,6 +66,8 @@ private Q_SLOTS:
     void allDayKeepsItsDaysAcrossAClockChange();
     void timedKeepsTheEndGiven();
     void sharedIdsNeedTheirCalendar();
+    void settingsReadAndChange();
+    void calendarsAndAccountsTakeNewLooks();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -370,6 +372,56 @@ void TestCli::sharedIdsNeedTheirCalendar()
 
     QCOMPARE(run([&](auto done) { commands.remove(u"work/sample-3-16-0-2026-10-07"_s, {}, done); }),
              0);
+}
+
+void TestCli::settingsReadAndChange()
+{
+    QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, {}, {}), 0);
+    m_outStream->flush();
+    QVERIFY(m_out.contains(u"viMode\tfalse\n"_s));
+    QVERIFY(m_out.contains(u"timeFormat\tLocale\n"_s));
+    // Callie's own bookkeeping is not for the user.
+    QVERIFY(!m_out.contains(u"lastSeenVersion"_s));
+
+    QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"viMode"_s, u"on"_s), 0);
+    QVERIFY(m_settings->viMode());
+    QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, u"timeFormat"_s,
+                                u"TwelveHour"_s),
+             0);
+    QCOMPARE(m_settings->timeFormat(), Settings::TimeFormat::TwelveHour);
+    QCOMPARE(
+        Commands::settings(*m_settings, *m_outStream, *m_errStream, u"leaderTimeout"_s, u"1500"_s),
+        0);
+    QCOMPARE(m_settings->leaderTimeout(), 1500);
+
+    // What a setting refuses, or cannot read, is a mistake.
+    for (const auto &[name, value] :
+         {std::pair(u"leaderKey"_s, u"x"_s), std::pair(u"viMode"_s, u"maybe"_s),
+          std::pair(u"timeFormat"_s, u"Sundial"_s), std::pair(u"lastSeenVersion"_s, u"9"_s),
+          std::pair(u"nope"_s, u"1"_s)})
+        QCOMPARE(Commands::settings(*m_settings, *m_outStream, *m_errStream, name, value), 2);
+    QCOMPARE(m_settings->leaderKey(), u","_s);
+}
+
+void TestCli::calendarsAndAccountsTakeNewLooks()
+{
+    QCOMPARE(m_commands->calendarLook(u"rename"_s, u"Focus"_s, u"Deep work"_s), 0);
+    QCOMPARE(m_settings->calendarLooks().value(u"focus"_s).toMap().value(u"name"_s).toString(),
+             u"Deep work"_s);
+    QCOMPARE(m_commands->calendarLook(u"color"_s, u"focus"_s, u"#e86a92"_s), 0);
+    QCOMPARE(m_commands->calendarLook(u"color"_s, u"focus"_s, u"pinkish"_s), 2);
+    QCOMPARE(m_commands->calendarLook(u"hide"_s, u"Personal"_s, {}), 0);
+    QVERIFY(m_settings->hiddenCalendars().contains(u"personal"_s));
+    QCOMPARE(m_commands->calendarLook(u"show"_s, u"personal"_s, {}), 0);
+    QVERIFY(m_settings->hiddenCalendars().isEmpty());
+    QCOMPARE(m_commands->calendarLook(u"reset"_s, u"focus"_s, {}), 0);
+    QVERIFY(m_settings->calendarLooks().isEmpty());
+    QCOMPARE(m_commands->calendarLook(u"hide"_s, u"Nope"_s, {}), 1);
+    QCOMPARE(m_commands->calendarLook(u"paint"_s, u"focus"_s, {}), 2);
+
+    QCOMPARE(m_commands->renameAccount(u"sam@work.example"_s, u"Work"_s), 0);
+    QCOMPARE(m_settings->accountName(u"sam@work.example"_s), u"Work"_s);
+    QCOMPARE(m_commands->renameAccount(u"nobody@example.com"_s, u"Nobody"_s), 1);
 }
 
 QTEST_GUILESS_MAIN(TestCli)

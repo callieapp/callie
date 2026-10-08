@@ -72,6 +72,9 @@ callie accounts                          # connected calendar accounts
 callie accounts add google               # sign in with Google in your browser
 callie accounts remove google you@example.com
 callie calendars                         # calendars in each account, tab-separated
+callie calendars rename Focus "Deep work" # also hide, show, color <calendar> <#rrggbb>, reset
+callie accounts rename you@example.com Work
+callie settings                          # every setting; callie settings viMode true changes one
 callie sync                              # fetch changes from every account
 callie logs                              # log file paths; -f follows them, --open opens the folder
 callie status                            # last sync and errors per calendar, keyring and setup

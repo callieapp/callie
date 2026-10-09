@@ -145,10 +145,11 @@ Popup {
     }
 
     readonly property bool hasCall: callService !== ""
-    readonly property string callName: callService === "zoom" ? qsTr("Join Zoom call") :
-                                                                callService === "meet" ? qsTr(
-                                                                                             "Join Google Meet") :
-                                                                                         qsTr("Join call")
+    readonly property string callName: ({
+                                            "zoom": qsTr("Join Zoom call"),
+                                            "meet": qsTr("Join Google Meet"),
+                                            "teams": qsTr("Join Teams call")
+                                        })[callService] || qsTr("Join call")
 
     // Wider while it is a form, which has more to hold.
     width: editing ? 400 : 320
@@ -358,10 +359,16 @@ Popup {
                 onClicked: Qt.openUrlExternally(root.conferenceUrl)
             }
 
+            // A place opens in the map app chosen in Settings.
             Detail {
                 width: parent.width - 2 * parent.padding
                 label: qsTr("Where")
                 value: root.location
+                linked: true
+                onActivated: {
+                    if (!Qt.openUrlExternally(actions.mapUrl(Settings.mapApp, root.location)))
+                        Qt.openUrlExternally(actions.mapUrl("osm", root.location))
+                }
             }
             Detail {
                 width: parent.width - 2 * parent.padding
@@ -711,6 +718,10 @@ Popup {
 
         property string label
         property string value
+        /// The value opens something when clicked.
+        property bool linked: false
+
+        signal activated
 
         visible: value !== ""
         spacing: Theme.space4
@@ -730,10 +741,23 @@ Popup {
             maximumLineCount: 8
             elide: Text.ElideRight
             textFormat: Text.PlainText
-            color: Theme.text
+            color: detail.linked ? Theme.accent : Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textMd
             font.weight: Font.DemiBold
+            font.underline: detail.linked && link.hovered
+            Accessible.role: detail.linked ? Accessible.Link : Accessible.StaticText
+            Accessible.name: detail.value
+
+            HoverHandler {
+                id: link
+                enabled: detail.linked
+                cursorShape: Qt.PointingHandCursor
+            }
+            TapHandler {
+                enabled: detail.linked
+                onTapped: detail.activated()
+            }
         }
     }
 }

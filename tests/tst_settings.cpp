@@ -18,6 +18,7 @@ private Q_SLOTS:
     void workingHoursStayInOrder();
     void accountPhotosAreKept();
     void developerSettingsAreKept();
+    void mapAppIsKept();
     void newCalendarsStartAsTheirProviderShowsThem();
     void keyboardSettingsKeepToWhatWorks();
     void weekSettingsResetAndSignal();
@@ -238,6 +239,20 @@ void TestSettings::developerSettingsAreKept()
     Settings settings(path());
     QVERIFY(settings.developerMode());
     QVERIFY(settings.verboseLogging());
+}
+
+void TestSettings::mapAppIsKept()
+{
+    {
+        Settings settings(path());
+        QCOMPARE(settings.mapApp(), u"system"_s);
+        QSignalSpy changed(&settings, &Settings::mapAppChanged);
+        settings.setMapApp(u"osm"_s);
+        settings.setMapApp(u"nowhere"_s);
+        QCOMPARE(changed.size(), 1);
+    }
+    Settings settings(path());
+    QCOMPARE(settings.mapApp(), u"osm"_s);
 }
 
 void TestSettings::accountPhotosAreKept()

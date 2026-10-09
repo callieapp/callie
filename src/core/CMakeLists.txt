@@ -78,6 +78,8 @@ add_library(calliecore STATIC
     InvitesModel.cpp
     callie/SearchModel.h
     SearchModel.cpp
+    callie/Places.h
+    Places.cpp
     callie/Contact.h
     callie/ContactBook.h
     ContactBook.cpp

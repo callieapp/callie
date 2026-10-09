@@ -68,6 +68,8 @@ public:
     /// The custom form's `custom` for a start moved `days` on: its weekdays
     /// move with it.
     Q_INVOKABLE static QVariantMap shiftCustom(const QVariantMap &custom, int days);
+    /// Where the map app `app` shows `location`; see places::mapUrl.
+    Q_INVOKABLE static QUrl mapUrl(const QString &app, const QString &location);
     /// `recurrence` in words, from the choices or the custom form, or "Custom".
     Q_INVOKABLE static QString describeRepeat(const QStringList &recurrence, const QDateTime &day,
                                               const QString &zone);

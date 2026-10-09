@@ -272,6 +272,45 @@ Popup {
                 checked: Settings.dimPast
                 onToggled: Settings.dimPast = checked
             }
+            Text {
+                text: qsTr("Open places in")
+                color: Theme.textFaint
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+                font.weight: Font.ExtraBold
+            }
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+
+                Repeater {
+                    model: [
+                        {
+                            "id": "system",
+                            "label": qsTr("My map app")
+                        },
+                        {
+                            "id": "google",
+                            "label": qsTr("Google Maps")
+                        },
+                        {
+                            "id": "osm",
+                            "label": qsTr("OpenStreetMap")
+                        },
+                        {
+                            "id": "apple",
+                            "label": qsTr("Apple Maps")
+                        }
+                    ]
+
+                    PillButton {
+                        required property var modelData
+                        label: modelData.label
+                        selected: Settings.mapApp === modelData.id
+                        onClicked: Settings.mapApp = modelData.id
+                    }
+                }
+            }
         }
 
         Section {

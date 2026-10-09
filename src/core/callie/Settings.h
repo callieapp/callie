@@ -40,6 +40,8 @@ class Settings : public QObject
     /// Shows ids and raw data for debugging: on event cards, in the calendar
     /// menu, and the raw repeat rule in the editor.
     Q_PROPERTY(bool developerMode READ developerMode WRITE setDeveloperMode NOTIFY developerChanged)
+    /// The map app places open in: "system", "google", "osm" or "apple".
+    Q_PROPERTY(QString mapApp READ mapApp WRITE setMapApp NOTIFY mapAppChanged)
     /// Writes Callie's debug lines to the log, as QT_LOGGING_RULES would.
     Q_PROPERTY(
         bool verboseLogging READ verboseLogging WRITE setVerboseLogging NOTIFY developerChanged)
@@ -120,6 +122,8 @@ public:
     void setWorkEnd(int minutes);
     [[nodiscard]] bool showWorkHours() const { return m_showWorkHours; }
     void setShowWorkHours(bool show);
+    [[nodiscard]] QString mapApp() const { return m_mapApp; }
+    void setMapApp(const QString &app);
     [[nodiscard]] bool developerMode() const { return m_developerMode; }
     void setDeveloperMode(bool on);
     [[nodiscard]] bool verboseLogging() const { return m_verboseLogging; }
@@ -215,6 +219,7 @@ Q_SIGNALS:
     void workHoursChanged();
     void keyboardChanged();
     void developerChanged();
+    void mapAppChanged();
     void hiddenCalendarsChanged();
     void timesChanged();
     void themeChanged();
@@ -247,6 +252,7 @@ private:
     int m_workEnd = 17 * 60;
     bool m_showWorkHours = false;
     bool m_developerMode = false;
+    QString m_mapApp = QStringLiteral("system");
     bool m_verboseLogging = false;
     bool m_viMode = false;
     QString m_leaderKey = QStringLiteral(",");

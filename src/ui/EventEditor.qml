@@ -328,11 +328,115 @@ Column {
     }
 
     Field {
+        id: placeField
+
+        property int highlighted: 0
+        /// A suggestion was picked with the arrows, so Enter takes it.
+        property bool picking: false
+
+        function take(label) {
+            root.place = label
+            Places.clear()
+        }
+
         width: parent.width
         text: root.place
         placeholderText: qsTr("Where")
         Accessible.name: qsTr("Where")
-        onTextEdited: root.place = text
+        onTextEdited: {
+            root.place = text
+            Places.search(text)
+            highlighted = 0
+            picking = false
+        }
+        onActiveFocusChanged: {
+            if (!activeFocus)
+                Places.clear()
+        }
+        Component.onDestruction: Places.clear()
+        Keys.onDownPressed: {
+            highlighted = Math.min(Places.results.length - 1, highlighted + 1)
+            picking = true
+        }
+        Keys.onUpPressed: {
+            highlighted = Math.max(0, highlighted - 1)
+            picking = true
+        }
+        Keys.onReturnPressed: event => {
+            event.accepted = picking && Places.results.length > 0
+            if (event.accepted)
+                take(Places.results[highlighted].label)
+        }
+        Keys.onTabPressed: event => {
+            event.accepted = picking && Places.results.length > 0
+            if (event.accepted)
+                take(Places.results[highlighted].label)
+        }
+        Keys.onEscapePressed: event => {
+            event.accepted = Places.results.length > 0
+            Places.clear()
+        }
+    }
+
+    // Places matching what is typed: the user's own first, then OpenStreetMap's.
+    Column {
+        visible: Places.results.length > 0
+        width: parent.width
+
+        Repeater {
+            model: Places.results
+
+            Rectangle {
+                id: placeSuggestion
+
+                required property var modelData
+                required property int index
+
+                width: parent.width
+                height: Theme.listRowHeight + Theme.space2
+                radius: Theme.radiusMd
+                color: index === placeField.highlighted || placePointer.hovered ? Theme.surfaceAlt :
+                                                                                  "transparent"
+                Accessible.role: Accessible.Button
+                Accessible.name: modelData.label
+
+                HoverHandler {
+                    id: placePointer
+                    cursorShape: Qt.PointingHandCursor
+                }
+                TapHandler {
+                    // Holds the press, so it cannot reach the view under the card.
+                    gesturePolicy: TapHandler.ReleaseWithinBounds
+                    onTapped: placeField.take(placeSuggestion.modelData.label)
+                }
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: Theme.space3
+                        rightMargin: Theme.space3
+                        verticalCenter: parent.verticalCenter
+                    }
+                    elide: Text.ElideRight
+                    text: placeSuggestion.modelData.label
+                    textFormat: Text.PlainText
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textSm
+                    font.weight: placeSuggestion.modelData.past ? Font.Bold : Font.Normal
+                }
+            }
+        }
+        // OpenStreetMap's data asks to be credited where it is shown.
+        Text {
+            visible: Places.results.some(r => !r.past)
+            leftPadding: Theme.space3
+            text: qsTr("Places from OpenStreetMap")
+            color: Theme.textFaint
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textXs
+        }
     }
 
     Toggle {
@@ -475,6 +579,7 @@ Column {
                     cursorShape: Qt.PointingHandCursor
                 }
                 TapHandler {
+                    gesturePolicy: TapHandler.ReleaseWithinBounds
                     onTapped: guestField.take(suggestion.modelData.email)
                 }
 

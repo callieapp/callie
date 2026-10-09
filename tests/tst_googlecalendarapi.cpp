@@ -45,6 +45,7 @@ private Q_SLOTS:
     void allDayEventHasDateOnly();
     void seriesAndExceptionAreParsed();
     void videoEntryPointWinsOverHangoutLink();
+    void callLinkIsFoundInPlaceOrNotes();
 
 private:
     std::unique_ptr<FakeHttpServer> m_server;
@@ -279,6 +280,26 @@ void TestGoogleCalendarApi::videoEntryPointWinsOverHangoutLink()
     const GoogleEvent meetOnly = parseGoogleEvent(
         json(R"({"id":"e4","hangoutLink":"https://meet.google.com/aaa-bbbb-ccc"})"));
     QCOMPARE(meetOnly.conferenceUrl, QUrl(QStringLiteral("https://meet.google.com/aaa-bbbb-ccc")));
+}
+
+void TestGoogleCalendarApi::callLinkIsFoundInPlaceOrNotes()
+{
+    const GoogleEvent inNotes = parseGoogleEvent(json(R"({"id":"n1",
+        "description":"Agenda first. Join: https://example.zoom.us/j/987?pwd=x."})"));
+    QCOMPARE(inNotes.conferenceUrl, QUrl(QStringLiteral("https://example.zoom.us/j/987?pwd=x")));
+
+    const GoogleEvent inPlace =
+        parseGoogleEvent(json(R"({"id":"n2","location":"https://meet.google.com/aaa-bbbb-ccc"})"));
+    QCOMPARE(inPlace.conferenceUrl, QUrl(QStringLiteral("https://meet.google.com/aaa-bbbb-ccc")));
+
+    // Google's own link wins, and other links are not calls.
+    const GoogleEvent both = parseGoogleEvent(json(R"({"id":"n3",
+        "hangoutLink":"https://meet.google.com/aaa-bbbb-ccc",
+        "description":"https://example.zoom.us/j/1"})"));
+    QCOMPARE(both.conferenceUrl, QUrl(QStringLiteral("https://meet.google.com/aaa-bbbb-ccc")));
+    const GoogleEvent other =
+        parseGoogleEvent(json(R"({"id":"n4","description":"https://example.com/zoom"})"));
+    QVERIFY(other.conferenceUrl.isEmpty());
 }
 
 void TestGoogleCalendarApi::ownResponseIsKept()

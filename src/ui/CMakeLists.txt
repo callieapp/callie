@@ -20,6 +20,8 @@ qt_add_qml_module(callieui
         EventActions.cpp
         KeyRouter.h
         KeyRouter.cpp
+        PlaceSearch.h
+        PlaceSearch.cpp
         EventModelForeign.h
         LiveQml.h
         NotificationServer.h

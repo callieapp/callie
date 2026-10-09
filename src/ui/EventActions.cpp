@@ -133,6 +133,54 @@ QStringList EventActions::repeatRule(const QString &choice, const QDateTime &day
     return Repeat::rule(choice, day.date());
 }
 
+QVariantMap EventActions::customRepeat(const QStringList &recurrence, const QDateTime &day,
+                                       const QString &zone)
+{
+    const std::optional<Repeat::Custom> custom =
+        Repeat::custom(recurrence, day.date(), zoneNamed(zone));
+    if (!custom)
+        return {};
+    QVariantList weekdays;
+    for (int weekday : custom->weekdays)
+        weekdays << weekday;
+    return {{u"frequency"_s, custom->frequency},
+            {u"interval"_s, custom->interval},
+            {u"weekdays"_s, weekdays},
+            {u"onWeekday"_s, custom->onWeekday},
+            {u"until"_s, custom->until.isValid() ? custom->until.startOfDay() : QDateTime()},
+            {u"count"_s, custom->count}};
+}
+
+QStringList EventActions::customRule(const QVariantMap &custom, const QDateTime &day, bool allDay,
+                                     const QString &zone, const QStringList &previous)
+{
+    Repeat::Custom c;
+    c.frequency = custom.value(u"frequency"_s).toString();
+    c.interval = std::max(1, custom.value(u"interval"_s).toInt());
+    for (const QVariant &weekday : custom.value(u"weekdays"_s).toList())
+        c.weekdays << weekday.toInt();
+    c.onWeekday = custom.value(u"onWeekday"_s).toBool();
+    c.until = custom.value(u"until"_s).toDateTime().date();
+    c.count = std::max(0, custom.value(u"count"_s).toInt());
+    QStringList lines = Repeat::rule(c, day.date(), allDay, zoneNamed(zone));
+    for (const QString &line : previous) {
+        if (!line.startsWith(u"RRULE:"_s, Qt::CaseInsensitive))
+            lines << line;
+    }
+    return lines;
+}
+
+QString EventActions::describeRepeat(const QStringList &recurrence, const QDateTime &day,
+                                     const QString &zone)
+{
+    const QString choice = Repeat::choiceOf(recurrence, day.date());
+    if (choice != u"custom")
+        return Repeat::describe(choice, day.date());
+    if (const auto custom = Repeat::custom(recurrence, day.date(), zoneNamed(zone)))
+        return Repeat::describe(*custom, day.date());
+    return Repeat::describe(choice, day.date());
+}
+
 EventEdit EventActions::toEdit(const QVariantMap &changes)
 {
     EventEdit edit;

@@ -145,10 +145,10 @@ QColor ThemeController::dangerEdge() const
 
 QColor ThemeController::dangerText() const
 {
-    // Dark ink on a light red, white on a deep one.
-    const QColor red = m_spec.colors.danger;
-    const qreal luminance = 0.2126 * red.redF() + 0.7152 * red.greenF() + 0.0722 * red.blueF();
-    return luminance > 0.4 ? QColor(0x1a, 0x10, 0x14) : QColor(Qt::white);
+    // Whichever of the theme's own text and background reads better on the red.
+    const QColor &red = m_spec.colors.danger;
+    const QColor &text = m_spec.colors.text, &ground = m_spec.colors.background;
+    return color::contrastRatio(text, red) >= color::contrastRatio(ground, red) ? text : ground;
 }
 
 QColor ThemeController::answerHover() const

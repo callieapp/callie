@@ -56,6 +56,7 @@ private Q_SLOTS:
     void eventsAreInTheRequestedZone();
     void seriesAreExpanded();
     void readOnlyCalendarsAllowNoChanges();
+    void onlyTheOwnCalendarSaysWhereTheUserWorks();
     void remindersFallBackToTheCalendar();
     void backgroundLoadMatchesDirectRead();
     void refreshWithoutSyncRereadsCache();
@@ -212,6 +213,31 @@ void TestGoogleSource::backgroundLoadMatchesDirectRead()
     QCOMPARE(snapshot.calendars.size(), source.calendars().size());
     QCOMPARE(snapshot.calendars.first().id, source.calendars().first().id);
     QCOMPARE(snapshot.calendars.first().account, kAccount.id);
+}
+
+void TestGoogleSource::onlyTheOwnCalendarSaysWhereTheUserWorks()
+{
+    GoogleCalendar mine = calendar(u"mine"_s, true);
+    mine.primary = true;
+    QVERIFY(m_cache->setCalendars(kAccount, {mine, calendar(u"pat"_s, true, u"reader"_s)}));
+    const auto home = [](const char *id) {
+        return parsed(QByteArray(R"({"id":")") + id +
+                      R"(","summary":"Home","eventType":"workingLocation",
+                     "start":{"date":"2026-10-06"},"end":{"date":"2026-10-07"}})");
+    };
+    QVERIFY(m_cache->applyChanges(kAccount, u"mine"_s, {{home("me")}, u"t"_s}, true));
+    QVERIFY(m_cache->applyChanges(kAccount, u"pat"_s, {{home("pat")}, u"t"_s}, true));
+
+    const GoogleSource source(*m_cache, {kAccount});
+    QHash<QString, bool> workPlace;
+    for (const Event &e : source.eventsBetween(
+             QDateTime(QDate(2026, 10, 6), QTime(0, 0), QTimeZone::UTC),
+             QDateTime(QDate(2026, 10, 7), QTime(0, 0), QTimeZone::UTC), QTimeZone::UTC))
+        workPlace.insert(e.eventId, e.workPlace);
+    // A colleague's working day is that colleague's event.
+    QCOMPARE(workPlace.value(u"me"_s), true);
+    QCOMPARE(workPlace.value(u"pat"_s), false);
+    QVERIFY(workPlace.contains(u"pat"_s));
 }
 
 void TestGoogleSource::readOnlyCalendarsAllowNoChanges()

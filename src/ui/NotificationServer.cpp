@@ -6,6 +6,10 @@
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
+#include <QDir>
+#include <QFile>
+#include <QIcon>
+#include <QStandardPaths>
 #include <QVariantMap>
 
 using namespace Qt::StringLiterals;
@@ -17,6 +21,25 @@ namespace {
 const QString kService = u"org.freedesktop.Notifications"_s;
 const QString kPath = u"/org/freedesktop/Notifications"_s;
 const QString kInterface = u"org.freedesktop.Notifications"_s;
+const QString kAppId = u"org.callieapp.Callie"_s;
+
+// The icon theme's Callie when installed; otherwise, as when running from a
+// build, the bundled logo copied where the daemon can read it.
+QString appIcon()
+{
+    static const QString icon = [] {
+        if (QIcon::hasThemeIcon(kAppId))
+            return kAppId;
+        const QString dir =
+            QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u"/callie"_s;
+        const QString path = dir + u"/notification-icon.png"_s;
+        if (QFile::exists(path) ||
+            (QDir().mkpath(dir) && QFile::copy(u":/callie/assets/logo.png"_s, path)))
+            return path;
+        return kAppId;
+    }();
+    return icon;
+}
 
 } // namespace
 
@@ -34,13 +57,12 @@ void FreedesktopNotifications::show(const QString &title, const QString &body,
 {
     QDBusMessage call = QDBusMessage::createMethodCall(kService, kPath, kInterface, u"Notify"_s);
     const QVariantMap hints{
-        {u"desktop-entry"_s, u"org.callieapp.Callie"_s},
+        {u"desktop-entry"_s, kAppId},
         {u"category"_s, u"x-gnome.calendar"_s},
         // Normal urgency; the daemon decides how long it stays.
         {u"urgency"_s, QVariant::fromValue(uchar(1))},
     };
-    call << u"Callie"_s << uint(0) << u"org.callieapp.Callie"_s << title << body << actions << hints
-         << int(-1);
+    call << u"Callie"_s << uint(0) << appIcon() << title << body << actions << hints << int(-1);
     auto *watcher =
         new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call), this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this,

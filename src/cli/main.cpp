@@ -228,8 +228,9 @@ int runStatus(QCoreApplication &app)
             for (const GoogleCalendar &calendar : cache.calendars(account)) {
                 out << "  " << calendar.summary.leftJustified(28, u' ', true) << "  "
                     << describe(cache.calendarState(account, calendar.id));
+                // Google's choice, which only decides how a calendar starts in Callie.
                 if (!calendar.selected)
-                    out << "  " << dim(QObject::tr("hidden"));
+                    out << "  " << dim(QObject::tr("hidden in Google"));
                 out << "\n";
             }
             printNext();

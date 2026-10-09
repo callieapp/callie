@@ -96,7 +96,7 @@ QString cacheSummary(GoogleCache &cache, bool readable, const QList<Account> &ac
             if (!state.lastError.isEmpty() || !state.lastSynced.isValid())
                 lines.append(QStringLiteral("  calendar %1: %2").arg(calendar.id, describe(state)));
         }
-        lines.append(QStringLiteral("  %1 calendars, %2 shown, %3 events cached")
+        lines.append(QStringLiteral("  %1 calendars, %2 shown in Google, %3 events cached")
                          .arg(calendars.size())
                          .arg(shown)
                          .arg(cache.eventCount(account)));

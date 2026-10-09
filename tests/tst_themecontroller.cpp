@@ -37,6 +37,7 @@ private Q_SLOTS:
     void builtInIdIgnoresSameNamedFile();
     void stickerColorsShareTheCalendarHue();
     void unfittedInkPicksTheReadableOne();
+    void armedDangerReadsInBothThemes();
     void bundledFontsAreAvailable();
 };
 
@@ -137,6 +138,18 @@ void TestThemeController::unfittedInkPicksTheReadableOne()
              QColor(255, 255, 255));
     QVERIFY(theme->calendarEdge(QColor(QStringLiteral("#ffe680")), calendar).lightness() <
             QColor(QStringLiteral("#ffe680")).lightness());
+}
+
+void TestThemeController::armedDangerReadsInBothThemes()
+{
+    ThemeController *theme = ThemeController::instance();
+    for (const QString &id : {QStringLiteral("callie"), QStringLiteral("callie-light")}) {
+        QVERIFY(theme->load(id).isEmpty());
+        // A filled red button's label reads as body text does.
+        QVERIFY2(color::contrastRatio(theme->dangerText(), theme->danger()) >= 4.5, qPrintable(id));
+        QCOMPARE(theme->dangerText() == theme->text() || theme->dangerText() == theme->bg(), true);
+    }
+    QVERIFY(theme->load(QStringLiteral("callie")).isEmpty());
 }
 
 void TestThemeController::bundledFontsAreAvailable()

@@ -30,6 +30,8 @@ qt_add_qml_module(callieui
         Reminders.cpp
         SingleInstance.h
         SingleInstance.cpp
+        TrayItem.h
+        TrayItem.cpp
         StartAtLogin.h
         StartAtLogin.cpp
         LiveQml.cpp

@@ -40,7 +40,8 @@ failed, and the button beside it syncs now. `--sample` shows a made-up week inst
 stops the clock at that time and `--size 1280x840` sets the window size, so a screenshot comes out
 the same every time. `--background` starts without showing the window while Callie is set to keep
 running for reminders; Settings > Reminders > Start when I log in adds an autostart entry that uses
-it.
+it. While Callie keeps running it has an entry in the system tray, on desktops that show one (KDE
+Plasma and most others; GNOME needs the AppIndicator extension), to open the window, sync or quit.
 
 Connect Google accounts in Settings, under Accounts: Callie opens your browser to sign in, and the
 account's calendars appear once you have. The same tab shows how each account's sync is going and

@@ -119,27 +119,12 @@ Column {
                     onClicked: Accounts.reconnect(row.modelData.id)
                 }
                 // Removing takes a second click, since the account's sign-in goes too.
-                StickerButton {
-                    id: removeButton
-                    property bool armed: false
+                DangerButton {
                     visible: Accounts.unavailable === ""
                     enabled: !Accounts.busy
-                    text: armed ? qsTr("Click again to remove") : qsTr("Remove")
-                    onClicked: {
-                        if (armed) {
-                            armed = false
-                            Accounts.remove(row.modelData.id)
-                        } else {
-                            armed = true
-                            disarm.restart()
-                        }
-                    }
-
-                    Timer {
-                        id: disarm
-                        interval: 4000
-                        onTriggered: removeButton.armed = false
-                    }
+                    label: qsTr("Remove")
+                    armedLabel: qsTr("Click again to remove")
+                    onConfirmed: Accounts.remove(row.modelData.id)
                 }
             }
         }

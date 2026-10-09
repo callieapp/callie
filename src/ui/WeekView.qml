@@ -304,13 +304,13 @@ Item {
 
                     // Outside working hours, shaded like a day off.
                     Rectangle {
-                        visible: !column.dayOff
+                        visible: Settings.showWorkHours && !column.dayOff
                         width: parent.width
                         height: Settings.workStart / 60 * Theme.hourHeight
                         color: Theme.dayOffWash
                     }
                     Rectangle {
-                        visible: !column.dayOff
+                        visible: Settings.showWorkHours && !column.dayOff
                         y: Settings.workEnd / 60 * Theme.hourHeight
                         width: parent.width
                         height: parent.height - y

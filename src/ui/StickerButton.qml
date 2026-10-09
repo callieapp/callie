@@ -3,7 +3,8 @@ import QtQuick
 import QtQuick.Controls
 
 /// A raised button that sits on its edge and presses down into it. `accent`
-/// makes it pink, for the one primary action in view.
+/// makes it pink, for the one primary action in view; `destructive` gives it
+/// a red label, and `armed` fills it red for the click that confirms.
 AbstractButton {
     id: root
 
@@ -11,9 +12,16 @@ AbstractButton {
     /// Line weight of the glyph; busy glyphs such as settings read better thinner.
     property real glyphStroke: 2.2
     property bool accent: false
+    property bool destructive: false
+    property bool armed: false
+    readonly property bool filledRed: destructive && armed
 
-    readonly property color face: accent ? Theme.accent : hovered ? Theme.border : Theme.surfaceAlt
-    readonly property color ink: accent ? Theme.accentText : Theme.text
+    readonly property color face: filledRed ? Theme.danger : accent ? Theme.accent : hovered
+                                                                      ? Theme.border :
+                                                                        Theme.surfaceAlt
+    readonly property color ink: filledRed ? Theme.dangerText : destructive ? Theme.danger : accent
+                                                                              ? Theme.accentText :
+                                                                                Theme.text
     readonly property real sink: down ? Theme.stickerEdge : 0
 
     implicitHeight: 32
@@ -34,7 +42,7 @@ AbstractButton {
                 bottomMargin: -Theme.stickerEdge
             }
             radius: Theme.radiusMd
-            color: root.accent ? Theme.accentEdge : Theme.edge
+            color: root.filledRed ? Theme.dangerEdge : root.accent ? Theme.accentEdge : Theme.edge
         }
         Rectangle {
             width: parent.width

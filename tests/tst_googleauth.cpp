@@ -164,6 +164,10 @@ void TestGoogleAuth::callbackPageIsThemed()
     QVERIFY(page.contains(ThemeLoader::defaultTheme().colors.background.name()));
     QVERIFY(page.contains(u"<svg"_s));
     QVERIFY(page.contains(u"All done here"_s));
+    // The tab has a name and the logo, not the loopback address.
+    QVERIFY(page.contains(u"<title>Callie</title>"_s));
+    QVERIFY(page.contains(
+        u"<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml;base64,"_s));
     QVERIFY(
         page.contains(u"font-family: 'Fraunces'; font-weight: 100 900; src: url(data:font/ttf"_s));
 }

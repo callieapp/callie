@@ -91,6 +91,10 @@ class ThemeController : public QObject
     Q_PROPERTY(QColor dayOffWash READ dayOffWash NOTIFY changed)
     /// Behind an invitation's answer on hover, where rows are already surfaceAlt.
     Q_PROPERTY(QColor answerHover READ answerHover NOTIFY changed)
+    /// A destructive button armed for its second click: filled with danger,
+    /// on an edge of it, with ink that reads on it.
+    Q_PROPERTY(QColor dangerEdge READ dangerEdge NOTIFY changed)
+    Q_PROPERTY(QColor dangerText READ dangerText NOTIFY changed)
 
     Q_PROPERTY(int hourHeight READ hourHeight CONSTANT)
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
@@ -222,6 +226,8 @@ public:
 
     QColor todayWash() const;
     QColor answerHover() const;
+    QColor dangerEdge() const;
+    QColor dangerText() const;
     QColor dayOffWash() const;
 
     int hourHeight() const { return 62; }

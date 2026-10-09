@@ -49,7 +49,13 @@ QString signInPage(const ThemeSpec &theme)
         "SignInPage",
         "Callie is finishing your sign-in. You can close this tab and head back to the app.");
 
+    // The tab shows the logo and a name, rather than the loopback address.
+    const QString icon =
+        u"data:image/svg+xml;base64,"_s + QString::fromLatin1(svg.toUtf8().toBase64());
+
     return uR"(<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%15</title>
+<link rel="icon" type="image/svg+xml" href="%16">
 <style>
 %1
   html, body { margin: 0; height: 100%; }
@@ -76,7 +82,8 @@ QString signInPage(const ThemeSpec &theme)
              QString::number(theme.shape.radiusXLarge), QString::number(theme.shape.stickerEdge),
              c.edge.name())
         .arg(font(theme.type.displayFamily, u"Georgia, serif"_s), c.textMuted.name(), svg,
-             title.toHtmlEscaped(), body.toHtmlEscaped());
+             title.toHtmlEscaped(), body.toHtmlEscaped())
+        .arg(QCoreApplication::translate("SignInPage", "Callie"), icon);
 }
 
 } // namespace callie

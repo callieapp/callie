@@ -138,6 +138,19 @@ QColor ThemeController::todayWash() const
     return tint(m_spec.colors.accent, 0.04);
 }
 
+QColor ThemeController::dangerEdge() const
+{
+    return m_spec.colors.danger.darker(140);
+}
+
+QColor ThemeController::dangerText() const
+{
+    // Dark ink on a light red, white on a deep one.
+    const QColor red = m_spec.colors.danger;
+    const qreal luminance = 0.2126 * red.redF() + 0.7152 * red.greenF() + 0.0722 * red.blueF();
+    return luminance > 0.4 ? QColor(0x1a, 0x10, 0x14) : QColor(Qt::white);
+}
+
 QColor ThemeController::answerHover() const
 {
     return tint(m_spec.colors.accent, 0.22);

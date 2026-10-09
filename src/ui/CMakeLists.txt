@@ -79,6 +79,7 @@ qt_add_qml_module(callieui
         ZonePicker.qml
         TimePicker.qml
         DatePicker.qml
+        CustomRepeat.qml
         EventEditor.qml
         InvitesTray.qml
         Field.qml

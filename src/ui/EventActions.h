@@ -55,6 +55,18 @@ public:
     Q_INVOKABLE static QVariantList repeatChoices(const QDateTime &day);
     Q_INVOKABLE static QString repeatChoice(const QStringList &recurrence, const QDateTime &day);
     Q_INVOKABLE static QStringList repeatRule(const QString &choice, const QDateTime &day);
+    /// `recurrence` as the custom form edits it: {frequency, interval,
+    /// weekdays, onWeekday, until, count}, or empty when the form cannot say it.
+    Q_INVOKABLE static QVariantMap customRepeat(const QStringList &recurrence, const QDateTime &day,
+                                                const QString &zone);
+    /// The rule for the custom form's `custom`, keeping the lines of `previous`
+    /// that are not rules, such as deleted days.
+    Q_INVOKABLE static QStringList customRule(const QVariantMap &custom, const QDateTime &day,
+                                              bool allDay, const QString &zone,
+                                              const QStringList &previous);
+    /// `recurrence` in words, from the choices or the custom form, or "Custom".
+    Q_INVOKABLE static QString describeRepeat(const QStringList &recurrence, const QDateTime &day,
+                                              const QString &zone);
 
     /// Makes a copy of the event, starting at `at`, or at the same time when it
     /// is invalid. An all-day copy keeps to whole days. The copy goes in the

@@ -82,6 +82,7 @@ private Q_SLOTS:
     void guestsComeFromSuggestions();
     void trayAsksWhichOccurrences();
     void developerModeShowsIds();
+    void customRepeatsAreWritten();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -566,6 +567,44 @@ void TestEventEdit::developerModeShowsIds()
         QJsonDocument::fromJson(QGuiApplication::clipboard()->text().toUtf8()).object();
     QCOMPARE(copied[u"summary"].toString(), u"Dentist"_s);
     QCOMPARE(copied[u"eventId"].toString(), u"sample-3-16-0-2026-10-07"_s);
+}
+
+void TestEventEdit::customRepeatsAreWritten()
+{
+    QQuickItem *form = openEditor(u"Climbing"_s);
+    QVERIFY(form);
+    const auto changes = [form](const QString &scope) {
+        QVariant result;
+        QMetaObject::invokeMethod(form, "changes", Q_RETURN_ARG(QVariant, result),
+                                  Q_ARG(QVariant, scope));
+        return result.toMap();
+    };
+
+    // Every two weeks, from a one-off Friday.
+    QVERIFY(QMetaObject::invokeMethod(form, "startCustom"));
+    const QVariant everyTwo = QVariantMap{{u"interval"_s, 2}};
+    QVERIFY(QMetaObject::invokeMethod(form, "setCustom", Q_ARG(QVariant, everyTwo)));
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR"_s});
+    QTRY_VERIFY(
+        find(m_window->contentItem(), "StickerButton", "text", u"Every 2 weeks on Friday"_s));
+
+    // A rule Google wrote its own way is not rewritten unless changed.
+    QVariant event = form->property("event");
+    QVariantMap own = event.toMap();
+    own.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=FR,MO;INTERVAL=2"_s});
+    QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, own)));
+    QCOMPARE(form->property("repeat").toString(), u"custom"_s);
+    QVERIFY(!changes(u"all"_s).contains(u"recurrence"_s));
+    // Changed here, it is written the form's way, deleted days and all.
+    own.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=FR,MO;INTERVAL=2"_s,
+                                            u"EXDATE:20261016T210000Z"_s});
+    QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, own)));
+    const QVariant fourTimes = QVariantMap{{u"count"_s, 4}};
+    QVERIFY(QMetaObject::invokeMethod(form, "setCustom", Q_ARG(QVariant, fourTimes)));
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             (QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,FR;COUNT=4"_s,
+                          u"EXDATE:20261016T210000Z"_s}));
 }
 
 QTEST_MAIN(TestEventEdit)

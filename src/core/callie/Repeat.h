@@ -1,8 +1,12 @@
 #pragma once
 
 #include <QDate>
+#include <QList>
 #include <QString>
 #include <QStringList>
+#include <QTimeZone>
+
+#include <optional>
 
 namespace callie {
 
@@ -24,6 +28,37 @@ namespace Repeat {
 /// A choice in words for `start`, such as "Weekly on Tuesday" or "Monthly on
 /// the second Tuesday".
 [[nodiscard]] QString describe(const QString &choice, QDate start);
+
+/// A repeat the custom form can say: every `interval` days, weeks, months or
+/// years, on some weekdays or on a day of the month, until a date or for a
+/// number of times.
+struct Custom
+{
+    /// "daily", "weekly", "monthly" or "yearly".
+    QString frequency = QStringLiteral("weekly");
+    int interval = 1;
+    /// For weekly: Qt day numbers, Monday 1 to Sunday 7.
+    QList<int> weekdays;
+    /// For monthly: on, say, the second Tuesday rather than on the 14th.
+    bool onWeekday = false;
+    /// The last day it can happen on, or invalid.
+    QDate until;
+    /// How many times it happens, or 0.
+    int count = 0;
+
+    friend bool operator==(const Custom &, const Custom &) = default;
+};
+
+/// `recurrence` as the custom form says it, read from `start`; empty when the
+/// form cannot say it, such as a rule on several days of the month.
+[[nodiscard]] std::optional<Custom> custom(const QStringList &recurrence, QDate start,
+                                           const QTimeZone &zone);
+/// The rule for `custom` from `start`. An until date is written as the end of
+/// that day in `zone`, or as a date for an all-day event.
+[[nodiscard]] QStringList rule(const Custom &custom, QDate start, bool allDay,
+                               const QTimeZone &zone);
+/// `custom` in words, such as "Every 2 weeks on Monday and Wednesday, 5 times".
+[[nodiscard]] QString describe(const Custom &custom, QDate start);
 
 } // namespace Repeat
 

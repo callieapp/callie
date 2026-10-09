@@ -27,6 +27,13 @@ Column {
     property date endDay
     property int endMinutes
     property string repeat: "none"
+    /// With repeat "custom": the rule as the custom form holds it, empty when the
+    /// form cannot say it, and the rule's lines as they stand.
+    property var custom: ({})
+    property var customLines: []
+    /// The custom rule was changed here, rather than only read.
+    property bool customTouched: false
+    readonly property bool customReadable: Object.keys(custom).length > 0
     property var guests: []
     property bool videoCall
     property bool moreOptions: false
@@ -48,6 +55,9 @@ Column {
         endDay = root.actions.dayOf(last, zone)
         endMinutes = root.actions.minutesOf(e.end, zone)
         repeat = root.actions.repeatChoice(e.recurrence || [], startDay)
+        customLines = repeat === "custom" ? (e.recurrence || []) : []
+        custom = repeat === "custom" ? root.actions.customRepeat(customLines, startDay, zone) : {}
+        customTouched = false
         guests = (e.attendees || []).slice()
         videoCall = (e.conferenceUrl || "").toString() !== ""
         moreOptions = false
@@ -86,6 +96,14 @@ Column {
         const same = JSON.stringify(rule) === JSON.stringify(event.recurrence || [])
         if (repeat !== "custom" && (repeat !== was || moved) && !same)
             c.recurrence = rule
+        // A custom rule goes only when changed here, or moved with its series,
+        // so one Google wrote its own way is not rewritten for nothing.
+        if (repeat === "custom" && (customTouched || moved)) {
+            const lines = customReadable ? root.actions.customRule(custom, startDay, allDay, zone, event.recurrence
+                                                                   || []) : customLines
+            if (JSON.stringify(lines) !== JSON.stringify(event.recurrence || []))
+                c.recurrence = lines
+        }
         if (JSON.stringify(guests) !== JSON.stringify(event.attendees || []))
             c.guests = guests
         if (videoCall !== ((event.conferenceUrl || "").toString() !== ""))
@@ -125,6 +143,31 @@ Column {
     function saveFor(scope) {
         asking = false
         actions.update(event, changes(scope), scope)
+    }
+
+    /// The rule the repeat button describes.
+    function repeatLines() {
+        return repeat === "custom" ? customLines : root.actions.repeatRule(repeat, startDay)
+    }
+
+    /// Opens the custom form, starting from the repeat chosen so far.
+    function startCustom() {
+        if (repeat !== "custom") {
+            const lines = repeat === "none" ? ["RRULE:FREQ=WEEKLY"] : root.actions.repeatRule(repeat,
+                                                                                              startDay)
+
+            custom = root.actions.customRepeat(lines, startDay, zone)
+            repeat = "custom"
+            setCustom({})
+        }
+    }
+
+    /// Changes some of the custom rule, and the lines that follow from it.
+    function setCustom(changed) {
+        custom = Object.assign({}, custom, changed)
+        customLines = root.actions.customRule(custom, startDay, allDay, zone, event.recurrence
+                                              || [])
+        customTouched = true
     }
 
     function addGuest(text) {
@@ -224,9 +267,7 @@ Column {
             font.weight: Font.ExtraBold
         }
         StickerButton {
-            text: root.repeat === "custom" ? qsTr("Custom") : root.actions.repeatChoices(
-                                                 root.startDay).find(c => c.id
-                                                                          === root.repeat).label
+            text: root.actions.describeRepeat(root.repeatLines(), root.startDay, root.zone)
             onClicked: repeatMenu.open()
 
             MenuCard {
@@ -243,8 +284,18 @@ Column {
                         onTriggered: root.repeat = modelData.id
                     }
                 }
+                MenuEntry {
+                    text: qsTr("Custom...")
+                    onTriggered: root.startCustom()
+                }
             }
         }
+    }
+
+    CustomRepeat {
+        visible: root.repeat === "custom"
+        width: parent.width
+        editor: root
     }
 
     Field {

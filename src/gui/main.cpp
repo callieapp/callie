@@ -9,6 +9,7 @@
 #include "StartAtLogin.h"
 #include "ThemeController.h"
 #include "ThemesController.h"
+#include "TrayItem.h"
 
 #include "callie/AccountStore.h"
 #include "callie/Autostart.h"
@@ -294,8 +295,8 @@ int main(int argc, char *argv[])
             [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Callie.Ui", "Main");
 
-    // A second launch, or a reminder, brings back a hidden window.
-    QObject::connect(&single, &callie::SingleInstance::activated, &engine, [&engine] {
+    // A second launch, a reminder or the tray brings back a hidden window.
+    const auto showWindow = [&engine] {
         if (engine.rootObjects().isEmpty())
             return;
         if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first())) {
@@ -303,7 +304,20 @@ int main(int argc, char *argv[])
             window->raise();
             window->requestActivate();
         }
-    });
+    };
+    QObject::connect(&single, &callie::SingleInstance::activated, &engine, showWindow);
+
+    // While Callie keeps running without its window, the tray shows it is there.
+    callie::TrayItem tray(QDBusConnection::sessionBus());
+    if (!standalone) {
+        tray.setVisible(settings.keepRunning());
+        QObject::connect(&settings, &callie::Settings::keepRunningChanged, &tray,
+                         [&] { tray.setVisible(settings.keepRunning()); });
+        QObject::connect(&tray, &callie::TrayItem::openRequested, &engine, showWindow);
+        QObject::connect(&tray, &callie::TrayItem::syncRequested, source,
+                         &callie::CalendarSource::refresh);
+        QObject::connect(&tray, &callie::TrayItem::quitRequested, &app, &QCoreApplication::quit);
+    }
 
     if (windowSize.isValid() && !engine.rootObjects().isEmpty()) {
         if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first()))

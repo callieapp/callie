@@ -36,6 +36,9 @@ class EventModel : public QAbstractListModel
     Q_PROPERTY(bool use24Hour MEMBER m_use24Hour NOTIFY use24HourChanged)
     /// Rows the all-day strip needs so that no two all-day events overlap.
     Q_PROPERTY(int allDayRows READ allDayRows NOTIFY allDayRowsChanged)
+    /// Where the user works each day of the range, such as "Home", or empty:
+    /// Google's working locations, shown with the day rather than as events.
+    Q_PROPERTY(QStringList workPlaces READ workPlaces NOTIFY workPlacesChanged)
     /// Goes up whenever the rows are replaced.
     Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
     /// The source's shown calendars as {id, name, color, account} maps, for the
@@ -104,6 +107,7 @@ public:
     void setShowDeclined(bool show);
 
     [[nodiscard]] int revision() const { return m_revision; }
+    [[nodiscard]] QStringList workPlaces() const { return m_workPlaces; }
     [[nodiscard]] int allDayRows() const { return m_allDayRows; }
 
     /// Whether the user's locale treats `date` as a day off, for shading it.
@@ -137,6 +141,7 @@ public:
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
 Q_SIGNALS:
+    void workPlacesChanged();
     void sourceChanged();
     void rangeChanged();
     void timeZoneChanged();
@@ -175,6 +180,7 @@ private:
     mutable QHash<int, QString> m_plainDescriptions;
     /// Counts reloads, so a slow load that a newer one overtook is dropped.
     quint64 m_generation = 0;
+    QStringList m_workPlaces;
     int m_allDayRows = 0;
     int m_revision = 0;
     QVariantList m_calendars;

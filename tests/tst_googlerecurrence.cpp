@@ -47,6 +47,7 @@ private Q_SLOTS:
     void declinedOccurrenceIsMarked();
     void occurrencesCarryTheirIds();
     void invitationsAndPermissions();
+    void workingLocationsAreWorkPlaces();
     void guestsListPeopleOrganizerFirst();
     void movedOccurrencesKeepTheSeriesRule();
     void singleEventOverlapsRange();
@@ -448,6 +449,20 @@ void TestGoogleRecurrence::invitationsAndPermissions()
     QVERIFY(!organizer.canRespond);
     QVERIFY(organizer.canEdit);
     QCOMPARE(organizer.attendees, QStringList{u"pat@example.com"_s});
+}
+
+void TestGoogleRecurrence::workingLocationsAreWorkPlaces()
+{
+    const QList<Event> events =
+        expand({parsed(R"({"id":"home","summary":"Home","eventType":"workingLocation",
+                    "start":{"date":"2026-10-06"},"end":{"date":"2026-10-07"}})"),
+                parsed(R"({"id":"lunch","summary":"Lunch","eventType":"default",
+                    "start":{"dateTime":"2026-10-06T16:00:00Z"},
+                    "end":{"dateTime":"2026-10-06T17:00:00Z"}})")},
+               utc(2026, 10, 6), utc(2026, 10, 7));
+    QCOMPARE(events.size(), 2);
+    QVERIFY(events.at(0).workPlace);
+    QVERIFY(!events.at(1).workPlace);
 }
 
 void TestGoogleRecurrence::splitEndsTheSeriesBeforeTheOccurrence()

@@ -79,18 +79,23 @@ Item {
     // ---- Day header --------------------------------------------------------
     Item {
         id: header
+
+        /// The weekday and date, above where a day's work place shows.
+        readonly property int dateHeight: 64
+        readonly property bool hasWorkPlaces: root.model.workPlaces.some(p => p !== "")
+
         anchors {
             top: parent.top
             left: parent.left
             right: parent.right
         }
-        height: 64
+        height: dateHeight + (hasWorkPlaces ? Theme.textXs + Theme.space2 : 0)
 
         // The week's number, in the corner above the hours.
         Text {
             visible: Settings.weekNumbers
             width: Theme.gutterWidth
-            height: parent.height
+            height: header.dateHeight
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: qsTr("W%1").arg(Views.weekNumber(root.dateForColumn(0), Settings.firstDayOfWeek))
@@ -125,7 +130,8 @@ Item {
                     }
 
                     Column {
-                        anchors.centerIn: parent
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: (header.dateHeight - height) / 2
                         spacing: Theme.space1
 
                         Text {
@@ -171,6 +177,24 @@ Item {
                                 }
                             }
                         }
+                    }
+
+                    // Where the user works that day, such as Home or Office.
+                    Text {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                            bottomMargin: Theme.space1
+                        }
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        text: root.model.workPlaces[dayHeader.index] || ""
+                        textFormat: Text.PlainText
+                        color: Theme.textMuted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textXs
+                        font.weight: Font.Bold
                     }
                 }
             }

@@ -113,6 +113,7 @@ private Q_SLOTS:
     void stepsAndSidesMix();
     void laterEventsStackOnOneColumn();
     void shortEventsTakeTheirOwnColumn();
+    void workPlacesLabelTheirDays();
     void clustersAreCountedIndependently();
     void differentDaysDoNotShareLanes();
     void positionRolesAreComputed();
@@ -283,6 +284,23 @@ void TestEventModel::shortEventsTakeTheirOwnColumn()
     QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
     for (int row = 0; row < 3; ++row)
         QCOMPARE(intRole(*model, row, EventModel::DepthRole), 0);
+}
+
+void TestEventModel::workPlacesLabelTheirDays()
+{
+    Event home = allDay("home", kMonday, 2);
+    home.summary = QStringLiteral("Home");
+    home.workPlace = true;
+    Event office = allDay("office", kMonday.addDays(1), 1);
+    office.summary = QStringLiteral("Office");
+    office.workPlace = true;
+    auto [model, source] = modelFor({home, office, timed("a", kMonday, 9, 0, 60)});
+
+    // Labels for their days, not rows.
+    QCOMPARE(model->rowCount(), 1);
+    QCOMPARE(model->allDayRows(), 0);
+    QCOMPARE(model->workPlaces().mid(0, 3),
+             (QStringList{QStringLiteral("Home"), QStringLiteral("Home, Office"), QString()}));
 }
 
 void TestEventModel::clustersAreCountedIndependently()

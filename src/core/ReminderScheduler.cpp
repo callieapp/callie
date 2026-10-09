@@ -125,7 +125,7 @@ void ReminderScheduler::check()
         const QList<Event> events =
             m_source->eventsBetween(now, now.addDays(kLookAheadDays), m_zone);
         for (const Event &event : events) {
-            if (event.declined || m_hidden.contains(event.calendarId))
+            if (event.declined || event.workPlace || m_hidden.contains(event.calendarId))
                 continue;
             for (int minutes : remindersFor(event)) {
                 const QDateTime at = event.start.addSecs(-qint64(minutes) * 60);

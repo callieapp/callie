@@ -78,6 +78,9 @@ public:
     /// Callie's default applies.
     QList<int> reminders;
     bool remindersKnown = false;
+    /// Where the user works that day, such as Google's "Home" or "Office",
+    /// rather than an event: shown with the day, not in it.
+    bool workPlace = false;
 
     /// The call Join opens: the provider's own, else the first call link in
     /// the place or notes, such as a Zoom link pasted into an invitation.

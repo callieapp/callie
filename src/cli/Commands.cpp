@@ -52,7 +52,9 @@ QList<Event> Commands::visibleEvents(const QDateTime &from, const QDateTime &to)
 {
     const QSet<QString> hidden = hiddenCalendarIds();
     QList<Event> events = m_source.eventsBetween(from, to, m_zone);
-    events.removeIf([&hidden](const Event &e) { return hidden.contains(e.calendarId); });
+    // Where the user works labels a day in the app; it is not an event.
+    events.removeIf(
+        [&hidden](const Event &e) { return e.workPlace || hidden.contains(e.calendarId); });
     return events;
 }
 

@@ -99,6 +99,7 @@ GoogleEvent parseGoogleEvent(const QJsonObject &item)
         event.attendees = QJsonDocument(attendees).toJson(QJsonDocument::Compact);
     event.organizerSelf = item[u"organizer"][u"self"].toBool();
     event.guestsCanModify = item[u"guestsCanModify"].toBool();
+    event.eventType = item[u"eventType"].toString();
     const QJsonObject reminders = item[u"reminders"].toObject();
     event.remindersUseDefault = reminders[u"useDefault"].toBool(true);
     event.reminders = popupMinutes(reminders[u"overrides"].toArray());

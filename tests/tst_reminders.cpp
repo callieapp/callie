@@ -5,6 +5,7 @@
 #include "callie/Settings.h"
 #include "callie/Times.h"
 
+#include <QFileInfo>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -233,20 +234,22 @@ void TestReminders::logoIsCopiedForTheDaemon()
     QCOMPARE(written.readAll(), QByteArray("old logo"));
     written.close();
 
-    // The same: left alone, which a read-only copy shows, since writing it would fail.
-    QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner));
+    // The same: left alone, so its old time stays.
+    const QDateTime old(QDate(2020, 1, 1), QTime(0, 0));
+    QVERIFY(written.open(QIODevice::ReadWrite));
+    QVERIFY(written.setFileTime(old, QFileDevice::FileModificationTime));
+    written.close();
     QCOMPARE(cachedLogo(folder, "old logo"), path);
+    QCOMPARE(QFileInfo(path).lastModified(), old);
 
     // Different: replaced.
-    QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner));
     QCOMPARE(cachedLogo(folder, "new logo"), path);
     QVERIFY(written.open(QIODevice::ReadOnly));
     QCOMPARE(written.readAll(), QByteArray("new logo"));
     written.close();
 
-    // Unwritable: nothing to offer.
-    QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner));
-    QVERIFY(cachedLogo(folder, "newer logo").isEmpty());
+    // Unwritable, even for root: a file where the folder should be.
+    QVERIFY(cachedLogo(path, "newer logo").isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestReminders)

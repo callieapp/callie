@@ -3,6 +3,7 @@
 #include "callie/CalendarSource.h"
 
 #include <QCoreApplication>
+#include <QSet>
 #include <QTextStream>
 #include <QTimeZone>
 
@@ -87,6 +88,8 @@ public:
     [[nodiscard]] std::optional<QDateTime> when(const QString &text, QDate day) const;
 
 private:
+    /// The calendars the user hides.
+    [[nodiscard]] QSet<QString> hiddenCalendarIds() const;
     /// Events between `from` and `to` in the calendars the user shows.
     [[nodiscard]] QList<Event> visibleEvents(const QDateTime &from, const QDateTime &to) const;
     [[nodiscard]] std::optional<Event> find(const QString &id);

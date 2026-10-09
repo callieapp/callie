@@ -26,9 +26,9 @@ void TestRepeat::customMovesWithItsStart()
     c.weekdays = {1, 7}; // Monday and Sunday
     QCOMPARE(Repeat::shifted(c, 1).weekdays, (QList<int>{1, 2}));
     QCOMPARE(Repeat::shifted(c, -8).weekdays, (QList<int>{6, 7}));
-    // Only weekly rules name their weekdays.
+    // Kept for any rule, ready for when it turns weekly.
     c.frequency = u"monthly"_s;
-    QCOMPARE(Repeat::shifted(c, 3), c);
+    QCOMPARE(Repeat::shifted(c, 1).weekdays, (QList<int>{1, 2}));
 }
 
 void TestRepeat::choicesBecomeRules()

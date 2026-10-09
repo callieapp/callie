@@ -140,9 +140,13 @@ QVariantMap EventActions::customRepeat(const QStringList &recurrence, const QDat
         Repeat::custom(recurrence, day.date(), zoneNamed(zone));
     if (!custom)
         return {};
+    // The start's own weekday when the rule names none, so switching to
+    // weekly shows the day it would save.
     QVariantList weekdays;
     for (int weekday : custom->weekdays)
         weekdays << weekday;
+    if (weekdays.isEmpty())
+        weekdays << day.date().dayOfWeek();
     return {{u"frequency"_s, custom->frequency},
             {u"interval"_s, custom->interval},
             {u"weekdays"_s, weekdays},
@@ -174,8 +178,6 @@ QStringList EventActions::customRule(const QVariantMap &custom, const QDateTime 
 
 QVariantMap EventActions::shiftCustom(const QVariantMap &custom, int days)
 {
-    if (custom.value(u"frequency"_s).toString() != u"weekly")
-        return custom;
     Repeat::Custom c;
     for (const QVariant &weekday : custom.value(u"weekdays"_s).toList())
         c.weekdays << weekday.toInt();

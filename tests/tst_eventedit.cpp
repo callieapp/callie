@@ -658,6 +658,13 @@ void TestEventEdit::customRepeatsAreWritten()
              QStringList{u"RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=10"_s});
     QTRY_VERIFY(
         find(m_window->contentItem(), "StickerButton", "text", u"Every 2 months on day 10"_s));
+
+    // Switched to weekly, the form holds the start's day, which is what it saves.
+    const QVariant weekly = QVariantMap{{u"frequency"_s, u"weekly"_s}};
+    QVERIFY(QMetaObject::invokeMethod(form, "setCustom", Q_ARG(QVariant, weekly)));
+    QCOMPARE(form->property("custom").toMap().value(u"weekdays"_s).toList(), QVariantList{6});
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SA"_s});
 }
 
 QTEST_MAIN(TestEventEdit)

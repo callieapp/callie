@@ -35,6 +35,8 @@ public:
 
     /// Drops a cached token that Google rejected, so the next request refreshes.
     void invalidate(const Account &account);
+    /// Drops everything known about a removed account, granted scopes included.
+    void forget(const Account &account);
 
     /// What Callie asks for that the account has not granted, as of its last
     /// refresh; empty until then, or when Google does not say.

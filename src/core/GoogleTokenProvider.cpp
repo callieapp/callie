@@ -93,6 +93,12 @@ void GoogleTokenProvider::refresh(const Account &account, const QString &refresh
     auth->refresh(refreshToken);
 }
 
+void GoogleTokenProvider::forget(const Account &account)
+{
+    m_cache.remove(keyFor(account));
+    m_granted.remove(keyFor(account));
+}
+
 QStringList GoogleTokenProvider::missingScopes(const Account &account) const
 {
     const auto granted = m_granted.constFind(keyFor(account));

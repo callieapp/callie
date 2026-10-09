@@ -382,6 +382,7 @@ void GoogleSync::forget(const Account &account)
 {
     if (const std::shared_ptr<Run> run = m_running.take(keyFor(account)))
         run->forgotten = true;
+    m_tokens.forget(account);
     m_settingsRead.remove(keyFor(account));
     m_contactsRead.remove(keyFor(account));
     m_contactsReading.remove(keyFor(account));

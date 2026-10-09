@@ -642,6 +642,12 @@ void TestEventEdit::customRepeatsAreWritten()
     form->setProperty("startDay", form->property("startDay").toDateTime().addDays(1));
     QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
              QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SA"_s});
+    // The form shows the day it saves, and picking another day adds just that one.
+    QCOMPARE(form->property("custom").toMap().value(u"weekdays"_s).toList(), QVariantList{6});
+    const QVariant saturdayAndSunday = QVariantMap{{u"weekdays"_s, QVariantList{6, 7}}};
+    QVERIFY(QMetaObject::invokeMethod(form, "setCustom", Q_ARG(QVariant, saturdayAndSunday)));
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SA,SU"_s});
 }
 
 QTEST_MAIN(TestEventEdit)

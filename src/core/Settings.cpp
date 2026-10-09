@@ -21,6 +21,7 @@ const QString kHideWeekends = u"week/hideWeekends"_s;
 const QString kWeekNumbers = u"week/numbers"_s;
 const QString kWorkStart = u"week/workStart"_s;
 const QString kWorkEnd = u"week/workEnd"_s;
+const QString kShowWorkHours = u"week/showWorkHours"_s;
 const QString kViMode = u"keyboard/viMode"_s;
 const QString kLeaderKey = u"keyboard/leaderKey"_s;
 const QString kLeaderTimeout = u"keyboard/leaderTimeout"_s;
@@ -70,6 +71,7 @@ void Settings::load()
     m_weekNumbers = m_store.value(kWeekNumbers, false).toBool();
     m_workStart = std::clamp(m_store.value(kWorkStart, 9 * 60).toInt(), 0, kDayMinutes - 30);
     m_workEnd = std::clamp(m_store.value(kWorkEnd, 17 * 60).toInt(), m_workStart + 30, kDayMinutes);
+    m_showWorkHours = m_store.value(kShowWorkHours, false).toBool();
     m_viMode = m_store.value(kViMode, false).toBool();
     const QString leader = m_store.value(kLeaderKey).toString();
     m_leaderKey = kLeaderKeys.contains(leader) ? leader : u","_s;
@@ -204,6 +206,15 @@ void Settings::setLeaderTimeout(int ms)
     m_leaderTimeout = ms;
     m_store.setValue(kLeaderTimeout, ms);
     Q_EMIT keyboardChanged();
+}
+
+void Settings::setShowWorkHours(bool show)
+{
+    if (m_showWorkHours == show)
+        return;
+    m_showWorkHours = show;
+    m_store.setValue(kShowWorkHours, show);
+    Q_EMIT workHoursChanged();
 }
 
 void Settings::setWorkStart(int minutes)
@@ -466,6 +477,7 @@ void Settings::reset()
     const bool notify = m_notify, keep = m_keepRunning;
     const int minutes = m_reminderMinutes;
     const int weekStart = m_weekStart, workStart = m_workStart, workEnd = m_workEnd;
+    const bool showWorkHours = m_showWorkHours;
     const bool hideWeekends = m_hideWeekends, weekNumbers = m_weekNumbers;
     const bool viMode = m_viMode;
     const QString leaderKey = m_leaderKey;
@@ -503,7 +515,7 @@ void Settings::reset()
         Q_EMIT keepRunningChanged();
     if (weekStart != m_weekStart || hideWeekends != m_hideWeekends || weekNumbers != m_weekNumbers)
         Q_EMIT weekChanged();
-    if (workStart != m_workStart || workEnd != m_workEnd)
+    if (workStart != m_workStart || workEnd != m_workEnd || showWorkHours != m_showWorkHours)
         Q_EMIT workHoursChanged();
     if (viMode != m_viMode || leaderKey != m_leaderKey || leaderTimeout != m_leaderTimeout)
         Q_EMIT keyboardChanged();

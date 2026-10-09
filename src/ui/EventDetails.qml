@@ -400,11 +400,16 @@ Popup {
                     width: parent.width
                     spacing: Theme.space2
 
+                    // Red when the choice deletes, since it is the confirming click.
                     StickerButton {
+                        destructive: root.pending === "delete"
+                        armed: destructive
                         text: qsTr("This event")
                         onClicked: root.perform(root.pending, false)
                     }
                     StickerButton {
+                        destructive: root.pending === "delete"
+                        armed: destructive
                         text: qsTr("All events")
                         onClicked: root.perform(root.pending, true)
                     }
@@ -437,30 +442,16 @@ Popup {
                     text: qsTr("Email guests")
                     onClicked: Qt.openUrlExternally(actions.mailGuests(root.event))
                 }
-                // A one-off event takes a second click to delete.
-                StickerButton {
+                // A one-off event takes a second click to delete; a repeating
+                // one asks which occurrences instead.
+                DangerButton {
                     id: deleteButton
-                    property bool armed: false
                     visible: root.event.canEdit === true
                     enabled: !actions.busy
-                    text: armed ? qsTr("Click again to delete") : qsTr("Delete")
-                    onClicked: {
-                        if (root.repeats) {
-                            root.act("delete")
-                        } else if (armed) {
-                            armed = false
-                            root.perform("delete", false)
-                        } else {
-                            armed = true
-                            disarm.restart()
-                        }
-                    }
-
-                    Timer {
-                        id: disarm
-                        interval: 4000
-                        onTriggered: deleteButton.armed = false
-                    }
+                    label: qsTr("Delete")
+                    armedLabel: qsTr("Click again to delete")
+                    confirms: !root.repeats
+                    onConfirmed: root.repeats ? root.act("delete") : root.perform("delete", false)
                 }
             }
 
@@ -629,14 +620,19 @@ Popup {
             name: mark.answer === "accepted" ? "check" : "close"
             color: mark.answer === "accepted" ? Theme.accentText : Theme.textFaint
         }
-        Text {
-            anchors.centerIn: parent
+        // Maybe: half filled, between yes and waiting.
+        Item {
             visible: mark.answer === "tentative"
-            text: "?"
-            color: Theme.textMuted
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textXs
-            font.weight: Font.ExtraBold
+            width: parent.width / 2
+            height: parent.height
+            clip: true
+
+            Rectangle {
+                width: mark.width
+                height: mark.height
+                radius: width / 2
+                color: Theme.textMuted
+            }
         }
     }
 

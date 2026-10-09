@@ -178,26 +178,11 @@ Popup {
                     onClicked: exportDialog.open()
                 }
                 // Deleting takes a second click, since the file is gone for good.
-                StickerButton {
-                    id: deleteTheme
-                    property bool armed: false
+                DangerButton {
                     visible: Themes.editable
-                    text: armed ? qsTr("Click again to delete") : qsTr("Delete theme")
-                    onClicked: {
-                        if (armed) {
-                            armed = false
-                            Themes.removeCurrent()
-                        } else {
-                            armed = true
-                            disarm.restart()
-                        }
-                    }
-
-                    Timer {
-                        id: disarm
-                        interval: 4000
-                        onTriggered: deleteTheme.armed = false
-                    }
+                    label: qsTr("Delete theme")
+                    armedLabel: qsTr("Click again to delete")
+                    onConfirmed: Themes.removeCurrent()
                 }
             }
 
@@ -486,6 +471,12 @@ Popup {
             title: qsTr("Working hours")
             visible: root.tab === "week"
 
+            Toggle {
+                width: parent.width
+                text: qsTr("Shade the hours outside them")
+                checked: Settings.showWorkHours
+                onToggled: Settings.showWorkHours = checked
+            }
             Row {
                 spacing: Theme.space4
 
@@ -510,8 +501,7 @@ Popup {
             Text {
                 width: parent.width
                 wrapMode: Text.Wrap
-                text: qsTr(
-                          "The day and week views shade the hours outside these, and open at the start.")
+                text: qsTr("The day and week views open at the start of working hours.")
                 color: Theme.textMuted
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
@@ -622,11 +612,12 @@ Popup {
             }
         }
 
-        StickerButton {
+        DangerButton {
             visible: root.tab === "general"
-            text: qsTr("Reset to defaults")
+            label: qsTr("Reset to defaults")
+            armedLabel: qsTr("Click again to reset")
             // Settings forget the theme too, so the default one comes back.
-            onClicked: {
+            onConfirmed: {
                 Settings.reset()
                 Themes.useDefault()
             }

@@ -173,6 +173,12 @@ void TestSettings::workingHoursStayInOrder()
     QCOMPARE(settings.workStart(), 7 * 60 + 30);
     settings.setWorkEnd(30 * 60);
     QCOMPARE(settings.workEnd(), 24 * 60);
+    // Not shaded until asked for.
+    QVERIFY(!settings.showWorkHours());
+    QSignalSpy changed(&settings, &Settings::workHoursChanged);
+    settings.setShowWorkHours(true);
+    QCOMPARE(changed.size(), 1);
+    QVERIFY(Settings(path()).showWorkHours());
 }
 
 void TestSettings::keyboardSettingsKeepToWhatWorks()

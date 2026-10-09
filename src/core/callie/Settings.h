@@ -33,6 +33,8 @@ class Settings : public QObject
     /// Working hours, as minutes past midnight; the grid shades the rest.
     Q_PROPERTY(int workStart READ workStart WRITE setWorkStart NOTIFY workHoursChanged)
     Q_PROPERTY(int workEnd READ workEnd WRITE setWorkEnd NOTIFY workHoursChanged)
+    /// Shades the hours outside working hours in the day and week views.
+    Q_PROPERTY(bool showWorkHours READ showWorkHours WRITE setShowWorkHours NOTIFY workHoursChanged)
     Q_PROPERTY(bool viMode READ viMode WRITE setViMode NOTIFY keyboardChanged)
     Q_PROPERTY(QString leaderKey READ leaderKey WRITE setLeaderKey NOTIFY keyboardChanged)
     Q_PROPERTY(int leaderTimeout READ leaderTimeout WRITE setLeaderTimeout NOTIFY keyboardChanged)
@@ -106,6 +108,8 @@ public:
     void setWorkStart(int minutes);
     [[nodiscard]] int workEnd() const { return m_workEnd; }
     void setWorkEnd(int minutes);
+    [[nodiscard]] bool showWorkHours() const { return m_showWorkHours; }
+    void setShowWorkHours(bool show);
 
     /// Single keys move around and act, as in vi, with a leader key before
     /// the commands that have no key of their own.
@@ -216,6 +220,7 @@ private:
     bool m_weekNumbers = false;
     int m_workStart = 9 * 60;
     int m_workEnd = 17 * 60;
+    bool m_showWorkHours = false;
     bool m_viMode = false;
     QString m_leaderKey = QStringLiteral(",");
     int m_leaderTimeout = 5000;

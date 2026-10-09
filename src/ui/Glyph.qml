@@ -113,15 +113,16 @@ Item {
             ctx.lineWidth = root.stroke
             ctx.lineCap = "round"
             ctx.beginPath()
-            ctx.arc(width / 2, height / 2, r, -Math.PI * 0.35, Math.PI * 1.4)
+            // Open at the upper right, so it reads as turning rather than as a power button.
+            ctx.arc(width / 2, height / 2, r, -Math.PI * 0.15, Math.PI * 1.55)
             ctx.stroke()
             // The head sits where the arc ends, pointing on round the circle.
-            const end = Math.PI * 1.4
+            const end = Math.PI * 1.55
             const x = width / 2 + r * Math.cos(end)
             const y = height / 2 + r * Math.sin(end)
             const along = [-Math.sin(end), Math.cos(end)]
             const out = [Math.cos(end), Math.sin(end)]
-            const size = root.stroke * 2.2
+            const size = root.stroke * 3
             ctx.beginPath()
             ctx.moveTo(x + along[0] * size, y + along[1] * size)
             ctx.lineTo(x + out[0] * size * 0.9, y + out[1] * size * 0.9)

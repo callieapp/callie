@@ -3,6 +3,52 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.2.0 - 2026-10-09
+
+Callie can now change your events, not just show them, and works the way you do while offline.
+
+### New
+
+- Edit an event from its card: title, times, all day, repeat, place, guests, video call and
+  notes. For a repeating event, choose this event, this and the following, or all of them.
+- Custom repeats, such as every 2 weeks on Monday and Thursday, ending on a day or after so
+  many times.
+- Drag events to new times or days, stretch them longer, and drag all-day events and month
+  chips. Duplicate, copy and paste events.
+- Every change shows at once, can be undone with the toast or Ctrl+Z, and waits to be sent
+  while you are offline.
+- Places suggest themselves as you type, from your own events and OpenStreetMap, and open in
+  the map app of your choice. Turn the online search off in Settings, under General.
+- Join a Zoom, Meet, Teams or Webex call even when its link is only in the place or notes.
+- Guests are suggested from your events and your Google contacts as you type them, and each
+  event lists its guests and how they answered.
+- An invitations tray behind the bell, where you answer for one event or the whole series.
+- Search events by title, place, notes and guests, from the title bar or with Ctrl+F.
+- Keyboard shortcuts for everything, with a help sheet, an optional vi mode and a leader key.
+- Rename and recolor calendars and accounts from the sidebar, and choose the calendar new
+  events go in.
+- Callie lists every calendar on your Google accounts, starting with the ones Google shows;
+  turn any of them on or off in the sidebar.
+- Week settings: the first day, hiding weekends, week numbers, and shading for working hours.
+  Callie takes the week start and clock from Google when you connect.
+- Start Callie when you log in, in the background, for reminders.
+- Account photos in Settings, and a Reconnect button that marks accounts needing new
+  permissions.
+- Developer settings: event ids, events as JSON, the data folders, debug logs, and forgetting
+  an account's cache to sync it afresh.
+- The `callie` command can search, list invitations, add, edit, answer, delete and duplicate
+  events, change settings and calendar looks, and suggest contacts.
+
+### Fixed
+
+- Overlapping events cascade instead of squeezing into narrow columns, and maybe answers are
+  striped.
+- Delete, remove and reset buttons are red, and ask for a second click.
+- Clearer refresh and "maybe" icons, and Callie's own icon on its window.
+- Narrow windows fold the title bar and open the sidebar as a drawer.
+- Personal Google accounts no longer log errors reading a Workspace directory they do not
+  have.
+
 ## 0.1.0 - 2026-10-06
 
 The first release: a cozy calendar for Linux that keeps up with your Google calendars.

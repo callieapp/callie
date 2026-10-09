@@ -41,6 +41,16 @@
   </categories>
 
   <releases>
+    <release version="0.2.0" date="2026-10-09">
+      <description>
+        <p>Change events as well as create them: edit times, repeats (custom ones too), places
+          with search and maps, guests from your contacts and video calls, move whole series,
+          and undo any change. Changes made offline wait and go once you are back.</p>
+        <p>Also new: search, an invitations tray, keyboard shortcuts with an optional vi mode,
+          your own calendar names and colors, account photos, the callie command for more
+          tasks, and developer settings.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-10-06">
       <description>
         <p>The first release: a cozy calendar for Linux that keeps up with your Google

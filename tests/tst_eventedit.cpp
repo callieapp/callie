@@ -531,6 +531,7 @@ void TestEventEdit::guestsComeFromSuggestions()
              (QStringList{u"priya@example.com"_s, u"sam@new.example"_s}));
 
     // A suggestion can be clicked, without the click reaching the view under the card.
+    guest->forceActiveFocus();
     guest->setProperty("text", u"jor"_s);
     QMetaObject::invokeMethod(guest, "textEdited");
     QQuickItem *jordan = nullptr;
@@ -572,9 +573,11 @@ void TestEventEdit::placesComeFromSuggestions()
     // The sample's own studio, then OpenStreetMap's, credited.
     QQuickItem *own = nullptr;
     QQuickItem *found = nullptr;
-    QTRY_VERIFY((own = find(overlay, "QQuickText", "text", u"Studio"_s)) &&
-                (found = find(overlay, "QQuickText", "text", u"Studio Rosa, Leeds"_s)));
-    QVERIFY(own->mapToScene({}).y() < found->mapToScene({}).y());
+    QTRY_VERIFY((found = find(overlay, "QQuickText", "text", u"Studio Rosa, Leeds"_s)));
+    // In the suggestions' card, not the week under it.
+    QQuickItem *card = found->parentItem()->parentItem()->parentItem();
+    QVERIFY((own = find(card, "QQuickText", "text", u"Studio"_s)));
+    QTRY_VERIFY(own->mapToScene({}).y() < found->mapToScene({}).y());
     QVERIFY(find(overlay, "QQuickText", "text", u"Places from OpenStreetMap"_s));
 
     // Apart from the click on Edit, so the two are not taken for a double click.

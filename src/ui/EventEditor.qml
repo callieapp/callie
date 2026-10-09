@@ -44,6 +44,11 @@ Column {
     /// Waiting to ask which occurrences a repeating event's change is for.
     property bool asking: false
     readonly property bool repeating: (event.seriesId || "") !== ""
+    /// The widest label of the repeat rows, so their controls line up.
+    readonly property real labelWidth: Math.ceil(Math.max(repeatsMetrics.advanceWidth,
+                                                          everyMetrics.advanceWidth,
+                                                          onMetrics.advanceWidth,
+                                                          endsMetrics.advanceWidth))
 
     // A custom rule follows the start, weekdays and day of the month alike, so
     // the form shows what is saved.
@@ -284,17 +289,11 @@ Column {
     }
 
     // Repeat, from the choices for the start day.
-    Row {
-        spacing: Theme.space3
+    FormRow {
+        width: parent.width
+        label: qsTr("Repeats")
+        labelWidth: root.labelWidth
 
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: qsTr("Repeats")
-            color: Theme.textFaint
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textSm
-            font.weight: Font.ExtraBold
-        }
         StickerButton {
             text: root.actions.describeRepeat(root.repeatLines(), root.startDay, root.zone)
             onClicked: repeatMenu.open()
@@ -383,66 +382,20 @@ Column {
             event.accepted = Places.results.length > 0
             Places.clear()
         }
-    }
 
-    // Places matching what is typed: the user's own first, then OpenStreetMap's.
-    Column {
-        visible: Places.results.length > 0
-        width: parent.width
-
-        Repeater {
-            model: Places.results
-
-            Rectangle {
-                id: placeSuggestion
-
-                required property var modelData
-                required property int index
-
-                width: parent.width
-                height: Theme.listRowHeight + Theme.space2
-                radius: Theme.radiusMd
-                color: index === placeField.highlighted || placePointer.hovered ? Theme.surfaceAlt :
-                                                                                  "transparent"
-                Accessible.role: Accessible.Button
-                Accessible.name: modelData.label
-
-                HoverHandler {
-                    id: placePointer
-                    cursorShape: Qt.PointingHandCursor
-                }
-                TapHandler {
-                    // Holds the press, so it cannot reach the view under the card.
-                    gesturePolicy: TapHandler.ReleaseWithinBounds
-                    onTapped: placeField.take(placeSuggestion.modelData.label)
-                }
-
-                Text {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        leftMargin: Theme.space3
-                        rightMargin: Theme.space3
-                        verticalCenter: parent.verticalCenter
-                    }
-                    elide: Text.ElideRight
-                    text: placeSuggestion.modelData.label
-                    textFormat: Text.PlainText
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.textSm
-                    font.weight: placeSuggestion.modelData.past ? Font.Bold : Font.Normal
-                }
-            }
-        }
-        // OpenStreetMap's data asks to be credited where it is shown.
-        Text {
-            visible: Places.results.some(r => !r.past)
-            leftPadding: Theme.space3
-            text: qsTr("Places from OpenStreetMap")
-            color: Theme.textFaint
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textXs
+        // Places matching what is typed: the user's own first, then OpenStreetMap's.
+        SuggestionPopup {
+            wanted: placeField.activeFocus
+            items: Places.results.map(r => ({
+                "text": r.label,
+                "strong": r.past
+            }))
+            highlighted: placeField.picking ? placeField.highlighted : -1
+            busy: Places.searching
+            busyText: qsTr("Searching OpenStreetMap...")
+            // OpenStreetMap's data asks to be credited where it is shown.
+            footer: Places.results.some(r => !r.past) ? qsTr("Places from OpenStreetMap") : ""
+            onPicked: index => placeField.take(Places.results[index].label)
         }
     }
 
@@ -556,69 +509,17 @@ Column {
             event.accepted = suggestions.length > 0
             suggestions = []
         }
-    }
 
-    // The suggestions, under the box, best first.
-    Column {
-        visible: guestField.suggestions.length > 0
-        width: parent.width
-
-        Repeater {
-            model: guestField.suggestions
-
-            Rectangle {
-                id: suggestion
-
-                required property var modelData
-                required property int index
-
-                width: parent.width
-                height: Theme.listRowHeight + Theme.space2
-                radius: Theme.radiusMd
-                color: index === guestField.highlighted || pointer.hovered ? Theme.surfaceAlt :
-                                                                             "transparent"
-                Accessible.role: Accessible.Button
-                Accessible.name: modelData.name ? qsTr("%1, %2").arg(modelData.name).arg(
-                                                      modelData.email) : modelData.email
-
-                HoverHandler {
-                    id: pointer
-                    cursorShape: Qt.PointingHandCursor
-                }
-                TapHandler {
-                    gesturePolicy: TapHandler.ReleaseWithinBounds
-                    onTapped: guestField.take(suggestion.modelData.email)
-                }
-
-                Row {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        leftMargin: Theme.space3
-                        verticalCenter: parent.verticalCenter
-                    }
-                    spacing: Theme.space2
-
-                    Text {
-                        visible: text !== ""
-                        text: suggestion.modelData.name
-                        textFormat: Text.PlainText
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.textSm
-                        font.weight: Font.Bold
-                    }
-                    Text {
-                        width: parent.width - x
-                        elide: Text.ElideRight
-                        text: suggestion.modelData.email
-                        textFormat: Text.PlainText
-                        color: Theme.textMuted
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.textSm
-                    }
-                }
-            }
+        // The people matching, best first.
+        SuggestionPopup {
+            wanted: guestField.activeFocus
+            items: guestField.suggestions.map(p => ({
+                "text": p.name || p.email,
+                "detail": p.name ? p.email : "",
+                "strong": !!p.name
+            }))
+            highlighted: guestField.highlighted
+            onPicked: index => guestField.take(guestField.suggestions[index].email)
         }
     }
 
@@ -742,5 +643,28 @@ Column {
             text: qsTr("Cancel")
             onClicked: root.finished(false)
         }
+    }
+
+    LabelMetrics {
+        id: repeatsMetrics
+        text: qsTr("Repeats")
+    }
+    LabelMetrics {
+        id: everyMetrics
+        text: qsTr("Every")
+    }
+    LabelMetrics {
+        id: onMetrics
+        text: qsTr("On")
+    }
+    LabelMetrics {
+        id: endsMetrics
+        text: qsTr("Ends")
+    }
+
+    component LabelMetrics: TextMetrics {
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.textSm
+        font.weight: Font.ExtraBold
     }
 }

@@ -82,6 +82,8 @@ qt_add_qml_module(callieui
         TimePicker.qml
         DatePicker.qml
         CustomRepeat.qml
+        FormRow.qml
+        SuggestionPopup.qml
         EventEditor.qml
         InvitesTray.qml
         Field.qml

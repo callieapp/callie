@@ -107,28 +107,23 @@ Item {
         onPaint: {
             const ctx = getContext("2d")
             ctx.reset()
-            const r = width / 2 - root.stroke
+            // On a 24-unit grid inset by half the stroke, so nothing pokes out.
+            const unit = (width - root.stroke) / 24
+            const at = v => root.stroke / 2 + v * unit
             ctx.strokeStyle = root.color
-            ctx.fillStyle = root.color
             ctx.lineWidth = root.stroke
             ctx.lineCap = "round"
+            ctx.lineJoin = "round"
+            // Round from the right, open at the upper right.
             ctx.beginPath()
-            // Open at the upper right, so it reads as turning rather than as a power button.
-            ctx.arc(width / 2, height / 2, r, -Math.PI * 0.15, Math.PI * 1.55)
+            ctx.arc(at(12), at(12), 9 * unit, 0, Math.PI * 1.78)
             ctx.stroke()
-            // The head sits where the arc ends, pointing on round the circle.
-            const end = Math.PI * 1.55
-            const x = width / 2 + r * Math.cos(end)
-            const y = height / 2 + r * Math.sin(end)
-            const along = [-Math.sin(end), Math.cos(end)]
-            const out = [Math.cos(end), Math.sin(end)]
-            const size = root.stroke * 3
+            // A corner for the head, inside the circle's box.
             ctx.beginPath()
-            ctx.moveTo(x + along[0] * size, y + along[1] * size)
-            ctx.lineTo(x + out[0] * size * 0.9, y + out[1] * size * 0.9)
-            ctx.lineTo(x - out[0] * size * 0.9, y - out[1] * size * 0.9)
-            ctx.closePath()
-            ctx.fill()
+            ctx.moveTo(at(21), at(3))
+            ctx.lineTo(at(21), at(9))
+            ctx.lineTo(at(15), at(9))
+            ctx.stroke()
         }
 
         Connections {

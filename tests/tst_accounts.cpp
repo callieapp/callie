@@ -28,11 +28,13 @@ class Browser : public QObject
 public:
     QNetworkAccessManager network;
     int opened = 0;
+    QUrl last;
 
 public Q_SLOTS:
     void open(const QUrl &url)
     {
         ++opened;
+        last = url;
         const QUrlQuery query(url);
         QUrl callback(query.queryItemValue(u"redirect_uri"_s, QUrl::FullyDecoded));
         QUrlQuery answer;
@@ -57,10 +59,12 @@ private Q_SLOTS:
     void sampleModeTouchesNothing();
     void signingInAgainSyncsAndHoldsOffOtherActions();
     void failedSignInEndsTheAttempt();
+    void reconnectPicksTheAccount();
 
 private:
-    /// Signs in through fake Google endpoints answering with these responses.
-    void signIn(int tokenStatus, const QByteArray &tokenBody);
+    /// Signs in through fake Google endpoints answering with these responses,
+    /// or signs `again` in again.
+    void signIn(int tokenStatus, const QByteArray &tokenBody, const QString &again = {});
 
     Browser m_browser;
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -116,7 +120,7 @@ void TestAccounts::sampleModeTouchesNothing()
     QVERIFY(!accounts->busy());
 }
 
-void TestAccounts::signIn(int tokenStatus, const QByteArray &tokenBody)
+void TestAccounts::signIn(int tokenStatus, const QByteArray &tokenBody, const QString &again)
 {
     m_dir = std::make_unique<QTemporaryDir>();
     m_store = std::make_unique<AccountStore>(m_dir->filePath(u"accounts.json"_s));
@@ -142,7 +146,22 @@ void TestAccounts::signIn(int tokenStatus, const QByteArray &tokenBody)
     setup.tokenUrl = m_tokenServer->url(u"/token"_s);
     setup.apiBaseUrl = m_apiServer->url(u"/calendar/v3/"_s);
     AccountsController::instance()->setUp(setup);
-    AccountsController::instance()->connectGoogle();
+    if (again.isEmpty())
+        AccountsController::instance()->connectGoogle();
+    else
+        AccountsController::instance()->reconnect(again);
+}
+
+void TestAccounts::reconnectPicksTheAccount()
+{
+    AccountsController *accounts = AccountsController::instance();
+    signIn(200, R"({"access_token":"at-2","refresh_token":"rt-2","expires_in":3600})", kMe.id);
+    QTRY_VERIFY_WITH_TIMEOUT(!accounts->busy(), 5000);
+    QVERIFY2(accounts->error().isEmpty(), qPrintable(accounts->error()));
+    QCOMPARE(QUrlQuery(m_browser.last).queryItemValue(u"login_hint"_s, QUrl::FullyDecoded), kMe.id);
+    // The same account, with its new sign-in.
+    QCOMPARE(accounts->accounts().size(), 1);
+    QCOMPARE(m_tokens->secrets.value(kMe.id), u"rt-2"_s);
 }
 
 void TestAccounts::signingInAgainSyncsAndHoldsOffOtherActions()

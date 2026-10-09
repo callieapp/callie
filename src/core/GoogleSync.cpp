@@ -385,6 +385,13 @@ void GoogleSync::forget(const Account &account)
     m_contactsReading.remove(keyFor(account));
 }
 
+void GoogleSync::signedInAgain(const Account &account)
+{
+    m_tokens.invalidate(account);
+    m_settingsRead.remove(keyFor(account));
+    m_contactsRead.remove(keyFor(account));
+}
+
 void GoogleSync::readSettings(const Account &account)
 {
     const QPointer<GoogleSync> self(this);

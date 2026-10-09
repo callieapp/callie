@@ -39,6 +39,7 @@ private Q_SLOTS:
     void environmentReplacesBuiltInClient();
     void environmentSecretAloneIsIgnored();
     void authorizationUrlRequestsOfflinePkceAccess();
+    void signingInAgainPicksTheAccount();
     void callbackListensOnLoopbackOnly();
     void callbackPageIsThemed();
     void codeExchangeSendsVerifierMatchingChallenge();
@@ -98,6 +99,19 @@ void TestGoogleAuth::authorizationUrlRequestsOfflinePkceAccess()
     QCOMPARE(formValue(query, "prompt"), QStringLiteral("consent"));
     QCOMPARE(QUrl(formValue(query, "redirect_uri")), auth.callbackUrl());
     QVERIFY(!query.hasQueryItem(QStringLiteral("client_secret")));
+    // A new account picks its own address.
+    QVERIFY(!query.hasQueryItem(QStringLiteral("login_hint")));
+}
+
+void TestGoogleAuth::signingInAgainPicksTheAccount()
+{
+    FakeHttpServer tokenServer;
+    GoogleAuth auth(kClient);
+    auth.setLoginHint(QStringLiteral("me@example.com"));
+    const QUrlQuery query(GoogleAuthDriver::startAuthorization(auth, tokenServer));
+    QCOMPARE(formValue(query, "login_hint"), QStringLiteral("me@example.com"));
+    // Still asks for consent, so permissions added since are granted too.
+    QCOMPARE(formValue(query, "prompt"), QStringLiteral("consent"));
 }
 
 void TestGoogleAuth::callbackListensOnLoopbackOnly()

@@ -75,6 +75,9 @@ public:
 
     /// Opens the browser to sign in with Google; the account appears once done.
     Q_INVOKABLE void connectGoogle();
+    /// Signs an account in again, with that address picked in the browser, so
+    /// it can grant permissions added since it first signed in.
+    Q_INVOKABLE void reconnect(const QString &id);
     Q_INVOKABLE void cancel();
     /// Forgets an account's sign-in, cached events and listing.
     Q_INVOKABLE void remove(const QString &id);
@@ -84,6 +87,7 @@ Q_SIGNALS:
     void stateChanged();
 
 private:
+    void signIn(const QString &hint);
     explicit AccountsController(QObject *parent);
     void reload();
     void finish(const QString &error);

@@ -109,6 +109,7 @@ private Q_SLOTS:
     void contactsAreReadOnceARun();
     void contactsOfARemovedAccountAreDropped();
     void contactsThatFailToReadAreTriedAgain();
+    void signingInAgainReadsContactsAgain();
     void unreadableSettingsAreTriedAgain();
     void rejectedTokenForSettingsIsRefreshed();
 
@@ -465,6 +466,34 @@ void TestGoogleSync::contactsThatFailToReadAreTriedAgain()
     QCOMPARE(runSync(), QStringList());
     QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
     QCOMPARE(found.first().at(1).value<QList<Contact>>().size(), 1);
+}
+
+void TestGoogleSync::signingInAgainReadsContactsAgain()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    // Signed in before Callie asked for contacts: Google says no.
+    const QByteArray refused =
+        R"({"error":{"code":403,"message":"Request had insufficient authentication scopes."}})";
+    m_google->on(u"people/me/connections"_s, 403, refused);
+    m_google->on(u"people/me/connections"_s, 200,
+                 R"({"connections":[{"emailAddresses":[{"value":"lee@example.com"}]}]})");
+    m_google->on(u"otherContacts"_s, 200, R"({})");
+    m_google->on(u"people:listDirectoryPeople"_s, 200, R"({})");
+    QSignalSpy found(m_sync.get(), &GoogleSync::contactsFound);
+
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
+    QVERIFY(found.first().at(1).value<QList<Contact>>().isEmpty());
+
+    // A later sync in the same run leaves them be, until the account signs in again.
+    QCOMPARE(runSync(), QStringList());
+    QTest::qWait(200);
+    QCOMPARE(m_google->count(u"people/me/connections"_s), 1);
+    m_sync->signedInAgain(kAccount);
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 2, 5000);
+    QCOMPARE(found.last().at(1).value<QList<Contact>>().size(), 1);
 }
 
 void TestGoogleSync::unreadableSettingsAreTriedAgain()

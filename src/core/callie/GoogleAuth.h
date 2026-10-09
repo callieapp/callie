@@ -39,6 +39,8 @@ public:
     /// Points the flow at a fake server in tests.
     void setEndpoints(const QUrl &authorization, const QUrl &token);
     void setTokenUrl(const QUrl &token);
+    /// Picks this address on Google's sign-in page, for signing an account in again.
+    void setLoginHint(const QString &email) { m_loginHint = email; }
 
     /// Starts the loopback listener and emits authorizeUrlReady. Can be called
     /// again after an attempt finishes, to retry or add another account.
@@ -65,6 +67,7 @@ private:
     void fail(const QString &message);
 
     GoogleClientConfig m_client;
+    QString m_loginHint;
     QOAuth2AuthorizationCodeFlow *m_flow;
     QNetworkAccessManager *m_network;
     QUrl m_tokenUrl;

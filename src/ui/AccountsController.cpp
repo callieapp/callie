@@ -45,8 +45,10 @@ void AccountsController::setUp(const Setup &setup)
             finish({});
             // Signing in again leaves the list as it was, so nothing else syncs
             // the account with its new token.
-            if (current && m_setup.source)
+            if (current && m_setup.source) {
+                m_setup.source->signedInAgain(account);
                 m_setup.source->refresh();
+            }
         });
         connect(m_manager, &AccountManager::removed, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "removed" << account.id;
@@ -83,11 +85,22 @@ QString AccountsController::unavailable() const
 
 void AccountsController::connectGoogle()
 {
+    signIn({});
+}
+
+void AccountsController::reconnect(const QString &id)
+{
+    signIn(id);
+}
+
+void AccountsController::signIn(const QString &hint)
+{
     if (busy() || !unavailable().isEmpty())
         return;
     m_error.clear();
     m_granted = false;
     m_auth = new GoogleAuth(m_setup.client, this);
+    m_auth->setLoginHint(hint);
     if (m_setup.tokenUrl.isValid())
         m_auth->setEndpoints(m_setup.authUrl, m_setup.tokenUrl);
     connect(m_auth, &GoogleAuth::granted, this, [this] {

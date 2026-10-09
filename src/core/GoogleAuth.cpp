@@ -48,11 +48,13 @@ GoogleAuth::GoogleAuth(const GoogleClientConfig &client, QObject *parent)
     // Google only issues a refresh token for offline access, and only on a
     // consent screen, so re-adding an account must not silently skip it.
     m_flow->setModifyParametersFunction(
-        [](QAbstractOAuth::Stage stage, QMultiMap<QString, QVariant> *parameters) {
+        [this](QAbstractOAuth::Stage stage, QMultiMap<QString, QVariant> *parameters) {
             if (stage != QAbstractOAuth::Stage::RequestingAuthorization)
                 return;
             parameters->insert(QStringLiteral("access_type"), QStringLiteral("offline"));
             parameters->insert(QStringLiteral("prompt"), QStringLiteral("consent"));
+            if (!m_loginHint.isEmpty())
+                parameters->insert(QStringLiteral("login_hint"), m_loginHint);
         });
 
     connect(m_flow, &QAbstractOAuth::authorizeWithBrowser, this, &GoogleAuth::authorizeUrlReady);

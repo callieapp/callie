@@ -109,11 +109,14 @@ Column {
                 }
                 spacing: Theme.space2
 
+                // Signs in again: mends a broken sign-in, and grants what Callie
+                // has asked for since, such as reading contacts.
                 StickerButton {
-                    visible: row.problem !== "" && Accounts.unavailable === ""
+                    visible: Accounts.unavailable === ""
                     enabled: !Accounts.busy
-                    text: qsTr("Sign in again")
-                    onClicked: Accounts.connectGoogle()
+                    accent: row.problem !== ""
+                    text: qsTr("Reconnect")
+                    onClicked: Accounts.reconnect(row.modelData.id)
                 }
                 // Removing takes a second click, since the account's sign-in goes too.
                 StickerButton {

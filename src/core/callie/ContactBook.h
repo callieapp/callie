@@ -4,11 +4,13 @@
 #include "Contact.h"
 
 #include <QFutureWatcher>
+
 #include <QHash>
 #include <QObject>
 #include <QPointer>
 #include <QTimer>
 #include <QVariantList>
+#include <functional>
 
 namespace callie {
 
@@ -30,6 +32,10 @@ public:
 
     /// Learns the guests of the source's events, again whenever they change.
     void setSource(CalendarSource *source);
+    /// Which calendars' guests to learn; all of them without one.
+    void setShown(std::function<bool(const CalendarInfo &)> shown) { m_shown = std::move(shown); }
+    /// Learns the source's events again shortly, as after a calendar is shown or hidden.
+    void reread() { m_reread.start(); }
 
     /// Sets what Google lists for an account, replacing what it listed before,
     /// so people deleted there are no longer suggested.
@@ -66,6 +72,7 @@ private:
     QPointer<CalendarSource> m_source;
     QTimer m_reread;
     QFutureWatcher<SourceSnapshot> m_reading;
+    std::function<bool(const CalendarInfo &)> m_shown;
 };
 
 } // namespace callie

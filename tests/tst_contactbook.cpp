@@ -37,6 +37,7 @@ private Q_SLOTS:
     void matchesByAddressThenName();
     void contactsKeepTheirNamesAndSurvive();
     void sourceTeachesItsGuests();
+    void hiddenCalendarsTeachNothing();
     void removedAccountsTakeTheirContacts();
     void aNewListReplacesTheOld();
 };
@@ -107,6 +108,26 @@ void TestContactBook::sourceTeachesItsGuests()
     ContactBook book({});
     QSignalSpy changed(&book, &ContactBook::changed);
     book.setSource(&sample);
+    QTRY_VERIFY(!changed.isEmpty());
+    QCOMPARE(emails(book.suggest(u"priya"_s, {})), QStringList{u"priya@example.com"_s});
+}
+
+void TestContactBook::hiddenCalendarsTeachNothing()
+{
+    SampleSource sample;
+    ContactBook book({});
+    // Priya's meetings are in the sample's first calendar.
+    QString hidden = sample.calendars().first().id;
+    book.setShown([&hidden](const CalendarInfo &c) { return c.id != hidden; });
+    QSignalSpy changed(&book, &ContactBook::changed);
+    book.setSource(&sample);
+    QTRY_VERIFY(!changed.isEmpty());
+    QVERIFY(book.suggest(u"priya"_s, {}).isEmpty());
+
+    // Shown again, the calendar's guests are learned on the next read.
+    hidden.clear();
+    changed.clear();
+    book.reread();
     QTRY_VERIFY(!changed.isEmpty());
     QCOMPARE(emails(book.suggest(u"priya"_s, {})), QStringList{u"priya@example.com"_s});
 }

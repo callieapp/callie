@@ -136,8 +136,7 @@ int Commands::contacts(ContactBook &book, const QString &text, bool json)
         m_err << tr("usage: callie contacts <name or address>") << "\n";
         return 2;
     }
-    book.learn(
-        m_source.eventsBetween(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround), m_zone));
+    book.learn(visibleEvents(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround)));
     const QVariantList people = book.suggest(text, {}, 20);
     if (json) {
         m_out << QJsonDocument(QJsonArray::fromVariantList(people)).toJson(QJsonDocument::Indented);

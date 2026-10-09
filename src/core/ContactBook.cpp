@@ -45,8 +45,21 @@ ContactBook::ContactBook(QString path, QObject *parent) : QObject(parent), m_pat
     m_reread.setInterval(2000);
     connect(&m_reread, &QTimer::timeout, this, &ContactBook::readSource);
     connect(&m_reading, &QFutureWatcher<SourceSnapshot>::finished, this, [this] {
-        if (m_reading.future().resultCount() > 0)
-            learn(m_reading.result().events);
+        if (m_reading.future().resultCount() == 0)
+            return;
+        SourceSnapshot read = m_reading.result();
+        // Guests of hidden calendars, such as a team's Google leaves unticked,
+        // are not the user's own company.
+        if (m_shown) {
+            QSet<QString> hidden;
+            for (const CalendarInfo &calendar : std::as_const(read.calendars)) {
+                if (!m_shown(calendar))
+                    hidden.insert(calendar.id);
+            }
+            read.events.removeIf(
+                [&hidden](const Event &e) { return hidden.contains(e.calendarId); });
+        }
+        learn(read.events);
     });
     if (m_path.isEmpty())
         return;

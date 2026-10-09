@@ -299,7 +299,9 @@ void TestSettings::resetForgetsEverything()
     settings.setDefaultCalendar(u"google/me/work"_s);
     settings.setCalendarName(u"google/me/work"_s, u"Job"_s);
     settings.setAccountName(u"me@example.com"_s, u"Work"_s);
+    settings.setAccountPhoto(u"me@example.com"_s, QUrl(u"https://lh3/me"_s));
     QSignalSpy widen(&settings, &Settings::widenTodayChanged);
+    QSignalSpy photos(&settings, &Settings::accountPhotosChanged);
     QSignalSpy looks(&settings, &Settings::calendarLooksChanged);
     QSignalSpy accounts(&settings, &Settings::accountNamesChanged);
     QSignalSpy calendar(&settings, &Settings::defaultCalendarChanged);
@@ -318,6 +320,10 @@ void TestSettings::resetForgetsEverything()
     QCOMPARE(settings.accountName(u"me@example.com"_s), u"me@example.com"_s);
     QCOMPARE(looks.size(), 1);
     QCOMPARE(accounts.size(), 1);
+    // Account photos come from Google rather than a choice, so they stay.
+    QCOMPARE(photos.size(), 0);
+    QCOMPARE(Settings(path()).accountPhotos().value(u"me@example.com"_s).toUrl(),
+             QUrl(u"https://lh3/me"_s));
     QVERIFY(!Settings(path()).widenToday());
 }
 

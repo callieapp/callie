@@ -498,6 +498,10 @@ void Settings::reset()
     const QString leaderKey = m_leaderKey;
     const int leaderTimeout = m_leaderTimeout;
     load();
+    // Photos are what Google says, not a choice, so they stay.
+    m_accountPhotos = accountPhotos;
+    if (!m_accountPhotos.isEmpty())
+        m_store.setValue(kAccountPhotos, m_accountPhotos);
     if (format != m_timeFormat)
         Q_EMIT timeFormatChanged();
     if (zone != m_timeZoneId)
@@ -516,8 +520,6 @@ void Settings::reset()
         Q_EMIT calendarLooksChanged();
     if (accountNames != m_accountNames)
         Q_EMIT accountNamesChanged();
-    if (accountPhotos != m_accountPhotos)
-        Q_EMIT accountPhotosChanged();
     if (theme != m_theme)
         Q_EMIT themeChanged();
     if (view != m_view)

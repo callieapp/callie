@@ -3,6 +3,31 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.2.1 - 2026-10-09
+
+Fixes and polish from using 0.2.0 every day, and a tray entry.
+
+### New
+
+- While Callie keeps running after its window closes, it has an entry in the system tray: click it
+  to open the window, or use its menu to sync or quit. GNOME needs the AppIndicator extension to
+  show it.
+- Where you work each day, as set in Google Calendar (Home, Office), shows under the day's date
+  in the week and day views instead of as an all-day event.
+
+### Fixed
+
+- Overlapping events share the width in columns, and one that starts later sits over a single
+  column whose titles already show, so every event's title stays readable. Very short events no
+  longer sit on top of the next one, and back-to-back events have a clearer gap.
+- The custom repeat form lines up its rows, picks the unit from a menu, and fits the weekdays on
+  one line.
+- Place and guest suggestions appear in a card under the field instead of pushing the editor
+  around. While Callie looks places up on OpenStreetMap, the card says so and keeps the last places
+  in view, and Escape closes the card before the editor.
+- The refresh button's arrow is drawn whole, and Settings is wide enough for every tab on one row.
+- Reminder notifications show Callie's logo even when it runs from a build that is not installed.
+
 ## 0.2.0 - 2026-10-09
 
 Callie can now change your events, not just show them, and works the way you do while offline.

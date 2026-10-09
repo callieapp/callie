@@ -31,8 +31,7 @@ Column {
     /// form cannot say it, and the rule's lines as they stand.
     property var custom: ({})
     property var customLines: []
-    /// The start the custom rule's weekdays were chosen for, so moving the
-    /// start moves them along.
+    /// The start the custom rule's weekdays were last moved to.
     property date customDay
     /// The custom rule was changed here, rather than only read.
     property bool customTouched: false
@@ -46,8 +45,20 @@ Column {
     property bool asking: false
     readonly property bool repeating: (event.seriesId || "") !== ""
 
+    // A custom rule's weekdays move with the start, so the form shows what is saved.
+    onStartDayChanged: {
+        const shift = root.actions.daysBetween(customDay, startDay)
+        customDay = startDay
+        if (shift === 0 || isNaN(shift) || customTyped || custom.frequency !== "weekly")
+            return
+        custom = root.actions.shiftCustom(custom, shift)
+        customLines = customRule()
+    }
+
     function load(e) {
         event = e
+        // Before the start changes, so the last event's rule does not move with it.
+        custom = {}
         zone = e.zone || Settings.timeZoneId
         title = e.summary || ""
         place = e.location || ""
@@ -163,7 +174,6 @@ Column {
                                                                                               startDay)
 
             custom = root.actions.customRepeat(lines, startDay, zone)
-            customDay = startDay
             repeat = "custom"
             setCustom({})
         }
@@ -177,16 +187,12 @@ Column {
 
     /// The custom form's rule for the start as it stands.
     function customRule() {
-        return root.actions.customRule(custom, startDay, root.actions.daysBetween(customDay,
-                                                                                  startDay), allDay,
-                                       zone, customPrevious())
+        return root.actions.customRule(custom, startDay, allDay, zone, customPrevious())
     }
 
     /// Changes some of the custom rule, and the lines that follow from it.
     function setCustom(changed) {
         custom = Object.assign({}, custom, changed)
-        if (changed.weekdays !== undefined)
-            customDay = startDay
         customLines = customRule()
         customTouched = true
         customTyped = false

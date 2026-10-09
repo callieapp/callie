@@ -14,10 +14,22 @@ private Q_SLOTS:
     void customLeavesOtherRulesAlone();
     void customWritesItsRule();
     void customInWords();
+    void customMovesWithItsStart();
     void choicesBecomeRules();
     void rulesAreReadBack();
     void choicesInWords();
 };
+
+void TestRepeat::customMovesWithItsStart()
+{
+    Repeat::Custom c;
+    c.weekdays = {1, 7}; // Monday and Sunday
+    QCOMPARE(Repeat::shifted(c, 1).weekdays, (QList<int>{1, 2}));
+    QCOMPARE(Repeat::shifted(c, -8).weekdays, (QList<int>{6, 7}));
+    // Only weekly rules name their weekdays.
+    c.frequency = u"monthly"_s;
+    QCOMPARE(Repeat::shifted(c, 3), c);
+}
 
 void TestRepeat::choicesBecomeRules()
 {

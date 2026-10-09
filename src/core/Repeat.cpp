@@ -216,6 +216,16 @@ std::optional<Custom> custom(const QStringList &recurrence, QDate start, const Q
     return c;
 }
 
+Custom shifted(Custom custom, int days)
+{
+    if (custom.frequency != u"weekly")
+        return custom;
+    for (int &day : custom.weekdays)
+        day = ((day - 1 + days) % 7 + 7) % 7 + 1;
+    std::sort(custom.weekdays.begin(), custom.weekdays.end());
+    return custom;
+}
+
 QStringList rule(const Custom &c, QDate start, bool allDay, const QTimeZone &zone)
 {
     QStringList parts{u"FREQ="_s + c.frequency.toUpper()};

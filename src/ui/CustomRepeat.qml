@@ -215,6 +215,7 @@ Column {
             root.editor.customLines = lines
             root.editor.custom = root.editor.actions.customRepeat(lines, root.editor.startDay,
                                                                   root.editor.zone)
+            root.editor.customDay = root.editor.startDay
             root.editor.customTouched = true
             root.editor.customTyped = true
         }

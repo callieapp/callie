@@ -98,6 +98,7 @@ class TestTodayModel : public QObject
 private Q_SLOTS:
     void greetingFollowsTheHour();
     void nextIsTheSoonestStillToStart();
+    void workPlacesAreNotUpNext();
     void soonIsCountedInMinutes();
     void laterNamesTheTime();
     void detailFallsBackToTheCalendar();
@@ -136,6 +137,18 @@ void TestTodayModel::nextIsTheSoonestStillToStart()
     model.setNow(at(10, 40));
 
     QVERIFY(model.hasNext());
+    QCOMPARE(model.nextTitle(), u"Quick sync"_s);
+}
+
+void TestTodayModel::workPlacesAreNotUpNext()
+{
+    Event office = timed(u"Office"_s, at(10, 50), 120);
+    office.workPlace = true;
+    FakeSource source({office, timed(u"Quick sync"_s, at(11), 30)});
+    TodayModel model;
+    model.setSource(&source);
+    model.setNow(at(10, 40));
+
     QCOMPARE(model.nextTitle(), u"Quick sync"_s);
 }
 

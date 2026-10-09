@@ -195,6 +195,9 @@ int main(int argc, char *argv[])
     // People to suggest as guests: from the events, and from Google's contacts.
     callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());
     contacts.setSource(source);
+    contacts.setShown([&settings](const callie::CalendarInfo &c) { return settings.isShown(c); });
+    QObject::connect(&settings, &callie::Settings::hiddenCalendarsChanged, &contacts,
+                     &callie::ContactBook::reread);
     // Accounts removed while Callie was closed take their contacts, but an
     // account list that cannot be read says nothing about which are gone.
     if (accountsRead) {

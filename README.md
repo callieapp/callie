@@ -90,10 +90,11 @@ success, 1 for an error, and 2 for a usage mistake.
 ### Logs
 
 The app and the CLI each keep a log in `~/.local/state/callie/logs/`, `callie-gui.log` and
-`callie.log`, with the three previous files beside them. Logs record what Callie did, such as
-syncs and their errors, but never tokens or event details. The terminal only shows warnings unless
-`QT_LOGGING_RULES` is set. To report a bug, use "Report a bug" in the app's ? menu or
-`callie doctor --report`, which fill in the details with email addresses masked.
+`callie.log`, with the three previous files beside them. Logs record what Callie did, such as syncs
+and their errors, but never tokens, and no event details unless "Log debug details" is on in
+Settings, under Developer. The terminal only shows warnings unless `QT_LOGGING_RULES` is set. To
+report a bug, use "Report a bug" in the app's ? menu or `callie doctor --report`, which fill in the
+details with email addresses masked.
 
 ## Development
 

@@ -632,6 +632,16 @@ void TestEventEdit::customRepeatsAreWritten()
     form->setProperty("startDay", form->property("startDay").toDateTime().addDays(1));
     QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
              QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SA"_s});
+
+    // So does one made custom here before the move.
+    own.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=FR"_s});
+    QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, own)));
+    QCOMPARE(form->property("repeat").toString(), u"weekly"_s);
+    QVERIFY(QMetaObject::invokeMethod(form, "startCustom"));
+    QVERIFY(QMetaObject::invokeMethod(form, "setCustom", Q_ARG(QVariant, everyTwo)));
+    form->setProperty("startDay", form->property("startDay").toDateTime().addDays(1));
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SA"_s});
 }
 
 QTEST_MAIN(TestEventEdit)

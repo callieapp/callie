@@ -31,6 +31,9 @@ Column {
     /// form cannot say it, and the rule's lines as they stand.
     property var custom: ({})
     property var customLines: []
+    /// The start the custom rule's weekdays were chosen for, so moving the
+    /// start moves them along.
+    property date customDay
     /// The custom rule was changed here, rather than only read.
     property bool customTouched: false
     /// The rule's lines were typed in developer mode, so they are saved as typed.
@@ -59,6 +62,7 @@ Column {
         repeat = root.actions.repeatChoice(e.recurrence || [], startDay)
         customLines = repeat === "custom" ? (e.recurrence || []) : []
         custom = repeat === "custom" ? root.actions.customRepeat(customLines, startDay, zone) : {}
+        customDay = startDay
         customTouched = false
         customTyped = false
         guests = (e.attendees || []).slice()
@@ -102,12 +106,7 @@ Column {
         // A custom rule goes only when changed here, or moved with its series,
         // so one Google wrote its own way is not rewritten for nothing.
         if (repeat === "custom" && (customTouched || moved)) {
-            // A rule only read keeps its weekdays where they were around the start.
-            const shift = moved && !customTouched ? root.actions.daysBetween(day, startDay) : 0
-            const kept = shiftedCustom(shift)
-            const lines = customReadable && !customTyped ? root.actions.customRule(kept, startDay, allDay, zone,
-                                                                                   customPrevious(
-                                                                                       )) : customLines
+            const lines = customReadable && !customTyped ? customRule() : customLines
             if (JSON.stringify(lines) !== JSON.stringify(event.recurrence || []))
                 c.recurrence = lines
         }
@@ -164,6 +163,7 @@ Column {
                                                                                               startDay)
 
             custom = root.actions.customRepeat(lines, startDay, zone)
+            customDay = startDay
             repeat = "custom"
             setCustom({})
         }
@@ -175,19 +175,19 @@ Column {
         return customLines.length > 0 ? customLines : (event.recurrence || [])
     }
 
-    /// The custom rule with a weekly rule's days moved `shift` days on.
-    function shiftedCustom(shift) {
-        if (shift === 0 || custom.frequency !== "weekly")
-            return custom
-        const moved = Object.assign({}, custom)
-        moved.weekdays = custom.weekdays.map(d => ((d - 1 + shift) % 7 + 7) % 7 + 1)
-        return moved
+    /// The custom form's rule for the start as it stands.
+    function customRule() {
+        return root.actions.customRule(custom, startDay, root.actions.daysBetween(customDay,
+                                                                                  startDay), allDay,
+                                       zone, customPrevious())
     }
 
     /// Changes some of the custom rule, and the lines that follow from it.
     function setCustom(changed) {
         custom = Object.assign({}, custom, changed)
-        customLines = root.actions.customRule(custom, startDay, allDay, zone, customPrevious())
+        if (changed.weekdays !== undefined)
+            customDay = startDay
+        customLines = customRule()
         customTouched = true
         customTyped = false
     }

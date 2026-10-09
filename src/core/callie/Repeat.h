@@ -60,6 +60,8 @@ struct Custom
 /// that day in `zone`, or as a date for an all-day event.
 [[nodiscard]] QStringList rule(const Custom &custom, QDate start, bool allDay,
                                const QTimeZone &zone);
+/// `custom` for a start moved `days` on: a weekly rule's weekdays move with it.
+[[nodiscard]] Custom shifted(Custom custom, int days);
 /// `custom` in words, such as "Every 2 weeks on Monday and Wednesday, 5 times".
 [[nodiscard]] QString describe(const Custom &custom, QDate start);
 

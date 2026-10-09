@@ -152,8 +152,8 @@ QVariantMap EventActions::customRepeat(const QStringList &recurrence, const QDat
             {u"weekStart"_s, custom->weekStart}};
 }
 
-QStringList EventActions::customRule(const QVariantMap &custom, const QDateTime &day, bool allDay,
-                                     const QString &zone, const QStringList &previous)
+QStringList EventActions::customRule(const QVariantMap &custom, const QDateTime &day, int shiftDays,
+                                     bool allDay, const QString &zone, const QStringList &previous)
 {
     Repeat::Custom c;
     c.frequency = custom.value(u"frequency"_s).toString();
@@ -164,7 +164,8 @@ QStringList EventActions::customRule(const QVariantMap &custom, const QDateTime 
     c.until = custom.value(u"until"_s).toDateTime().date();
     c.count = std::max(0, custom.value(u"count"_s).toInt());
     c.weekStart = custom.value(u"weekStart"_s).toString();
-    QStringList lines = Repeat::rule(c, day.date(), allDay, zoneNamed(zone));
+    QStringList lines =
+        Repeat::rule(Repeat::shifted(c, shiftDays), day.date(), allDay, zoneNamed(zone));
     for (const QString &line : previous) {
         if (!line.startsWith(u"RRULE:"_s, Qt::CaseInsensitive))
             lines << line;

@@ -7,6 +7,10 @@
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QQmlApplicationEngine>
 #include <QQuickItem>
 #include <QQuickStyle>
@@ -77,6 +81,7 @@ private Q_SLOTS:
     void titleBarFitsNarrowWindows();
     void guestsComeFromSuggestions();
     void trayAsksWhichOccurrences();
+    void developerModeShowsIds();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -539,6 +544,28 @@ void TestEventEdit::trayAsksWhichOccurrences()
     // Only the next one is answered; the series still waits.
     QTRY_COMPARE(answer(QDate(2026, 10, 13)), u"accepted"_s);
     QCOMPARE(answer(QDate(2026, 10, 20)), u"needsAction"_s);
+}
+
+void TestEventEdit::developerModeShowsIds()
+{
+    QQuickItem *block = nullptr;
+    QTRY_VERIFY((block = find(m_window->contentItem(), "EventBlock", "summary", u"Dentist"_s)));
+    QTest::qWait(300);
+    click(m_window, block);
+    QTRY_VERIFY(find(m_window->contentItem(), "StickerButton", "text", u"Duplicate"_s));
+    // Off by default.
+    QVERIFY(!find(m_window->contentItem(), "StickerButton", "text", u"Copy as JSON"_s));
+
+    m_settings->setDeveloperMode(true);
+    QQuickItem *json = nullptr;
+    QTRY_VERIFY((json = find(m_window->contentItem(), "StickerButton", "text", u"Copy as JSON"_s)));
+    QVERIFY(find(m_window->contentItem(), "QQuickText", "text", u"sample-3-16-0-2026-10-07"_s));
+    QTest::qWait(300);
+    click(m_window, json);
+    const QJsonObject copied =
+        QJsonDocument::fromJson(QGuiApplication::clipboard()->text().toUtf8()).object();
+    QCOMPARE(copied[u"summary"].toString(), u"Dentist"_s);
+    QCOMPARE(copied[u"eventId"].toString(), u"sample-3-16-0-2026-10-07"_s);
 }
 
 QTEST_MAIN(TestEventEdit)

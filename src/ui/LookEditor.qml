@@ -85,6 +85,30 @@ Popup {
             Accessible.name: root.account ? qsTr("Account name") : qsTr("Calendar name")
             onAccepted: root.close()
         }
+        // The id, for debugging, with developer mode on.
+        Row {
+            visible: Settings.developerMode
+            width: parent.width
+            spacing: Theme.space2
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - copyId.width - parent.spacing
+                text: root.targetId
+                textFormat: Text.PlainText
+                elide: Text.ElideMiddle
+                color: Theme.textMuted
+                font.family: Theme.monoFontFamily
+                font.pixelSize: Theme.textXs
+            }
+            PillButton {
+                id: copyId
+                anchors.verticalCenter: parent.verticalCenter
+                label: qsTr("Copy")
+                Accessible.name: qsTr("Copy the id")
+                onClicked: Support.copyText(root.targetId)
+            }
+        }
 
         Grid {
             visible: !root.account

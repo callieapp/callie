@@ -379,6 +379,38 @@ Popup {
                 value: root.description
             }
 
+            // For debugging, with developer mode on: the event's ids and all of it as JSON.
+            Column {
+                visible: Settings.developerMode
+                width: parent.width - 2 * parent.padding
+                spacing: Theme.space2
+
+                IdRow {
+                    width: parent.width
+                    label: qsTr("Event")
+                    value: root.event.eventId || ""
+                }
+                IdRow {
+                    width: parent.width
+                    label: qsTr("Series")
+                    value: root.event.seriesId || ""
+                }
+                IdRow {
+                    width: parent.width
+                    label: qsTr("Calendar")
+                    value: root.event.calendarId || ""
+                }
+                IdRow {
+                    width: parent.width
+                    label: qsTr("UID")
+                    value: root.event.uid || ""
+                }
+                StickerButton {
+                    text: qsTr("Copy as JSON")
+                    onClicked: Support.copyText(JSON.stringify(root.event, null, 2))
+                }
+            }
+
             // Which occurrences a repeating event's answer or deletion is for.
             Column {
                 visible: root.pending !== ""
@@ -633,6 +665,44 @@ Popup {
                 radius: width / 2
                 color: Theme.textMuted
             }
+        }
+    }
+
+    /// An id, small and monospaced, with a button to copy it.
+    component IdRow: Row {
+        id: idRow
+
+        property string label
+        property string value
+
+        visible: value !== ""
+        spacing: Theme.space4
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 64
+            text: idRow.label
+            color: Theme.textFaint
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.textSm
+            font.weight: Font.ExtraBold
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: idRow.width - 64 - copy.width - 2 * idRow.spacing
+            text: idRow.value
+            textFormat: Text.PlainText
+            elide: Text.ElideMiddle
+            color: Theme.textMuted
+            font.family: Theme.monoFontFamily
+            font.pixelSize: Theme.textXs
+        }
+        PillButton {
+            id: copy
+            anchors.verticalCenter: parent.verticalCenter
+            label: qsTr("Copy")
+            Accessible.name: qsTr("Copy the %1 id").arg(idRow.label)
+            onClicked: Support.copyText(idRow.value)
         }
     }
 

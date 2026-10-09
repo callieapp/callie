@@ -15,6 +15,10 @@ bool install(const QString &name, const QString &directory = defaultDirectory(),
 /// Shows info messages in the terminal too, as `callie --verbose` asks.
 void setVerboseTerminal(bool verbose);
 
+/// Turns Callie's debug messages on and writes them to the file, as the app's
+/// developer settings ask. They can name events, so they are off by default.
+void setDebug(bool debug);
+
 /// The file install() opened, or empty.
 [[nodiscard]] QString path();
 

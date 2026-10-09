@@ -22,6 +22,8 @@ const QString kWeekNumbers = u"week/numbers"_s;
 const QString kWorkStart = u"week/workStart"_s;
 const QString kWorkEnd = u"week/workEnd"_s;
 const QString kShowWorkHours = u"week/showWorkHours"_s;
+const QString kDeveloperMode = u"developer/mode"_s;
+const QString kVerboseLogging = u"developer/verboseLogging"_s;
 const QString kViMode = u"keyboard/viMode"_s;
 const QString kLeaderKey = u"keyboard/leaderKey"_s;
 const QString kLeaderTimeout = u"keyboard/leaderTimeout"_s;
@@ -74,6 +76,8 @@ void Settings::load()
     m_workStart = std::clamp(m_store.value(kWorkStart, 9 * 60).toInt(), 0, kDayMinutes - 30);
     m_workEnd = std::clamp(m_store.value(kWorkEnd, 17 * 60).toInt(), m_workStart + 30, kDayMinutes);
     m_showWorkHours = m_store.value(kShowWorkHours, false).toBool();
+    m_developerMode = m_store.value(kDeveloperMode, false).toBool();
+    m_verboseLogging = m_store.value(kVerboseLogging, false).toBool();
     m_viMode = m_store.value(kViMode, false).toBool();
     const QString leader = m_store.value(kLeaderKey).toString();
     m_leaderKey = kLeaderKeys.contains(leader) ? leader : u","_s;
@@ -210,6 +214,24 @@ void Settings::setLeaderTimeout(int ms)
     m_leaderTimeout = ms;
     m_store.setValue(kLeaderTimeout, ms);
     Q_EMIT keyboardChanged();
+}
+
+void Settings::setDeveloperMode(bool on)
+{
+    if (m_developerMode == on)
+        return;
+    m_developerMode = on;
+    m_store.setValue(kDeveloperMode, on);
+    Q_EMIT developerChanged();
+}
+
+void Settings::setVerboseLogging(bool on)
+{
+    if (m_verboseLogging == on)
+        return;
+    m_verboseLogging = on;
+    m_store.setValue(kVerboseLogging, on);
+    Q_EMIT developerChanged();
 }
 
 void Settings::setShowWorkHours(bool show)
@@ -529,6 +551,7 @@ void Settings::reset()
     const int minutes = m_reminderMinutes;
     const int weekStart = m_weekStart, workStart = m_workStart, workEnd = m_workEnd;
     const bool showWorkHours = m_showWorkHours;
+    const bool developerMode = m_developerMode, verboseLogging = m_verboseLogging;
     const bool hideWeekends = m_hideWeekends, weekNumbers = m_weekNumbers;
     const bool viMode = m_viMode;
     const QString leaderKey = m_leaderKey;
@@ -573,6 +596,8 @@ void Settings::reset()
         Q_EMIT weekChanged();
     if (workStart != m_workStart || workEnd != m_workEnd || showWorkHours != m_showWorkHours)
         Q_EMIT workHoursChanged();
+    if (developerMode != m_developerMode || verboseLogging != m_verboseLogging)
+        Q_EMIT developerChanged();
     if (viMode != m_viMode || leaderKey != m_leaderKey || leaderTimeout != m_leaderTimeout)
         Q_EMIT keyboardChanged();
     rebuildTimes();

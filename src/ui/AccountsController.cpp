@@ -3,6 +3,7 @@
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
 #include "callie/GoogleAuth.h"
+#include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSource.h"
 #include "callie/Logging.h"
@@ -118,6 +119,22 @@ void AccountsController::signIn(const QString &hint)
     m_status = tr("Opening your browser...");
     Q_EMIT stateChanged();
     m_manager->connectGoogle(*m_auth, *m_api);
+}
+
+void AccountsController::resync(const QString &id)
+{
+    if (!m_setup.cache || !m_setup.source)
+        return;
+    const auto account = std::find_if(m_accounts.cbegin(), m_accounts.cend(),
+                                      [&id](const Account &a) { return a.id == id; });
+    if (account == m_accounts.cend())
+        return;
+    if (!m_setup.cache->removeAccount(*account)) {
+        finish(tr("Could not forget the cached events: %1").arg(m_setup.cache->errorString()));
+        return;
+    }
+    qCInfo(lcAccounts) << "resyncing" << id;
+    m_setup.source->refresh();
 }
 
 void AccountsController::cancel()

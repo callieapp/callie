@@ -294,13 +294,21 @@ void TestEventModel::workPlacesLabelTheirDays()
     Event office = allDay("office", kMonday.addDays(1), 1);
     office.summary = QStringLiteral("Office");
     office.workPlace = true;
-    auto [model, source] = modelFor({home, office, timed("a", kMonday, 9, 0, 60)});
+    // Two accounts can name the same place, commas and all.
+    Event floor = allDay("floor", kMonday.addDays(2), 1);
+    floor.summary = QStringLiteral("Office, Floor 2");
+    floor.workPlace = true;
+    Event floorAgain = floor;
+    floorAgain.uid = QStringLiteral("floor-again");
+    auto [model, source] =
+        modelFor({home, office, floor, floorAgain, timed("a", kMonday, 9, 0, 60)});
 
     // Labels for their days, not rows.
     QCOMPARE(model->rowCount(), 1);
     QCOMPARE(model->allDayRows(), 0);
-    QCOMPARE(model->workPlaces().mid(0, 3),
-             (QStringList{QStringLiteral("Home"), QStringLiteral("Home, Office"), QString()}));
+    QCOMPARE(model->workPlaces().mid(0, 4),
+             (QStringList{QStringLiteral("Home"), QStringLiteral("Home, Office"),
+                          QStringLiteral("Office, Floor 2"), QString()}));
 }
 
 void TestEventModel::clustersAreCountedIndependently()

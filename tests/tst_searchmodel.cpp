@@ -91,6 +91,7 @@ private Q_SLOTS:
     void everyWordMustMatchSomewhere();
     void eachEventOnceUpcomingFirst();
     void hiddenCalendarsAndEmptyQueries();
+    void workPlacesAreNotFound();
     void changesAreSearchedAfresh();
     void slowReadsAndStaleAnswers();
     void ticksKeepTheResults();
@@ -143,6 +144,19 @@ void TestSearchModel::hiddenCalendarsAndEmptyQueries()
     QCOMPARE(model.count(), 1);
     model.setQuery(u"   "_s);
     QCOMPARE(model.count(), 0);
+}
+
+void TestSearchModel::workPlacesAreNotFound()
+{
+    ListSource source;
+    Event office = makeEvent(u"o"_s, u"Office"_s, at(9, 10));
+    office.workPlace = true;
+    source.events = {office, makeEvent(u"m"_s, u"Office hours"_s, at(10, 10))};
+    SearchModel model;
+    model.setNow(at(7, 12));
+    model.setSource(&source);
+    model.setQuery(u"office"_s);
+    QCOMPARE(model.count(), 1);
 }
 
 void TestSearchModel::changesAreSearchedAfresh()

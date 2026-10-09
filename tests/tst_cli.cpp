@@ -84,6 +84,7 @@ private Q_SLOTS:
     void init();
     void agendaGivesIdsToScripts();
     void agendaMarksCallsInNotes();
+    void agendaLeavesOutWorkPlaces();
     void hiddenCalendarsStayHidden();
     void searchListsASeriesOnce();
     void invitesWaitingAnswerOnce();
@@ -161,6 +162,35 @@ void TestCli::agendaMarksCallsInNotes()
     m_outStream->flush();
     const QString line = m_out.split(u'\n').filter(u"Pairing"_s).value(0);
     QVERIFY2(line.contains(u"↗"_s), qPrintable(m_out));
+}
+
+void TestCli::agendaLeavesOutWorkPlaces()
+{
+    // The sample, working from home on the day of the agenda.
+    class WorkingSource : public SampleSource
+    {
+    public:
+        QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
+                                   const QTimeZone &tz) const override
+        {
+            QList<Event> events = SampleSource::eventsBetween(from, to, tz);
+            Event home;
+            home.uid = home.eventId = u"home"_s;
+            home.calendarId = calendars().first().id;
+            home.summary = u"Home"_s;
+            home.allDay = true;
+            home.workPlace = true;
+            home.start = from;
+            home.end = from.addDays(1);
+            events.append(home);
+            return events;
+        }
+    } source;
+    Commands commands(source, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
+    QCOMPARE(commands.agenda(1, true), 0);
+    m_outStream->flush();
+    QVERIFY(m_out.contains(u"\"Standup\""_s));
+    QVERIFY(!m_out.contains(u"\"Home\""_s));
 }
 
 void TestCli::agendaGivesIdsToScripts()

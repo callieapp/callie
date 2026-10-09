@@ -59,6 +59,7 @@ class TestReminderScheduler : public QObject
 private Q_SLOTS:
     void init();
     void defaultReminderIsSaidOnce();
+    void workPlacesAreNotReminded();
     void ownRemindersWinOverTheDefault();
     void eachReminderIsSaid();
     void nothingForDeclinedHiddenOrAllDay();
@@ -106,6 +107,17 @@ void TestReminderScheduler::defaultReminderIsSaidOnce()
     stepTo(at(9, 55));
     Q_EMIT m_source.changed();
     QCOMPARE(m_said.size(), 1);
+}
+
+void TestReminderScheduler::workPlacesAreNotReminded()
+{
+    // Where the user works that day is no event to be reminded of.
+    Event office = eventAt(u"office"_s, at(10));
+    office.workPlace = true;
+    m_source.events = {office};
+    m_scheduler->setEnabled(true);
+    stepTo(at(9, 55));
+    QVERIFY(m_said.isEmpty());
 }
 
 void TestReminderScheduler::ownRemindersWinOverTheDefault()

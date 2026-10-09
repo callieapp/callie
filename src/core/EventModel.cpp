@@ -154,18 +154,19 @@ void EventModel::apply(SourceSnapshot snapshot)
         return m_hiddenCalendars.contains(e.calendarId) || (e.declined && !m_showDeclined);
     });
     // Working locations label their days instead of taking a row.
-    QStringList workPlaces(m_dayCount);
+    QList<QStringList> places(m_dayCount);
     for (const Event &e : std::as_const(events)) {
         if (!e.workPlace || e.summary.isEmpty())
             continue;
         const auto [first, span] = visibleDays(e);
         for (int day = first; day < first + span; ++day) {
-            if (workPlaces[day].isEmpty())
-                workPlaces[day] = e.summary;
-            else if (!workPlaces[day].split(u", "_s).contains(e.summary))
-                workPlaces[day] += u", "_s + e.summary;
+            if (!places[day].contains(e.summary))
+                places[day].append(e.summary);
         }
     }
+    QStringList workPlaces;
+    for (const QStringList &day : std::as_const(places))
+        workPlaces.append(day.join(u", "_s));
     events.removeIf([](const Event &e) { return e.workPlace; });
     assignLanes(events);
     // Calendars first: rows name their calendar, and views read rows as soon as

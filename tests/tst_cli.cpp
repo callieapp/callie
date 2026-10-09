@@ -53,6 +53,7 @@ class TestCli : public QObject
 private Q_SLOTS:
     void init();
     void agendaGivesIdsToScripts();
+    void hiddenCalendarsStayHidden();
     void searchListsASeriesOnce();
     void invitesWaitingAnswerOnce();
     void addGoesInTheDefaultCalendar();
@@ -133,6 +134,16 @@ void TestCli::agendaGivesIdsToScripts()
         }
     }
     QVERIFY(dentist);
+}
+
+void TestCli::hiddenCalendarsStayHidden()
+{
+    m_settings->setCalendarVisible(u"personal"_s, false);
+    QCOMPARE(m_commands->agenda(1, true), 0);
+    m_outStream->flush();
+    for (const QJsonValue &e : QJsonDocument::fromJson(m_out.toUtf8()).array())
+        QVERIFY(e[u"calendar"].toString() != u"personal");
+    QVERIFY(!m_out.contains(u"Dentist"_s));
 }
 
 void TestCli::searchListsASeriesOnce()

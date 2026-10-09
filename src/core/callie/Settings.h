@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CalendarSource.h"
 #include "Times.h"
 
 #include <QColor>
@@ -131,6 +132,9 @@ public:
     /// Calendars the user hid in Callie, by CalendarInfo::id.
     [[nodiscard]] QStringList hiddenCalendars() const { return m_hiddenCalendars; }
     Q_INVOKABLE void setCalendarVisible(const QString &id, bool visible);
+    /// Hides each calendar seen for the first time that its provider does not
+    /// show; after that, only setCalendarVisible decides.
+    void seedCalendars(const QList<CalendarInfo> &calendars);
 
     /// Times in the chosen zone and clock format. A JS Date only knows the
     /// system zone, so QML formats and places times through this.
@@ -232,6 +236,8 @@ private:
     QString m_leaderKey = QStringLiteral(",");
     int m_leaderTimeout = 5000;
     QStringList m_hiddenCalendars;
+    /// Calendars seedCalendars has seen, so a provider's choice counts once.
+    QStringList m_knownCalendars;
     Times *m_times = nullptr;
     QString m_theme;
     QStringList m_collapsedAccounts;

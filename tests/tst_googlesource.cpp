@@ -49,7 +49,7 @@ private Q_SLOTS:
     void init();
 
     void listsCalendarsWithColorAndAccess();
-    void eventsComeFromSelectedCalendarsOnly();
+    void eventsComeFromEveryCalendar();
     void eventsAreInTheRequestedZone();
     void seriesAreExpanded();
     void readOnlyCalendarsAllowNoChanges();
@@ -138,20 +138,24 @@ void TestGoogleSource::listsCalendarsWithColorAndAccess()
     QVERIFY(!calendars.at(1).enabled);
 }
 
-void TestGoogleSource::eventsComeFromSelectedCalendarsOnly()
+void TestGoogleSource::eventsComeFromEveryCalendar()
 {
     const GoogleSource source(*m_cache, {kAccount});
     const QList<Event> events =
         source.eventsBetween(QDateTime(QDate(2026, 10, 6), QTime(0, 0), kNewYork),
                              QDateTime(QDate(2026, 10, 7), QTime(0, 0), kNewYork), kNewYork);
 
-    QStringList ids;
+    // The calendar Google does not show is read too; Callie decides what shows.
+    QStringList calendars;
     for (const Event &e : events)
-        ids.append(e.uid);
-    ids.sort();
-    QCOMPARE(ids, (QStringList{u"lunch"_s, u"standup"_s}));
-    QCOMPARE(events.first().calendarId, u"me@example.com/mine"_s);
-    QCOMPARE(events.first().color, QColor(u"#9fe1e7"_s));
+        calendars.append(e.calendarId);
+    calendars.removeDuplicates();
+    QCOMPARE(calendars.size(), 2);
+    const auto lunch = std::find_if(events.cbegin(), events.cend(),
+                                    [](const Event &e) { return e.uid == u"lunch"; });
+    QVERIFY(lunch != events.cend());
+    QCOMPARE(lunch->calendarId, u"me@example.com/mine"_s);
+    QCOMPARE(lunch->color, QColor(u"#9fe1e7"_s));
 }
 
 void TestGoogleSource::eventsAreInTheRequestedZone()
@@ -508,8 +512,10 @@ void TestGoogleSource::answerAimsAtTheTimedOccurrence()
     source.setSync(&harness.sync);
     const QDateTime from(QDate(2026, 10, 6), QTime(0, 0), kNewYork);
     const QList<Event> tuesday = source.eventsBetween(from, from.addDays(1), kNewYork);
-    QCOMPARE(tuesday.size(), 2); // the standup and lunch
-    const Event standup = tuesday.at(0).summary == u"Standup" ? tuesday.at(0) : tuesday.at(1);
+    const auto found = std::find_if(tuesday.cbegin(), tuesday.cend(),
+                                    [](const Event &e) { return e.summary == u"Standup"; });
+    QVERIFY(found != tuesday.cend());
+    const Event standup = *found;
 
     QString error = u"unset"_s;
     source.respond(standup, u"accepted"_s, false, [&error](const QString &e) { error = e; });

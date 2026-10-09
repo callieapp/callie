@@ -38,10 +38,18 @@ Commands::Commands(CalendarSource &source, Settings &settings, QTextStream &out,
       m_zone(std::move(zone))
 {}
 
+QList<Event> Commands::visibleEvents(const QDateTime &from, const QDateTime &to) const
+{
+    QList<Event> events = m_source.eventsBetween(from, to, m_zone);
+    const QStringList hidden = m_settings.hiddenCalendars();
+    events.removeIf([&hidden](const Event &e) { return hidden.contains(e.calendarId); });
+    return events;
+}
+
 int Commands::agenda(int days, bool json)
 {
     const QDateTime from(m_now.toTimeZone(m_zone).date(), QTime(0, 0), m_zone);
-    QList<Event> events = m_source.eventsBetween(from, from.addDays(std::max(1, days)), m_zone);
+    QList<Event> events = visibleEvents(from, from.addDays(std::max(1, days)));
     std::sort(events.begin(), events.end(), byStart);
     if (events.isEmpty() && !json) {
         m_err << tr("Nothing scheduled.") << "\n";
@@ -58,8 +66,7 @@ int Commands::search(const QString &query, bool json)
         m_err << tr("usage: callie search <words>") << "\n";
         return 2;
     }
-    const QList<Event> all =
-        m_source.eventsBetween(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround), m_zone);
+    const QList<Event> all = visibleEvents(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround));
     // A repeating event once: its next occurrence, or its last if all have passed.
     QHash<QString, Event> found;
     for (const Event &e : all) {
@@ -94,7 +101,7 @@ int Commands::invites(bool json)
 {
     QList<Event> pending;
     QSet<QString> series;
-    for (const Event &e : m_source.eventsBetween(m_now, m_now.addDays(kInviteDays), m_zone)) {
+    for (const Event &e : visibleEvents(m_now, m_now.addDays(kInviteDays))) {
         if (e.responseStatus != u"needsAction" || !e.canRespond)
             continue;
         // A repeating invitation is answered once, so it is listed once.

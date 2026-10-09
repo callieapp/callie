@@ -87,6 +87,8 @@ public:
     [[nodiscard]] std::optional<QDateTime> when(const QString &text, QDate day) const;
 
 private:
+    /// Events between `from` and `to` in the calendars the user shows.
+    [[nodiscard]] QList<Event> visibleEvents(const QDateTime &from, const QDateTime &to) const;
     [[nodiscard]] std::optional<Event> find(const QString &id);
     [[nodiscard]] std::optional<EditScope> scopeOf(const QString &scope);
     void print(const QList<Event> &events, bool json, bool byDay);

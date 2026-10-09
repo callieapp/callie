@@ -160,11 +160,10 @@ void EventModel::apply(SourceSnapshot snapshot)
     m_calendarNames.clear();
     for (const CalendarInfo &calendar : std::as_const(snapshot.calendars)) {
         m_calendarNames.insert(calendar.id, calendar.displayName);
-        if (calendar.enabled)
-            calendars.append(QVariantMap{{QStringLiteral("id"), calendar.id},
-                                         {QStringLiteral("name"), calendar.displayName},
-                                         {QStringLiteral("color"), calendar.color},
-                                         {QStringLiteral("account"), calendar.account}});
+        calendars.append(QVariantMap{{QStringLiteral("id"), calendar.id},
+                                     {QStringLiteral("name"), calendar.displayName},
+                                     {QStringLiteral("color"), calendar.color},
+                                     {QStringLiteral("account"), calendar.account}});
     }
     m_events = std::move(events);
     m_plainDescriptions.clear();

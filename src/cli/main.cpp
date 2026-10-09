@@ -476,6 +476,8 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     const std::unique_ptr<Backend> backend = openBackend(sample, !reading, code);
     if (!backend)
         return code;
+    // As the app does: a calendar seen for the first time starts as Google shows it.
+    settings.seedCalendars(backend->source->calendars());
     const QTimeZone zone = settings.timeZoneId().isEmpty()
                                ? QTimeZone::systemTimeZone()
                                : QTimeZone(settings.timeZoneId().toUtf8());

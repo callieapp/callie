@@ -120,7 +120,7 @@ private Q_SLOTS:
     void allDayEventIsClippedToRange();
     void allDayEndOnDayWithoutMidnight();
     void declinedIsARole();
-    void calendarsListShownOnly();
+    void calendarsListEveryCalendar();
     void daysOffFollowTheLocale();
     void rowsNameTheirCalendar();
     void timingDescribesWhereAnEventStands();
@@ -370,7 +370,7 @@ void TestEventModel::declinedIsARole()
     QVERIFY(!model->data(model->index(1, 0), EventModel::DeclinedRole).toBool());
 }
 
-void TestEventModel::calendarsListShownOnly()
+void TestEventModel::calendarsListEveryCalendar()
 {
     auto source = std::make_unique<FakeSource>(QList<Event>{});
     source->calendarList = {
@@ -385,13 +385,15 @@ void TestEventModel::calendarsListShownOnly()
     QSignalSpy changed(&model, &EventModel::calendarsChanged);
     model.setSource(source.get());
 
+    // One the provider hides is listed too; whether it shows is Callie's to say.
     QCOMPARE(changed.size(), 1);
-    QCOMPARE(model.calendars().size(), 1);
+    QCOMPARE(model.calendars().size(), 2);
     const QVariantMap shown = model.calendars().first().toMap();
     QCOMPARE(shown.value("name").toString(), QStringLiteral("Shown"));
     QCOMPARE(shown.value("color").value<QColor>(), QColor("#ff0000"));
     QCOMPARE(shown.value("id").toString(), QStringLiteral("a"));
     QCOMPARE(shown.value("account").toString(), QStringLiteral("me@example.com"));
+    QCOMPARE(model.calendars().last().toMap().value("id").toString(), QStringLiteral("b"));
 }
 
 void TestEventModel::daysOffFollowTheLocale()

@@ -184,6 +184,11 @@ int main(int argc, char *argv[])
     // Everything reads through the user's own names and colors for calendars.
     callie::LookedSource looked(*backend, settings);
     callie::CalendarSource *source = &looked;
+    // A calendar Callie has not seen starts hidden if Google does not show it;
+    // after that, Callie's own choice holds.
+    const auto seedCalendars = [&settings, source] { settings.seedCalendars(source->calendars()); };
+    QObject::connect(source, &callie::CalendarSource::changed, &settings, seedCalendars);
+    seedCalendars();
     // People to suggest as guests: from the events, and from Google's contacts.
     callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());
     contacts.setSource(source);

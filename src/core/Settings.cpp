@@ -27,6 +27,7 @@ const QString kLeaderKey = u"keyboard/leaderKey"_s;
 const QString kLeaderTimeout = u"keyboard/leaderTimeout"_s;
 constexpr int kDayMinutes = 24 * 60;
 const QString kHiddenCalendars = u"calendars/hidden"_s;
+const QString kKnownCalendars = u"calendars/known"_s;
 const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
 const QString kCalendarLooks = u"calendars/looks"_s;
 const QString kAccountNames = u"calendars/accountNames"_s;
@@ -78,6 +79,7 @@ void Settings::load()
     m_leaderKey = kLeaderKeys.contains(leader) ? leader : u","_s;
     m_leaderTimeout = std::max(0, m_store.value(kLeaderTimeout, 5000).toInt());
     m_hiddenCalendars = m_store.value(kHiddenCalendars).toStringList();
+    m_knownCalendars = m_store.value(kKnownCalendars).toStringList();
     m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
     m_calendarLooks = m_store.value(kCalendarLooks).toMap();
     m_accountNames = m_store.value(kAccountNames).toMap();
@@ -303,6 +305,28 @@ void Settings::setCalendarVisible(const QString &id, bool visible)
         m_hiddenCalendars.append(id);
     m_store.setValue(kHiddenCalendars, m_hiddenCalendars);
     Q_EMIT hiddenCalendarsChanged();
+}
+
+void Settings::seedCalendars(const QList<CalendarInfo> &calendars)
+{
+    bool hidden = false;
+    bool seen = false;
+    for (const CalendarInfo &calendar : calendars) {
+        if (m_knownCalendars.contains(calendar.id))
+            continue;
+        m_knownCalendars.append(calendar.id);
+        seen = true;
+        if (!calendar.enabled && !m_hiddenCalendars.contains(calendar.id)) {
+            m_hiddenCalendars.append(calendar.id);
+            hidden = true;
+        }
+    }
+    if (seen)
+        m_store.setValue(kKnownCalendars, m_knownCalendars);
+    if (hidden) {
+        m_store.setValue(kHiddenCalendars, m_hiddenCalendars);
+        Q_EMIT hiddenCalendarsChanged();
+    }
 }
 
 void Settings::setTheme(const QString &idOrPath)

@@ -17,6 +17,7 @@ private Q_SLOTS:
     void choicesSurviveARestart();
     void workingHoursStayInOrder();
     void accountPhotosAreKept();
+    void newCalendarsStartAsTheirProviderShowsThem();
     void keyboardSettingsKeepToWhatWorks();
     void weekSettingsResetAndSignal();
     void googleFillsOnlyWhatIsUnset();
@@ -180,6 +181,31 @@ void TestSettings::workingHoursStayInOrder()
     settings.setShowWorkHours(true);
     QCOMPARE(changed.size(), 1);
     QVERIFY(Settings(path()).showWorkHours());
+}
+
+void TestSettings::newCalendarsStartAsTheirProviderShowsThem()
+{
+    const auto calendar = [](const char *id, bool shown) {
+        CalendarInfo info;
+        info.id = QString::fromLatin1(id);
+        info.enabled = shown;
+        return info;
+    };
+    {
+        Settings settings(path());
+        QSignalSpy hidden(&settings, &Settings::hiddenCalendarsChanged);
+        settings.seedCalendars({calendar("work", true), calendar("birthdays", false)});
+        QCOMPARE(settings.hiddenCalendars(), QStringList{u"birthdays"_s});
+        QCOMPARE(hidden.size(), 1);
+        // Shown in Callie, it stays shown though Google still hides it.
+        settings.setCalendarVisible(u"birthdays"_s, true);
+        settings.seedCalendars({calendar("work", true), calendar("birthdays", false)});
+        QVERIFY(settings.hiddenCalendars().isEmpty());
+    }
+    // Remembered across runs; a calendar new since starts as Google has it.
+    Settings settings(path());
+    settings.seedCalendars({calendar("birthdays", false), calendar("holidays", false)});
+    QCOMPARE(settings.hiddenCalendars(), QStringList{u"holidays"_s});
 }
 
 void TestSettings::accountPhotosAreKept()

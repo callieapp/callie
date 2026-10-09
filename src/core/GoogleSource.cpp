@@ -40,7 +40,7 @@ QList<CalendarInfo> readCalendars(GoogleCache &cache, const QList<Account> &acco
                 .displayName = calendar.summary,
                 .color = QColor::fromString(calendar.color),
                 .writable = canWrite(calendar.accessRole),
-                // Google's own "show in list" choice, until Callie has its own.
+                // Google's own "show in list" choice, which Callie starts from.
                 .enabled = calendar.selected,
                 .account = account.id,
             });
@@ -55,8 +55,6 @@ QList<Event> readEvents(GoogleCache &cache, const QList<Account> &accounts, cons
     QList<Event> result;
     for (const Account &account : accounts) {
         for (const GoogleCalendar &calendar : cache.calendars(account)) {
-            if (!calendar.selected)
-                continue;
             const QColor color = QColor::fromString(calendar.color);
             QList<GoogleEvent> stored = cache.events(account, calendar.id, from, to);
             for (GoogleEvent &event : stored) {

@@ -81,7 +81,7 @@ void Composer::refreshCalendars()
         const QStringList hidden = SettingsForeign::create(nullptr, nullptr)->hiddenCalendars();
         for (const CalendarInfo &calendar : m_source->calendars()) {
             // A new event in a calendar that is not shown would seem to vanish.
-            if (!calendar.writable || !calendar.enabled || hidden.contains(calendar.id))
+            if (!calendar.writable || hidden.contains(calendar.id))
                 continue;
             ids << calendar.id;
             calendars << QVariantMap{{u"id"_s, calendar.id},

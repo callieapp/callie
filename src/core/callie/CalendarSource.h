@@ -24,6 +24,8 @@ struct CalendarInfo
     QString displayName;
     QColor color;
     bool writable = false;
+    /// Shown by the provider's own choice, such as Google's "show in my list";
+    /// Callie only uses it to decide whether a calendar starts shown.
     bool enabled = true;
     /// The account the calendar belongs to, for grouping; empty if there is one.
     QString account = {};

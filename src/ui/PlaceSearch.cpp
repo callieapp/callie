@@ -148,8 +148,10 @@ void PlaceSearch::ask()
     const QString asked = m_text;
     connect(reply, &QNetworkReply::finished, this, [this, reply, asked] {
         reply->deleteLater();
-        // An answer to text since changed, or to a search asked again, is old.
-        if (asked != m_text || m_delay.isActive())
+        // An answer to text since changed, or to a search asked again, is old,
+        // and a cancelled one is no answer.
+        if (asked != m_text || m_delay.isActive() ||
+            reply->error() == QNetworkReply::OperationCanceledError)
             return;
         setSearching(false);
         m_remote.clear();

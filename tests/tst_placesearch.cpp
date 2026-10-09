@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSignalSpy>
+#include <QTcpServer>
 #include <QTest>
 #include <QUrlQuery>
 
@@ -46,6 +47,8 @@ private Q_SLOTS:
     void shortTextStaysLocal();
     void typingOnAsksOnce();
     void offlineAsksNoServer();
+    void failuresDropOnlinePlaces();
+    void askingAgainKeepsOnlinePlaces();
 };
 
 void TestPlaceSearch::ownPlacesComeFirst()
@@ -167,6 +170,52 @@ void TestPlaceSearch::offlineAsksNoServer()
     search.setServer({});
     QTest::qWait(400);
     QCOMPARE(server.requests.size(), 1);
+}
+
+void TestPlaceSearch::failuresDropOnlinePlaces()
+{
+    FakeHttpServer server;
+    server.respond(200, photon({{{u"name"_s, u"Studio Rosa"_s}}}));
+    PlaceSearch search;
+    search.setServer(server.url(u"/"_s));
+    search.setDelay(0);
+    search.search(u"studio"_s);
+    QTRY_COMPARE(labels(search.results()), QStringList{u"Studio Rosa"_s});
+
+    // A server that fails takes its places with it, and stops searching.
+    server.respond(500, "{}");
+    search.search(u"studio r"_s);
+    QVERIFY(search.searching());
+    QTRY_VERIFY(!search.searching());
+    QVERIFY(search.results().isEmpty());
+}
+
+void TestPlaceSearch::askingAgainKeepsOnlinePlaces()
+{
+    FakeHttpServer server;
+    server.respond(200, photon({{{u"name"_s, u"Studio Rosa"_s}}}));
+    PlaceSearch search;
+    search.setServer(server.url(u"/"_s));
+    search.setDelay(0);
+    search.search(u"studio"_s);
+    QTRY_COMPARE(labels(search.results()), QStringList{u"Studio Rosa"_s});
+
+    // A server that takes the request and never answers keeps it in flight.
+    QTcpServer silent;
+    QVERIFY(silent.listen(QHostAddress::LocalHost));
+    search.setServer(QUrl(u"http://127.0.0.1:%1/"_s.arg(silent.serverPort())));
+    search.search(u"studio"_s);
+    QTRY_VERIFY(silent.hasPendingConnections());
+    QVERIFY(search.searching());
+
+    // The same text again, as with a space typed after it, cancels that
+    // request without emptying the list.
+    QSignalSpy changed(&search, &PlaceSearch::resultsChanged);
+    search.search(u"studio "_s);
+    QTest::qWait(100);
+    QCOMPARE(labels(search.results()), QStringList{u"Studio Rosa"_s});
+    QVERIFY(changed.isEmpty());
+    QVERIFY(search.searching());
 }
 
 QTEST_GUILESS_MAIN(TestPlaceSearch)

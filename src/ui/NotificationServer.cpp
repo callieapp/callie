@@ -2,6 +2,7 @@
 
 #include "callie/Logging.h"
 
+#include <QByteArray>
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
@@ -33,8 +34,19 @@ QString appIcon()
         const QString dir =
             QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u"/callie"_s;
         const QString path = dir + u"/notification-icon.png"_s;
-        if (QFile::exists(path) ||
-            (QDir().mkpath(dir) && QFile::copy(u":/callie/assets/logo.png"_s, path)))
+        // Written again when it differs, so a new logo replaces an old copy.
+        QFile logo(u":/callie/assets/logo.png"_s);
+        if (!logo.open(QIODevice::ReadOnly))
+            return kAppId;
+        const QByteArray bytes = logo.readAll();
+        QFile cached(path);
+        if (cached.open(QIODevice::ReadOnly) && cached.readAll() == bytes)
+            return path;
+        cached.close();
+        QDir().mkpath(dir);
+        QFile out(path);
+        if (out.open(QIODevice::WriteOnly | QIODevice::Truncate) &&
+            out.write(bytes) == bytes.size())
             return path;
         return kAppId;
     }();

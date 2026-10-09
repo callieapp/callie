@@ -4,7 +4,10 @@
 
 #include "callie/AccountStore.h"
 #include "callie/GoogleCache.h"
+#include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSource.h"
+#include "callie/GoogleSync.h"
+#include "callie/GoogleTokenProvider.h"
 
 #include <QDesktopServices>
 #include <QNetworkAccessManager>
@@ -155,13 +158,41 @@ void TestAccounts::signIn(int tokenStatus, const QByteArray &tokenBody, const QS
 void TestAccounts::reconnectPicksTheAccount()
 {
     AccountsController *accounts = AccountsController::instance();
+    // A token from before, which carries only the permissions granted then.
+    FakeHttpServer refresher;
+    int issued = 0;
+    refresher.handler = [&issued](const FakeHttpServer::Request &) {
+        ++issued;
+        return FakeHttpServer::Response(200, QByteArray(R"({"access_token":"at-)") +
+                                                 QByteArray::number(issued) +
+                                                 R"(","expires_in":3600})");
+    };
+    FakeTokenStore keyring;
+    keyring.secrets.insert(kMe.id, u"rt-1"_s);
+    GoogleTokenProvider tokens(GoogleClientConfig{u"id"_s, u"secret"_s}, keyring);
+    tokens.setTokenUrl(refresher.url(u"/token"_s));
+    const auto token = [&tokens]() -> QString {
+        QString got;
+        tokens.accessToken(kMe, [&got](const QString &t, const QString &) { got = t; });
+        return QTest::qWaitFor([&got] { return !got.isEmpty(); }, 5000) ? got : QString();
+    };
+    QCOMPARE(token(), u"at-1"_s);
+    QCOMPARE(token(), u"at-1"_s);
+
     signIn(200, R"({"access_token":"at-2","refresh_token":"rt-2","expires_in":3600})", kMe.id);
+    QNetworkAccessManager network;
+    GoogleCalendarApi api(&network);
+    GoogleSync sync(tokens, api, *m_cache);
+    m_source->setSync(&sync);
     QTRY_VERIFY_WITH_TIMEOUT(!accounts->busy(), 5000);
     QVERIFY2(accounts->error().isEmpty(), qPrintable(accounts->error()));
     QCOMPARE(QUrlQuery(m_browser.last).queryItemValue(u"login_hint"_s, QUrl::FullyDecoded), kMe.id);
     // The same account, with its new sign-in.
     QCOMPARE(accounts->accounts().size(), 1);
     QCOMPARE(m_tokens->secrets.value(kMe.id), u"rt-2"_s);
+    // The token from before is dropped, so the next request gets a new one.
+    QCOMPARE(token(), u"at-2"_s);
+    m_source->setSync(nullptr);
 }
 
 void TestAccounts::signingInAgainSyncsAndHoldsOffOtherActions()

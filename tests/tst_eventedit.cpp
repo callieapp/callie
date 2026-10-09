@@ -605,6 +605,21 @@ void TestEventEdit::customRepeatsAreWritten()
     QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
              (QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,FR;COUNT=4"_s,
                           u"EXDATE:20261016T210000Z"_s}));
+
+    // In developer mode the rule can be typed, and is saved as typed.
+    m_settings->setDeveloperMode(true);
+    QQuickItem *raw = nullptr;
+    QTRY_VERIFY((raw = find(m_window->contentItem(), "Field", "placeholderText",
+                            u"RRULE:FREQ=WEEKLY;BYDAY=MO"_s)));
+    const QStringList typed{u"RRULE:FREQ=WEEKLY;WKST=SU;BYDAY=FR"_s, u"EXDATE:20261023T210000Z"_s};
+    raw->setProperty("text", typed.join(u' '));
+    QMetaObject::invokeMethod(raw, "editingFinished");
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(), typed);
+    // What is not a rule is put back rather than saved.
+    raw->setProperty("text", u"FREQ=DAILY"_s);
+    QMetaObject::invokeMethod(raw, "editingFinished");
+    QCOMPARE(raw->property("text").toString(), typed.join(u' '));
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(), typed);
 }
 
 QTEST_MAIN(TestEventEdit)

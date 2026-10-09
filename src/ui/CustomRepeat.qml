@@ -205,10 +205,18 @@ Column {
             const lines = text.trim().split(/\s+/).filter(l => l !== "")
             if (JSON.stringify(lines) === JSON.stringify(root.editor.customLines))
                 return
+            // One rule, and only lines a recurrence can hold; anything else goes back.
+            const rules = lines.filter(l => /^RRULE:(.*;)?FREQ=/i.test(l))
+            if (rules.length !== 1 || !lines.every(l => /^(RRULE|EXRULE|RDATE|EXDATE)[:;]/i.test(
+                                                            l))) {
+                text = Qt.binding(() => root.editor.customLines.join(" "))
+                return
+            }
             root.editor.customLines = lines
             root.editor.custom = root.editor.actions.customRepeat(lines, root.editor.startDay,
                                                                   root.editor.zone)
             root.editor.customTouched = true
+            root.editor.customTyped = true
         }
     }
 
@@ -240,7 +248,7 @@ Column {
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            width: 28
+            width: Theme.space7
             horizontalAlignment: Text.AlignHCenter
             text: stepper.value
             color: Theme.text

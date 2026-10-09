@@ -45,6 +45,9 @@ struct Custom
     QDate until;
     /// How many times it happens, or 0.
     int count = 0;
+    /// The rule's WKST, which decides the weeks of a rule every few weeks on
+    /// several days; empty for the standard Monday.
+    QString weekStart = {};
 
     friend bool operator==(const Custom &, const Custom &) = default;
 };

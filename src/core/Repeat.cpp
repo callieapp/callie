@@ -134,6 +134,7 @@ std::optional<Custom> custom(const QStringList &recurrence, QDate start, const Q
     Custom c;
     QString byDay;
     QString byMonthDay;
+    QString byMonth;
     for (const QString &part : rrule.split(u';', Qt::SkipEmptyParts)) {
         const QString name = part.section(u'=', 0, 0).toUpper();
         const QString value = part.section(u'=', 1);
@@ -167,12 +168,23 @@ std::optional<Custom> custom(const QStringList &recurrence, QDate start, const Q
         } else if (name == u"BYMONTHDAY") {
             byMonthDay = value;
         } else if (name == u"BYMONTH") {
-            if (value.toInt() != start.month())
+            byMonth = value;
+        } else if (name == u"WKST") {
+            if (dayFromCode(value.toUpper()) == 0)
                 return std::nullopt;
-        } else if (name != u"WKST") {
+            if (value.toUpper() != u"MO")
+                c.weekStart = value.toUpper();
+        } else {
             return std::nullopt;
         }
     }
+
+    // A month or a day of the month only restates the start where the rule
+    // already falls in it: a yearly rule's month, a monthly or yearly one's day.
+    if (!byMonth.isEmpty() && (c.frequency != u"yearly" || byMonth.toInt() != start.month()))
+        return std::nullopt;
+    if (!byMonthDay.isEmpty() && (c.frequency == u"daily" || c.frequency == u"weekly"))
+        return std::nullopt;
 
     if (c.frequency == u"weekly") {
         for (const QString &code : byDay.split(u',', Qt::SkipEmptyParts)) {
@@ -216,6 +228,8 @@ QStringList rule(const Custom &c, QDate start, bool allDay, const QTimeZone &zon
         for (int day : days)
             codes << QString::fromLatin1(kDays[day - 1]);
         parts << u"BYDAY="_s + codes.join(u',');
+        if (!c.weekStart.isEmpty())
+            parts << u"WKST="_s + c.weekStart;
     } else if (c.frequency == u"monthly") {
         parts << (c.onWeekday ? u"BYDAY="_s + QString::number(weekOfMonth(start)) + dayCode(start)
                               : u"BYMONTHDAY="_s + QString::number(start.day()));

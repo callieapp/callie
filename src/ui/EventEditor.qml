@@ -33,6 +33,8 @@ Column {
     property var customLines: []
     /// The custom rule was changed here, rather than only read.
     property bool customTouched: false
+    /// The rule's lines were typed in developer mode, so they are saved as typed.
+    property bool customTyped: false
     readonly property bool customReadable: Object.keys(custom).length > 0
     property var guests: []
     property bool videoCall
@@ -58,6 +60,7 @@ Column {
         customLines = repeat === "custom" ? (e.recurrence || []) : []
         custom = repeat === "custom" ? root.actions.customRepeat(customLines, startDay, zone) : {}
         customTouched = false
+        customTyped = false
         guests = (e.attendees || []).slice()
         videoCall = (e.conferenceUrl || "").toString() !== ""
         moreOptions = false
@@ -99,8 +102,10 @@ Column {
         // A custom rule goes only when changed here, or moved with its series,
         // so one Google wrote its own way is not rewritten for nothing.
         if (repeat === "custom" && (customTouched || moved)) {
-            const lines = customReadable ? root.actions.customRule(custom, startDay, allDay, zone, event.recurrence
-                                                                   || []) : customLines
+            const lines = customReadable && !customTyped ? root.actions.customRule(custom, startDay,
+                                                                                   allDay, zone,
+                                                                                   event.recurrence
+                                                                                   || []) : customLines
             if (JSON.stringify(lines) !== JSON.stringify(event.recurrence || []))
                 c.recurrence = lines
         }
@@ -168,6 +173,7 @@ Column {
         customLines = root.actions.customRule(custom, startDay, allDay, zone, event.recurrence
                                               || [])
         customTouched = true
+        customTyped = false
     }
 
     function addGuest(text) {

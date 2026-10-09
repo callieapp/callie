@@ -148,7 +148,8 @@ QVariantMap EventActions::customRepeat(const QStringList &recurrence, const QDat
             {u"weekdays"_s, weekdays},
             {u"onWeekday"_s, custom->onWeekday},
             {u"until"_s, custom->until.isValid() ? custom->until.startOfDay() : QDateTime()},
-            {u"count"_s, custom->count}};
+            {u"count"_s, custom->count},
+            {u"weekStart"_s, custom->weekStart}};
 }
 
 QStringList EventActions::customRule(const QVariantMap &custom, const QDateTime &day, bool allDay,
@@ -162,6 +163,7 @@ QStringList EventActions::customRule(const QVariantMap &custom, const QDateTime 
     c.onWeekday = custom.value(u"onWeekday"_s).toBool();
     c.until = custom.value(u"until"_s).toDateTime().date();
     c.count = std::max(0, custom.value(u"count"_s).toInt());
+    c.weekStart = custom.value(u"weekStart"_s).toString();
     QStringList lines = Repeat::rule(c, day.date(), allDay, zoneNamed(zone));
     for (const QString &line : previous) {
         if (!line.startsWith(u"RRULE:"_s, Qt::CaseInsensitive))

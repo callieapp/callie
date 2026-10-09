@@ -86,6 +86,15 @@ void TestRepeat::customReadsWhatTheFormCanSay()
     QCOMPARE(read("RRULE:FREQ=WEEKLY")->weekdays, QList<int>{3});
     // Lines other than the rule, such as deleted days, do not stop it.
     QVERIFY(Repeat::custom({u"RRULE:FREQ=DAILY"_s, u"EXDATE:20261009T133000Z"_s}, start, york));
+    // The start's own month and day restate a yearly rule.
+    QCOMPARE(read("RRULE:FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=7")->frequency, u"yearly"_s);
+    // A week starting on Sunday is kept, since it moves which weeks count.
+    const auto sundays = read("RRULE:FREQ=WEEKLY;INTERVAL=2;WKST=SU;BYDAY=SU,MO");
+    QVERIFY(sundays);
+    QCOMPARE(sundays->weekStart, u"SU"_s);
+    QCOMPARE(Repeat::rule(*sundays, start, false, york),
+             QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,SU;WKST=SU"_s});
+    QVERIFY(read("RRULE:FREQ=WEEKLY;WKST=MO;BYDAY=MO")->weekStart.isEmpty());
 }
 
 void TestRepeat::customLeavesOtherRulesAlone()
@@ -95,7 +104,11 @@ void TestRepeat::customLeavesOtherRulesAlone()
     for (const char *line :
          {"RRULE:FREQ=MONTHLY;BYMONTHDAY=1,15", "RRULE:FREQ=MONTHLY;BYDAY=3WE",
           "RRULE:FREQ=WEEKLY;BYHOUR=9", "RRULE:FREQ=HOURLY",
-          "RRULE:FREQ=DAILY;COUNT=3;UNTIL=20261201", "RRULE:FREQ=YEARLY;BYMONTH=3"})
+          "RRULE:FREQ=DAILY;COUNT=3;UNTIL=20261201", "RRULE:FREQ=YEARLY;BYMONTH=3",
+          // Filters that only look like the start's own month or day.
+          "RRULE:FREQ=DAILY;BYMONTH=10", "RRULE:FREQ=MONTHLY;BYMONTH=10",
+          "RRULE:FREQ=DAILY;BYMONTHDAY=7", "RRULE:FREQ=WEEKLY;BYMONTHDAY=1,15",
+          "RRULE:FREQ=WEEKLY;WKST=XX"})
         QVERIFY2(!Repeat::custom({QString::fromLatin1(line)}, start, york), line);
     QVERIFY(!Repeat::custom({}, start, york));
 }

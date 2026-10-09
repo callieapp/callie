@@ -293,7 +293,7 @@ ApplicationWindow {
                         height: 48
                         summary: qsTr("%1 planning").arg(calendar.modelData.name)
                         location: qsTr("Studio")
-                        conferenceUrl: ""
+                        joinUrl: ""
                         calendarName: calendar.modelData.name
                         description: ""
                         calendarColor: calendar.modelData.color
@@ -310,7 +310,7 @@ ApplicationWindow {
                         height: 48
                         summary: qsTr("%1 maybe").arg(calendar.modelData.name)
                         location: ""
-                        conferenceUrl: ""
+                        joinUrl: ""
                         calendarName: calendar.modelData.name
                         description: ""
                         calendarColor: calendar.modelData.color

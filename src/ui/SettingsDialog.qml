@@ -311,6 +311,21 @@ Popup {
                     }
                 }
             }
+            Toggle {
+                width: parent.width
+                text: qsTr("Search OpenStreetMap for places")
+                checked: Settings.searchPlacesOnline
+                onToggled: Settings.searchPlacesOnline = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr(
+                          "Sends what you type as an event's place to OpenStreetMap's Photon server, run by komoot. Off, only places from your own events are suggested.")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+            }
         }
 
         Section {

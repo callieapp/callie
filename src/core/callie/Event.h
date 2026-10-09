@@ -34,6 +34,7 @@ struct Event
     Q_PROPERTY(bool allDay MEMBER allDay)
     Q_PROPERTY(QString location MEMBER location)
     Q_PROPERTY(QUrl conferenceUrl MEMBER conferenceUrl)
+    Q_PROPERTY(QUrl joinUrl READ joinUrl)
     Q_PROPERTY(QColor color MEMBER color)
     Q_PROPERTY(bool declined MEMBER declined)
 
@@ -44,6 +45,7 @@ public:
     QString summary;
     QString description;
     QString location;
+    /// The provider's own video call, which the editor's "Video call" turns on and off.
     QUrl conferenceUrl;
     QDateTime start;
     QDateTime end;
@@ -76,6 +78,10 @@ public:
     /// Callie's default applies.
     QList<int> reminders;
     bool remindersKnown = false;
+
+    /// The call Join opens: the provider's own, else the first call link in
+    /// the place or notes, such as a Zoom link pasted into an invitation.
+    [[nodiscard]] QUrl joinUrl() const;
 
     /// Where an overlapping event sits, filled in by the view model: `depth`
     /// steps it in over earlier events, and `lane` of `laneCount` places it

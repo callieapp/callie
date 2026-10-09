@@ -1,3 +1,4 @@
+#include "callie/Event.h"
 #include "callie/Places.h"
 
 #include <QTest>
@@ -14,6 +15,7 @@ private Q_SLOTS:
     void callLinksAreFound_data();
     void callLinksAreFound();
     void mapLinksFollowTheApp();
+    void joinPrefersTheProvidersCall();
 };
 
 void TestPlaces::callLinksAreFound_data()
@@ -62,6 +64,21 @@ void TestPlaces::mapLinksFollowTheApp()
     // A web address is a place already.
     QCOMPARE(places::mapUrl(u"google"_s, u" https://example.com/venue "_s),
              QUrl(u"https://example.com/venue"_s));
+}
+
+void TestPlaces::joinPrefersTheProvidersCall()
+{
+    Event e;
+    e.description = u"Agenda first.\nJoin: https://example.zoom.us/j/987?pwd=x."_s;
+    QCOMPARE(e.joinUrl(), QUrl(u"https://example.zoom.us/j/987?pwd=x"_s));
+    e.location = u"https://meet.google.com/aaa-bbbb-ccc"_s;
+    QCOMPARE(e.joinUrl(), QUrl(u"https://meet.google.com/aaa-bbbb-ccc"_s));
+    e.conferenceUrl = QUrl(u"https://meet.google.com/own-call"_s);
+    QCOMPARE(e.joinUrl(), e.conferenceUrl);
+
+    Event other;
+    other.description = u"https://example.com/zoom"_s;
+    QVERIFY(other.joinUrl().isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestPlaces)

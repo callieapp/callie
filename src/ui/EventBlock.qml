@@ -13,7 +13,7 @@ Rectangle {
 
     required property string summary
     required property string location
-    required property url conferenceUrl
+    required property url joinUrl
     required property string calendarName
     required property string description
     /// The calendar's own color; the theme turns it into fill, ink and edge.

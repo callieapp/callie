@@ -41,7 +41,10 @@ class Settings : public QObject
     /// menu, and the raw repeat rule in the editor.
     Q_PROPERTY(bool developerMode READ developerMode WRITE setDeveloperMode NOTIFY developerChanged)
     /// The map app places open in: "system", "google", "osm" or "apple".
-    Q_PROPERTY(QString mapApp READ mapApp WRITE setMapApp NOTIFY mapAppChanged)
+    Q_PROPERTY(QString mapApp READ mapApp WRITE setMapApp NOTIFY placesChanged)
+    /// Asks OpenStreetMap's Photon server for places typed in the editor.
+    Q_PROPERTY(bool searchPlacesOnline READ searchPlacesOnline WRITE setSearchPlacesOnline NOTIFY
+                   placesChanged)
     /// Writes Callie's debug lines to the log, as QT_LOGGING_RULES would.
     Q_PROPERTY(
         bool verboseLogging READ verboseLogging WRITE setVerboseLogging NOTIFY developerChanged)
@@ -124,6 +127,8 @@ public:
     void setShowWorkHours(bool show);
     [[nodiscard]] QString mapApp() const { return m_mapApp; }
     void setMapApp(const QString &app);
+    [[nodiscard]] bool searchPlacesOnline() const { return m_searchPlacesOnline; }
+    void setSearchPlacesOnline(bool on);
     [[nodiscard]] bool developerMode() const { return m_developerMode; }
     void setDeveloperMode(bool on);
     [[nodiscard]] bool verboseLogging() const { return m_verboseLogging; }
@@ -219,7 +224,7 @@ Q_SIGNALS:
     void workHoursChanged();
     void keyboardChanged();
     void developerChanged();
-    void mapAppChanged();
+    void placesChanged();
     void hiddenCalendarsChanged();
     void timesChanged();
     void themeChanged();
@@ -253,6 +258,7 @@ private:
     bool m_showWorkHours = false;
     bool m_developerMode = false;
     QString m_mapApp = QStringLiteral("system");
+    bool m_searchPlacesOnline = true;
     bool m_verboseLogging = false;
     bool m_viMode = false;
     QString m_leaderKey = QStringLiteral(",");

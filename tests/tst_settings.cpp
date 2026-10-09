@@ -18,7 +18,7 @@ private Q_SLOTS:
     void workingHoursStayInOrder();
     void accountPhotosAreKept();
     void developerSettingsAreKept();
-    void mapAppIsKept();
+    void placeSettingsAreKept();
     void newCalendarsStartAsTheirProviderShowsThem();
     void keyboardSettingsKeepToWhatWorks();
     void weekSettingsResetAndSignal();
@@ -241,18 +241,21 @@ void TestSettings::developerSettingsAreKept()
     QVERIFY(settings.verboseLogging());
 }
 
-void TestSettings::mapAppIsKept()
+void TestSettings::placeSettingsAreKept()
 {
     {
         Settings settings(path());
         QCOMPARE(settings.mapApp(), u"system"_s);
-        QSignalSpy changed(&settings, &Settings::mapAppChanged);
+        QVERIFY(settings.searchPlacesOnline());
+        QSignalSpy changed(&settings, &Settings::placesChanged);
         settings.setMapApp(u"osm"_s);
         settings.setMapApp(u"nowhere"_s);
-        QCOMPARE(changed.size(), 1);
+        settings.setSearchPlacesOnline(false);
+        QCOMPARE(changed.size(), 2);
     }
     Settings settings(path());
     QCOMPARE(settings.mapApp(), u"osm"_s);
+    QVERIFY(!settings.searchPlacesOnline());
 }
 
 void TestSettings::accountPhotosAreKept()

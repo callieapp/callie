@@ -219,8 +219,13 @@ int main(int argc, char *argv[])
     callie::ContactBookForeign::s_instance = &contacts;
     callie::PlaceSearch places;
     places.setSource(source);
-    if (!standalone)
-        places.setServer(callie::PlaceSearch::publicServer());
+    const auto placesOnline = [&] {
+        places.setServer(!standalone && settings.searchPlacesOnline()
+                             ? callie::PlaceSearch::publicServer()
+                             : QUrl());
+    };
+    placesOnline();
+    QObject::connect(&settings, &callie::Settings::placesChanged, &places, placesOnline);
     callie::PlaceSearchForeign::s_instance = &places;
     QTimer syncTimer;
     // Without a client every refresh would fail, so show the cache and say why once.

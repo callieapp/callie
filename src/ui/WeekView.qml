@@ -606,15 +606,15 @@ Item {
     function showDetails(block) {
         tipDelay.stop()
         tip.visible = false
-        details.showNear(root.model.eventAt(block.index), root.model.callService(
-                             block.conferenceUrl), block)
+        details.showNear(root.model.eventAt(block.index), root.model.callService(block.joinUrl),
+                         block)
     }
 
     /// Opens the details of the event in `row`, centered, for when there is no
     /// block under the pointer to place them by.
     function showRow(row) {
         const event = root.model.eventAt(row)
-        details.showCentered(event, root.model.callService(event.conferenceUrl))
+        details.showCentered(event, root.model.callService(event.joinUrl))
     }
 
     Timer {
@@ -628,7 +628,7 @@ Item {
             tip.when = block.calendarName ? qsTr("%1, %2").arg(root.whenText(block)).arg(
                                                 block.calendarName) : root.whenText(block)
             tip.timing = root.model.timing(block.start, block.end, Clock.now)
-            tip.hasCall = root.model.callService(block.conferenceUrl) !== ""
+            tip.hasCall = root.model.callService(block.joinUrl) !== ""
             root.placeBeside(block, tip)
             tip.visible = true
         }

@@ -43,6 +43,22 @@ PlaceSearch::PlaceSearch(QObject *parent) : QObject(parent)
     m_delay.setSingleShot(true);
     m_delay.setInterval(300);
     connect(&m_delay, &QTimer::timeout, this, &PlaceSearch::ask);
+    connect(&m_reading, &QFutureWatcher<SourceSnapshot>::finished, this, [this] {
+        // Most used first.
+        QHash<QString, int> uses;
+        for (const Event &e : m_reading.result().events) {
+            const QString place = e.location.simplified();
+            if (!place.isEmpty() && !place.startsWith(u"http"_s))
+                ++uses[place];
+        }
+        m_past = uses.keys();
+        std::sort(m_past.begin(), m_past.end(), [&uses](const QString &a, const QString &b) {
+            return uses[a] != uses[b] ? uses[a] > uses[b] : a < b;
+        });
+        matchPast();
+        if (!m_text.isEmpty())
+            show();
+    });
 }
 
 void PlaceSearch::setSource(CalendarSource *source)
@@ -67,29 +83,16 @@ void PlaceSearch::search(const QString &text)
         clear();
         return;
     }
-    if (!m_pastRead && m_source) {
-        // Read once, when first wanted, most used first.
+    // Read when first wanted, and again once the events change.
+    if (!m_pastRead && m_source && !m_reading.isRunning()) {
         m_pastRead = true;
         const QDateTime now = QDateTime::currentDateTime();
-        QHash<QString, int> uses;
-        for (const Event &e :
-             m_source->eventsBetween(now.addDays(-kDaysAround), now.addDays(kDaysAround),
-                                     QTimeZone::systemTimeZone())) {
-            const QString place = e.location.simplified();
-            if (!place.isEmpty() && !place.startsWith(u"http"_s))
-                ++uses[place];
-        }
-        m_past = uses.keys();
-        std::sort(m_past.begin(), m_past.end(), [&uses](const QString &a, const QString &b) {
-            return uses[a] != uses[b] ? uses[a] > uses[b] : a < b;
-        });
+        m_reading.setFuture(m_source->load(now.addDays(-kDaysAround), now.addDays(kDaysAround),
+                                           QTimeZone::systemTimeZone()));
     }
-    m_pastMatches.clear();
-    for (const QString &place : std::as_const(m_past)) {
-        if (place.contains(m_text, Qt::CaseInsensitive) && m_pastMatches.size() < kLimit)
-            m_pastMatches << place;
-    }
-    show({});
+    m_remote.clear();
+    matchPast();
+    show();
     if (m_text.size() >= kMinLetters && m_server.isValid())
         m_delay.start();
     else
@@ -103,6 +106,7 @@ void PlaceSearch::clear()
         m_reply->abort();
     m_text.clear();
     m_pastMatches.clear();
+    m_remote.clear();
     if (m_results.isEmpty())
         return;
     m_results.clear();
@@ -129,24 +133,33 @@ void PlaceSearch::ask()
         // An answer to text since changed, or a failure, shows nothing new.
         if (reply->error() != QNetworkReply::NoError || asked != m_text)
             return;
-        QStringList remote;
+        m_remote.clear();
         const QJsonArray features =
             QJsonDocument::fromJson(reply->readAll()).object()[u"features"].toArray();
         for (const QJsonValue &feature : features) {
             const QString label = labelOf(feature[u"properties"].toObject());
-            if (!label.isEmpty() && !remote.contains(label))
-                remote << label;
+            if (!label.isEmpty() && !m_remote.contains(label))
+                m_remote << label;
         }
-        show(remote);
+        show();
     });
 }
 
-void PlaceSearch::show(const QStringList &remote)
+void PlaceSearch::matchPast()
+{
+    m_pastMatches.clear();
+    for (const QString &place : std::as_const(m_past)) {
+        if (place.contains(m_text, Qt::CaseInsensitive) && m_pastMatches.size() < kLimit)
+            m_pastMatches << place;
+    }
+}
+
+void PlaceSearch::show()
 {
     QVariantList results;
     for (const QString &place : std::as_const(m_pastMatches))
         results << QVariantMap{{u"label"_s, place}, {u"past"_s, true}};
-    for (const QString &place : remote) {
+    for (const QString &place : std::as_const(m_remote)) {
         if (!m_pastMatches.contains(place))
             results << QVariantMap{{u"label"_s, place}, {u"past"_s, false}};
     }

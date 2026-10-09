@@ -333,6 +333,7 @@ Column {
         property int highlighted: 0
         /// A suggestion was picked with the arrows, so Enter takes it.
         property bool picking: false
+        readonly property var picked: picking ? Places.results[highlighted] : undefined
 
         function take(label) {
             root.place = label
@@ -354,23 +355,29 @@ Column {
                 Places.clear()
         }
         Component.onDestruction: Places.clear()
-        Keys.onDownPressed: {
+        Keys.onDownPressed: event => {
+            event.accepted = Places.results.length > 0
+            if (!event.accepted)
+                return
             highlighted = Math.min(Places.results.length - 1, highlighted + 1)
             picking = true
         }
-        Keys.onUpPressed: {
+        Keys.onUpPressed: event => {
+            event.accepted = Places.results.length > 0
+            if (!event.accepted)
+                return
             highlighted = Math.max(0, highlighted - 1)
             picking = true
         }
         Keys.onReturnPressed: event => {
-            event.accepted = picking && Places.results.length > 0
-            if (event.accepted)
-                take(Places.results[highlighted].label)
+            event.accepted = !!picked
+            if (picked)
+                take(picked.label)
         }
         Keys.onTabPressed: event => {
-            event.accepted = picking && Places.results.length > 0
-            if (event.accepted)
-                take(Places.results[highlighted].label)
+            event.accepted = !!picked
+            if (picked)
+                take(picked.label)
         }
         Keys.onEscapePressed: event => {
             event.accepted = Places.results.length > 0

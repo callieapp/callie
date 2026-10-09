@@ -74,6 +74,7 @@ public:
         DaySpanRole,
         CalendarNameRole,
         DescriptionRole,
+        JoinUrlRole,
     };
     Q_ENUM(Role)
 

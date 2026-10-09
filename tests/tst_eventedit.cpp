@@ -17,6 +17,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QRegularExpression>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -83,6 +84,7 @@ private Q_SLOTS:
     void titleBarFitsNarrowWindows();
     void guestsComeFromSuggestions();
     void placesComeFromSuggestions();
+    void callsInNotesJoinWithoutAVideoCall();
     void trayAsksWhichOccurrences();
     void developerModeShowsIds();
     void customRepeatsAreWritten();
@@ -546,11 +548,24 @@ void TestEventEdit::placesComeFromSuggestions()
 {
     m_photon->respond(200,
                       R"({"features":[{"properties":{"name":"Studio Rosa","city":"Leeds"}}]})");
-    QVERIFY(openEditor(u"Climbing"_s));
+    QQuickItem *form = openEditor(u"Climbing"_s);
+    QVERIFY(form);
     QQuickItem *overlay = m_window->contentItem();
     QQuickItem *where = find(overlay, "Field", "placeholderText", u"Where"_s);
     QVERIFY(where);
     where->forceActiveFocus();
+
+    // Down before any suggestion has come picks nothing for Enter to take.
+    QTest::failOnWarning(QRegularExpression(u"TypeError"_s));
+    m_places->setDelay(200);
+    where->setProperty("text", u"ros"_s);
+    QMetaObject::invokeMethod(where, "textEdited");
+    QTest::keyClick(m_window, Qt::Key_Down);
+    QTRY_VERIFY(!m_places->results().isEmpty());
+    QTest::keyClick(m_window, Qt::Key_Return);
+    QCOMPARE(form->property("place").toString(), u"ros"_s);
+    m_places->setDelay(0);
+
     where->setProperty("text", u"stu"_s);
     QMetaObject::invokeMethod(where, "textEdited");
 
@@ -571,6 +586,33 @@ void TestEventEdit::placesComeFromSuggestions()
     QTest::qWait(100);
     click(m_window, save);
     QTRY_COMPARE(named(*m_source, u"Climbing"_s).location, u"Studio Rosa, Leeds"_s);
+}
+
+void TestEventEdit::callsInNotesJoinWithoutAVideoCall()
+{
+    EventDraft draft;
+    draft.calendarId = m_source->calendars().first().id;
+    draft.summary = u"Pairing"_s;
+    draft.description = u"Join at https://acme.zoom.us/j/123"_s;
+    draft.start = QDateTime(QDate(2026, 10, 8), QTime(8, 0));
+    draft.end = draft.start.addSecs(1800);
+    m_source->createEvent(draft, [](const QString &) {});
+
+    // The card offers to join the call found in the notes...
+    QQuickItem *block = nullptr;
+    QTRY_VERIFY((block = find(m_window->contentItem(), "EventBlock", "summary", u"Pairing"_s)));
+    QTest::qWait(300);
+    click(m_window, block);
+    QTRY_VERIFY(find(m_window->contentItem(), "StickerButton", "text", u"Join Zoom call"_s));
+
+    // ...but it is no video call of the event's own to turn off.
+    QQuickItem *edit = find(m_window->contentItem(), "StickerButton", "text", u"Edit"_s);
+    QVERIFY(edit);
+    QTest::qWait(600);
+    click(m_window, edit);
+    QQuickItem *form = nullptr;
+    QTRY_VERIFY((form = find(m_window->contentItem(), "EventEditor", "title", u"Pairing"_s)));
+    QVERIFY(!form->property("videoCall").toBool());
 }
 
 void TestEventEdit::trayAsksWhichOccurrences()

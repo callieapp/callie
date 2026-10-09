@@ -123,18 +123,16 @@ void AccountsController::signIn(const QString &hint)
 
 void AccountsController::resync(const QString &id)
 {
-    if (!m_setup.cache || !m_setup.source)
+    if (!m_setup.source)
         return;
     const auto account = std::find_if(m_accounts.cbegin(), m_accounts.cend(),
                                       [&id](const Account &a) { return a.id == id; });
     if (account == m_accounts.cend())
         return;
-    if (!m_setup.cache->removeAccount(*account)) {
-        finish(tr("Could not forget the cached events: %1").arg(m_setup.cache->errorString()));
-        return;
-    }
     qCInfo(lcAccounts) << "resyncing" << id;
-    m_setup.source->refresh();
+    QString error;
+    if (!m_setup.source->resync(*account, &error))
+        finish(tr("Could not forget the cached events: %1").arg(error));
 }
 
 void AccountsController::cancel()

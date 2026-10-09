@@ -252,6 +252,23 @@ void GoogleSource::signedInAgain(const Account &account)
         m_sync->signedInAgain(account);
 }
 
+bool GoogleSource::resync(const Account &account, QString *error)
+{
+    // A sync under way would store what it read into the emptied cache.
+    if (m_sync)
+        m_sync->stop(account);
+    if (!m_cache.removeAccount(account)) {
+        if (error)
+            *error = m_cache.errorString();
+        return false;
+    }
+    loadStatus();
+    Q_EMIT statusChanged();
+    Q_EMIT changed();
+    refresh();
+    return true;
+}
+
 void GoogleSource::setAccounts(QList<Account> accounts)
 {
     if (m_accounts == accounts)

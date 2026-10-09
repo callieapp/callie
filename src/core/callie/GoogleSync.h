@@ -43,6 +43,9 @@ public:
     /// Stops storing anything for a removed account. A sync still running for
     /// it ends quietly, as if it had nothing to report.
     void forget(const Account &account);
+    /// Drops the sync running for the account, if any, so it stores nothing
+    /// more; the next sync starts afresh.
+    void stop(const Account &account);
     /// The account signed in again, perhaps granting more: its old access token
     /// is dropped, and its settings and contacts are read again on the next sync.
     void signedInAgain(const Account &account);

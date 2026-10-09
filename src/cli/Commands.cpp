@@ -245,6 +245,19 @@ std::optional<Event> Commands::find(const QString &id)
         if (e.eventId == eventId && (calendar.isEmpty() || e.calendarId == calendar))
             found.append(e);
     }
+    // A copy in a hidden calendar does not make the shown one ambiguous.
+    if (found.size() > 1) {
+        QList<Event> shown = found;
+        const QList<CalendarInfo> calendars = m_source.calendars();
+        shown.removeIf([this, &calendars](const Event &e) {
+            const auto info =
+                std::find_if(calendars.cbegin(), calendars.cend(),
+                             [&e](const CalendarInfo &c) { return c.id == e.calendarId; });
+            return info != calendars.cend() && !m_settings.isShown(*info);
+        });
+        if (shown.size() == 1)
+            return shown.first();
+    }
     if (found.size() == 1)
         return found.first();
     if (found.isEmpty())

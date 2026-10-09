@@ -37,6 +37,36 @@ public:
     }
 };
 
+/// The sample, with the vendor call also in a calendar Google does not show.
+class HiddenCopySource : public SampleSource
+{
+public:
+    QList<CalendarInfo> calendars() const override
+    {
+        QList<CalendarInfo> calendars = SampleSource::calendars();
+        CalendarInfo unticked;
+        unticked.id = u"unticked"_s;
+        unticked.displayName = u"Unticked"_s;
+        unticked.enabled = false;
+        calendars << unticked;
+        return calendars;
+    }
+    QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
+                               const QTimeZone &tz) const override
+    {
+        QList<Event> events = SampleSource::eventsBetween(from, to, tz);
+        const qsizetype count = events.size();
+        for (qsizetype i = 0; i < count; ++i) {
+            if (events.at(i).summary == u"Vendor call") {
+                Event copy = events.at(i);
+                copy.calendarId = u"unticked"_s;
+                events.append(copy);
+            }
+        }
+        return events;
+    }
+};
+
 const QDateTime kNow(QDate(2026, 10, 7), QTime(13, 40), QTimeZone::UTC);
 
 QDateTime at(int day, int hour, int minute = 0)
@@ -69,6 +99,7 @@ private Q_SLOTS:
     void allDayKeepsItsDaysAcrossAClockChange();
     void timedKeepsTheEndGiven();
     void sharedIdsNeedTheirCalendar();
+    void hiddenCopiesLeaveIdsAlone();
     void settingsReadAndChange();
     void calendarsAndAccountsTakeNewLooks();
 
@@ -412,6 +443,18 @@ void TestCli::sharedIdsNeedTheirCalendar()
 
     QCOMPARE(run([&](auto done) { commands.remove(u"work/sample-3-16-0-2026-10-07"_s, {}, done); }),
              0);
+}
+
+void TestCli::hiddenCopiesLeaveIdsAlone()
+{
+    HiddenCopySource source;
+    Commands commands(source, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
+    // Only the shown copy is listed, so its id alone names it.
+    QCOMPARE(commands.invites(true), 0);
+    m_outStream->flush();
+    QCOMPARE(m_out.count(u"\"Vendor call\""_s), 1);
+    QCOMPARE(run([&](auto done) { commands.remove(u"sample-3-10-30-2026-10-07"_s, {}, done); }), 0);
+    QVERIFY(m_err.isEmpty());
 }
 
 void TestCli::settingsReadAndChange()

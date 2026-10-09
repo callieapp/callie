@@ -32,14 +32,15 @@ Until then, build it from source as described under [Development](#development).
 ### The desktop app
 
 `callie-gui` opens the view you used last (day, week, month or agenda; the week at first) with the
-calendars you show in Google Calendar. It syncs when it starts and every five minutes, and shows
-what it has cached while offline. The title bar says when it last synced, or that a sync failed;
-hovering it lists each account's last sync and any calendar that failed, and the button beside it
-syncs now. `--sample` shows a made-up week instead, and `--screenshot file.png` saves the window
-once it has rendered, then exits. `--now 2026-03-18T10:40` stops the clock at that time and
-`--size 1280x840` sets the window size, so a screenshot comes out the same every time.
-`--background` starts without showing the window while Callie is set to keep running for
-reminders; Settings > Reminders > Start when I log in adds an autostart entry that uses it.
+calendars you show, starting from the ones you show in Google Calendar. It syncs when it starts and
+every five minutes, and shows what it has cached while offline. The title bar says when it last
+synced, or that a sync failed; hovering it lists each account's last sync and any calendar that
+failed, and the button beside it syncs now. `--sample` shows a made-up week instead, and
+`--screenshot file.png` saves the window once it has rendered, then exits. `--now 2026-03-18T10:40`
+stops the clock at that time and `--size 1280x840` sets the window size, so a screenshot comes out
+the same every time. `--background` starts without showing the window while Callie is set to keep
+running for reminders; Settings > Reminders > Start when I log in adds an autostart entry that uses
+it.
 
 Connect Google accounts in Settings, under Accounts: Callie opens your browser to sign in, and the
 account's calendars appear once you have. The same tab shows how each account's sync is going and

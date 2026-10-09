@@ -209,6 +209,12 @@ void TestSettings::newCalendarsStartAsTheirProviderShowsThem()
     QVERIFY(settings.isShown(calendar("birthdays", false)));
     QVERIFY(!settings.isShown(calendar("holidays", false)));
 
+    // Shown before Callie ever seeded it, as `callie calendars show` can, it stays shown.
+    settings.setCalendarVisible(u"tasks"_s, true);
+    QVERIFY(settings.isShown(calendar("tasks", false)));
+    settings.seedCalendars({calendar("tasks", false)});
+    QVERIFY(settings.isShown(calendar("tasks", false)));
+
     // Reset forgets what was seen, so the next seed starts over from Google.
     QSignalSpy hidden(&settings, &Settings::hiddenCalendarsChanged);
     settings.reset();

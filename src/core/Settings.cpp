@@ -297,6 +297,11 @@ void Settings::setView(const QString &view)
 
 void Settings::setCalendarVisible(const QString &id, bool visible)
 {
+    // A choice made counts as having seen the calendar, so seeding leaves it.
+    if (!m_knownCalendars.contains(id)) {
+        m_knownCalendars.append(id);
+        m_store.setValue(kKnownCalendars, m_knownCalendars);
+    }
     if (m_hiddenCalendars.contains(id) == !visible)
         return;
     if (visible)

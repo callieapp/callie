@@ -565,6 +565,18 @@ void TestEventEdit::placesComeFromSuggestions()
     QTRY_VERIFY(!m_places->results().isEmpty());
     QTest::keyClick(m_window, Qt::Key_Return);
     QCOMPARE(form->property("place").toString(), u"ros"_s);
+
+    // Escape while only searching closes the card, not the editor.
+    m_places->clear();
+    m_places->setDelay(100000);
+    where->setProperty("text", u"zzz"_s);
+    QMetaObject::invokeMethod(where, "textEdited");
+    QVERIFY(m_places->results().isEmpty());
+    QVERIFY(m_places->searching());
+    QTest::keyClick(m_window, Qt::Key_Escape);
+    QVERIFY(!m_places->searching());
+    QTest::qWait(300);
+    QVERIFY(form->isVisible());
     m_places->setDelay(0);
 
     where->setProperty("text", u"stu"_s);

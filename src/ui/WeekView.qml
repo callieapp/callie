@@ -448,19 +448,20 @@ Item {
                     required property bool allDay
 
                     readonly property real columnInner: root.columnWidth(dayIndex) - 6
-                    // Stepping in never takes more than half the column.
-                    readonly property real indent: Math.min(depth * Theme.cascadeIndent,
-                                                            columnInner / 2)
-                    readonly property real laneWidth: (columnInner - indent) / laneCount
+                    readonly property real laneWidth: columnInner / laneCount
+                    // Stepping in within its lane never takes more than half of it.
+                    readonly property real indent: Math.min(depth * Theme.cascadeIndent, laneWidth
+                                                            / 2)
 
                     visible: !allDay && dayIndex >= 0 && dayIndex < root.dayCount
                              && root.columnWidth(dayIndex) > 0
 
-                    x: root.columnX(dayIndex) + 3 + indent + lane * laneWidth
-                    width: laneWidth - (laneCount > 1 ? 3 : 0)
+                    x: root.columnX(dayIndex) + 3 + lane * laneWidth + indent
+                    width: laneWidth - indent - (laneCount > 1 ? 3 : 0)
                     y: startMinutes / 60 * Theme.hourHeight
+                    // A clear gap under each, so back-to-back events read as two.
                     height: Math.max(Theme.minEventHeight, durationMinutes / 60 * Theme.hourHeight
-                                     - 2 - Theme.stickerEdge + stretchHeight)
+                                     - Theme.space2 - Theme.stickerEdge + stretchHeight)
 
                     onActivated: root.showDetails(block)
                     onHoveredChanged: root.blockHovered(block, hovered)

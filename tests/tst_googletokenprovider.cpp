@@ -1,12 +1,15 @@
 #include "FakeHttpServer.h"
 #include "FakeTokenStore.h"
+#include "callie/GoogleAuth.h"
 
 #include "callie/GoogleTokenProvider.h"
 
+#include <QSignalSpy>
 #include <QTest>
 #include <QUrlQuery>
 
 using namespace callie;
+using namespace Qt::StringLiterals;
 
 namespace {
 
@@ -30,6 +33,7 @@ private Q_SLOTS:
     void init();
 
     void refreshesWithStoredToken();
+    void grantedScopesAreKnownAfterARefresh();
     void cachedTokenIsReused();
     void concurrentRequestsShareOneRefresh();
     void tokenNearExpiryIsRefreshed();
@@ -78,6 +82,31 @@ void TestGoogleTokenProvider::refreshesWithStoredToken()
     const QUrlQuery body(QString::fromUtf8(m_server->requests.first().body));
     QCOMPARE(body.queryItemValue(QStringLiteral("grant_type")), QStringLiteral("refresh_token"));
     QCOMPARE(body.queryItemValue(QStringLiteral("refresh_token")), QStringLiteral("rt-1"));
+}
+
+void TestGoogleTokenProvider::grantedScopesAreKnownAfterARefresh()
+{
+    // Before any refresh nothing is known, so nothing is reported missing.
+    QVERIFY(m_provider->missingScopes(kAccount).isEmpty());
+    // Signed in before Callie asked for contacts and the profile.
+    m_server->respond(200, R"({"access_token":"at-1","expires_in":3600,
+        "scope":"https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.settings.readonly"})");
+    QSignalSpy known(m_provider.get(), &GoogleTokenProvider::scopesKnown);
+    request();
+    QCOMPARE(known.size(), 1);
+    QCOMPARE(m_provider->missingScopes(kAccount),
+             (QStringList{u"https://www.googleapis.com/auth/contacts.readonly"_s,
+                          u"https://www.googleapis.com/auth/contacts.other.readonly"_s,
+                          u"https://www.googleapis.com/auth/directory.readonly"_s,
+                          u"https://www.googleapis.com/auth/userinfo.profile"_s}));
+
+    // Signed in again, with everything.
+    m_server->respond(200, (u"{\"access_token\":\"at-2\",\"expires_in\":3600,\"scope\":\""_s +
+                            GoogleAuth::scopes() + u"\"}"_s)
+                               .toUtf8());
+    m_provider->invalidate(kAccount);
+    request();
+    QVERIFY(m_provider->missingScopes(kAccount).isEmpty());
 }
 
 void TestGoogleTokenProvider::cachedTokenIsReused()

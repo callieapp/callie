@@ -16,6 +16,7 @@ private Q_SLOTS:
     void defaultsWithoutAFile();
     void choicesSurviveARestart();
     void workingHoursStayInOrder();
+    void accountPhotosAreKept();
     void keyboardSettingsKeepToWhatWorks();
     void weekSettingsResetAndSignal();
     void googleFillsOnlyWhatIsUnset();
@@ -179,6 +180,23 @@ void TestSettings::workingHoursStayInOrder()
     settings.setShowWorkHours(true);
     QCOMPARE(changed.size(), 1);
     QVERIFY(Settings(path()).showWorkHours());
+}
+
+void TestSettings::accountPhotosAreKept()
+{
+    {
+        Settings settings(path());
+        QSignalSpy changed(&settings, &Settings::accountPhotosChanged);
+        settings.setAccountPhoto(u"me@example.com"_s, QUrl(u"https://lh3/me"_s));
+        settings.setAccountPhoto(u"me@example.com"_s, QUrl(u"https://lh3/me"_s));
+        QCOMPARE(changed.size(), 1);
+    }
+    Settings settings(path());
+    QCOMPARE(settings.accountPhotos().value(u"me@example.com"_s).toUrl(),
+             QUrl(u"https://lh3/me"_s));
+    // No photo of its own any more: back to the letter.
+    settings.setAccountPhoto(u"me@example.com"_s, {});
+    QVERIFY(settings.accountPhotos().isEmpty());
 }
 
 void TestSettings::keyboardSettingsKeepToWhatWorks()

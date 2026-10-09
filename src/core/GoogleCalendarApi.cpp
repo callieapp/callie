@@ -278,6 +278,25 @@ void GoogleCalendarApi::fetchSettingsPage(const QString &accessToken, const QStr
         });
 }
 
+void GoogleCalendarApi::fetchPhoto(const QString &accessToken, PhotoResult result)
+{
+    get(accessToken, m_peopleUrl.toString() + u"people/me"_s,
+        {{QStringLiteral("personFields"), QStringLiteral("photos")}},
+        [result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) {
+            if (error) {
+                result({}, error);
+                return;
+            }
+            for (const QJsonValue &photo : body[u"photos"].toArray()) {
+                if (photo[u"metadata"][u"primary"].toBool() && !photo[u"default"].toBool()) {
+                    result(QUrl(photo[u"url"].toString()), {});
+                    return;
+                }
+            }
+            result({}, {});
+        });
+}
+
 void GoogleCalendarApi::fetchPeople(const QString &accessToken, People kind, PeopleResult result)
 {
     fetchPeoplePage(accessToken, kind, {}, {}, std::move(result));

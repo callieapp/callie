@@ -8,6 +8,7 @@
 #include <QSettings>
 #include <QStringList>
 #include <QTimeZone>
+#include <QUrl>
 #include <QVariantMap>
 
 namespace callie {
@@ -48,6 +49,8 @@ class Settings : public QObject
     Q_PROPERTY(QVariantMap calendarLooks READ calendarLooks NOTIFY calendarLooksChanged)
     /// The user's own names for accounts, by account id.
     Q_PROPERTY(QVariantMap accountNames READ accountNames NOTIFY accountNamesChanged)
+    /// Each account's profile photo, by account, as Google gave it.
+    Q_PROPERTY(QVariantMap accountPhotos READ accountPhotos NOTIFY accountPhotosChanged)
     /// The calendar new events went into last, by CalendarInfo::id.
     Q_PROPERTY(QString newEventCalendar READ newEventCalendar WRITE setNewEventCalendar NOTIFY
                    newEventCalendarChanged)
@@ -143,6 +146,9 @@ public:
     Q_INVOKABLE void resetCalendarLook(const QString &id);
 
     [[nodiscard]] QVariantMap accountNames() const { return m_accountNames; }
+    [[nodiscard]] QVariantMap accountPhotos() const { return m_accountPhotos; }
+    /// An empty photo forgets it, so the account shows its letter.
+    void setAccountPhoto(const QString &account, const QUrl &photo);
     /// An empty name goes back to the account's own.
     Q_INVOKABLE void setAccountName(const QString &account, const QString &name);
     /// The user's name for `account`, or the account itself.
@@ -197,6 +203,7 @@ Q_SIGNALS:
     void collapsedAccountsChanged();
     void calendarLooksChanged();
     void accountNamesChanged();
+    void accountPhotosChanged();
     void viewChanged();
     void lastSeenVersionChanged();
     void newEventCalendarChanged();
@@ -230,6 +237,7 @@ private:
     QStringList m_collapsedAccounts;
     QVariantMap m_calendarLooks;
     QVariantMap m_accountNames;
+    QVariantMap m_accountPhotos;
     QString m_view;
     QString m_lastSeenVersion;
     QString m_newEventCalendar;

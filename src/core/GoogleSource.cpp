@@ -238,11 +238,14 @@ void GoogleSource::setSync(GoogleSync *sync)
     if (m_sync)
         disconnect(m_sync, nullptr, this, nullptr);
     m_sync = sync;
-    if (m_sync)
+    if (m_sync) {
         connect(m_sync, &GoogleSync::changed, this, [this] {
             if (!m_changes.isActive())
                 m_changes.start();
         });
+        // The accounts list shows which accounts need to sign in again.
+        connect(m_sync, &GoogleSync::scopesKnown, this, &GoogleSource::statusChanged);
+    }
 }
 
 void GoogleSource::signedInAgain(const Account &account)
@@ -662,7 +665,9 @@ QVariantList GoogleSource::syncReport() const
         report << QVariantMap{{QStringLiteral("account"), account.id},
                               {QStringLiteral("lastSynced"), state.lastSynced},
                               {QStringLiteral("error"), state.lastError},
-                              {QStringLiteral("problems"), problems}};
+                              {QStringLiteral("problems"), problems},
+                              {QStringLiteral("missingScopes"),
+                               m_sync ? m_sync->missingScopes(account) : QStringList()}};
     }
     return report;
 }

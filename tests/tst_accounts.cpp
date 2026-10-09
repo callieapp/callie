@@ -1,4 +1,5 @@
 #include "AccountsController.h"
+#include "EventModelForeign.h"
 #include "FakeHttpServer.h"
 #include "FakeTokenStore.h"
 
@@ -10,12 +11,23 @@
 #include "callie/GoogleTokenProvider.h"
 
 #include <QDesktopServices>
+#include <QDir>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QQmlComponent>
+#include <QQmlEngine>
+#include <QQuickItem>
+#include <QQuickStyle>
+#include <QQuickWindow>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUrlQuery>
+#include <QtQml/qqmlextensionplugin.h>
+
+Q_IMPORT_QML_PLUGIN(Callie_UiPlugin)
+
+#include <functional>
 
 using namespace callie;
 using namespace Qt::StringLiterals;
@@ -63,6 +75,7 @@ private Q_SLOTS:
     void signingInAgainSyncsAndHoldsOffOtherActions();
     void failedSignInEndsTheAttempt();
     void reconnectPicksTheAccount();
+    void listShowsPhotoAndMissingPermissions();
 
 private:
     /// Signs in through fake Google endpoints answering with these responses,
@@ -241,6 +254,56 @@ void TestAccounts::failedSignInEndsTheAttempt()
     disconnect(failed);
     QVERIFY(!busyWhenFailed);
     QCOMPARE(accounts->accounts().size(), 1);
+}
+
+void TestAccounts::listShowsPhotoAndMissingPermissions()
+{
+    signIn(200, R"({"access_token":"at-1","refresh_token":"rt-1","expires_in":3600})");
+    QTRY_VERIFY_WITH_TIMEOUT(!AccountsController::instance()->busy(), 5000);
+    Settings settings(m_dir->filePath(u"settings.ini"_s));
+    settings.setAccountPhoto(kMe.id, QUrl::fromLocalFile(QStringLiteral(QT_TESTCASE_SOURCEDIR) +
+                                                         u"/../assets/logo.png"_s));
+    SettingsForeign::s_instance = &settings;
+
+    QQuickStyle::setStyle(u"Basic"_s);
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    component.loadFromModule("Callie.Ui", "AccountsSection");
+    QQuickWindow window;
+    window.setColor(QColor(u"#1c1420"_s));
+    window.resize(480, 200);
+    const QVariantMap entry{
+        {u"account"_s, kMe.id},
+        {u"error"_s, QString()},
+        {u"problems"_s, QStringList()},
+        {u"lastSynced"_s, QDateTime::currentDateTime()},
+        {u"missingScopes"_s, QStringList{u"https://www.googleapis.com/auth/contacts.readonly"_s}}};
+    std::unique_ptr<QObject> section(
+        component.createWithInitialProperties({{u"report"_s, QVariantList{entry}}}));
+    QVERIFY2(section, qPrintable(component.errorString()));
+    auto *item = qobject_cast<QQuickItem *>(section.get());
+    item->setParentItem(window.contentItem());
+    item->setWidth(440);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    // The status asks for a reconnect, and the photo replaces the letter.
+    const auto texts = [item] {
+        QStringList found;
+        const std::function<void(QQuickItem *)> walk = [&](QQuickItem *i) {
+            if (i->isVisible() && !i->property("text").toString().isEmpty())
+                found << i->property("text").toString();
+            for (QQuickItem *child : i->childItems())
+                walk(child);
+        };
+        walk(item);
+        return found;
+    };
+    QTRY_VERIFY(texts().contains(u"Reconnect to grant new permissions"_s));
+    QTRY_VERIFY(!texts().contains(u"M"_s));
+    const QString shot = QDir(QStringLiteral(QT_TESTCASE_BUILDDIR)).filePath(u"accounts.png"_s);
+    window.grabWindow().save(shot);
+    SettingsForeign::s_instance = nullptr;
 }
 
 QTEST_MAIN(TestAccounts)

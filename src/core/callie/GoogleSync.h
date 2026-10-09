@@ -46,6 +46,9 @@ public:
     /// The account signed in again, perhaps granting more: its old access token
     /// is dropped, and its settings and contacts are read again on the next sync.
     void signedInAgain(const Account &account);
+    /// What Callie asks for that the account has not granted; see
+    /// GoogleTokenProvider::missingScopes.
+    [[nodiscard]] QStringList missingScopes(const Account &account) const;
 
     /// Called once a change finishes; its error is empty on success.
     using Created = std::function<void(const Outcome &outcome)>;
@@ -93,6 +96,11 @@ Q_SIGNALS:
     /// The people the account can invite, from its contacts and, for a
     /// Workspace account, its directory; read once a run, like the settings.
     void contactsFound(const callie::Account &account, const QList<callie::Contact> &contacts);
+    /// The account's profile photo, empty when it has none of its own; read
+    /// once a run, like the settings.
+    void photoFound(const callie::Account &account, const QUrl &photo);
+    /// Google said what the account has granted, so missingScopes may differ.
+    void scopesKnown(const callie::Account &account);
 
 private:
     struct Run;
@@ -105,6 +113,7 @@ private:
     void record(bool stored);
     void readSettings(const Account &account);
     void readContacts(const Account &account);
+    void readPhoto(const Account &account);
     /// Patches `fields` into an event and stores what Google returns.
     void patch(const Account &account, const QString &calendarId, const QString &eventId,
                const QJsonObject &fields, const QString &failure, Created done,
@@ -122,6 +131,7 @@ private:
     /// Accounts whose settings were read in this run.
     QSet<QString> m_settingsRead;
     QSet<QString> m_contactsRead;
+    QSet<QString> m_photoRead;
     /// Accounts whose contacts are being read; forgetting one drops its read.
     QSet<QString> m_contactsReading;
 };

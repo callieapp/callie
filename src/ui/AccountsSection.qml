@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls
 
 /// The connected Google accounts: each with how its sync is going, a way to
-/// sign in again when it fails, and removal; then connecting another.
+/// sign in again, and removal; then connecting another.
 Column {
     id: root
 

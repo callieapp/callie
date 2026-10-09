@@ -83,6 +83,7 @@ class TestCli : public QObject
 private Q_SLOTS:
     void init();
     void agendaGivesIdsToScripts();
+    void agendaMarksCallsInNotes();
     void hiddenCalendarsStayHidden();
     void searchListsASeriesOnce();
     void invitesWaitingAnswerOnce();
@@ -145,6 +146,21 @@ void TestCli::init()
     m_errStream = std::make_unique<QTextStream>(&m_err);
     m_commands = std::make_unique<Commands>(*m_source, *m_settings, *m_outStream, *m_errStream,
                                             kNow, QTimeZone::UTC);
+}
+
+void TestCli::agendaMarksCallsInNotes()
+{
+    EventDraft draft;
+    draft.calendarId = m_source->calendars().first().id;
+    draft.summary = u"Pairing"_s;
+    draft.description = u"Join at https://acme.zoom.us/j/123"_s;
+    draft.start = at(7, 18);
+    draft.end = at(7, 19);
+    m_source->createEvent(draft, [](const QString &) {});
+    QCOMPARE(m_commands->agenda(1, false), 0);
+    m_outStream->flush();
+    const QString line = m_out.split(u'\n').filter(u"Pairing"_s).value(0);
+    QVERIFY2(line.contains(u"↗"_s), qPrintable(m_out));
 }
 
 void TestCli::agendaGivesIdsToScripts()

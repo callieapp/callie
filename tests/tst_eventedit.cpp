@@ -76,6 +76,7 @@ private Q_SLOTS:
     void topOfACascadeOpens();
     void titleBarFitsNarrowWindows();
     void guestsComeFromSuggestions();
+    void trayAsksWhichOccurrences();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -506,6 +507,38 @@ void TestEventEdit::guestsComeFromSuggestions()
     QMetaObject::invokeMethod(guest, "accepted");
     QCOMPARE(form->property("guests").toStringList(),
              (QStringList{u"priya@example.com"_s, u"sam@new.example"_s}));
+}
+
+void TestEventEdit::trayAsksWhichOccurrences()
+{
+    for (QObject *o : m_window->findChildren<QObject *>()) {
+        if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"InvitesTray"_s))
+            QVERIFY(QMetaObject::invokeMethod(o, "open"));
+    }
+    // Berlin sync, a repeating invitation, comes first.
+    QQuickItem *yes = nullptr;
+    QTRY_VERIFY((yes = find(m_window->contentItem(), "PillButton", "label", u"Yes"_s)));
+    QTest::qWait(300);
+    click(m_window, yes);
+    QQuickItem *one = nullptr;
+    QTRY_VERIFY((one = find(m_window->contentItem(), "PillButton", "label", u"This event"_s)));
+    QVERIFY(find(m_window->contentItem(), "PillButton", "label", u"All events"_s));
+    // Past the double-click interval, so the second click is a click of its own.
+    QTest::qWait(600);
+    click(m_window, one);
+
+    const auto answer = [this](QDate day) {
+        const QDateTime from(day, QTime(0, 0));
+        for (const Event &e :
+             m_source->eventsBetween(from, from.addDays(1), QTimeZone::systemTimeZone())) {
+            if (e.summary == u"Berlin sync")
+                return e.responseStatus;
+        }
+        return QString();
+    };
+    // Only the next one is answered; the series still waits.
+    QTRY_COMPARE(answer(QDate(2026, 10, 13)), u"accepted"_s);
+    QCOMPARE(answer(QDate(2026, 10, 20)), u"needsAction"_s);
 }
 
 QTEST_MAIN(TestEventEdit)

@@ -90,6 +90,13 @@ Popup {
                 required property bool allDay
                 required property color calendarColor
                 required property bool repeats
+                /// An answer waiting for its this-event-or-all choice.
+                property string pending
+
+                function answer(status, wholeSeries) {
+                    pending = ""
+                    actions.respond(root.model.inviteAt(index), status, wholeSeries)
+                }
 
                 width: list.width
                 height: body.implicitHeight + 2 * Theme.space3
@@ -159,6 +166,7 @@ Popup {
                         font.weight: Font.Bold
                     }
                     Row {
+                        visible: invite.pending === ""
                         spacing: Theme.space2
 
                         Repeater {
@@ -184,9 +192,37 @@ Popup {
                                 enabled: !actions.busy
                                 Accessible.name: qsTr("%1 to %2").arg(modelData.label).arg(
                                                      invite.summary)
-                                onClicked: actions.respond(root.model.inviteAt(invite.index),
-                                                           modelData.status, invite.repeats)
+                                // A repeating invitation asks which occurrences first, as the card does.
+                                onClicked: {
+                                    if (invite.repeats)
+                                        invite.pending = modelData.status
+                                    else
+                                        invite.answer(modelData.status, false)
+                                }
                             }
+                        }
+                    }
+                    Flow {
+                        visible: invite.pending !== ""
+                        width: parent.width
+                        spacing: Theme.space2
+
+                        PillButton {
+                            label: qsTr("This event")
+                            hoverColor: Theme.answerHover
+                            enabled: !actions.busy
+                            onClicked: invite.answer(invite.pending, false)
+                        }
+                        PillButton {
+                            label: qsTr("All events")
+                            hoverColor: Theme.answerHover
+                            enabled: !actions.busy
+                            onClicked: invite.answer(invite.pending, true)
+                        }
+                        PillButton {
+                            label: qsTr("Cancel")
+                            hoverColor: Theme.answerHover
+                            onClicked: invite.pending = ""
                         }
                     }
                 }

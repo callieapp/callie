@@ -88,7 +88,7 @@ jobs:
           git gcc-c++ cmake ninja-build make
           qt6-qtbase-devel qt6-qtdeclarative-devel
           qt6-qtquickcontrols2-devel qt6-qtnetworkauth-devel qtkeychain-qt6-devel
-          tomlplusplus-devel kf6-kcalendarcore-devel
+          tomlplusplus-devel kf6-kcalendarcore-devel dbus-daemon
 
       - name: Install build dependencies (Debian)
         if: matrix.name == 'debian'
@@ -100,7 +100,7 @@ jobs:
             qml6-module-qtquick-controls qml6-module-qtquick-templates \
             qml6-module-qtquick-effects qml6-module-qtquick-dialogs \
             qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev libqt6sql6-sqlite \
-            libkf6calendarcore-dev
+            libkf6calendarcore-dev dbus-daemon
 
       - uses: actions/checkout@v5
 

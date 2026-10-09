@@ -20,7 +20,7 @@ namespace callie {
 namespace {
 
 // Bump when the tables change. Older caches are dropped and fully re-synced.
-constexpr int kSchemaVersion = 5;
+constexpr int kSchemaVersion = 6;
 
 const char *const kSchema[] = {
     R"(CREATE TABLE calendars (
@@ -53,6 +53,7 @@ const char *const kSchema[] = {
         guests_can_modify INTEGER NOT NULL DEFAULT 0,
         reminders_default INTEGER NOT NULL DEFAULT 1,
         reminders TEXT,
+        event_type TEXT,
         PRIMARY KEY (account, calendar_id, id)))",
     "CREATE INDEX events_series ON events (account, calendar_id, recurring_event_id)",
 };
@@ -325,13 +326,13 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         "end_zone, recurrence, recurring_event_id, original_date, original_time, original_zone, "
         "updated, response_status, attendees, organizer_self, guests_can_modify, "
         "reminders_default, "
-        "reminders) VALUES (:account, "
+        "reminders, event_type) VALUES (:account, "
         ":calendar, :id, :status, :summary, "
         ":description, :location, "
         ":conference, :start_date, :start_time, :start_zone, :end_date, :end_time, :end_zone, "
         ":recurrence, :series, :original_date, :original_time, :original_zone, :updated, "
         ":response, :attendees, :organizer_self, :guests_can_modify, :reminders_default, "
-        ":reminders)"));
+        ":reminders, :event_type)"));
     QSqlQuery remove(db);
     remove.prepare(QStringLiteral("DELETE FROM events WHERE account = :account AND "
                                   "calendar_id = :calendar AND (id = :id OR "
@@ -370,6 +371,7 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         upsert.bindValue(QStringLiteral(":guests_can_modify"), event.guestsCanModify);
         upsert.bindValue(QStringLiteral(":reminders_default"), event.remindersUseDefault);
         upsert.bindValue(QStringLiteral(":reminders"), joinMinutes(event.reminders));
+        upsert.bindValue(QStringLiteral(":event_type"), event.eventType);
         ok = run(upsert);
     }
 
@@ -531,6 +533,7 @@ QList<GoogleEvent> GoogleCache::readEvents(QSqlQuery &query)
         event.guestsCanModify = query.value(u"guests_can_modify"_s).toBool();
         event.remindersUseDefault = query.value(u"reminders_default"_s).toBool();
         event.reminders = splitMinutes(query.value(u"reminders"_s).toString());
+        event.eventType = query.value(u"event_type"_s).toString();
         result.append(event);
     }
     return result;

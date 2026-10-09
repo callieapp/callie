@@ -97,8 +97,8 @@ void TodayModel::apply(const SourceSnapshot &snapshot)
     m_next = {};
     m_nextCalendar.clear();
     for (const Event &event : snapshot.events) {
-        // A declined event is not on the user's way.
-        if (event.allDay || event.declined || event.start <= m_now ||
+        // A declined event is not on the user's way, nor is where they work.
+        if (event.allDay || event.declined || event.workPlace || event.start <= m_now ||
             m_hiddenCalendars.contains(event.calendarId))
             continue;
         if (!m_next.isValid() || event.start < m_next.start)

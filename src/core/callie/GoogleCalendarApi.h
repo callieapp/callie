@@ -81,6 +81,8 @@ struct GoogleEvent
     /// The attendee list exactly as Google sent it, compact JSON, so an answer
     /// can be sent back without losing fields Callie does not use.
     QByteArray attendees;
+    /// Google's kind of event, such as "default", "workingLocation" or "focusTime".
+    QString eventType;
     /// The user organizes the event, so can change it for everyone.
     bool organizerSelf = false;
     /// Guests may change the event too.

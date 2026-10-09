@@ -153,6 +153,20 @@ void EventModel::apply(SourceSnapshot snapshot)
     events.removeIf([this](const Event &e) {
         return m_hiddenCalendars.contains(e.calendarId) || (e.declined && !m_showDeclined);
     });
+    // Working locations label their days instead of taking a row.
+    QStringList workPlaces(m_dayCount);
+    for (const Event &e : std::as_const(events)) {
+        if (!e.workPlace || e.summary.isEmpty())
+            continue;
+        const auto [first, span] = visibleDays(e);
+        for (int day = first; day < first + span; ++day) {
+            if (workPlaces[day].isEmpty())
+                workPlaces[day] = e.summary;
+            else if (!workPlaces[day].split(u", "_s).contains(e.summary))
+                workPlaces[day] += u", "_s + e.summary;
+        }
+    }
+    events.removeIf([](const Event &e) { return e.workPlace; });
     assignLanes(events);
     // Calendars first: rows name their calendar, and views read rows as soon as
     // the reset ends.
@@ -178,6 +192,10 @@ void EventModel::apply(SourceSnapshot snapshot)
     if (calendars != m_calendars) {
         m_calendars = calendars;
         Q_EMIT calendarsChanged();
+    }
+    if (workPlaces != m_workPlaces) {
+        m_workPlaces = workPlaces;
+        Q_EMIT workPlacesChanged();
     }
 }
 

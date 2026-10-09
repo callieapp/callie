@@ -51,6 +51,7 @@ private Q_SLOTS:
 
     void newCalendarHasNoSyncToken();
     void eventsRoundTrip();
+    void eventTypeSurvivesTheCache();
     void fullSyncReplacesEvents();
     void deletedEventIsRemoved();
     void cancelledOccurrenceIsKept();
@@ -266,6 +267,14 @@ void TestGoogleCache::permissionsSurviveTheCache()
     const GoogleEvent stored = m_cache->events(kAccount, kCalendar).first();
     QVERIFY(stored.organizerSelf);
     QVERIFY(stored.guestsCanModify);
+}
+
+void TestGoogleCache::eventTypeSurvivesTheCache()
+{
+    apply({parsed(R"({"id":"home","summary":"Home","eventType":"workingLocation",
+                    "start":{"date":"2026-10-09"},"end":{"date":"2026-10-10"}})")},
+          true);
+    QCOMPARE(m_cache->events(kAccount, kCalendar).first().eventType, u"workingLocation"_s);
 }
 
 void TestGoogleCache::remindersSurviveTheCache()

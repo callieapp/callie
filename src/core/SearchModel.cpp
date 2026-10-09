@@ -101,6 +101,7 @@ void SearchModel::ensureLoaded()
         m_source->load(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround), tz);
     if (future.isFinished()) {
         m_pool = future.result().events;
+        m_pool.removeIf([](const Event &e) { return e.workPlace; });
         filter();
         return;
     }
@@ -109,6 +110,7 @@ void SearchModel::ensureLoaded()
         if (generation != m_generation)
             return;
         m_pool = snapshot.events;
+        m_pool.removeIf([](const Event &e) { return e.workPlace; });
         setBusy(false);
         filter();
         // The source changed while it was being read.

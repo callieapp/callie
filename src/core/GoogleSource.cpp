@@ -67,6 +67,9 @@ QList<Event> readEvents(GoogleCache &cache, const QList<Account> &accounts, cons
                 event.calendarId = calendarKey(account, calendar.id);
                 event.canEdit = event.canEdit && writable;
                 event.canRespond = event.canRespond && writable;
+                // Only the account's own calendar says where the user works;
+                // a colleague's working days stay that colleague's events.
+                event.workPlace = event.workPlace && calendar.primary;
                 event.color = color;
                 event.start = event.start.toTimeZone(tz);
                 event.end = event.end.toTimeZone(tz);

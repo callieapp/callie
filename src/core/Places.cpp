@@ -17,7 +17,7 @@ bool isCall(const QUrl &url)
     if (host == u"meet.google.com")
         return path.size() > 1;
     if (host == u"teams.microsoft.com")
-        return path.startsWith(u"/l/meetup-join");
+        return path.startsWith(u"/l/meetup-join") || path.startsWith(u"/meet/");
     if (host == u"teams.live.com")
         return path.startsWith(u"/meet");
     if (host.endsWith(u".webex.com"))

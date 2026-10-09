@@ -61,6 +61,17 @@ PlaceSearch::PlaceSearch(QObject *parent) : QObject(parent)
     });
 }
 
+void PlaceSearch::setServer(const QUrl &url)
+{
+    m_server = url;
+    // Turned off, nothing already waiting goes out.
+    if (!m_server.isValid()) {
+        m_delay.stop();
+        if (m_reply)
+            m_reply->abort();
+    }
+}
+
 void PlaceSearch::setSource(CalendarSource *source)
 {
     if (m_source == source)

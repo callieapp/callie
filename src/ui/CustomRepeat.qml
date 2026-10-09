@@ -36,13 +36,11 @@ Column {
         spacing: Theme.space3
 
         // Every N days, weeks, months or years.
-        Flow {
+        FormRow {
             width: parent.width
-            spacing: Theme.space2
+            label: qsTr("Every")
+            labelWidth: root.editor.labelWidth
 
-            Label {
-                text: qsTr("Every")
-            }
             Stepper {
                 value: root.interval
                 label: qsTr("Interval")
@@ -50,8 +48,10 @@ Column {
                                                               "interval": Math.max(1, value)
                                                           })
             }
-            Repeater {
-                model: [
+            StickerButton {
+                id: unitButton
+
+                readonly property var units: [
                     {
                         "id": "daily",
                         "label": qsTr("days", "", root.interval)
@@ -70,22 +70,36 @@ Column {
                     }
                 ]
 
-                PillButton {
-                    required property var modelData
-                    label: modelData.label
-                    selected: root.frequency === modelData.id
-                    onClicked: root.editor.setCustom({
-                                                         "frequency": modelData.id
-                                                     })
+                text: (units.find(u => u.id === root.frequency) || units[1]).label
+                Accessible.name: qsTr("Repeat unit, %1").arg(text)
+                onClicked: unitMenu.open()
+
+                MenuCard {
+                    id: unitMenu
+                    y: parent.height + Theme.space1
+                    minimumWidth: 140
+
+                    Repeater {
+                        model: unitButton.units
+
+                        MenuEntry {
+                            required property var modelData
+                            text: modelData.label
+                            onTriggered: root.editor.setCustom({
+                                                                   "frequency": modelData.id
+                                                               })
+                        }
+                    }
                 }
             }
         }
 
-        // Which weekdays, in the order the week starts in.
-        Flow {
+        // Which weekdays, in the order the week starts in, a letter each.
+        FormRow {
             visible: root.frequency === "weekly"
             width: parent.width
-            spacing: Theme.space1
+            label: qsTr("On")
+            labelWidth: root.editor.labelWidth
 
             Repeater {
                 model: 7
@@ -95,7 +109,8 @@ Column {
                     // Qt's day numbers, Monday 1 to Sunday 7.
                     readonly property int day: (Settings.firstDayOfWeek - 1 + index) % 7 + 1
                     readonly property bool on: root.weekdays.indexOf(day) >= 0
-                    label: Qt.locale().dayName(day % 7, Locale.ShortFormat)
+                    width: implicitHeight
+                    label: Qt.locale().dayName(day % 7, Locale.NarrowFormat)
                     selected: on
                     Accessible.name: Qt.locale().dayName(day % 7, Locale.LongFormat)
                     // One day at least stays on.
@@ -113,10 +128,11 @@ Column {
         }
 
         // On the day of the month, or on its weekday of the month.
-        Flow {
+        FormRow {
             visible: root.frequency === "monthly"
             width: parent.width
-            spacing: Theme.space2
+            label: qsTr("On")
+            labelWidth: root.editor.labelWidth
 
             Repeater {
                 model: root.editor.actions.repeatChoices(root.editor.startDay).filter(c => c.id
@@ -137,13 +153,11 @@ Column {
         }
 
         // Never, on a date, or after so many times.
-        Flow {
+        FormRow {
             width: parent.width
-            spacing: Theme.space2
+            label: qsTr("Ends")
+            labelWidth: root.editor.labelWidth
 
-            Label {
-                text: qsTr("Ends")
-            }
             PillButton {
                 label: qsTr("Never")
                 selected: !root.hasUntil && root.count === 0
@@ -170,6 +184,13 @@ Column {
                                                      "count": 10
                                                  })
             }
+        }
+        // The day it ends on, or how many times, under the choice.
+        FormRow {
+            visible: root.hasUntil || root.count > 0
+            width: parent.width
+            labelWidth: root.editor.labelWidth
+
             DatePicker {
                 visible: root.hasUntil
                 day: root.hasUntil ? root.custom.until : root.editor.startDay
@@ -185,9 +206,15 @@ Column {
                                                               "count": Math.max(1, value)
                                                           })
             }
-            Label {
+            Text {
                 visible: root.count > 0
+                height: Theme.listRowHeight + Theme.space1
+                verticalAlignment: Text.AlignVCenter
                 text: qsTr("times", "", root.count)
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+                font.weight: Font.Bold
             }
         }
     }
@@ -218,15 +245,6 @@ Column {
             root.editor.customTouched = true
             root.editor.customTyped = true
         }
-    }
-
-    component Label: Text {
-        height: Theme.listRowHeight + Theme.space2
-        verticalAlignment: Text.AlignVCenter
-        color: Theme.textFaint
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.textSm
-        font.weight: Font.ExtraBold
     }
 
     /// A number with a button either side.

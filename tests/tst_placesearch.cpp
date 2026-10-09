@@ -68,13 +68,18 @@ void TestPlaceSearch::ownPlacesComeFirst()
     search.setServer(server.url(u"/"_s));
     search.setDelay(0);
 
+    QSignalSpy searching(&search, &PlaceSearch::searchingChanged);
     search.search(u" stu"_s);
+    // Searching until the server answers.
+    QVERIFY(search.searching());
     // The user's own first, then the server's.
     QTRY_COMPARE(
         labels(search.results()),
         (QStringList{u"Studio (past)"_s, u"Studio Rosa, 12 Main St, Leeds, United Kingdom"_s,
                      u"Studiopolis, Nowhere"_s}));
 
+    QVERIFY(!search.searching());
+    QCOMPARE(searching.size(), 2);
     QCOMPARE(server.requests.size(), 1);
     const FakeHttpServer::Request request = server.requests.first();
     const QUrl asked(QString::fromUtf8(request.target));
@@ -96,6 +101,8 @@ void TestPlaceSearch::shortTextStaysLocal()
     search.setDelay(0);
 
     search.search(u"cl"_s);
+    // Too short to ask, so nothing is loading.
+    QVERIFY(!search.searching());
     QTRY_COMPARE(labels(search.results()), QStringList{u"Clinic (past)"_s});
     QTest::qWait(100);
     QVERIFY(server.requests.isEmpty());

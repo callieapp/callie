@@ -21,6 +21,8 @@ class PlaceSearch : public QObject
     Q_PROPERTY(callie::CalendarSource *source READ source WRITE setSource NOTIFY sourceChanged)
     /// {label, past}: past for a place from the user's own events.
     Q_PROPERTY(QVariantList results READ results NOTIFY resultsChanged)
+    /// OpenStreetMap is being asked, so more places may come.
+    Q_PROPERTY(bool searching READ searching NOTIFY searchingChanged)
 
 public:
     explicit PlaceSearch(QObject *parent = nullptr);
@@ -36,6 +38,7 @@ public:
     [[nodiscard]] CalendarSource *source() const { return m_source; }
     void setSource(CalendarSource *source);
     [[nodiscard]] QVariantList results() const { return m_results; }
+    [[nodiscard]] bool searching() const { return m_searching; }
 
     /// Suggests places for `text`: the user's own at once, the server's after a pause.
     Q_INVOKABLE void search(const QString &text);
@@ -47,9 +50,11 @@ public:
 Q_SIGNALS:
     void sourceChanged();
     void resultsChanged();
+    void searchingChanged();
 
 private:
     void ask();
+    void setSearching(bool searching);
     void matchPast();
     void show();
 
@@ -62,6 +67,7 @@ private:
     QStringList m_pastMatches;
     QStringList m_remote;
     QVariantList m_results;
+    bool m_searching = false;
     QNetworkAccessManager m_network;
     QPointer<QNetworkReply> m_reply;
     QUrl m_server;

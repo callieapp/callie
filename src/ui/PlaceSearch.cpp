@@ -69,6 +69,7 @@ void PlaceSearch::setServer(const QUrl &url)
         m_delay.stop();
         if (m_reply)
             m_reply->abort();
+        setSearching(false);
     }
 }
 
@@ -101,13 +102,18 @@ void PlaceSearch::search(const QString &text)
         m_reading.setFuture(m_source->load(now.addDays(-kDaysAround), now.addDays(kDaysAround),
                                            QTimeZone::systemTimeZone()));
     }
-    m_remote.clear();
+    // OpenStreetMap's last places stay while it is asked again, so the list
+    // does not empty and refill with every letter.
+    const bool online = m_text.size() >= kMinLetters && m_server.isValid();
+    if (!online)
+        m_remote.clear();
     matchPast();
     show();
-    if (m_text.size() >= kMinLetters && m_server.isValid())
+    if (online)
         m_delay.start();
     else
         m_delay.stop();
+    setSearching(online);
 }
 
 void PlaceSearch::clear()
@@ -118,6 +124,7 @@ void PlaceSearch::clear()
     m_text.clear();
     m_pastMatches.clear();
     m_remote.clear();
+    setSearching(false);
     if (m_results.isEmpty())
         return;
     m_results.clear();
@@ -141,10 +148,15 @@ void PlaceSearch::ask()
     const QString asked = m_text;
     connect(reply, &QNetworkReply::finished, this, [this, reply, asked] {
         reply->deleteLater();
-        // An answer to text since changed, or a failure, shows nothing new.
-        if (reply->error() != QNetworkReply::NoError || asked != m_text)
+        // An answer to text since changed, or to a search asked again, is old.
+        if (asked != m_text || m_delay.isActive())
             return;
+        setSearching(false);
         m_remote.clear();
+        if (reply->error() != QNetworkReply::NoError) {
+            show();
+            return;
+        }
         const QJsonArray features =
             QJsonDocument::fromJson(reply->readAll()).object()[u"features"].toArray();
         for (const QJsonValue &feature : features) {
@@ -154,6 +166,14 @@ void PlaceSearch::ask()
         }
         show();
     });
+}
+
+void PlaceSearch::setSearching(bool searching)
+{
+    if (m_searching == searching)
+        return;
+    m_searching = searching;
+    Q_EMIT searchingChanged();
 }
 
 void PlaceSearch::matchPast()

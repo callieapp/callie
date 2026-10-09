@@ -648,6 +648,16 @@ void TestEventEdit::customRepeatsAreWritten()
     QVERIFY(QMetaObject::invokeMethod(form, "setCustom", Q_ARG(QVariant, saturdayAndSunday)));
     QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
              QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SA,SU"_s});
+
+    // A monthly rule's day follows the start too, on the button as well.
+    own.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=9"_s});
+    QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, own)));
+    QCOMPARE(form->property("repeat").toString(), u"custom"_s);
+    form->setProperty("startDay", form->property("startDay").toDateTime().addDays(1));
+    QCOMPARE(form->property("customLines").toStringList(),
+             QStringList{u"RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=10"_s});
+    QTRY_VERIFY(
+        find(m_window->contentItem(), "StickerButton", "text", u"Every 2 months on day 10"_s));
 }
 
 QTEST_MAIN(TestEventEdit)

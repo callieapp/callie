@@ -82,6 +82,7 @@ class TestReminders : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void logoIsCopiedForTheDaemon();
     void init();
     void sayHowSoon();
     void buttonsFollowTheEvent();
@@ -217,6 +218,35 @@ void TestReminders::turningOffStopsReminders()
     m_now = at(9, 30);
     m_scheduler->check();
     QVERIFY(m_server.shown.isEmpty());
+}
+
+void TestReminders::logoIsCopiedForTheDaemon()
+{
+    QTemporaryDir dir;
+    const QString folder = dir.filePath(u"callie"_s);
+    const QString path = folder + u"/notification-icon.png"_s;
+
+    // Missing: written, the folder too.
+    QCOMPARE(cachedLogo(folder, "old logo"), path);
+    QFile written(path);
+    QVERIFY(written.open(QIODevice::ReadOnly));
+    QCOMPARE(written.readAll(), QByteArray("old logo"));
+    written.close();
+
+    // The same: left alone, which a read-only copy shows, since writing it would fail.
+    QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner));
+    QCOMPARE(cachedLogo(folder, "old logo"), path);
+
+    // Different: replaced.
+    QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner));
+    QCOMPARE(cachedLogo(folder, "new logo"), path);
+    QVERIFY(written.open(QIODevice::ReadOnly));
+    QCOMPARE(written.readAll(), QByteArray("new logo"));
+    written.close();
+
+    // Unwritable: nothing to offer.
+    QVERIFY(QFile::setPermissions(path, QFileDevice::ReadOwner));
+    QVERIFY(cachedLogo(folder, "newer logo").isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestReminders)

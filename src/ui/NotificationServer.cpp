@@ -2,7 +2,6 @@
 
 #include "callie/Logging.h"
 
-#include <QByteArray>
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
@@ -31,29 +30,32 @@ QString appIcon()
     static const QString icon = [] {
         if (QIcon::hasThemeIcon(kAppId))
             return kAppId;
-        const QString dir =
-            QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u"/callie"_s;
-        const QString path = dir + u"/notification-icon.png"_s;
-        // Written again when it differs, so a new logo replaces an old copy.
         QFile logo(u":/callie/assets/logo.png"_s);
         if (!logo.open(QIODevice::ReadOnly))
             return kAppId;
-        const QByteArray bytes = logo.readAll();
-        QFile cached(path);
-        if (cached.open(QIODevice::ReadOnly) && cached.readAll() == bytes)
-            return path;
-        cached.close();
-        QDir().mkpath(dir);
-        QFile out(path);
-        if (out.open(QIODevice::WriteOnly | QIODevice::Truncate) &&
-            out.write(bytes) == bytes.size())
-            return path;
-        return kAppId;
+        const QString path = cachedLogo(
+            QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u"/callie"_s,
+            logo.readAll());
+        return path.isEmpty() ? kAppId : path;
     }();
     return icon;
 }
 
 } // namespace
+
+QString cachedLogo(const QString &dir, const QByteArray &logo)
+{
+    const QString path = dir + u"/notification-icon.png"_s;
+    QFile cached(path);
+    if (cached.open(QIODevice::ReadOnly) && cached.readAll() == logo)
+        return path;
+    cached.close();
+    QDir().mkpath(dir);
+    QFile out(path);
+    if (out.open(QIODevice::WriteOnly | QIODevice::Truncate) && out.write(logo) == logo.size())
+        return path;
+    return {};
+}
 
 FreedesktopNotifications::FreedesktopNotifications(QObject *parent) : NotificationServer(parent)
 {

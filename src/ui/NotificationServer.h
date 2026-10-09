@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QByteArray>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -7,6 +8,11 @@
 #include <functional>
 
 namespace callie {
+
+/// A copy of `logo` in `dir`, for daemons that read icons from files: written
+/// when missing or different, so a new logo replaces an old one. Empty when it
+/// cannot be written.
+[[nodiscard]] QString cachedLogo(const QString &dir, const QByteArray &logo);
 
 /// Somewhere to show desktop notifications.
 class NotificationServer : public QObject

@@ -4,51 +4,78 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Callie: the missing Linux calendar</title>
-<meta name="description" content="An elegant, open source calendar for Linux. Google Calendar and CalDAV, day, week, month and agenda views, and a command-line interface.">
+<meta name="description" content="A cozy, open source calendar for Linux that keeps up with your Google calendars: day, week, month and agenda views, quick add, invitations, reminders, themes and a command-line interface.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<script src="theme.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
 
 <header class="site">
-  <a class="name" href="/">Callie</a>
+  <a class="name" href="/"><img src="logo.svg" alt="">Callie</a>
   <span class="tagline">the missing Linux calendar</span>
+  <span class="spacer"></span>
+  <button class="sticker theme" type="button" aria-label="Switch between light and dark">
+    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+  </button>
 </header>
 
-<h1>A calendar Linux deserves.</h1>
-<p class="lead">
-  Callie connects to Google Calendar and any CalDAV server, and gives you day, week,
-  month and agenda views that are quick to read and quick to change. Free, open source,
-  no subscription, no AI features you did not ask for.
+<h1>A calendar Linux <em>deserves</em>.</h1>
+<p class="lead prose">
+  Callie keeps up with your Google calendars and gives you day, week, month and agenda views
+  that are quick to read and quick to change. Free, open source, no subscription, and no AI
+  features you did not ask for.
 </p>
 
-<h2>Install</h2>
-<p>Callie is in early development and not yet released. Packages will land here first.</p>
-<pre><code>sudo dnf install callie   # Fedora
-sudo apt install callie   # Debian and Ubuntu</code></pre>
+<div class="actions">
+  <a class="sticker accent" href="https://github.com/callieapp/callie/releases/latest">Download for Fedora or Debian</a>
+  <a class="sticker" href="https://github.com/callieapp/callie">Source on GitHub</a>
+</div>
+
+<figure class="shot">
+  <img class="dark" src="screenshots/week-dark.png" width="1280" height="800" alt="Callie's week view in its dark theme, with the sidebar's greeting, what is up next and a mini month">
+  <img class="light" src="screenshots/week-light.png" width="1280" height="800" alt="Callie's week view in Callie Light" loading="lazy">
+</figure>
 
 <h2>What it does</h2>
-<ul>
-  <li>Google Calendar and CalDAV accounts</li>
-  <li>Day, week, month and agenda views</li>
-  <li>Drag to reschedule, drag to create</li>
-  <li>Natural language quick add</li>
-  <li>Desktop notifications with one click to join a video call</li>
-  <li>A <code>callie</code> command-line interface for power users</li>
+<ul class="features">
+  <li><strong>All your Google calendars</strong><span>Several accounts, synced in the background and readable offline. Show or hide each calendar with a click.</span></li>
+  <li><strong>Four ways to look</strong><span>Day, week, month and agenda views, with search and a keyboard for everything, vi keys included.</span></li>
+  <li><strong>Quick to add</strong><span>Type "Lunch with Alex tomorrow 12-1pm at Cafe Sol", or drag across the week.</span></li>
+  <li><strong>Events your way</strong><span>Times, repeats down to "every 2 weeks on Monday and Thursday", places with search and maps, and guests from your contacts.</span></li>
+  <li><strong>Invitations</strong><span>Answer for one event or the whole series, from the event or the tray of waiting invitations.</span></li>
+  <li><strong>Reminders</strong><span>Desktop notifications with a button to join the video call, even when the link is in the notes.</span></li>
+  <li><strong>Make it yours</strong><span>Callie and Callie Light, or your own theme: change any color, import and export themes.</span></li>
+  <li><strong>A terminal, too</strong><span>The <code>callie</code> command lists, searches, adds and answers, with JSON for scripts.</span></li>
 </ul>
+
+<div class="prose">
+<h2>Install</h2>
+<p>
+  Download the package for your system from the
+  <a href="https://github.com/callieapp/callie/releases/latest">latest release</a>, then
+  install it:
+</p>
+<pre><code>sudo dnf install ./callie-*.x86_64.rpm   # Fedora
+sudo apt install ./callie_*_amd64.deb    # Debian and Ubuntu</code></pre>
+<p>Or build it from source, as the <a href="https://github.com/callieapp/callie#development">README</a> describes.</p>
 
 <h2>What it does not do</h2>
 <p>
   Callie is a calendar. It does not do tasks, scheduling links, or AI. It has no account
-  system and no servers: your calendar data goes between your machine and your calendar
+  system and no servers: your calendar data goes between your computer and your calendar
   provider, and nowhere else, apart from places you type, which Callie can look up on
-  OpenStreetMap.
+  OpenStreetMap. Read the <a href="privacy.html">privacy policy</a> for the details.
 </p>
+</div>
 
 <hr>
 
 <footer class="site">
   <a href="https://github.com/callieapp/callie">Source</a>
+  <a href="https://github.com/callieapp/callie/blob/main/CHANGELOG.md">What's new</a>
   <a href="/privacy.html">Privacy</a>
   <a href="/terms.html">Terms</a>
   <span>MIT licensed</span>

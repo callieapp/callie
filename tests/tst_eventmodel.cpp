@@ -432,12 +432,22 @@ void TestEventModel::rowsNameTheirCalendar()
              QStringLiteral("Work"));
     QCOMPARE(model.data(model.index(0, 0), EventModel::DescriptionRole).toString(),
              QStringLiteral("Agenda in the doc"));
+    // No call of its own, and none in its place or notes.
+    QVERIFY(model.data(model.index(0, 0), EventModel::JoinUrlRole).toUrl().isEmpty());
 
     e.description = QStringLiteral("R&amp;D sync\nRooms 2 & 3");
     FakeSource escaped({e});
     model.setSource(&escaped);
     QCOMPARE(model.data(model.index(0, 0), EventModel::DescriptionRole).toString(),
              QStringLiteral("R&D sync\nRooms 2 & 3"));
+
+    // A call link in the notes is what Join opens; the event still has no call of its own.
+    e.description = QStringLiteral("Join at https://acme.zoom.us/j/123");
+    FakeSource linked({e});
+    model.setSource(&linked);
+    QCOMPARE(model.data(model.index(0, 0), EventModel::JoinUrlRole).toUrl(),
+             QUrl(QStringLiteral("https://acme.zoom.us/j/123")));
+    QVERIFY(model.data(model.index(0, 0), EventModel::ConferenceUrlRole).toUrl().isEmpty());
 }
 
 void TestEventModel::timingDescribesWhereAnEventStands()
@@ -468,6 +478,9 @@ void TestEventModel::callServiceTrustsOnlyTheHost()
     QCOMPARE(model.callService(QUrl(u"https://evil.example/?r=meet.google.com"_s)), u"web"_s);
     QCOMPARE(model.callService(QUrl(u"https://meet.google.com.evil.example/"_s)), u"web"_s);
     QCOMPARE(model.callService(QUrl(u"https://notzoom.us/j/1"_s)), u"web"_s);
+    QCOMPARE(model.callService(QUrl(u"https://teams.microsoft.com/meet/1"_s)), u"teams"_s);
+    QCOMPARE(model.callService(QUrl(u"https://teams.live.com/meet/1"_s)), u"teams"_s);
+    QCOMPARE(model.callService(QUrl(u"https://teams.microsoft.com.evil.example/"_s)), u"web"_s);
     QVERIFY(model.callService(QUrl(u"file:///etc/passwd"_s)).isEmpty());
     QVERIFY(model.callService(QUrl(u"javascript:alert(1)"_s)).isEmpty());
     QVERIFY(model.callService(QUrl()).isEmpty());

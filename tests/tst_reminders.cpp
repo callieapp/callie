@@ -145,13 +145,17 @@ void TestReminders::buttonsFollowTheEvent()
     Event lunch = eventAt(u"Lunch"_s, at(9, 16));
     lunch.location = u"<a href=\"https://example.com\">Cafe</a>"_s;
     lunch.conferenceUrl = QUrl(u"javascript:alert(1)"_s);
-    m_source.events = {call, lunch};
+    // Only the notes hold this call's link.
+    Event pairing = eventAt(u"Pairing"_s, at(9, 16));
+    pairing.description = u"Join at https://acme.zoom.us/j/123"_s;
+    m_source.events = {call, lunch, pairing};
     m_now = at(9, 6);
     m_scheduler->check();
 
-    QCOMPARE(m_server.shown.size(), 2);
+    QCOMPARE(m_server.shown.size(), 3);
     QVERIFY(m_server.shown.at(0).actions.contains(u"join"_s));
     QVERIFY(!m_server.shown.at(1).actions.contains(u"join"_s));
+    QVERIFY(m_server.shown.at(2).actions.contains(u"join"_s));
     QVERIFY(m_server.shown.at(1).body.endsWith(
         u"&lt;a href=&quot;https://example.com&quot;&gt;Cafe&lt;/a&gt;"_s));
     for (const FakeServer::Shown &shown : std::as_const(m_server.shown)) {

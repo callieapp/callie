@@ -329,6 +329,13 @@ void Settings::seedCalendars(const QList<CalendarInfo> &calendars)
     }
 }
 
+bool Settings::isShown(const CalendarInfo &calendar) const
+{
+    if (m_hiddenCalendars.contains(calendar.id))
+        return false;
+    return m_knownCalendars.contains(calendar.id) || calendar.enabled;
+}
+
 void Settings::setTheme(const QString &idOrPath)
 {
     if (m_theme == idOrPath)
@@ -506,7 +513,7 @@ void Settings::reset()
     const TimeFormat format = m_timeFormat;
     const QString zone = m_timeZoneId;
     const bool declined = m_showDeclined, dim = m_dimPast, widen = m_widenToday;
-    const QStringList hidden = m_hiddenCalendars;
+    const QStringList hidden = m_hiddenCalendars, known = m_knownCalendars;
     const QStringList collapsed = m_collapsedAccounts;
     const QVariantMap looks = m_calendarLooks, accountNames = m_accountNames;
     const QVariantMap accountPhotos = m_accountPhotos;
@@ -536,7 +543,8 @@ void Settings::reset()
         Q_EMIT dimPastChanged();
     if (widen != m_widenToday)
         Q_EMIT widenTodayChanged();
-    if (hidden != m_hiddenCalendars)
+    // Calendars no longer remembered as seen are seeded again, by whoever listens.
+    if (hidden != m_hiddenCalendars || known != m_knownCalendars)
         Q_EMIT hiddenCalendarsChanged();
     if (collapsed != m_collapsedAccounts)
         Q_EMIT collapsedAccountsChanged();

@@ -206,6 +206,15 @@ void TestSettings::newCalendarsStartAsTheirProviderShowsThem()
     Settings settings(path());
     settings.seedCalendars({calendar("birthdays", false), calendar("holidays", false)});
     QCOMPARE(settings.hiddenCalendars(), QStringList{u"holidays"_s});
+    QVERIFY(settings.isShown(calendar("birthdays", false)));
+    QVERIFY(!settings.isShown(calendar("holidays", false)));
+
+    // Reset forgets what was seen, so the next seed starts over from Google.
+    QSignalSpy hidden(&settings, &Settings::hiddenCalendarsChanged);
+    settings.reset();
+    QCOMPARE(hidden.size(), 1);
+    settings.seedCalendars({calendar("birthdays", false)});
+    QCOMPARE(settings.hiddenCalendars(), QStringList{u"birthdays"_s});
 }
 
 void TestSettings::accountPhotosAreKept()

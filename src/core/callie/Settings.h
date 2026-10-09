@@ -135,6 +135,9 @@ public:
     /// Hides each calendar seen for the first time that its provider does not
     /// show; after that, only setCalendarVisible decides.
     void seedCalendars(const QList<CalendarInfo> &calendars);
+    /// Whether a calendar shows, as seedCalendars would leave it, without
+    /// remembering anything.
+    [[nodiscard]] bool isShown(const CalendarInfo &calendar) const;
 
     /// Times in the chosen zone and clock format. A JS Date only knows the
     /// system zone, so QML formats and places times through this.

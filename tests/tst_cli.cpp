@@ -138,6 +138,14 @@ void TestCli::agendaGivesIdsToScripts()
 
 void TestCli::hiddenCalendarsStayHidden()
 {
+    // Reading is not seeing: a read leaves no calendar remembered as seen.
+    QCOMPARE(m_commands->agenda(1, true), 0);
+    CalendarInfo birthdays;
+    birthdays.id = u"birthdays"_s;
+    QVERIFY(m_settings->isShown(birthdays));
+    birthdays.enabled = false;
+    QVERIFY(!m_settings->isShown(birthdays));
+    m_out.clear();
     m_settings->setCalendarVisible(u"personal"_s, false);
     QCOMPARE(m_commands->agenda(1, true), 0);
     m_outStream->flush();

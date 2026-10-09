@@ -40,8 +40,12 @@ Commands::Commands(CalendarSource &source, Settings &settings, QTextStream &out,
 
 QList<Event> Commands::visibleEvents(const QDateTime &from, const QDateTime &to) const
 {
+    QSet<QString> hidden;
+    for (const CalendarInfo &calendar : m_source.calendars()) {
+        if (!m_settings.isShown(calendar))
+            hidden.insert(calendar.id);
+    }
     QList<Event> events = m_source.eventsBetween(from, to, m_zone);
-    const QStringList hidden = m_settings.hiddenCalendars();
     events.removeIf([&hidden](const Event &e) { return hidden.contains(e.calendarId); });
     return events;
 }

@@ -188,6 +188,9 @@ int main(int argc, char *argv[])
     // after that, Callie's own choice holds.
     const auto seedCalendars = [&settings, source] { settings.seedCalendars(source->calendars()); };
     QObject::connect(source, &callie::CalendarSource::changed, &settings, seedCalendars);
+    // Reset to defaults forgets which calendars were seen, so they start over.
+    QObject::connect(&settings, &callie::Settings::hiddenCalendarsChanged, &settings,
+                     seedCalendars);
     seedCalendars();
     // People to suggest as guests: from the events, and from Google's contacts.
     callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());

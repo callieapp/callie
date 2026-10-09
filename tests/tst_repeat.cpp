@@ -108,7 +108,7 @@ void TestRepeat::customLeavesOtherRulesAlone()
           // Filters that only look like the start's own month or day.
           "RRULE:FREQ=DAILY;BYMONTH=10", "RRULE:FREQ=MONTHLY;BYMONTH=10",
           "RRULE:FREQ=DAILY;BYMONTHDAY=7", "RRULE:FREQ=WEEKLY;BYMONTHDAY=1,15",
-          "RRULE:FREQ=WEEKLY;WKST=XX"})
+          "RRULE:FREQ=WEEKLY;WKST=XX", "RRULE:FREQ=YEARLY;BYMONTHDAY=7"})
         QVERIFY2(!Repeat::custom({QString::fromLatin1(line)}, start, york), line);
     QVERIFY(!Repeat::custom({}, start, york));
 }

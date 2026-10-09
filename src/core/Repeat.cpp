@@ -180,10 +180,12 @@ std::optional<Custom> custom(const QStringList &recurrence, QDate start, const Q
     }
 
     // A month or a day of the month only restates the start where the rule
-    // already falls in it: a yearly rule's month, a monthly or yearly one's day.
+    // already falls in it: a yearly rule's month, a monthly one's day, or a
+    // yearly one's day with its month (alone, the day is in every month).
     if (!byMonth.isEmpty() && (c.frequency != u"yearly" || byMonth.toInt() != start.month()))
         return std::nullopt;
-    if (!byMonthDay.isEmpty() && (c.frequency == u"daily" || c.frequency == u"weekly"))
+    if (!byMonthDay.isEmpty() && c.frequency != u"monthly" &&
+        (c.frequency != u"yearly" || byMonth.isEmpty()))
         return std::nullopt;
 
     if (c.frequency == u"weekly") {

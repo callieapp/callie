@@ -57,6 +57,7 @@ public:
     Q_INVOKABLE static QStringList repeatRule(const QString &choice, const QDateTime &day);
     /// `recurrence` as the custom form edits it: {frequency, interval,
     /// weekdays, onWeekday, until, count}, or empty when the form cannot say it.
+    /// Weekdays are the start's own when the rule names none.
     Q_INVOKABLE static QVariantMap customRepeat(const QStringList &recurrence, const QDateTime &day,
                                                 const QString &zone);
     /// The rule for the custom form's `custom`, keeping the lines of `previous`
@@ -64,8 +65,8 @@ public:
     Q_INVOKABLE static QStringList customRule(const QVariantMap &custom, const QDateTime &day,
                                               bool allDay, const QString &zone,
                                               const QStringList &previous);
-    /// The custom form's `custom` for a start moved `days` on: a weekly rule's
-    /// weekdays move with it.
+    /// The custom form's `custom` for a start moved `days` on: its weekdays
+    /// move with it.
     Q_INVOKABLE static QVariantMap shiftCustom(const QVariantMap &custom, int days);
     /// `recurrence` in words, from the choices or the custom form, or "Custom".
     Q_INVOKABLE static QString describeRepeat(const QStringList &recurrence, const QDateTime &day,

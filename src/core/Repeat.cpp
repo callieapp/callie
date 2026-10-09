@@ -218,8 +218,6 @@ std::optional<Custom> custom(const QStringList &recurrence, QDate start, const Q
 
 Custom shifted(Custom custom, int days)
 {
-    if (custom.frequency != u"weekly")
-        return custom;
     for (int &day : custom.weekdays)
         day = ((day - 1 + days) % 7 + 7) % 7 + 1;
     std::sort(custom.weekdays.begin(), custom.weekdays.end());

@@ -28,6 +28,8 @@ void TestPlaces::callLinksAreFound_data()
                           << QUrl(u"https://meet.google.com/abc-defg-hij"_s);
     QTest::newRow("teams") << u"https://teams.microsoft.com/l/meetup-join/19%3a1/0"_s
                            << QUrl(u"https://teams.microsoft.com/l/meetup-join/19%3a1/0"_s);
+    QTest::newRow("teams new link") << u"https://teams.microsoft.com/meet/123456789?p=abc"_s
+                                    << QUrl(u"https://teams.microsoft.com/meet/123456789?p=abc"_s);
     QTest::newRow("webex") << u"https://acme.webex.com/meet/pat"_s
                            << QUrl(u"https://acme.webex.com/meet/pat"_s);
     QTest::newRow("first of two")

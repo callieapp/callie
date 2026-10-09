@@ -27,7 +27,7 @@ public:
 
     /// The Photon server to ask, ending with a slash; without one, only the
     /// user's own places are suggested.
-    void setServer(const QUrl &url) { m_server = url; }
+    void setServer(const QUrl &url);
     /// OpenStreetMap's public Photon server.
     static QUrl publicServer() { return QUrl(QStringLiteral("https://photon.komoot.io/")); }
     /// How long typing must pause before the server is asked, in ms.

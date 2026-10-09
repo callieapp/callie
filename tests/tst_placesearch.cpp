@@ -45,6 +45,7 @@ private Q_SLOTS:
     void ownPlacesComeFirst();
     void shortTextStaysLocal();
     void typingOnAsksOnce();
+    void offlineAsksNoServer();
 };
 
 void TestPlaceSearch::ownPlacesComeFirst()
@@ -129,6 +130,35 @@ void TestPlaceSearch::typingOnAsksOnce()
     QVERIFY(changed.wait());
     QTest::qWait(100);
     QCOMPARE(labels(search.results()), QStringList{u"parkway place"_s});
+    QCOMPARE(server.requests.size(), 1);
+}
+
+void TestPlaceSearch::offlineAsksNoServer()
+{
+    SampleSource source;
+    FakeHttpServer server;
+    PlaceSearch search;
+    search.setSource(&source);
+    search.setDelay(0);
+
+    // With online search off, only the user's own places come.
+    search.search(u"studio"_s);
+    QTRY_COMPARE(labels(search.results()), QStringList{u"Studio (past)"_s});
+    QTest::qWait(100);
+    QVERIFY(server.requests.isEmpty());
+
+    // Turned on, the server is asked from the next search.
+    search.setServer(server.url(u"/"_s));
+    QTest::qWait(100);
+    QVERIFY(server.requests.isEmpty());
+    search.search(u"studio"_s);
+    QTRY_COMPARE(server.requests.size(), 1);
+
+    // And off again, it is not, even for a search already waiting.
+    search.setDelay(200);
+    search.search(u"studios"_s);
+    search.setServer({});
+    QTest::qWait(400);
     QCOMPARE(server.requests.size(), 1);
 }
 

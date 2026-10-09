@@ -34,6 +34,7 @@ private Q_SLOTS:
 
     void refreshesWithStoredToken();
     void grantedScopesAreKnownAfterARefresh();
+    void forgottenAccountLosesWhatWasKnown();
     void cachedTokenIsReused();
     void concurrentRequestsShareOneRefresh();
     void tokenNearExpiryIsRefreshed();
@@ -107,6 +108,19 @@ void TestGoogleTokenProvider::grantedScopesAreKnownAfterARefresh()
     m_provider->invalidate(kAccount);
     request();
     QVERIFY(m_provider->missingScopes(kAccount).isEmpty());
+}
+
+void TestGoogleTokenProvider::forgottenAccountLosesWhatWasKnown()
+{
+    m_server->respond(200, R"({"access_token":"at-1","expires_in":3600,
+        "scope":"https://www.googleapis.com/auth/calendar.events"})");
+    request();
+    QVERIFY(!m_provider->missingScopes(kAccount).isEmpty());
+    m_provider->forget(kAccount);
+    QVERIFY(m_provider->missingScopes(kAccount).isEmpty());
+    // The cached token goes too.
+    request();
+    QCOMPARE(m_server->requests.size(), 2);
 }
 
 void TestGoogleTokenProvider::cachedTokenIsReused()

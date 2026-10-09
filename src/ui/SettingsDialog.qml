@@ -10,8 +10,10 @@ Popup {
     id: root
 
     anchors.centerIn: Overlay.overlay
-    // Wide enough for every tab on one row.
-    width: 600
+    // Wide enough for every tab on one row, where the window allows.
+    width: Math.min(Overlay.overlay ? Overlay.overlay.width - 2 * Theme.space6 : 600, Math.max(600,
+                                                                                               tabsWidth
+                                                                                               + 2 * Theme.space6))
     padding: 0
     modal: true
     focus: true
@@ -20,6 +22,13 @@ Popup {
     /// The user wants to edit the theme's colors, which needs the calendar in view.
     signal editColorsRequested
 
+    /// The tabs side by side, which the dialog widens to hold.
+    readonly property real tabsWidth: {
+        let width = Theme.space2 * Math.max(0, tabRepeater.count - 1)
+        for (let i = 0; i < tabRepeater.count; ++i)
+            width += tabRepeater.itemAt(i) ? tabRepeater.itemAt(i).implicitWidth : 0
+        return width
+    }
     /// Which group of settings shows: "general", "appearance" or "accounts".
     property string tab: "general"
     /// The source's syncReport, for the accounts tab.
@@ -97,6 +106,8 @@ Popup {
             spacing: Theme.space2
 
             Repeater {
+                id: tabRepeater
+
                 model: [
                     {
                         "id": "general",

@@ -102,10 +102,12 @@ Column {
         // A custom rule goes only when changed here, or moved with its series,
         // so one Google wrote its own way is not rewritten for nothing.
         if (repeat === "custom" && (customTouched || moved)) {
-            const lines = customReadable && !customTyped ? root.actions.customRule(custom, startDay,
-                                                                                   allDay, zone,
-                                                                                   event.recurrence
-                                                                                   || []) : customLines
+            // A rule only read keeps its weekdays where they were around the start.
+            const shift = moved && !customTouched ? root.actions.daysBetween(day, startDay) : 0
+            const kept = shiftedCustom(shift)
+            const lines = customReadable && !customTyped ? root.actions.customRule(kept, startDay, allDay, zone,
+                                                                                   customPrevious(
+                                                                                       )) : customLines
             if (JSON.stringify(lines) !== JSON.stringify(event.recurrence || []))
                 c.recurrence = lines
         }
@@ -167,11 +169,25 @@ Column {
         }
     }
 
+    /// The lines kept beside a rule written from the form, such as deleted
+    /// days: those of the rule as it stands, typed ones included.
+    function customPrevious() {
+        return customLines.length > 0 ? customLines : (event.recurrence || [])
+    }
+
+    /// The custom rule with a weekly rule's days moved `shift` days on.
+    function shiftedCustom(shift) {
+        if (shift === 0 || custom.frequency !== "weekly")
+            return custom
+        const moved = Object.assign({}, custom)
+        moved.weekdays = custom.weekdays.map(d => ((d - 1 + shift) % 7 + 7) % 7 + 1)
+        return moved
+    }
+
     /// Changes some of the custom rule, and the lines that follow from it.
     function setCustom(changed) {
         custom = Object.assign({}, custom, changed)
-        customLines = root.actions.customRule(custom, startDay, allDay, zone, event.recurrence
-                                              || [])
+        customLines = root.actions.customRule(custom, startDay, allDay, zone, customPrevious())
         customTouched = true
         customTyped = false
     }

@@ -620,6 +620,18 @@ void TestEventEdit::customRepeatsAreWritten()
     QMetaObject::invokeMethod(raw, "editingFinished");
     QCOMPARE(raw->property("text").toString(), typed.join(u' '));
     QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(), typed);
+    // A change in the form after typing keeps the typed deleted day.
+    QVERIFY(QMetaObject::invokeMethod(form, "setCustom", Q_ARG(QVariant, everyTwo)));
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             (QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR;WKST=SU"_s,
+                          u"EXDATE:20261023T210000Z"_s}));
+
+    // A series moved a day later moves its rule's days with it.
+    own.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2"_s});
+    QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, own)));
+    form->setProperty("startDay", form->property("startDay").toDateTime().addDays(1));
+    QCOMPARE(changes(u"all"_s).value(u"recurrence"_s).toStringList(),
+             QStringList{u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SA"_s});
 }
 
 QTEST_MAIN(TestEventEdit)

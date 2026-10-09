@@ -36,6 +36,14 @@ public:
     /// Drops a cached token that Google rejected, so the next request refreshes.
     void invalidate(const Account &account);
 
+    /// What Callie asks for that the account has not granted, as of its last
+    /// refresh; empty until then, or when Google does not say.
+    [[nodiscard]] QStringList missingScopes(const Account &account) const;
+
+Q_SIGNALS:
+    /// A refresh said what the account has granted.
+    void scopesKnown(const callie::Account &account);
+
 private:
     struct Cached
     {
@@ -50,6 +58,7 @@ private:
     TokenStore &m_tokens;
     QUrl m_tokenUrl;
     QHash<QString, Cached> m_cache;
+    QHash<QString, QStringList> m_granted;
     QHash<QString, QList<TokenResult>> m_waiting;
 };
 

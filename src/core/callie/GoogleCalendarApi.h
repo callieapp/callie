@@ -148,6 +148,11 @@ public:
     /// The people of one kind with an email address, as name and address.
     void fetchPeople(const QString &accessToken, People kind, PeopleResult result);
 
+    using PhotoResult = std::function<void(const QUrl &photo, const GoogleApiError &error)>;
+    /// The account's own profile photo; empty when it has only Google's
+    /// default letter.
+    void fetchPhoto(const QString &accessToken, PhotoResult result);
+
     /// Every event in a calendar when `syncToken` is empty, otherwise only what
     /// changed since that token was issued, deletions included. Recurring
     /// events come back as series, not expanded instances.

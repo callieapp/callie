@@ -72,6 +72,10 @@ void GoogleTokenProvider::refresh(const Account &account, const QString &refresh
             [this, auth, account, key, refreshToken](const GoogleTokens &tokens) {
                 auth->deleteLater();
                 m_cache.insert(key, {tokens.accessToken, tokens.expiresAt});
+                if (!tokens.scopes.isEmpty()) {
+                    m_granted.insert(key, tokens.scopes);
+                    Q_EMIT scopesKnown(account);
+                }
                 // Google keeps the refresh token stable today, but if it ever
                 // rotates one the old one stops working.
                 if (tokens.refreshToken != refreshToken) {
@@ -87,6 +91,19 @@ void GoogleTokenProvider::refresh(const Account &account, const QString &refresh
         finish(key, {}, message);
     });
     auth->refresh(refreshToken);
+}
+
+QStringList GoogleTokenProvider::missingScopes(const Account &account) const
+{
+    const auto granted = m_granted.constFind(keyFor(account));
+    if (granted == m_granted.cend())
+        return {};
+    QStringList missing;
+    for (const QString &scope : GoogleAuth::scopes().split(u' ')) {
+        if (!granted->contains(scope))
+            missing << scope;
+    }
+    return missing;
 }
 
 void GoogleTokenProvider::finish(const QString &key, const QString &accessToken,

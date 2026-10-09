@@ -20,6 +20,9 @@ struct GoogleTokens
     QString accessToken;
     QString refreshToken;
     QDateTime expiresAt;
+    /// What the account has granted, as Google lists it; empty when Google
+    /// does not say.
+    QStringList scopes;
 };
 
 /// OAuth 2.0 for Google as an installed app: authorization code flow with PKCE

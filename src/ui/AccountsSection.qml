@@ -39,6 +39,9 @@ Column {
 
             required property var modelData
             readonly property var entry: root.entryFor(modelData.id)
+            /// Callie asks for more than this account granted when it signed in.
+            readonly property bool missing: !!entry && (entry.missingScopes || []).length > 0
+            readonly property url photo: Settings.accountPhotos[modelData.id] || ""
             readonly property string problem: entry ? (entry.error || (entry.problems.length > 0
                                                                        ? entry.problems[0] : "")) :
                                                       ""
@@ -53,8 +56,40 @@ Column {
                 radius: width / 2
                 color: Theme.tint(Theme.accent, 0.25)
 
+                // The account's photo, round, over its letter until it loads.
+                Canvas {
+                    id: photo
+
+                    readonly property url source: row.photo
+                    property bool ready: false
+
+                    function load() {
+                        ready = false
+                        if (source.toString() !== "")
+                            loadImage(source)
+                    }
+
+                    anchors.fill: parent
+                    visible: ready
+                    Component.onCompleted: load()
+                    onSourceChanged: load()
+                    onImageLoaded: {
+                        ready = isImageLoaded(source)
+                        requestPaint()
+                    }
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.beginPath()
+                        ctx.arc(width / 2, height / 2, width / 2, 0, 2 * Math.PI)
+                        ctx.clip()
+                        ctx.drawImage(source, 0, 0, width, height)
+                    }
+                }
+
                 Text {
                     anchors.centerIn: parent
+                    visible: !photo.ready
                     text: row.modelData.id.charAt(0).toUpperCase()
                     color: Theme.accent
                     font.family: Theme.displayFontFamily
@@ -89,13 +124,18 @@ Column {
                     wrapMode: Text.Wrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
-                    text: row.problem !== "" ? row.problem : !row.entry || isNaN(
-                                                   row.entry.lastSynced.getTime()) ? qsTr(
-                                                                                         "Not synced yet") :
-                                                                                     qsTr("Synced %1").arg(
-                                                                                         Settings.times.time(
-                                                                                             row.entry.lastSynced))
-                    color: row.problem !== "" ? Theme.danger : Theme.textMuted
+                    text: row.problem !== "" ? row.problem : row.missing ? qsTr(
+                                                                               "Reconnect to grant new permissions") :
+                                                                           !row.entry || isNaN(
+                                                                               row.entry.lastSynced.getTime(
+                                                                                   )) ? qsTr(
+                                                                                            "Not synced yet") :
+                                                                                        qsTr("Synced %1").arg(
+                                                                                            Settings.times.time(
+                                                                                                row.entry.lastSynced))
+                    color: row.problem !== "" ? Theme.danger : row.missing ? Theme.accent :
+                                                                             Theme.textMuted
+
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
                 }
@@ -112,11 +152,29 @@ Column {
                 // Signs in again: mends a broken sign-in, and grants what Callie
                 // has asked for since, such as reading contacts.
                 StickerButton {
+                    id: reconnect
                     visible: Accounts.unavailable === ""
                     enabled: !Accounts.busy
-                    accent: row.problem !== ""
+                    accent: row.problem !== "" || row.missing
                     text: qsTr("Reconnect")
                     onClicked: Accounts.reconnect(row.modelData.id)
+
+                    // A dot when the account has not granted all Callie asks for.
+                    Rectangle {
+                        visible: row.missing
+                        anchors {
+                            right: parent.right
+                            top: parent.top
+                            rightMargin: -width / 3
+                            topMargin: -height / 3
+                        }
+                        width: Theme.space3
+                        height: width
+                        radius: width / 2
+                        color: Theme.danger
+                        border.width: 2
+                        border.color: Theme.surface
+                    }
                 }
                 // Removing takes a second click, since the account's sign-in goes too.
                 DangerButton {

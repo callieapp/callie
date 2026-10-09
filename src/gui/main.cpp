@@ -159,6 +159,10 @@ int main(int argc, char *argv[])
     callie::GoogleSync sync(provider, api, cache);
     callie::GoogleSource google(cache, accounts);
     google.setSync(&sync);
+    QObject::connect(&sync, &callie::GoogleSync::photoFound, &settings,
+                     [&settings](const callie::Account &account, const QUrl &photo) {
+                         settings.setAccountPhoto(account.id, photo);
+                     });
     // A newly connected account brings its Google week and clock choices along.
     QObject::connect(&sync, &callie::GoogleSync::settingsFound, &settings,
                      [&settings](const callie::Account &, const QHash<QString, QString> &google) {

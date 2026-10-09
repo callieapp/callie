@@ -110,6 +110,7 @@ private Q_SLOTS:
     void contactsOfARemovedAccountAreDropped();
     void contactsThatFailToReadAreTriedAgain();
     void signingInAgainReadsContactsAgain();
+    void photoIsReadOnceARun();
     void unreadableSettingsAreTriedAgain();
     void rejectedTokenForSettingsIsRefreshed();
 
@@ -495,6 +496,39 @@ void TestGoogleSync::signingInAgainReadsContactsAgain()
     QCOMPARE(runSync(), QStringList());
     QTRY_COMPARE_WITH_TIMEOUT(found.size(), 2, 5000);
     QCOMPARE(found.last().at(1).value<QList<Contact>>().size(), 1);
+}
+
+void TestGoogleSync::photoIsReadOnceARun()
+{
+    m_google->on(u"calendars/me%40example.com/events"_s, 200, events("", "me-1"));
+    m_google->on(u"calendars/team/events"_s, 200, events("", "team-1"));
+    // Not granted yet, then granted: Google's default letter first, then a photo.
+    m_google->on(u"people/me"_s, 403,
+                 R"({"error":{"code":403,"message":"insufficient authentication scopes"}})");
+    m_google->on(
+        u"people/me"_s, 200,
+        R"({"photos":[{"metadata":{"primary":true},"url":"https://lh3/default","default":true}]})");
+    m_google->on(u"people/me"_s, 200,
+                 R"({"photos":[{"metadata":{"primary":true},"url":"https://lh3/me"}]})");
+    QSignalSpy found(m_sync.get(), &GoogleSync::photoFound);
+
+    // Refused: nothing found, and the next sync tries again.
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(m_google->count(u"people/me"_s), 1, 5000);
+    QTest::qWait(200);
+    QVERIFY(found.isEmpty());
+    // Google's own letter is not a photo.
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 1, 5000);
+    QCOMPARE(found.last().at(1).toUrl(), QUrl());
+    // Once a run, until the account signs in again.
+    QCOMPARE(runSync(), QStringList());
+    QTest::qWait(200);
+    QCOMPARE(found.size(), 1);
+    m_sync->signedInAgain(kAccount);
+    QCOMPARE(runSync(), QStringList());
+    QTRY_COMPARE_WITH_TIMEOUT(found.size(), 2, 5000);
+    QCOMPARE(found.last().at(1).toUrl(), QUrl(u"https://lh3/me"_s));
 }
 
 void TestGoogleSync::unreadableSettingsAreTriedAgain()

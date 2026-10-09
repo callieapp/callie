@@ -82,7 +82,9 @@ QString GoogleAuth::scopes()
                           // Names and addresses of people to invite.
                           "https://www.googleapis.com/auth/contacts.readonly "
                           "https://www.googleapis.com/auth/contacts.other.readonly "
-                          "https://www.googleapis.com/auth/directory.readonly");
+                          "https://www.googleapis.com/auth/directory.readonly "
+                          // The account's own photo, for the accounts list.
+                          "https://www.googleapis.com/auth/userinfo.profile");
 }
 
 void GoogleAuth::setEndpoints(const QUrl &authorization, const QUrl &token)
@@ -155,6 +157,7 @@ void GoogleAuth::refresh(const QString &refreshToken)
                 accessToken,
                 body[u"refresh_token"].toString(refreshToken),
                 expiresIn > 0 ? QDateTime::currentDateTimeUtc().addSecs(expiresIn) : QDateTime(),
+                body[u"scope"].toString().split(u' ', Qt::SkipEmptyParts),
             });
             return;
         }
@@ -187,7 +190,8 @@ void GoogleAuth::onGranted()
     if (m_handler)
         m_handler->close();
 
-    const GoogleTokens tokens{m_flow->token(), m_flow->refreshToken(), m_flow->expirationAt()};
+    // What was granted is learned from the next refresh, which signing in again forces.
+    const GoogleTokens tokens{m_flow->token(), m_flow->refreshToken(), m_flow->expirationAt(), {}};
     if (tokens.refreshToken.isEmpty()) {
         fail(tr("Google did not return a refresh token"));
         return;

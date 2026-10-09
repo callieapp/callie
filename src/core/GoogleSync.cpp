@@ -57,7 +57,9 @@ void GoogleSync::record(bool stored)
 GoogleSync::GoogleSync(GoogleTokenProvider &tokens, GoogleCalendarApi &api, GoogleCache &cache,
                        QObject *parent)
     : QObject(parent), m_tokens(tokens), m_api(api), m_cache(cache)
-{}
+{
+    connect(&m_tokens, &GoogleTokenProvider::scopesKnown, this, &GoogleSync::scopesKnown);
+}
 
 GoogleSync::~GoogleSync() = default;
 
@@ -383,6 +385,7 @@ void GoogleSync::forget(const Account &account)
     m_settingsRead.remove(keyFor(account));
     m_contactsRead.remove(keyFor(account));
     m_contactsReading.remove(keyFor(account));
+    m_photoRead.remove(keyFor(account));
 }
 
 void GoogleSync::signedInAgain(const Account &account)
@@ -390,6 +393,38 @@ void GoogleSync::signedInAgain(const Account &account)
     m_tokens.invalidate(account);
     m_settingsRead.remove(keyFor(account));
     m_contactsRead.remove(keyFor(account));
+    m_photoRead.remove(keyFor(account));
+}
+
+QStringList GoogleSync::missingScopes(const Account &account) const
+{
+    return m_tokens.missingScopes(account);
+}
+
+void GoogleSync::readPhoto(const Account &account)
+{
+    const QPointer<GoogleSync> self(this);
+    withToken(
+        account, false,
+        [this, self, account](const QString &token, const Retry &retry) {
+            m_api.fetchPhoto(token, [this, self, account, retry](const QUrl &photo,
+                                                                 const GoogleApiError &error) {
+                if (!self)
+                    return;
+                if (error.unauthorized()) {
+                    retry();
+                    return;
+                }
+                // Refused until the account grants its profile; tried again then.
+                if (error) {
+                    qCDebug(lcSync) << "profile photo not readable:" << error.message;
+                    return;
+                }
+                m_photoRead.insert(keyFor(account));
+                Q_EMIT photoFound(account, photo);
+            });
+        },
+        [](const QString &) {});
 }
 
 void GoogleSync::readSettings(const Account &account)
@@ -523,6 +558,8 @@ void GoogleSync::finish(const std::shared_ptr<Run> &run)
         readSettings(run->account);
     if (run->accountError.isEmpty() && !m_contactsRead.contains(keyFor(run->account)))
         readContacts(run->account);
+    if (run->accountError.isEmpty() && !m_photoRead.contains(keyFor(run->account)))
+        readPhoto(run->account);
     for (const Done &done : std::as_const(run->waiting))
         done(run->errors);
 }

@@ -30,6 +30,7 @@ const QString kHiddenCalendars = u"calendars/hidden"_s;
 const QString kCollapsedAccounts = u"calendars/collapsedAccounts"_s;
 const QString kCalendarLooks = u"calendars/looks"_s;
 const QString kAccountNames = u"calendars/accountNames"_s;
+const QString kAccountPhotos = u"calendars/accountPhotos"_s;
 const QString kTheme = u"appearance/theme"_s;
 const QString kView = u"view/current"_s;
 const QString kLastSeenVersion = u"app/lastSeenVersion"_s;
@@ -80,6 +81,7 @@ void Settings::load()
     m_collapsedAccounts = m_store.value(kCollapsedAccounts).toStringList();
     m_calendarLooks = m_store.value(kCalendarLooks).toMap();
     m_accountNames = m_store.value(kAccountNames).toMap();
+    m_accountPhotos = m_store.value(kAccountPhotos).toMap();
     m_theme = m_store.value(kTheme).toString();
     const QString view = m_store.value(kView).toString();
     m_view = kViews.contains(view) ? view : u"week"_s;
@@ -457,6 +459,18 @@ void Settings::setAccountName(const QString &account, const QString &name)
     Q_EMIT accountNamesChanged();
 }
 
+void Settings::setAccountPhoto(const QString &account, const QUrl &photo)
+{
+    if (m_accountPhotos.value(account).toUrl() == photo)
+        return;
+    if (photo.isEmpty())
+        m_accountPhotos.remove(account);
+    else
+        m_accountPhotos.insert(account, photo);
+    m_store.setValue(kAccountPhotos, m_accountPhotos);
+    Q_EMIT accountPhotosChanged();
+}
+
 QString Settings::accountName(const QString &account) const
 {
     return m_accountNames.value(account, account).toString();
@@ -471,6 +485,7 @@ void Settings::reset()
     const QStringList hidden = m_hiddenCalendars;
     const QStringList collapsed = m_collapsedAccounts;
     const QVariantMap looks = m_calendarLooks, accountNames = m_accountNames;
+    const QVariantMap accountPhotos = m_accountPhotos;
     const QString theme = m_theme;
     const QString view = m_view;
     const QString defaultCalendar = m_defaultCalendar;
@@ -501,6 +516,8 @@ void Settings::reset()
         Q_EMIT calendarLooksChanged();
     if (accountNames != m_accountNames)
         Q_EMIT accountNamesChanged();
+    if (accountPhotos != m_accountPhotos)
+        Q_EMIT accountPhotosChanged();
     if (theme != m_theme)
         Q_EMIT themeChanged();
     if (view != m_view)

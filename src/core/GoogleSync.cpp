@@ -387,6 +387,7 @@ void GoogleSync::forget(const Account &account)
     m_contactsRead.remove(keyFor(account));
     m_contactsReading.remove(keyFor(account));
     m_photoRead.remove(keyFor(account));
+    m_photoReading.remove(keyFor(account));
 }
 
 void GoogleSync::signedInAgain(const Account &account)
@@ -404,6 +405,7 @@ QStringList GoogleSync::missingScopes(const Account &account) const
 
 void GoogleSync::readPhoto(const Account &account)
 {
+    m_photoReading.insert(keyFor(account));
     const QPointer<GoogleSync> self(this);
     withToken(
         account, false,
@@ -416,6 +418,9 @@ void GoogleSync::readPhoto(const Account &account)
                     retry();
                     return;
                 }
+                // Nothing for an account removed while its photo was being read.
+                if (!m_photoReading.remove(keyFor(account)))
+                    return;
                 // Refused until the account grants its profile; tried again then.
                 if (error) {
                     qCDebug(lcSync) << "profile photo not readable:" << error.message;

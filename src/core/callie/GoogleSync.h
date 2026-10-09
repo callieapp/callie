@@ -132,6 +132,8 @@ private:
     QSet<QString> m_settingsRead;
     QSet<QString> m_contactsRead;
     QSet<QString> m_photoRead;
+    /// Accounts whose photo is being read; forgetting one drops its read.
+    QSet<QString> m_photoReading;
     /// Accounts whose contacts are being read; forgetting one drops its read.
     QSet<QString> m_contactsReading;
 };

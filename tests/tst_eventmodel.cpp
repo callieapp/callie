@@ -573,6 +573,16 @@ void TestEventModel::slowLoadKeepsRowsForTheSameRange()
     QCOMPARE(model.rowCount(), 0);
     source.answer(2, {timed("c", kMonday.addDays(7), 9, 0, 60)});
     QTRY_COMPARE(model.rowCount(), 1);
+
+    // So do the labels of a week that holds only where the user works.
+    Event home = allDay("home", kMonday.addDays(14), 1);
+    home.summary = QStringLiteral("Home");
+    home.workPlace = true;
+    model.setRangeStart(kMonday.addDays(14));
+    source.answer(3, {home});
+    QTRY_COMPARE(model.workPlaces().value(0), QStringLiteral("Home"));
+    model.setRangeStart(kMonday.addDays(21));
+    QVERIFY(model.workPlaces().value(0).isEmpty());
 }
 
 void TestEventModel::overtakenLoadIsDropped()

@@ -140,6 +140,11 @@ void EventModel::load(bool rangeChanged)
         endResetModel();
         Q_EMIT revisionChanged();
     }
+    // Their labels too, even for a week of only those.
+    if (rangeChanged && m_workPlaces != QStringList(m_dayCount)) {
+        m_workPlaces = QStringList(m_dayCount);
+        Q_EMIT workPlacesChanged();
+    }
     future.then(this, [this, generation](const SourceSnapshot &snapshot) {
         if (generation == m_generation)
             apply(snapshot);

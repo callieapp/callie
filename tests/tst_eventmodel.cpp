@@ -111,6 +111,8 @@ private Q_SLOTS:
     void closeStartsSitSideBySide();
     void laterStartsStepIn();
     void stepsAndSidesMix();
+    void laterEventsStackOnOneColumn();
+    void shortEventsTakeTheirOwnColumn();
     void clustersAreCountedIndependently();
     void differentDaysDoNotShareLanes();
     void positionRolesAreComputed();
@@ -226,7 +228,8 @@ void TestEventModel::laterStartsStepIn()
 
 void TestEventModel::stepsAndSidesMix()
 {
-    // Two side by side under a long event, then one that only covers the first.
+    // The call steps in over the workshop, whose title shows above it; the
+    // sync starts too soon after the call to stack, so takes a column.
     auto [model, source] = modelFor({
         timed("workshop", kMonday, 10, 0, 90),
         timed("call", kMonday, 10, 30, 60),
@@ -234,15 +237,52 @@ void TestEventModel::stepsAndSidesMix()
         timed("late", kMonday, 11, 20, 30),
     });
 
+    QCOMPARE(intRole(*model, 0, EventModel::LaneRole), 0);
     QCOMPARE(intRole(*model, 0, EventModel::DepthRole), 0);
-    QCOMPARE(intRole(*model, 1, EventModel::DepthRole), 1);
-    QCOMPARE(intRole(*model, 2, EventModel::DepthRole), 1);
     QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 0);
+    QCOMPARE(intRole(*model, 1, EventModel::DepthRole), 1);
     QCOMPARE(intRole(*model, 2, EventModel::LaneRole), 1);
-    QCOMPARE(intRole(*model, 2, EventModel::LaneCountRole), 2);
-    // "late" overlaps the workshop and the call, not the sync, which has ended.
-    QCOMPARE(intRole(*model, 3, EventModel::DepthRole), 2);
-    QCOMPARE(intRole(*model, 3, EventModel::LaneCountRole), 1);
+    QCOMPARE(intRole(*model, 2, EventModel::DepthRole), 0);
+    // "late" finds the sync's column free again.
+    QCOMPARE(intRole(*model, 3, EventModel::LaneRole), 1);
+    QCOMPARE(intRole(*model, 3, EventModel::DepthRole), 0);
+    for (int row = 0; row < 4; ++row)
+        QCOMPARE(intRole(*model, row, EventModel::LaneCountRole), 2);
+}
+
+void TestEventModel::laterEventsStackOnOneColumn()
+{
+    // Two side by side, then one that starts later: it stacks on the first
+    // column rather than covering both, so all three titles show.
+    auto [model, source] = modelFor({
+        timed("brass", kMonday, 18, 30, 120),
+        timed("rehearsal", kMonday, 18, 45, 120),
+        timed("community", kMonday, 19, 0, 120),
+    });
+
+    QCOMPARE(intRole(*model, 0, EventModel::LaneRole), 0);
+    QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
+    QCOMPARE(intRole(*model, 2, EventModel::LaneRole), 0);
+    QCOMPARE(intRole(*model, 2, EventModel::DepthRole), 1);
+    for (int row = 0; row < 3; ++row)
+        QCOMPARE(intRole(*model, row, EventModel::LaneCountRole), 2);
+}
+
+void TestEventModel::shortEventsTakeTheirOwnColumn()
+{
+    // Drawn taller than they last, short events back to back overlap on
+    // screen, so each sits beside the one it covers instead of on top.
+    auto [model, source] = modelFor({
+        timed("water", kMonday, 9, 0, 5),
+        timed("make", kMonday, 9, 5, 5),
+        timed("bills", kMonday, 9, 10, 5),
+    });
+    model->setMinimumMinutes(20);
+
+    QCOMPARE(intRole(*model, 0, EventModel::LaneRole), 0);
+    QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
+    for (int row = 0; row < 3; ++row)
+        QCOMPARE(intRole(*model, row, EventModel::DepthRole), 0);
 }
 
 void TestEventModel::clustersAreCountedIndependently()

@@ -83,9 +83,9 @@ public:
     /// the place or notes, such as a Zoom link pasted into an invitation.
     [[nodiscard]] QUrl joinUrl() const;
 
-    /// Where an overlapping event sits, filled in by the view model: `depth`
-    /// steps it in over earlier events, and `lane` of `laneCount` places it
-    /// beside events that start at about the same time.
+    /// Where an overlapping event sits, filled in by the view model: in column
+    /// `lane` of the `laneCount` its overlapping events share, stepped in by
+    /// `depth` over earlier events of that column whose titles show above it.
     int depth = 0;
     int lane = 0;
     int laneCount = 1;

@@ -192,10 +192,10 @@ void EventModel::setMinimumMinutes(int minutes)
 
 void EventModel::assignLanes(QList<Event> &events) const
 {
-    // Events that start close together sit side by side, sharing one depth.
-    // One that starts later steps in over everything it overlaps, so every
-    // event keeps most of the column and its title stays readable.
-    constexpr qint64 kSideBySideSecs = 30 * 60;
+    // Overlapping events share the width in columns. A later event may stack
+    // on top of a column instead, stepping in, once that column's events
+    // started long enough before it for their titles to show above it.
+    constexpr qint64 kTitleShowsSecs = 30 * 60;
     QMap<qint64, QList<Event *>> byDay;
     for (Event &e : events) {
         if (e.allDay)
@@ -208,52 +208,70 @@ void EventModel::assignLanes(QList<Event> &events) const
     const auto drawnEnd = [this](const Event *e) {
         return std::max(e->end, e->start.addSecs(qint64(m_minimumMinutes) * 60));
     };
-    struct Group
-    {
-        QDateTime start;
-        int depth = 0;
-        QList<Event *> members;
-    };
 
     for (QList<Event *> &day : byDay) {
         std::sort(day.begin(), day.end(), [](const Event *a, const Event *b) {
             return a->start == b->start ? a->end > b->end : a->start < b->start;
         });
 
-        QList<Group> groups;
-        QHash<const Event *, qsizetype> groupOf;
+        // The events overlapping one another, directly or through others,
+        // share a column count.
+        QList<QList<Event *>> columns;
+        QList<Event *> cluster;
+        QDateTime clusterEnd;
+        const auto finish = [&] {
+            for (Event *e : std::as_const(cluster))
+                e->laneCount = int(columns.size());
+            columns.clear();
+            cluster.clear();
+        };
+
         for (Event *e : day) {
-            qsizetype near = -1;
-            int depth = 0;
-            bool overlaps = false;
-            for (const Group &group : std::as_const(groups)) {
-                for (const Event *other : group.members) {
+            if (!cluster.isEmpty() && e->start >= clusterEnd)
+                finish();
+            if (cluster.isEmpty())
+                clusterEnd = drawnEnd(e);
+            clusterEnd = std::max(clusterEnd, drawnEnd(e));
+
+            // A free column first, then one to stack on, then a new one.
+            qsizetype free = -1;
+            qsizetype stack = -1;
+            int stackDepth = 0;
+            for (qsizetype c = 0; c < columns.size(); ++c) {
+                bool overlaps = false;
+                bool titlesShow = true;
+                int depth = 0;
+                for (const Event *other : std::as_const(columns[c])) {
                     if (drawnEnd(other) <= e->start)
                         continue;
                     overlaps = true;
-                    const qsizetype index = groupOf.value(other);
-                    if (group.start.secsTo(e->start) < kSideBySideSecs)
-                        near = std::max(near, index);
-                    depth = std::max(depth, group.depth + 1);
+                    titlesShow = titlesShow && other->start.secsTo(e->start) >= kTitleShowsSecs;
+                    depth = std::max(depth, other->depth + 1);
+                }
+                if (!overlaps) {
+                    free = c;
+                    break;
+                }
+                if (titlesShow && stack < 0) {
+                    stack = c;
+                    stackDepth = depth;
                 }
             }
-            if (near >= 0) {
-                groups[near].members.append(e);
-                groupOf.insert(e, near);
+            if (free >= 0) {
+                e->lane = int(free);
+                e->depth = 0;
+            } else if (stack >= 0) {
+                e->lane = int(stack);
+                e->depth = stackDepth;
             } else {
-                groups.append({e->start, overlaps ? depth : 0, {e}});
-                groupOf.insert(e, groups.size() - 1);
+                e->lane = int(columns.size());
+                e->depth = 0;
+                columns.append(QList<Event *>());
             }
+            columns[e->lane].append(e);
+            cluster.append(e);
         }
-
-        for (const Group &group : std::as_const(groups)) {
-            for (qsizetype i = 0; i < group.members.size(); ++i) {
-                Event *e = group.members.at(i);
-                e->depth = group.depth;
-                e->lane = int(i);
-                e->laneCount = int(group.members.size());
-            }
-        }
+        finish();
     }
 }
 

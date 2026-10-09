@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QLoggingCategory>
 #include <QMutex>
 #include <QStandardPaths>
 #include <QTextStream>
@@ -24,6 +25,7 @@ struct State
     bool installed = false;
     qint64 maxBytes = 0;
     bool verboseTerminal = false;
+    bool debug = false;
 };
 
 State &state()
@@ -65,7 +67,7 @@ void handle(QtMsgType type, const QMessageLogContext &context, const QString &me
     State &s = state();
     // Debug output, QML's console.log included, can carry event details, so it
     // is kept off disk unless logging was turned up on purpose.
-    if (type != QtDebugMsg || s.verboseTerminal) {
+    if (type != QtDebugMsg || s.verboseTerminal || s.debug) {
         const QMutexLocker lock(&s.mutex);
         if (s.file.isOpen()) {
             QTextStream out(&s.file);
@@ -135,6 +137,16 @@ void setVerboseTerminal(bool verbose)
     State &s = state();
     const QMutexLocker lock(&s.mutex);
     s.verboseTerminal = verbose;
+}
+
+void setDebug(bool debug)
+{
+    {
+        State &s = state();
+        const QMutexLocker lock(&s.mutex);
+        s.debug = debug;
+    }
+    QLoggingCategory::setFilterRules(debug ? QStringLiteral("callie.*.debug=true") : QString());
 }
 
 QString path()

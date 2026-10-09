@@ -121,6 +121,10 @@ int main(int argc, char *argv[])
                                   ? scratch.filePath(QStringLiteral("settings.ini"))
                                   : callie::Settings::defaultPath());
     callie::SettingsForeign::s_instance = &settings;
+    // Debug lines on request, from the developer settings.
+    callie::logfile::setDebug(settings.verboseLogging());
+    QObject::connect(&settings, &callie::Settings::developerChanged, &settings,
+                     [&settings] { callie::logfile::setDebug(settings.verboseLogging()); });
 
     QTextStream err(stderr);
     if (const QString theme = parser.value(themeOption); !theme.isEmpty()) {

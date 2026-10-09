@@ -76,6 +76,7 @@ private Q_SLOTS:
     void failedSignInEndsTheAttempt();
     void reconnectPicksTheAccount();
     void listShowsPhotoAndMissingPermissions();
+    void resyncForgetsCachedEvents();
 
 private:
     /// Signs in through fake Google endpoints answering with these responses,
@@ -304,6 +305,20 @@ void TestAccounts::listShowsPhotoAndMissingPermissions()
     const QString shot = QDir(QStringLiteral(QT_TESTCASE_BUILDDIR)).filePath(u"accounts.png"_s);
     window.grabWindow().save(shot);
     SettingsForeign::s_instance = nullptr;
+}
+
+void TestAccounts::resyncForgetsCachedEvents()
+{
+    signIn(200, R"({"access_token":"at-1","refresh_token":"rt-1","expires_in":3600})");
+    QTRY_VERIFY_WITH_TIMEOUT(!AccountsController::instance()->busy(), 5000);
+    GoogleCalendar calendar;
+    calendar.id = u"team"_s;
+    QVERIFY(m_cache->setCalendars(kMe, {calendar}));
+
+    AccountsController::instance()->resync(kMe.id);
+    QVERIFY(m_cache->calendars(kMe).isEmpty());
+    // The account itself stays.
+    QCOMPARE(AccountsController::instance()->accounts().size(), 1);
 }
 
 QTEST_MAIN(TestAccounts)

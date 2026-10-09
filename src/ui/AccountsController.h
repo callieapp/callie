@@ -81,6 +81,8 @@ public:
     Q_INVOKABLE void cancel();
     /// Forgets an account's sign-in, cached events and listing.
     Q_INVOKABLE void remove(const QString &id);
+    /// Forgets an account's cached calendars and events and syncs them afresh.
+    Q_INVOKABLE void resync(const QString &id);
 
 Q_SIGNALS:
     void accountsChanged();

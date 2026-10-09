@@ -91,7 +91,9 @@ Popup {
             }
         }
 
-        Row {
+        // Wraps onto a second line rather than running off a narrow dialog.
+        Flow {
+            width: root.width - 2 * Theme.space6
             spacing: Theme.space2
 
             Repeater {
@@ -119,6 +121,10 @@ Popup {
                     {
                         "id": "accounts",
                         "label": qsTr("Accounts")
+                    },
+                    {
+                        "id": "developer",
+                        "label": qsTr("Developer")
                     }
                 ]
 
@@ -365,6 +371,109 @@ Popup {
                 text: qsTr("Give today more room")
                 checked: Settings.widenToday
                 onToggled: Settings.widenToday = checked
+            }
+        }
+
+        Section {
+            title: qsTr("Developer")
+            visible: root.tab === "developer"
+
+            Toggle {
+                width: parent.width
+                text: qsTr("Developer mode")
+                checked: Settings.developerMode
+                onToggled: Settings.developerMode = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr(
+                          "Shows ids on event cards and in the calendar menu, a Copy as JSON button on each event, and the raw repeat rule in the editor.")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+            }
+            Toggle {
+                width: parent.width
+                text: qsTr("Log debug details")
+                checked: Settings.verboseLogging
+                onToggled: Settings.verboseLogging = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr(
+                          "Writes Callie's debug lines to the log. They can include event titles, so turn it off again before sharing logs widely.")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+            }
+        }
+
+        Section {
+            title: qsTr("Folders")
+            visible: root.tab === "developer"
+
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+
+                StickerButton {
+                    text: qsTr("Settings")
+                    onClicked: Support.openFolder("config")
+                }
+                StickerButton {
+                    text: qsTr("Waiting changes")
+                    onClicked: Support.openFolder("data")
+                }
+                StickerButton {
+                    text: qsTr("Cache")
+                    onClicked: Support.openFolder("cache")
+                }
+                StickerButton {
+                    text: qsTr("Logs")
+                    onClicked: Support.openLogs()
+                }
+            }
+        }
+
+        Section {
+            title: qsTr("Cached events")
+            visible: root.tab === "developer" && Accounts.accounts.length > 0
+
+            Repeater {
+                model: Accounts.accounts
+
+                Item {
+                    id: cached
+                    required property var modelData
+                    width: parent.width
+                    height: resync.height
+
+                    Text {
+                        anchors {
+                            left: parent.left
+                            right: resync.left
+                            rightMargin: Theme.space3
+                            verticalCenter: parent.verticalCenter
+                        }
+                        text: cached.modelData.id
+                        textFormat: Text.PlainText
+                        elide: Text.ElideMiddle
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textMd
+                    }
+                    // Forgets every cached event of the account, so it asks twice.
+                    DangerButton {
+                        id: resync
+                        anchors.right: parent.right
+                        enabled: !Accounts.busy
+                        label: qsTr("Forget and resync")
+                        armedLabel: qsTr("Click again to resync")
+                        onConfirmed: Accounts.resync(cached.modelData.id)
+                    }
+                }
             }
         }
 

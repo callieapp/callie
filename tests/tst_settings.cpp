@@ -17,6 +17,7 @@ private Q_SLOTS:
     void choicesSurviveARestart();
     void workingHoursStayInOrder();
     void accountPhotosAreKept();
+    void developerSettingsAreKept();
     void newCalendarsStartAsTheirProviderShowsThem();
     void keyboardSettingsKeepToWhatWorks();
     void weekSettingsResetAndSignal();
@@ -221,6 +222,22 @@ void TestSettings::newCalendarsStartAsTheirProviderShowsThem()
     QCOMPARE(hidden.size(), 1);
     settings.seedCalendars({calendar("birthdays", false)});
     QCOMPARE(settings.hiddenCalendars(), QStringList{u"birthdays"_s});
+}
+
+void TestSettings::developerSettingsAreKept()
+{
+    {
+        Settings settings(path());
+        QVERIFY(!settings.developerMode());
+        QVERIFY(!settings.verboseLogging());
+        QSignalSpy changed(&settings, &Settings::developerChanged);
+        settings.setDeveloperMode(true);
+        settings.setVerboseLogging(true);
+        QCOMPARE(changed.size(), 2);
+    }
+    Settings settings(path());
+    QVERIFY(settings.developerMode());
+    QVERIFY(settings.verboseLogging());
 }
 
 void TestSettings::accountPhotosAreKept()

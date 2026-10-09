@@ -51,6 +51,7 @@ private Q_SLOTS:
 
     void infoReachesTheFile();
     void debugStaysOutByDefault();
+    void debugReachesTheFileWhenAskedFor();
     void eachRunStartsWithAHeader();
     void largeFileIsRotated();
     void rotationKeepsThreeOldFiles();
@@ -81,6 +82,21 @@ void TestLogFile::debugStaysOutByDefault()
     qCDebug(lcTest) << "noisy detail";
 
     QVERIFY(!read(dir.filePath(u"app.log"_s)).contains(u"noisy detail"_s));
+}
+
+void TestLogFile::debugReachesTheFileWhenAskedFor()
+{
+    QTemporaryDir dir;
+    QVERIFY(logfile::install(u"app"_s, dir.path()));
+
+    logfile::setDebug(true);
+    qCDebug(lcTest) << "asked-for detail";
+    logfile::setDebug(false);
+    qCDebug(lcTest) << "detail after";
+
+    const QString log = read(dir.filePath(u"app.log"_s));
+    QVERIFY(log.contains(u"callie.test debug: asked-for detail"_s));
+    QVERIFY(!log.contains(u"detail after"_s));
 }
 
 void TestLogFile::eachRunStartsWithAHeader()

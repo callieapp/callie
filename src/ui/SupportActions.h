@@ -22,6 +22,11 @@ public:
     /// Puts the `callie doctor` report on the clipboard, then emits copied().
     Q_INVOKABLE void copyDebugInfo();
     Q_INVOKABLE void openLogs();
+    /// Opens the folder holding the settings ("config"), the change queue
+    /// ("data") or the event cache and contacts ("cache").
+    Q_INVOKABLE void openFolder(const QString &which);
+    /// Puts `text` on the clipboard, then emits copied().
+    Q_INVOKABLE void copyText(const QString &text);
     /// Opens a new GitHub issue with the report filled in.
     Q_INVOKABLE void reportBug();
 

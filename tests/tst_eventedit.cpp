@@ -1,6 +1,8 @@
 #include "Clock.h"
 #include "EventActions.h"
 #include "EventModelForeign.h"
+#include "FakeHttpServer.h"
+#include "PlaceSearch.h"
 #include "ThemeController.h"
 
 #include "callie/ContactBook.h"
@@ -80,6 +82,7 @@ private Q_SLOTS:
     void topOfACascadeOpens();
     void titleBarFitsNarrowWindows();
     void guestsComeFromSuggestions();
+    void placesComeFromSuggestions();
     void trayAsksWhichOccurrences();
     void developerModeShowsIds();
     void customRepeatsAreWritten();
@@ -89,6 +92,8 @@ private:
     std::unique_ptr<Settings> m_settings;
     std::unique_ptr<SampleSource> m_source;
     std::unique_ptr<ContactBook> m_contacts;
+    std::unique_ptr<FakeHttpServer> m_photon;
+    std::unique_ptr<PlaceSearch> m_places;
     std::unique_ptr<QQmlApplicationEngine> m_engine;
     QQuickWindow *m_window = nullptr;
 
@@ -128,6 +133,12 @@ void TestEventEdit::init()
     m_contacts = std::make_unique<ContactBook>(QString());
     m_contacts->setSource(m_source.get());
     ContactBookForeign::s_instance = m_contacts.get();
+    m_photon = std::make_unique<FakeHttpServer>();
+    m_places = std::make_unique<PlaceSearch>();
+    m_places->setSource(m_source.get());
+    m_places->setServer(m_photon->url(u"/"_s));
+    m_places->setDelay(0);
+    PlaceSearchForeign::s_instance = m_places.get();
     m_engine = std::make_unique<QQmlApplicationEngine>();
     m_engine->setInitialProperties(
         {{u"source"_s, QVariant::fromValue<CalendarSource *>(m_source.get())}});
@@ -145,6 +156,9 @@ void TestEventEdit::cleanup()
 {
     m_engine.reset();
     ContactBookForeign::s_instance = nullptr;
+    PlaceSearchForeign::s_instance = nullptr;
+    m_places.reset();
+    m_photon.reset();
     m_contacts.reset();
     m_source.reset();
 }
@@ -513,6 +527,50 @@ void TestEventEdit::guestsComeFromSuggestions()
     QMetaObject::invokeMethod(guest, "accepted");
     QCOMPARE(form->property("guests").toStringList(),
              (QStringList{u"priya@example.com"_s, u"sam@new.example"_s}));
+
+    // A suggestion can be clicked, without the click reaching the view under the card.
+    guest->setProperty("text", u"jor"_s);
+    QMetaObject::invokeMethod(guest, "textEdited");
+    QQuickItem *jordan = nullptr;
+    QTRY_VERIFY(
+        (jordan = find(m_window->contentItem(), "QQuickText", "text", u"jordan@example.com"_s)));
+    QTest::qWait(600);
+    click(m_window, jordan);
+    QTRY_COMPARE(
+        form->property("guests").toStringList(),
+        (QStringList{u"priya@example.com"_s, u"sam@new.example"_s, u"jordan@example.com"_s}));
+    QVERIFY(form->isVisible());
+}
+
+void TestEventEdit::placesComeFromSuggestions()
+{
+    m_photon->respond(200,
+                      R"({"features":[{"properties":{"name":"Studio Rosa","city":"Leeds"}}]})");
+    QVERIFY(openEditor(u"Climbing"_s));
+    QQuickItem *overlay = m_window->contentItem();
+    QQuickItem *where = find(overlay, "Field", "placeholderText", u"Where"_s);
+    QVERIFY(where);
+    where->forceActiveFocus();
+    where->setProperty("text", u"stu"_s);
+    QMetaObject::invokeMethod(where, "textEdited");
+
+    // The sample's own studio, then OpenStreetMap's, credited.
+    QQuickItem *own = nullptr;
+    QQuickItem *found = nullptr;
+    QTRY_VERIFY((own = find(overlay, "QQuickText", "text", u"Studio"_s)) &&
+                (found = find(overlay, "QQuickText", "text", u"Studio Rosa, Leeds"_s)));
+    QVERIFY(own->mapToScene({}).y() < found->mapToScene({}).y());
+    QVERIFY(find(overlay, "QQuickText", "text", u"Places from OpenStreetMap"_s));
+
+    // Apart from the click on Edit, so the two are not taken for a double click.
+    QTest::qWait(600);
+    click(m_window, found);
+    QTRY_VERIFY(!find(overlay, "QQuickText", "text", u"Studio Rosa, Leeds"_s));
+    QQuickItem *save = find(overlay, "StickerButton", "text", u"Save"_s);
+    QVERIFY(save);
+    QTest::qWait(100);
+    click(m_window, save);
+    QTRY_COMPARE(named(*m_source, u"Climbing"_s).location, u"Studio Rosa, Leeds"_s);
 }
 
 void TestEventEdit::trayAsksWhichOccurrences()

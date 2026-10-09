@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PlaceSearch.h"
 #include "callie/CalendarSource.h"
 #include "callie/ContactBook.h"
 #include "callie/EventModel.h"
@@ -100,6 +101,27 @@ public:
     }
 
     static inline callie::ContactBook *s_instance = nullptr;
+};
+
+/// Places to suggest for an event, as a QML singleton. main.cpp picks the
+/// instance; without one, such as in tests, only the user's own are suggested.
+struct PlaceSearchForeign
+{
+    Q_GADGET
+    QML_FOREIGN(callie::PlaceSearch)
+    QML_NAMED_ELEMENT(Places)
+    QML_SINGLETON
+
+public:
+    static callie::PlaceSearch *create(QQmlEngine *, QJSEngine *)
+    {
+        if (!s_instance)
+            s_instance = new callie::PlaceSearch(QCoreApplication::instance());
+        QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
+        return s_instance;
+    }
+
+    static inline callie::PlaceSearch *s_instance = nullptr;
 };
 
 /// Lets QML name the source type; sources are created in C++ only.

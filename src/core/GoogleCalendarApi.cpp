@@ -1,6 +1,7 @@
 #include "callie/GoogleCalendarApi.h"
 
 #include "callie/Logging.h"
+#include "callie/Places.h"
 #include "callie/QuickAdd.h"
 
 #include <QJsonArray>
@@ -87,6 +88,9 @@ GoogleEvent parseGoogleEvent(const QJsonObject &item)
     event.description = item[u"description"].toString();
     event.location = item[u"location"].toString();
     event.conferenceUrl = conferenceUrl(item);
+    // A call pasted into the place or the notes is joined just the same.
+    if (event.conferenceUrl.isEmpty())
+        event.conferenceUrl = places::findCallLink(event.location + u'\n' + event.description);
     event.start = parseTime(item[u"start"].toObject());
     event.end = parseTime(item[u"end"].toObject());
     for (const QJsonValue &line : item[u"recurrence"].toArray())

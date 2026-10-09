@@ -3,6 +3,7 @@
 #include "EventModelForeign.h"
 #include "LiveQml.h"
 #include "NotificationServer.h"
+#include "PlaceSearch.h"
 #include "Reminders.h"
 #include "SingleInstance.h"
 #include "StartAtLogin.h"
@@ -216,6 +217,11 @@ int main(int argc, char *argv[])
             contacts.setContacts(account.id, people);
         });
     callie::ContactBookForeign::s_instance = &contacts;
+    callie::PlaceSearch places;
+    places.setSource(source);
+    if (!standalone)
+        places.setServer(callie::PlaceSearch::publicServer());
+    callie::PlaceSearchForeign::s_instance = &places;
     QTimer syncTimer;
     // Without a client every refresh would fail, so show the cache and say why once.
     const bool canSync = client.isValid();

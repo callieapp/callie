@@ -316,6 +316,8 @@ QString EventModel::callService(const QUrl &url) const
         return u"zoom"_s;
     if (host == u"meet.google.com"_s)
         return u"meet"_s;
+    if (host == u"teams.microsoft.com"_s || host == u"teams.live.com"_s)
+        return u"teams"_s;
     return u"web"_s;
 }
 

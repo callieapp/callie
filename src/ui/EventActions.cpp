@@ -1,5 +1,6 @@
 #include "EventActions.h"
 
+#include "callie/Places.h"
 #include "callie/Repeat.h"
 #include "callie/Times.h"
 
@@ -187,6 +188,11 @@ QVariantMap EventActions::shiftCustom(const QVariantMap &custom, int days)
     QVariantMap shifted = custom;
     shifted.insert(u"weekdays"_s, weekdays);
     return shifted;
+}
+
+QUrl EventActions::mapUrl(const QString &app, const QString &location)
+{
+    return places::mapUrl(app, location);
 }
 
 QString EventActions::describeRepeat(const QStringList &recurrence, const QDateTime &day,

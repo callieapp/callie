@@ -45,11 +45,12 @@ Column {
     property bool asking: false
     readonly property bool repeating: (event.seriesId || "") !== ""
 
-    // A custom rule's weekdays move with the start, so the form shows what is saved.
+    // A custom rule follows the start, weekdays and day of the month alike, so
+    // the form shows what is saved.
     onStartDayChanged: {
         const shift = root.actions.daysBetween(customDay, startDay)
         customDay = startDay
-        if (shift === 0 || isNaN(shift) || customTyped || custom.frequency !== "weekly")
+        if (shift === 0 || customTyped || !customReadable)
             return
         custom = root.actions.shiftCustom(custom, shift)
         customLines = customRule()

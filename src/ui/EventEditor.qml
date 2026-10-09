@@ -379,7 +379,8 @@ Column {
                 take(picked.label)
         }
         Keys.onEscapePressed: event => {
-            event.accepted = Places.results.length > 0
+            // The card shows while searching too, and Escape closes it before the editor.
+            event.accepted = Places.results.length > 0 || Places.searching
             Places.clear()
         }
 

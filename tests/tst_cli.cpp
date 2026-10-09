@@ -138,13 +138,32 @@ void TestCli::agendaGivesIdsToScripts()
 
 void TestCli::hiddenCalendarsStayHidden()
 {
-    // Reading is not seeing: a read leaves no calendar remembered as seen.
-    QCOMPARE(m_commands->agenda(1, true), 0);
-    CalendarInfo birthdays;
-    birthdays.id = u"birthdays"_s;
-    QVERIFY(m_settings->isShown(birthdays));
-    birthdays.enabled = false;
-    QVERIFY(!m_settings->isShown(birthdays));
+    // Google does not show the focus calendar, and Callie has not seen it yet.
+    class GoogleHidesFocus : public SampleSource
+    {
+    public:
+        QList<CalendarInfo> calendars() const override
+        {
+            QList<CalendarInfo> list = SampleSource::calendars();
+            for (CalendarInfo &c : list)
+                c.enabled = c.id != u"focus";
+            return list;
+        }
+    } source;
+    Commands commands(source, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
+    QCOMPARE(commands.agenda(7, true), 0);
+    m_outStream->flush();
+    QVERIFY(!m_out.isEmpty());
+    for (const QJsonValue &e : QJsonDocument::fromJson(m_out.toUtf8()).array())
+        QVERIFY(e[u"calendar"].toString() != u"focus");
+    m_out.clear();
+    QCOMPARE(commands.search(u"focus"_s, true), 0);
+    m_outStream->flush();
+    QCOMPARE(QJsonDocument::fromJson(m_out.toUtf8()).array().size(), 0);
+    // Reading is not seeing: nothing was remembered or hidden for it.
+    QVERIFY(m_settings->hiddenCalendars().isEmpty());
+
+    // A calendar the user hides in Callie is left out too.
     m_out.clear();
     m_settings->setCalendarVisible(u"personal"_s, false);
     QCOMPARE(m_commands->agenda(1, true), 0);

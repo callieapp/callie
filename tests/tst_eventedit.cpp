@@ -569,6 +569,8 @@ void TestEventEdit::placesComeFromSuggestions()
 
     where->setProperty("text", u"stu"_s);
     QMetaObject::invokeMethod(where, "textEdited");
+    // The last search's places stay while this one runs, so wait for its answer.
+    QTRY_VERIFY(!m_places->searching());
 
     // The sample's own studio, then OpenStreetMap's, credited.
     QQuickItem *own = nullptr;

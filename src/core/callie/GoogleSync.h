@@ -43,6 +43,9 @@ public:
     /// Stops storing anything for a removed account. A sync still running for
     /// it ends quietly, as if it had nothing to report.
     void forget(const Account &account);
+    /// The account signed in again, perhaps granting more: its old access token
+    /// is dropped, and its settings and contacts are read again on the next sync.
+    void signedInAgain(const Account &account);
 
     /// Called once a change finishes; its error is empty on success.
     using Created = std::function<void(const Outcome &outcome)>;

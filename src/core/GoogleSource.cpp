@@ -245,6 +245,12 @@ void GoogleSource::setSync(GoogleSync *sync)
         });
 }
 
+void GoogleSource::signedInAgain(const Account &account)
+{
+    if (m_sync)
+        m_sync->signedInAgain(account);
+}
+
 void GoogleSource::setAccounts(QList<Account> accounts)
 {
     if (m_accounts == accounts)

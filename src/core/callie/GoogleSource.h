@@ -40,6 +40,8 @@ public:
     [[nodiscard]] QFuture<SourceSnapshot> load(const QDateTime &from, const QDateTime &to,
                                                const QTimeZone &tz) const override;
     void refresh() override;
+    /// An account signed in again; see GoogleSync::signedInAgain.
+    void signedInAgain(const Account &account);
     void createEvent(const EventDraft &draft, Created done) override;
     void respond(const Event &event, const QString &status, bool wholeSeries,
                  Created done) override;

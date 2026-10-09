@@ -2,6 +2,7 @@
 
 #include "callie/CalendarSource.h"
 
+#include <QFutureWatcher>
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QPointer>
@@ -49,14 +50,17 @@ Q_SIGNALS:
 
 private:
     void ask();
-    void show(const QStringList &remote);
+    void matchPast();
+    void show();
 
     QPointer<CalendarSource> m_source;
-    /// The places of the user's events, most used first, read once.
+    /// The places of the user's events, most used first.
     QStringList m_past;
     bool m_pastRead = false;
+    QFutureWatcher<SourceSnapshot> m_reading;
     QString m_text;
     QStringList m_pastMatches;
+    QStringList m_remote;
     QVariantList m_results;
     QNetworkAccessManager m_network;
     QPointer<QNetworkReply> m_reply;

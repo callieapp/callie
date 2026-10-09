@@ -24,6 +24,7 @@ const QString kWorkEnd = u"week/workEnd"_s;
 const QString kShowWorkHours = u"week/showWorkHours"_s;
 const QString kDeveloperMode = u"developer/mode"_s;
 const QString kMapApp = u"general/mapApp"_s;
+const QString kSearchPlaces = u"general/searchPlacesOnline"_s;
 const QStringList kMapApps = {u"system"_s, u"google"_s, u"osm"_s, u"apple"_s};
 const QString kVerboseLogging = u"developer/verboseLogging"_s;
 const QString kViMode = u"keyboard/viMode"_s;
@@ -81,6 +82,7 @@ void Settings::load()
     m_developerMode = m_store.value(kDeveloperMode, false).toBool();
     const QString mapApp = m_store.value(kMapApp).toString();
     m_mapApp = kMapApps.contains(mapApp) ? mapApp : u"system"_s;
+    m_searchPlacesOnline = m_store.value(kSearchPlaces, true).toBool();
     m_verboseLogging = m_store.value(kVerboseLogging, false).toBool();
     m_viMode = m_store.value(kViMode, false).toBool();
     const QString leader = m_store.value(kLeaderKey).toString();
@@ -226,7 +228,16 @@ void Settings::setMapApp(const QString &app)
         return;
     m_mapApp = app;
     m_store.setValue(kMapApp, app);
-    Q_EMIT mapAppChanged();
+    Q_EMIT placesChanged();
+}
+
+void Settings::setSearchPlacesOnline(bool on)
+{
+    if (m_searchPlacesOnline == on)
+        return;
+    m_searchPlacesOnline = on;
+    m_store.setValue(kSearchPlaces, on);
+    Q_EMIT placesChanged();
 }
 
 void Settings::setDeveloperMode(bool on)
@@ -566,6 +577,7 @@ void Settings::reset()
     const bool showWorkHours = m_showWorkHours;
     const bool developerMode = m_developerMode, verboseLogging = m_verboseLogging;
     const QString mapApp = m_mapApp;
+    const bool searchPlacesOnline = m_searchPlacesOnline;
     const bool hideWeekends = m_hideWeekends, weekNumbers = m_weekNumbers;
     const bool viMode = m_viMode;
     const QString leaderKey = m_leaderKey;
@@ -610,8 +622,8 @@ void Settings::reset()
         Q_EMIT weekChanged();
     if (workStart != m_workStart || workEnd != m_workEnd || showWorkHours != m_showWorkHours)
         Q_EMIT workHoursChanged();
-    if (mapApp != m_mapApp)
-        Q_EMIT mapAppChanged();
+    if (mapApp != m_mapApp || searchPlacesOnline != m_searchPlacesOnline)
+        Q_EMIT placesChanged();
     if (developerMode != m_developerMode || verboseLogging != m_verboseLogging)
         Q_EMIT developerChanged();
     if (viMode != m_viMode || leaderKey != m_leaderKey || leaderTimeout != m_leaderTimeout)

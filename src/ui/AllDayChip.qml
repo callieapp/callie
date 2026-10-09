@@ -16,7 +16,7 @@ Rectangle {
     required property bool declined
     required property string response
     required property date end
-    required property url conferenceUrl
+    required property url joinUrl
     required property bool canEdit
     /// The week view, for its column edges (columnX) and the shown column under
     /// an x in the strip (columnAtX).

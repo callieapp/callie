@@ -41,13 +41,13 @@ Item {
     }
 
     function showEvent(event, item) {
-        details.showNear(event, root.model.callService(event.conferenceUrl), item)
+        details.showNear(event, root.model.callService(event.joinUrl), item)
     }
 
     /// Opens the details of the event in `row`, centered.
     function showRow(row) {
         const event = root.model.eventAt(row)
-        details.showCentered(event, root.model.callService(event.conferenceUrl))
+        details.showCentered(event, root.model.callService(event.joinUrl))
     }
 
     /// The day under the pointer at `event`'s time of day, where a copy pasted

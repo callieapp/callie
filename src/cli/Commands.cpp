@@ -180,7 +180,7 @@ void Commands::print(const QList<Event> &events, bool json, bool byDay)
         if (!byDay)
             time = QLocale().toString(day, u"ddd d MMM"_s).leftJustified(10) + u"  "_s + time;
         m_out << u"  "_s << paint("2", time) << u"  "_s << e.summary;
-        if (!e.conferenceUrl.isEmpty())
+        if (!e.joinUrl().isEmpty())
             m_out << "  " << paint("36", u"↗"_s);
         else if (!e.location.isEmpty())
             m_out << "  " << paint("2", e.location);

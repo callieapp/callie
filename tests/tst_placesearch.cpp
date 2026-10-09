@@ -66,15 +66,13 @@ void TestPlaceSearch::ownPlacesComeFirst()
     search.setSource(&source);
     search.setServer(server.url(u"/"_s));
     search.setDelay(0);
-    QSignalSpy changed(&search, &PlaceSearch::resultsChanged);
 
     search.search(u" stu"_s);
-    // The user's own at once, then the server's.
-    QCOMPARE(labels(search.results()), QStringList{u"Studio (past)"_s});
-    QVERIFY(changed.wait());
-    QCOMPARE(labels(search.results()),
-             (QStringList{u"Studio (past)"_s, u"Studio Rosa, 12 Main St, Leeds, United Kingdom"_s,
-                          u"Studiopolis, Nowhere"_s}));
+    // The user's own first, then the server's.
+    QTRY_COMPARE(
+        labels(search.results()),
+        (QStringList{u"Studio (past)"_s, u"Studio Rosa, 12 Main St, Leeds, United Kingdom"_s,
+                     u"Studiopolis, Nowhere"_s}));
 
     QCOMPARE(server.requests.size(), 1);
     const FakeHttpServer::Request request = server.requests.first();
@@ -97,7 +95,7 @@ void TestPlaceSearch::shortTextStaysLocal()
     search.setDelay(0);
 
     search.search(u"cl"_s);
-    QCOMPARE(labels(search.results()), QStringList{u"Clinic (past)"_s});
+    QTRY_COMPARE(labels(search.results()), QStringList{u"Clinic (past)"_s});
     QTest::qWait(100);
     QVERIFY(server.requests.isEmpty());
 
@@ -110,8 +108,8 @@ void TestPlaceSearch::shortTextStaysLocal()
     draft.end = draft.start.addSecs(3600);
     source.createEvent(draft, [](const QString &) {});
     search.search(u"cl"_s);
-    QCOMPARE(labels(search.results()),
-             (QStringList{u"Clinic (past)"_s, u"Climbing wall (past)"_s}));
+    QTRY_COMPARE(labels(search.results()),
+                 (QStringList{u"Clinic (past)"_s, u"Climbing wall (past)"_s}));
 }
 
 void TestPlaceSearch::typingOnAsksOnce()

@@ -104,7 +104,7 @@ void Reminders::notify(const Event &event)
     // "default" is a click on the notification; daemons show it as that, not
     // as one more button.
     QStringList actions{u"default"_s, tr("Open in Callie")};
-    if (canJoin(event.conferenceUrl))
+    if (canJoin(event.joinUrl()))
         actions << u"join"_s << tr("Join call");
     actions << u"snooze"_s << tr("Snooze %n min", nullptr, kSnoozeMinutes);
     // Daemons may read the body as markup, and its place comes from whoever
@@ -122,8 +122,8 @@ void Reminders::onAction(uint id, const QString &key)
     if (found == m_shown.cend())
         return;
     const Event event = *found;
-    if (key == u"join"_s && canJoin(event.conferenceUrl)) {
-        QDesktopServices::openUrl(event.conferenceUrl);
+    if (key == u"join"_s && canJoin(event.joinUrl())) {
+        QDesktopServices::openUrl(event.joinUrl());
     } else if (key == u"snooze"_s) {
         m_scheduler->snooze(event, kSnoozeMinutes);
     } else if (key == u"default"_s) {

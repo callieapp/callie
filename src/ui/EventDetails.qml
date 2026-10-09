@@ -24,7 +24,7 @@ Popup {
     property string summary
     property string when
     property string location
-    property url conferenceUrl
+    property url joinUrl
     /// From EventModel.callService: empty when the link should not be opened.
     property string callService
     property string calendarName
@@ -45,7 +45,7 @@ Popup {
                                                                                          event.start)).arg(
                                                                     Settings.times.time(event.end)))
         location = event.location
-        conferenceUrl = event.conferenceUrl
+        joinUrl = event.joinUrl
         callService = service
         calendarName = event.calendarName
         calendarColor = event.calendarColor
@@ -356,7 +356,7 @@ Popup {
                 glyph: "video"
                 glyphStroke: Theme.fineGlyphStroke
                 text: root.callName
-                onClicked: Qt.openUrlExternally(root.conferenceUrl)
+                onClicked: Qt.openUrlExternally(root.joinUrl)
             }
 
             // A place opens in the map app chosen in Settings.

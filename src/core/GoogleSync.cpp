@@ -455,13 +455,17 @@ void GoogleSync::readContacts(const Account &account)
             QTimer::singleShot(0, [next] { *next = nullptr; });
             return;
         }
-        const auto read = [self, i, found, failed, next](const QList<Contact> &people,
-                                                         const GoogleApiError &error) {
+        // Refused is for good: a permission not granted (403), or a directory
+        // asked of an account outside Google Workspace (400).
+        const bool directory = kinds.at(i) == People::Directory;
+        const auto read = [self, directory, i, found, failed, next](const QList<Contact> &people,
+                                                                    const GoogleApiError &error) {
             if (!self)
                 return;
             if (error) {
                 qCDebug(lcSync) << "people not readable:" << error.message;
-                *failed = *failed || error.status != 403;
+                const bool refused = error.status == 403 || (directory && error.status == 400);
+                *failed = *failed || !refused;
             }
             found->append(people);
             (*next)(i + 1);

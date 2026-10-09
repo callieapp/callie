@@ -397,9 +397,10 @@ void TestGoogleSync::contactsAreReadOnceARun()
                  R"({"connections":[{"emailAddresses":[{"value":"lee@example.com"}]}]})");
     m_google->on(u"otherContacts"_s, 200,
                  R"({"otherContacts":[{"emailAddresses":[{"value":"vendor@example.org"}]}]})");
-    // A personal account has no directory.
-    m_google->on(u"people:listDirectoryPeople"_s, 403,
-                 R"({"error":{"code":403,"message":"Must be a G Suite domain user."}})");
+    // A personal account has no directory, which Google says with a 400.
+    m_google->on(u"people:listDirectoryPeople"_s, 400,
+                 R"({"error":{"code":400,"message":"Must be a G Suite domain user.",
+                     "status":"FAILED_PRECONDITION"}})");
     QSignalSpy found(m_sync.get(), &GoogleSync::contactsFound);
 
     QCOMPARE(runSync(), QStringList());

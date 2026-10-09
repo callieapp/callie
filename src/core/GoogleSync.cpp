@@ -378,6 +378,12 @@ void GoogleSync::calendarDone(const std::shared_ptr<Run> &run)
         finish(run);
 }
 
+void GoogleSync::stop(const Account &account)
+{
+    if (const std::shared_ptr<Run> run = m_running.take(keyFor(account)))
+        run->forgotten = true;
+}
+
 void GoogleSync::forget(const Account &account)
 {
     if (const std::shared_ptr<Run> run = m_running.take(keyFor(account)))

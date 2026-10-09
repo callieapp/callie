@@ -14,6 +14,9 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QUrlQuery>
+
+#include <utility>
 
 using namespace callie;
 using namespace Qt::StringLiterals;
@@ -58,6 +61,8 @@ private Q_SLOTS:
     void refreshWithoutSyncRereadsCache();
     void refreshSyncsAndReportsErrorsPerAccount();
     void refreshWhileSyncingStartsNothingNew();
+    void resyncStartsAfresh();
+    void resyncDuringASyncDropsWhatItRead();
     void removingTheLastAccountMidSyncLeavesNoSyncTime();
     void syncReportsOneChangePerBurst();
     void createdEventShowsWithoutASync();
@@ -379,6 +384,73 @@ void TestGoogleSource::refreshWhileSyncingStartsNothingNew()
             return !r.target.contains("/settings") && !r.target.startsWith("/people/");
         });
     QCOMPARE(calendarRequests, 2);
+}
+
+namespace {
+
+/// Answers a calendar list of one calendar, and its events with a sync token
+/// numbered by the request, noting the sync token each events request sent.
+struct ResyncServer
+{
+    int eventsAsked = 0;
+    QStringList tokensSent;
+    /// Runs once, at the next events request.
+    std::function<void()> onEvents;
+
+    FakeHttpServer::Response operator()(const FakeHttpServer::Request &request)
+    {
+        const QUrl url(QString::fromUtf8(request.target));
+        if (url.path().endsWith(u"/calendarList"_s))
+            return {200, R"({"items":[{"id":"mine","summary":"Mine","selected":true,
+                "accessRole":"owner"}]})"};
+        if (url.path().endsWith(u"/events"_s)) {
+            ++eventsAsked;
+            tokensSent << QUrlQuery(url).queryItemValue(u"syncToken"_s);
+            // Once, and taken out first, since it may resync and so be dropped.
+            if (const auto hook = std::exchange(onEvents, nullptr))
+                hook();
+            return {200, QByteArray(R"({"items":[],"nextSyncToken":"s)") +
+                             QByteArray::number(eventsAsked) + R"("})"};
+        }
+        return {200, R"({})"};
+    }
+};
+
+} // namespace
+
+void TestGoogleSource::resyncStartsAfresh()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    auto server = std::make_shared<ResyncServer>();
+    harness.apiServer.handler = [server](const FakeHttpServer::Request &r) { return (*server)(r); };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    source.refresh();
+    QTRY_COMPARE_WITH_TIMEOUT(m_cache->syncToken(kAccount, u"mine"_s), u"s1"_s, 5000);
+
+    QVERIFY(source.resync(kAccount));
+    // Forgotten at once, then synced in full, without the old token.
+    QTRY_COMPARE_WITH_TIMEOUT(m_cache->syncToken(kAccount, u"mine"_s), u"s2"_s, 5000);
+    QCOMPARE(server->tokensSent.last(), QString());
+}
+
+void TestGoogleSource::resyncDuringASyncDropsWhatItRead()
+{
+    SyncHarness harness(*m_cache);
+    harness.store.secrets.insert(kAccount.id, u"rt"_s);
+    auto server = std::make_shared<ResyncServer>();
+    harness.apiServer.handler = [server](const FakeHttpServer::Request &r) { return (*server)(r); };
+    GoogleSource source(*m_cache, {kAccount});
+    source.setSync(&harness.sync);
+    // Resynced while the first sync waits for its events.
+    server->onEvents = [&source] { QVERIFY(source.resync(kAccount)); };
+    source.refresh();
+    QTRY_COMPARE_WITH_TIMEOUT(server->eventsAsked, 2, 5000);
+    QTest::qWait(300);
+    // Only the fresh sync's answer was kept.
+    QCOMPARE(m_cache->syncToken(kAccount, u"mine"_s), u"s2"_s);
+    QCOMPARE(server->tokensSent.last(), QString());
 }
 
 void TestGoogleSource::syncReportsOneChangePerBurst()

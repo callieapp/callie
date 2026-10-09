@@ -42,6 +42,10 @@ public:
     void refresh() override;
     /// An account signed in again; see GoogleSync::signedInAgain.
     void signedInAgain(const Account &account);
+    /// Forgets the account's cached calendars and events, stopping a sync of
+    /// it that is under way, and syncs it afresh. Returns false, with the
+    /// cache's error, when they could not be forgotten.
+    bool resync(const Account &account, QString *error = nullptr);
     void createEvent(const EventDraft &draft, Created done) override;
     void respond(const Event &event, const QString &status, bool wholeSeries,
                  Created done) override;

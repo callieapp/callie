@@ -1,0 +1,104 @@
+{
+  "tag_name": "v0.2.1",
+  "name": "Callie 0.2.1",
+  "assets": [
+    {
+      "name": "callie-0.2.1-1.fc44.src.rpm",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-rpm",
+      "state": "uploaded",
+      "size": 852176,
+      "digest": "sha256:2297c3275aba4c6a7dfd743809642f3d8dfaf693e0d6d9c475c1897fc83a8ccf",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-0.2.1-1.fc44.src.rpm"
+    },
+    {
+      "name": "callie-0.2.1-1.fc44.x86_64.rpm",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-rpm",
+      "state": "uploaded",
+      "size": 2353357,
+      "digest": "sha256:350e52621a778c23e0946ffef28b7e718442db280b9ea2888fc22d4892f8c345",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-0.2.1-1.fc44.x86_64.rpm"
+    },
+    {
+      "name": "callie-0.2.1.tar.xz",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-xz",
+      "state": "uploaded",
+      "size": 836500,
+      "digest": "sha256:9ac73c6ed7b4483a0fbaf2008d568cf1c1e19f1aca237daf578c4325854e8f63",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-0.2.1.tar.xz"
+    },
+    {
+      "name": "callie-dbgsym_0.2.1-1_amd64.deb",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-debian-package",
+      "state": "uploaded",
+      "size": 36057692,
+      "digest": "sha256:b9893afaacaa18d7e472a45e39b40f83c1ddb3972fa7bd64c5b40e9458c72a7b",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-dbgsym_0.2.1-1_amd64.deb"
+    },
+    {
+      "name": "callie-debuginfo-0.2.1-1.fc44.x86_64.rpm",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-rpm",
+      "state": "uploaded",
+      "size": 18675066,
+      "digest": "sha256:c9bf1dec65330d4853e8acc3e9cde2dc2313df5ce3f0898328ba84f65a0571b7",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-debuginfo-0.2.1-1.fc44.x86_64.rpm"
+    },
+    {
+      "name": "callie-debugsource-0.2.1-1.fc44.x86_64.rpm",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-rpm",
+      "state": "uploaded",
+      "size": 1408124,
+      "digest": "sha256:9c2a0d72b1155d3289c341bf1e55f6c3f58aed4f3d50767ae1cc6a053612f34e",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-debugsource-0.2.1-1.fc44.x86_64.rpm"
+    },
+    {
+      "name": "callie_0.2.1-1_amd64.deb",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-debian-package",
+      "state": "uploaded",
+      "size": 1924720,
+      "digest": "sha256:58dee2ab936ceae4a928be581963e227b06fe91619cc75d207fd1dc3a4bdb46b",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie_0.2.1-1_amd64.deb"
+    }
+  ]
+}

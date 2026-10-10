@@ -48,6 +48,10 @@ jobs:
       - name: Check that every file names the same version
         run: scripts/check-version.sh
 
+      # The runner image ships shellcheck.
+      - name: Lint the installer
+        run: shellcheck -s sh www/install.sh tests/install_test.sh
+
   format:
     # Needs clang-format and qmlformat, so it runs where Qt is packaged.
     runs-on: ubuntu-latest

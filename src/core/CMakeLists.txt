@@ -179,7 +179,6 @@ target_link_libraries(calliecore
 )
 
 target_compile_definitions(calliecore PRIVATE
-    CALLIE_RUN_ID="${CALLIE_RUN_ID}"
-    CALLIE_DIR_NAME="${CALLIE_DIR_NAME}"
+    CALLIE_APP_ID="${CALLIE_APP_ID}"
     CALLIE_DEVEL_BUILD=$<BOOL:${CALLIE_DEVEL}>
 )

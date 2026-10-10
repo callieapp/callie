@@ -1,5 +1,7 @@
 #include "callie/Autostart.h"
 
+#include "callie/Identity.h"
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -69,17 +71,17 @@ bool Autostart::setEnabled(bool enabled)
         m_error = file.errorString();
         return false;
     }
-    const QString entry =
-        u"[Desktop Entry]\n"
-        u"Type=Application\n"
-        u"Name=Callie\n"
-        u"Comment=Keeps Callie running for event reminders\n"
-        u"Exec=%1 --%2\n"
-        u"Icon=%3\n"
-        u"Terminal=false\n"
-        u"NoDisplay=true\n"
-        u"X-GNOME-Autostart-enabled=true\n"_s.arg(execArgument(m_program),
-                                                  QString::fromLatin1(kBackgroundOption), m_appId);
+    const QString entry = u"[Desktop Entry]\n"
+                          u"Type=Application\n"
+                          u"Name=%4\n"
+                          u"Comment=Keeps %4 running for event reminders\n"
+                          u"Exec=%1 --%2\n"
+                          u"Icon=%3\n"
+                          u"Terminal=false\n"
+                          u"NoDisplay=true\n"
+                          u"X-GNOME-Autostart-enabled=true\n"_s.arg(
+                              execArgument(m_program), QString::fromLatin1(kBackgroundOption),
+                              m_appId, identity::displayName());
     file.write(entry.toUtf8());
     if (!file.commit()) {
         m_error = file.errorString();

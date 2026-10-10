@@ -93,7 +93,10 @@ callie_add_test(tst_eventedit)
 target_link_libraries(tst_eventedit PRIVATE callieui callieuiplugin Qt6::QuickControls2)
 
 # The installer callieapp.org serves, against stand-in systems and a stand-in
-# GitHub release.
-add_test(NAME install_script
-    COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/install_test.sh
-        ${PROJECT_SOURCE_DIR}/www/install.sh ${CMAKE_CURRENT_SOURCE_DIR}/data/github-release.json)
+# GitHub release. Release tarballs leave out the site, and the installer only
+# runs on x86_64.
+if(EXISTS ${PROJECT_SOURCE_DIR}/www/install.sh AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    add_test(NAME install_script
+        COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/install_test.sh
+            ${PROJECT_SOURCE_DIR}/www/install.sh ${CMAKE_CURRENT_SOURCE_DIR}/data/github-release.json)
+endif()

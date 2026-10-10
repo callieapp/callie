@@ -15,17 +15,23 @@ for teaching me that Linux calendars don't have to stink!
 
 ## Installation
 
-Callie is not released yet. Once it is, it will be available from:
+On Fedora 44 or later, or Debian 13 (trixie) or later, on x86_64:
 
-1. FlatHub: `flatpak install org.callieapp.Callie`
-2. Fedora: `dnf install callie`
-3. Debian/Ubuntu: `apt install callie`
-4. [GitHub releases](https://github.com/callieapp/callie/releases)
+```sh
+curl -fsSL https://callieapp.org/install.sh | sh
+```
 
-Installation will provide you the `Callie` desktop app and
-a `callie` CLI for those who prefer to live in the terminal 🖥️
+It finds the latest [GitHub release](https://github.com/callieapp/callie/releases), checks the
+package against the checksum GitHub records for it, and installs it with `dnf` or `apt`. On any
+other system it stops before changing anything. `sh -s -- --dry-run` shows what it would do, and
+`--version 0.2.1` installs that version. The packages can also be downloaded from the release and
+installed by hand.
 
-Until then, build it from source as described under [Development](#development).
+Installation provides the `Callie` desktop app and a `callie` CLI for those who prefer to live in
+the terminal 🖥️
+
+FlatHub, Arch and Nix packages are planned. Elsewhere, build Callie from source as described under
+[Development](#development).
 
 ## Using Callie
 

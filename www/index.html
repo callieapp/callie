@@ -55,12 +55,18 @@
 <div class="prose">
 <h2>Install</h2>
 <p>
-  Download the package for your system from the
-  <a href="https://github.com/callieapp/callie/releases/latest">latest release</a>, then
-  install it:
+  On Fedora 44 or later, or Debian 13 or later, this installs the latest release with your
+  package manager, after checking the download:
+</p>
+<pre><code>curl -fsSL https://callieapp.org/install.sh | sh</code></pre>
+<p>
+  It stops without changing anything on other systems. To see what it would do first, add
+  <code>-s -- --dry-run</code> after <code>sh</code>. Or download the package from the
+  <a href="https://github.com/callieapp/callie/releases/latest">latest release</a> and install it
+  yourself:
 </p>
 <pre><code>sudo dnf install ./callie-*.x86_64.rpm   # Fedora
-sudo apt install ./callie_*_amd64.deb    # Debian and Ubuntu</code></pre>
+sudo apt install ./callie_*_amd64.deb    # Debian</code></pre>
 <p>Or build it from source, as the <a href="https://github.com/callieapp/callie#development">README</a> describes.</p>
 
 <h2>What it does not do</h2>

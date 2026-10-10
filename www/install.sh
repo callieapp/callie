@@ -12,6 +12,9 @@ set -eu
 repo="callieapp/callie"
 dry_run=0
 version=""
+# Tests stand in for this system and for GitHub with these.
+os_release="${CALLIE_INSTALL_OS_RELEASE:-/etc/os-release}"
+release_file="${CALLIE_INSTALL_RELEASE_JSON:-}"
 
 say() { printf 'callie: %s\n' "$*"; }
 fail() {
@@ -48,13 +51,13 @@ done
 [ "$(uname -s)" = Linux ] || unsupported "Callie is a Linux app, and this is $(uname -s)."
 arch="$(uname -m)"
 [ "$arch" = x86_64 ] || unsupported "There are no packages for $arch yet."
-[ -r /etc/os-release ] || unsupported "Cannot tell which Linux this is: /etc/os-release is missing."
+[ -r "$os_release" ] || unsupported "Cannot tell which Linux this is: $os_release is missing."
 
 ID=""
 VERSION_ID=""
 PRETTY_NAME=""
-# shellcheck disable=SC1091
-. /etc/os-release
+# shellcheck disable=SC1090
+. "$os_release"
 system="${PRETTY_NAME:-$ID}"
 major="${VERSION_ID%%.*}"
 
@@ -86,15 +89,14 @@ esac
 
 # ---- Which file, and how to install it -----------------------------------
 
-command -v curl >/dev/null 2>&1 || fail "curl is needed to download the package."
-command -v sha256sum >/dev/null 2>&1 || fail "sha256sum is needed to check the package."
-
-if [ "$(id -u)" -eq 0 ]; then
-    sudo=""
-elif command -v sudo >/dev/null 2>&1; then
-    sudo="sudo"
-else
-    fail "Installing needs root: run as root, or install sudo."
+sudo=""
+needs_root=0
+if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo >/dev/null 2>&1; then
+        sudo="sudo"
+    else
+        needs_root=1
+    fi
 fi
 
 if [ -n "$version" ]; then
@@ -102,8 +104,13 @@ if [ -n "$version" ]; then
 else
     api="https://api.github.com/repos/$repo/releases/latest"
 fi
-release="$(curl --proto '=https' --tlsv1.2 -fsSL "$api")" ||
-    fail "Could not read the release from GitHub (${version:-latest})."
+if [ -n "$release_file" ]; then
+    release="$(cat "$release_file")"
+else
+    command -v curl >/dev/null 2>&1 || fail "curl is needed to download Callie."
+    release="$(curl --proto '=https' --tlsv1.2 -fsSL "$api")" ||
+        fail "Could not read the release from GitHub (${version:-latest})."
+fi
 
 # The release lists each file's name, digest and download address, in that
 # order; the package is the one that is not source, debug info or debug symbols.
@@ -114,28 +121,45 @@ esac
 package="$(printf '%s\n' "$release" | grep -o "\"name\": *\"$pattern\"" | head -n 1 |
     sed 's/.*"\([^"]*\)"$/\1/')"
 [ -n "$package" ] || fail "The release has no $kind package for $arch."
+# Only the package's own digest: its entry ends at its download address.
 digest="$(printf '%s\n' "$release" | awk -v name="\"$package\"" '
     index($0, "\"name\"") && index($0, name) { found = 1; next }
+    found && index($0, "browser_download_url") { exit }
     found && match($0, /sha256:[0-9a-f]+/) { print substr($0, RSTART + 7, RLENGTH - 7); exit }')"
 [ -n "$digest" ] || fail "GitHub gave no checksum for $package, so it cannot be checked."
 tag="$(printf '%s\n' "$release" | grep -o '"tag_name": *"[^"]*"' | head -n 1 |
     sed 's/.*"\([^"]*\)"$/\1/')"
 url="https://github.com/$repo/releases/download/$tag/$package"
 
+# apt resolves Callie's dependencies from its package lists, which may be
+# stale or, on a fresh system, empty; dnf refreshes its own when they expire.
+refresh=""
 case "$kind" in
 rpm) install="dnf install -y" ;;
-deb) install="apt-get install -y" ;;
+deb)
+    refresh="apt-get update"
+    install="apt-get install -y"
+    ;;
 esac
-[ -z "$sudo" ] || install="$sudo $install"
+if [ -n "$sudo" ]; then
+    install="$sudo $install"
+    [ -z "$refresh" ] || refresh="$sudo $refresh"
+fi
 
 say "installing Callie ${tag#v} on $system"
 say "package: $url"
 if [ "$dry_run" -eq 1 ]; then
-    say "would check it against sha256 $digest, then run: $install ./$package"
+    say "would check it against sha256 $digest"
+    [ -z "$refresh" ] || say "then run: $refresh"
+    say "then run: $install ./$package"
     exit 0
 fi
 
 # ---- Download, check and install -----------------------------------------
+
+[ "$needs_root" -eq 0 ] || fail "Installing needs root: run as root, or install sudo."
+command -v curl >/dev/null 2>&1 || fail "curl is needed to download Callie."
+command -v sha256sum >/dev/null 2>&1 || fail "sha256sum is needed to check the package."
 
 dir="$(mktemp -d)"
 trap 'rm -rf "$dir"' EXIT INT TERM
@@ -145,6 +169,9 @@ printf '%s  %s\n' "$digest" "$dir/$package" | sha256sum -c --status ||
     fail "$package does not match its checksum, so it was not installed."
 # Piped into sh, this script is the package manager's input too, so it gets
 # none: -y answers its questions, and sudo asks for a password on the terminal.
+if [ -n "$refresh" ]; then
+    $refresh </dev/null || fail "Could not refresh the package lists with: $refresh"
+fi
 (cd "$dir" && $install "./$package") </dev/null || fail "The package manager could not install $package."
 
 say "Callie ${tag#v} is installed. Open it from your app menu, or run callie-gui."

@@ -37,7 +37,7 @@ ApplicationWindow {
     readonly property bool showSidebar: width >= 880
     minimumHeight: 560
     visible: true
-    title: qsTr("Callie")
+    title: Release.devel ? qsTr("Callie Devel") : qsTr("Callie")
     // Transparent where the rounded frame leaves its corners.
     color: frame.rounded ? "transparent" : Theme.bg
     // Callie draws its own title bar; see the title bar below and ResizeFrame.

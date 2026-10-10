@@ -1,4 +1,5 @@
 #include "callie/ThemeLibrary.h"
+#include "callie/Identity.h"
 
 #include "callie/ThemeLoader.h"
 
@@ -104,8 +105,8 @@ ThemeLibrary::ThemeLibrary(QString folder) : m_folder(std::move(folder)) {}
 
 QString ThemeLibrary::defaultFolder()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +
-           u"/callie/themes"_s;
+    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + u'/' +
+           identity::dirName() + u"/themes"_s;
 }
 
 QStringList ThemeLibrary::themes() const

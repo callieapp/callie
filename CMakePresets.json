@@ -19,7 +19,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "QT_QML_GENERATE_QMLLS_INI": "ON",
-        "CALLIE_LIVE_QML": "ON"
+        "CALLIE_LIVE_QML": "ON",
+        "CALLIE_DEVEL": "ON"
       }
     },
     {

@@ -19,6 +19,7 @@ function(callie_add_test name)
 endfunction()
 
 callie_add_test(tst_eventmodel)
+callie_add_test(tst_identity)
 callie_add_test(tst_todaymodel)
 callie_add_test(tst_invitesmodel)
 callie_add_test(tst_searchmodel)

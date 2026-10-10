@@ -120,8 +120,8 @@ public:
     explicit TrayStatusItem(QObject *parent = nullptr);
 
     [[nodiscard]] QString category() const { return QStringLiteral("ApplicationStatus"); }
-    [[nodiscard]] QString id() const { return QStringLiteral("callie"); }
-    [[nodiscard]] QString title() const { return QStringLiteral("Callie"); }
+    [[nodiscard]] QString id() const;
+    [[nodiscard]] QString title() const;
     [[nodiscard]] QString status() const { return QStringLiteral("Active"); }
     [[nodiscard]] int windowId() const { return 0; }
     [[nodiscard]] QString iconName() const { return m_iconName; }

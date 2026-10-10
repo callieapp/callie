@@ -4,7 +4,6 @@ qt_add_executable(callie-gui
 
 target_compile_definitions(callie-gui PRIVATE
     CALLIE_VERSION="${PROJECT_VERSION}"
-    CALLIE_APP_ID="${CALLIE_APP_ID}"
 )
 
 target_link_libraries(callie-gui PRIVATE

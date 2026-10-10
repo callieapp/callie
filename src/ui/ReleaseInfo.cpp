@@ -1,5 +1,7 @@
 #include "ReleaseInfo.h"
 
+#include "callie/Identity.h"
+
 #include "EventModelForeign.h"
 
 #include "callie/ReleaseNotes.h"
@@ -56,6 +58,11 @@ bool ReleaseInfo::takeUpdateNotice()
     const QString last = settings->lastSeenVersion();
     settings->setLastSeenVersion(version());
     return !last.isEmpty() && last != version() && !m_notes.isEmpty();
+}
+
+bool ReleaseInfo::devel() const
+{
+    return identity::isDevel();
 }
 
 } // namespace callie

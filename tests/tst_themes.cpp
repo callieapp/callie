@@ -2,6 +2,7 @@
 #include "ThemeController.h"
 #include "ThemesController.h"
 
+#include "callie/Identity.h"
 #include "callie/Settings.h"
 #include "callie/ThemeLoader.h"
 
@@ -51,7 +52,7 @@ void TestThemes::customizeMakesAnEditableCopy()
 
     QVERIFY(themes()->editable());
     const QString path = themes()->current();
-    QVERIFY(path.startsWith(m_dir.filePath(u"config/callie/themes"_s)));
+    QVERIFY(path.startsWith(m_dir.filePath(u"config/"_s + identity::dirName() + u"/themes"_s)));
     QCOMPARE(m_settings->theme(), path);
 
     QVERIFY2(themes()->setColor(u"accent"_s, QColor(u"#33cc99"_s)), qPrintable(themes()->error()));

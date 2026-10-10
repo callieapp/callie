@@ -1,4 +1,5 @@
 #include "callie/GoogleCache.h"
+#include "callie/Identity.h"
 
 #include "callie/Logging.h"
 
@@ -121,8 +122,8 @@ GoogleCache::~GoogleCache()
 
 QString GoogleCache::defaultPath()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) +
-           QStringLiteral("/callie/google.sqlite");
+    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u'/' +
+           identity::dirName() + QStringLiteral("/google.sqlite");
 }
 
 bool GoogleCache::open()

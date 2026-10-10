@@ -15,6 +15,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(GNUInstallDirs)
 
 set(CALLIE_APP_ID "org.callieapp.Callie" CACHE STRING "Reverse-DNS application id")
+# A development build runs beside an installed Callie, with its own app id,
+# folders and keyring entries, so the two never share accounts or a cache.
+option(CALLIE_DEVEL "Give this build its own identity, apart from an installed Callie" OFF)
+if(CALLIE_DEVEL)
+    set(CALLIE_RUN_ID "${CALLIE_APP_ID}.Devel")
+    set(CALLIE_DIR_NAME "callie-devel")
+else()
+    set(CALLIE_RUN_ID "${CALLIE_APP_ID}")
+    set(CALLIE_DIR_NAME "callie")
+endif()
 
 option(CALLIE_BUILD_TESTS "Build the unit tests" ON)
 option(CALLIE_WERROR "Treat compiler warnings as errors" OFF)

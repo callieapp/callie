@@ -64,6 +64,12 @@ jobs:
           name: source
 
       - name: Build the package
+        # The Google OAuth client lets the packaged app sign in. A release
+        # without one fails to build rather than ship an app that cannot.
+        env:
+          CALLIE_GOOGLE_CLIENT_ID: ${{ secrets.CALLIE_GOOGLE_CLIENT_ID }}
+          CALLIE_GOOGLE_CLIENT_SECRET: ${{ secrets.CALLIE_GOOGLE_CLIENT_SECRET }}
+          CALLIE_REQUIRE_GOOGLE_CLIENT: ${{ github.ref_type == 'tag' && '1' || '' }}
         run: |
           version="${{ needs.source.outputs.version }}"
           dnf install -y --setopt=install_weak_deps=False rpm-build dnf-plugins-core xz tar
@@ -91,6 +97,11 @@ jobs:
           name: source
 
       - name: Build the package
+        # As for the rpm.
+        env:
+          CALLIE_GOOGLE_CLIENT_ID: ${{ secrets.CALLIE_GOOGLE_CLIENT_ID }}
+          CALLIE_GOOGLE_CLIENT_SECRET: ${{ secrets.CALLIE_GOOGLE_CLIENT_SECRET }}
+          CALLIE_REQUIRE_GOOGLE_CLIENT: ${{ github.ref_type == 'tag' && '1' || '' }}
         run: |
           version="${{ needs.source.outputs.version }}"
           apt-get update -qq

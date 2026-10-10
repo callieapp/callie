@@ -12,3 +12,7 @@
 Pushing the tag runs the release workflow. It checks the versions again, builds the source tarball
 and the `.deb` and `.rpm` packages, and publishes a GitHub release with the notes from
 `CHANGELOG.md`.
+
+The packages take the Google OAuth client from the repository's `CALLIE_GOOGLE_CLIENT_ID` and
+`CALLIE_GOOGLE_CLIENT_SECRET` Actions secrets, so the installed app can sign in. A tag build without
+them fails rather than publish packages that cannot connect a Google account.

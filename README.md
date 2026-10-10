@@ -145,8 +145,9 @@ to it. Connect your accounts in the development build once, separately. Packages
 
 Download a Desktop app OAuth client from Google Cloud, save it as `google-oauth-credentials.json`
 in the repository root (it is git-ignored), then run `make configure` so CMake picks it up. Without
-it the build still works, and `CALLIE_GOOGLE_CLIENT_ID` and `CALLIE_GOOGLE_CLIENT_SECRET` can
-supply a client at runtime instead.
+it the build still works. `CALLIE_GOOGLE_CLIENT_ID` and `CALLIE_GOOGLE_CLIENT_SECRET` supply a
+client too: when set while CMake configures, they are built in, ahead of the JSON file, as release
+packages are; when set while Callie runs, they replace the built-in client for that run.
 
 ```sh
 make cli ARGS="accounts add google"

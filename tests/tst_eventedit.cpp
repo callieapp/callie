@@ -680,10 +680,12 @@ void TestEventEdit::developerModeShowsIds()
     QVERIFY(find(m_window->contentItem(), "QQuickText", "text", u"sample-3-16-0-2026-10-07"_s));
     QTest::qWait(300);
     click(m_window, json);
-    const QJsonObject copied =
-        QJsonDocument::fromJson(QGuiApplication::clipboard()->text().toUtf8()).object();
-    QCOMPARE(copied[u"summary"].toString(), u"Dentist"_s);
-    QCOMPARE(copied[u"eventId"].toString(), u"sample-3-16-0-2026-10-07"_s);
+    // A slow machine can still be handling the click when the clipboard is read.
+    const auto copied = [] {
+        return QJsonDocument::fromJson(QGuiApplication::clipboard()->text().toUtf8()).object();
+    };
+    QTRY_COMPARE(copied()[u"summary"].toString(), u"Dentist"_s);
+    QCOMPARE(copied()[u"eventId"].toString(), u"sample-3-16-0-2026-10-07"_s);
 }
 
 void TestEventEdit::customRepeatsAreWritten()

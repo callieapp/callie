@@ -1,4 +1,5 @@
 #include "callie/LogFile.h"
+#include "callie/Identity.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -98,8 +99,8 @@ void handle(QtMsgType type, const QMessageLogContext &context, const QString &me
 
 QString defaultDirectory()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::GenericStateLocation) +
-           QStringLiteral("/callie/logs");
+    return QStandardPaths::writableLocation(QStandardPaths::GenericStateLocation) + u'/' +
+           identity::dirName() + QStringLiteral("/logs");
 }
 
 bool install(const QString &name, const QString &directory, qint64 maxBytes)

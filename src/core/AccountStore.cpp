@@ -1,4 +1,5 @@
 #include "callie/AccountStore.h"
+#include "callie/Identity.h"
 
 #include <QDir>
 #include <QFile>
@@ -18,8 +19,8 @@ QString AccountStore::defaultPath()
 {
     // GenericConfigLocation rather than AppConfigLocation, because the app and
     // the CLI register different application names.
-    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +
-           QStringLiteral("/callie/accounts.json");
+    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + u'/' +
+           identity::dirName() + QStringLiteral("/accounts.json");
 }
 
 bool AccountStore::load(QList<Account> &out)

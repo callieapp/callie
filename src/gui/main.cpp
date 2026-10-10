@@ -18,6 +18,7 @@
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/Identity.h"
 #include "callie/LogFile.h"
 #include "callie/Logging.h"
 #include "callie/LookedSource.h"
@@ -47,10 +48,10 @@ int main(int argc, char *argv[])
     app.setOrganizationName(QStringLiteral("Callie"));
     app.setApplicationVersion(QStringLiteral(CALLIE_VERSION));
     // Lets Wayland associate the window with the .desktop entry.
-    app.setDesktopFileName(QStringLiteral(CALLIE_APP_ID));
+    app.setDesktopFileName(callie::identity::appId());
     // Shown by desktops that read the window's own icon, such as KDE, even when
     // no desktop entry is installed; the built-in logo stands in for the theme's.
-    app.setWindowIcon(QIcon::fromTheme(QStringLiteral(CALLIE_APP_ID),
+    app.setWindowIcon(QIcon::fromTheme(callie::identity::appId(),
                                        QIcon(QStringLiteral(":/callie/assets/logo.png"))));
 
     QCommandLineParser parser;
@@ -113,7 +114,7 @@ int main(int argc, char *argv[])
     const bool useSample = parser.isSet(sampleOption);
     const QString screenshot = parser.value(screenshotOption);
     const bool standalone = useSample || !screenshot.isEmpty();
-    callie::SingleInstance single(QStringLiteral(CALLIE_APP_ID), QDBusConnection::sessionBus());
+    callie::SingleInstance single(callie::identity::appId(), QDBusConnection::sessionBus());
     if (!standalone && !single.claim())
         return 0;
 
@@ -253,8 +254,7 @@ int main(int argc, char *argv[])
         QObject::connect(&settings, &callie::Settings::keepRunningChanged, &app,
                          [&] { app.setQuitOnLastWindowClosed(!settings.keepRunning()); });
     }
-    callie::Autostart autostart(QStringLiteral(CALLIE_APP_ID),
-                                QCoreApplication::applicationFilePath());
+    callie::Autostart autostart(callie::identity::appId(), QCoreApplication::applicationFilePath());
     if (!standalone)
         callie::StartAtLogin::instance()->setup(&autostart, &settings);
 

@@ -1,12 +1,11 @@
 #include "callie/TokenStore.h"
+#include "callie/Identity.h"
 
 #include <qt6keychain/keychain.h>
 
 namespace callie {
 
 namespace {
-
-const QString kService = QStringLiteral("org.callieapp.Callie");
 
 QString keyFor(const Account &account)
 {
@@ -16,7 +15,7 @@ QString keyFor(const Account &account)
 template<typename Job>
 Job *makeJob(const Account &account)
 {
-    auto *job = new Job(kService);
+    auto *job = new Job(identity::appId());
     job->setAutoDelete(true);
     job->setInsecureFallback(false);
     job->setKey(keyFor(account));

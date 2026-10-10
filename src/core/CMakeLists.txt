@@ -47,6 +47,8 @@ configure_file(GoogleBuildConfig.h.in
 # Deliberately not a QML module. The CLI links this, and pulling QtQml in would
 # cost it startup time for no benefit. QML exposure happens in src/ui.
 add_library(calliecore STATIC
+    callie/Identity.h
+    Identity.cpp
     callie/Event.h
     Event.cpp
     callie/Logging.h
@@ -174,4 +176,10 @@ target_link_libraries(calliecore
         Qt6Keychain::Qt6Keychain
         tomlplusplus::tomlplusplus
         KF6::CalendarCore
+)
+
+target_compile_definitions(calliecore PRIVATE
+    CALLIE_RUN_ID="${CALLIE_RUN_ID}"
+    CALLIE_DIR_NAME="${CALLIE_DIR_NAME}"
+    CALLIE_DEVEL_BUILD=$<BOOL:${CALLIE_DEVEL}>
 )

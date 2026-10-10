@@ -1,5 +1,7 @@
 #include "TrayItem.h"
 
+#include "callie/Identity.h"
+
 #include "callie/Logging.h"
 
 #include <QCoreApplication>
@@ -19,7 +21,6 @@ namespace {
 
 const QString kItemPath = u"/StatusNotifierItem"_s;
 const QString kMenuPath = u"/MenuBar"_s;
-const QString kAppId = u"org.callieapp.Callie"_s;
 
 void registerTypes()
 {
@@ -139,10 +140,20 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, DBusTrayToolTip &
 
 TrayStatusItem::TrayStatusItem(QObject *parent) : QObject(parent)
 {
-    if (QIcon::hasThemeIcon(kAppId))
-        m_iconName = kAppId;
+    if (QIcon::hasThemeIcon(identity::appId()))
+        m_iconName = identity::appId();
     else
         m_iconPixmap = logoImages();
+}
+
+QString TrayStatusItem::id() const
+{
+    return identity::dirName();
+}
+
+QString TrayStatusItem::title() const
+{
+    return identity::displayName();
 }
 
 DBusTrayToolTip TrayStatusItem::toolTip() const

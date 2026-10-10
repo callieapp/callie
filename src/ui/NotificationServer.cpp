@@ -1,5 +1,7 @@
 #include "NotificationServer.h"
 
+#include "callie/Identity.h"
+
 #include "callie/Logging.h"
 
 #include <QDBusConnection>
@@ -21,22 +23,22 @@ namespace {
 const QString kService = u"org.freedesktop.Notifications"_s;
 const QString kPath = u"/org/freedesktop/Notifications"_s;
 const QString kInterface = u"org.freedesktop.Notifications"_s;
-const QString kAppId = u"org.callieapp.Callie"_s;
 
 // The icon theme's Callie when installed; otherwise, as when running from a
 // build, the bundled logo copied where the daemon can read it.
 QString appIcon()
 {
     static const QString icon = [] {
-        if (QIcon::hasThemeIcon(kAppId))
-            return kAppId;
+        if (QIcon::hasThemeIcon(identity::appId()))
+            return identity::appId();
         QFile logo(u":/callie/assets/logo.png"_s);
         if (!logo.open(QIODevice::ReadOnly))
-            return kAppId;
-        const QString path = cachedLogo(
-            QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u"/callie"_s,
-            logo.readAll());
-        return path.isEmpty() ? kAppId : path;
+            return identity::appId();
+        const QString path =
+            cachedLogo(QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) +
+                           u'/' + identity::dirName(),
+                       logo.readAll());
+        return path.isEmpty() ? identity::appId() : path;
     }();
     return icon;
 }
@@ -71,7 +73,7 @@ void FreedesktopNotifications::show(const QString &title, const QString &body,
 {
     QDBusMessage call = QDBusMessage::createMethodCall(kService, kPath, kInterface, u"Notify"_s);
     const QVariantMap hints{
-        {u"desktop-entry"_s, kAppId},
+        {u"desktop-entry"_s, identity::appId()},
         {u"category"_s, u"x-gnome.calendar"_s},
         // Normal urgency; the daemon decides how long it stays.
         {u"urgency"_s, QVariant::fromValue(uchar(1))},

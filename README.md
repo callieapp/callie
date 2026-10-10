@@ -130,6 +130,11 @@ from `src/` and reloads the window in place when a `.qml` file is saved. `make w
 only C++ and CMake changes rebuild and restart the app. A QML mistake is logged and the app waits
 for the fix. Theme files reload on save in any build.
 
+Development builds are Callie Devel: they keep their own settings, cache, accounts and keyring
+entries under `callie-devel` folders, and run beside an installed Callie rather than handing over
+to it. Connect your accounts in the development build once, separately. Packages and the `ci` and
+`release` presets build plain Callie; `-DCALLIE_DEVEL=ON` turns a build into Callie Devel.
+
 ### Google accounts
 
 Download a Desktop app OAuth client from Google Cloud, save it as `google-oauth-credentials.json`

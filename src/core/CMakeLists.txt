@@ -42,8 +42,10 @@ foreach(value IN ITEMS "${callie_google_client_id}" "${callie_google_client_secr
 endforeach()
 
 # Release packages must be able to sign in, so their builds stop without a client.
-if(callie_google_client_id STREQUAL "" AND "$ENV{CALLIE_REQUIRE_GOOGLE_CLIENT}")
-    message(FATAL_ERROR "No Google OAuth client, which CALLIE_REQUIRE_GOOGLE_CLIENT asks for")
+if((callie_google_client_id STREQUAL "" OR callie_google_client_secret STREQUAL "")
+   AND "$ENV{CALLIE_REQUIRE_GOOGLE_CLIENT}")
+    message(FATAL_ERROR
+        "No complete Google OAuth client (id and secret), which CALLIE_REQUIRE_GOOGLE_CLIENT asks for")
 endif()
 if(callie_google_client_id STREQUAL "")
     message(STATUS "Google OAuth client: not configured, set it at runtime to use Google accounts")

@@ -63,7 +63,7 @@ Popup {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Callie")
+                text: Release.devel ? qsTr("Callie Devel") : qsTr("Callie")
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.text2xl

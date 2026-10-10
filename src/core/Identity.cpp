@@ -1,20 +1,30 @@
 #include "callie/Identity.h"
 
+using namespace Qt::StringLiterals;
+
 namespace callie::identity {
+
+Names namesFor(bool devel)
+{
+    const QString base = QStringLiteral(CALLIE_APP_ID);
+    if (devel)
+        return {base + u".Devel"_s, u"callie-devel"_s, u"Callie Devel"_s};
+    return {base, u"callie"_s, u"Callie"_s};
+}
 
 QString appId()
 {
-    return QStringLiteral(CALLIE_RUN_ID);
+    return namesFor(isDevel()).appId;
 }
 
 QString dirName()
 {
-    return QStringLiteral(CALLIE_DIR_NAME);
+    return namesFor(isDevel()).dirName;
 }
 
 QString displayName()
 {
-    return isDevel() ? QStringLiteral("Callie Devel") : QStringLiteral("Callie");
+    return namesFor(isDevel()).displayName;
 }
 
 bool isDevel()

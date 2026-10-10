@@ -7,11 +7,21 @@
 /// without sharing its accounts, cache or settings.
 namespace callie::identity {
 
-/// "org.callieapp.Callie", or "org.callieapp.Callie.Devel" for a development build.
+/// What a build is called, worked out from whether it is a development build.
+struct Names
+{
+    /// "org.callieapp.Callie", or "org.callieapp.Callie.Devel".
+    QString appId;
+    /// The folder under each XDG directory: "callie" or "callie-devel".
+    QString dirName;
+    /// "Callie" or "Callie Devel", for what the desktop shows.
+    QString displayName;
+};
+[[nodiscard]] Names namesFor(bool devel);
+
+/// This build's names.
 [[nodiscard]] QString appId();
-/// The folder under each XDG directory: "callie" or "callie-devel".
 [[nodiscard]] QString dirName();
-/// "Callie" or "Callie Devel", for what the desktop shows.
 [[nodiscard]] QString displayName();
 [[nodiscard]] bool isDevel();
 

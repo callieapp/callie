@@ -78,7 +78,8 @@ void FreedesktopNotifications::show(const QString &title, const QString &body,
         // Normal urgency; the daemon decides how long it stays.
         {u"urgency"_s, QVariant::fromValue(uchar(1))},
     };
-    call << u"Callie"_s << uint(0) << appIcon() << title << body << actions << hints << int(-1);
+    call << identity::displayName() << uint(0) << appIcon() << title << body << actions << hints
+         << int(-1);
     auto *watcher =
         new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call), this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this,

@@ -20,6 +20,7 @@ endfunction()
 
 callie_add_test(tst_eventmodel)
 callie_add_test(tst_identity)
+target_compile_definitions(tst_identity PRIVATE CALLIE_EXPECT_DEVEL=$<BOOL:${CALLIE_DEVEL}>)
 callie_add_test(tst_todaymodel)
 callie_add_test(tst_invitesmodel)
 callie_add_test(tst_searchmodel)

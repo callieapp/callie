@@ -2,9 +2,11 @@ find_package(Qt6Keychain REQUIRED)
 find_package(tomlplusplus REQUIRED)
 find_package(KF6CalendarCore REQUIRED)
 
-# Google OAuth client. Explicit values win; otherwise the JSON downloaded from
-# Google Cloud is read. The values land in a generated header rather than in
-# compile definitions, so they stay out of compile_commands.json.
+# Google OAuth client. Explicit values win, then the CALLIE_GOOGLE_CLIENT_ID and
+# CALLIE_GOOGLE_CLIENT_SECRET environment variables, as the release workflow sets
+# them for package builds, then the JSON downloaded from Google Cloud. The values
+# land in a generated header rather than in compile definitions, so they stay out
+# of compile_commands.json.
 set(CALLIE_GOOGLE_CREDENTIALS_FILE "${PROJECT_SOURCE_DIR}/google-oauth-credentials.json"
     CACHE FILEPATH "Google OAuth client JSON for a Desktop app client")
 set(CALLIE_GOOGLE_CLIENT_ID "" CACHE STRING "Google OAuth client id")
@@ -12,6 +14,10 @@ set(CALLIE_GOOGLE_CLIENT_SECRET "" CACHE STRING "Google OAuth client secret")
 
 set(callie_google_client_id "${CALLIE_GOOGLE_CLIENT_ID}")
 set(callie_google_client_secret "${CALLIE_GOOGLE_CLIENT_SECRET}")
+if(callie_google_client_id STREQUAL "" AND NOT "$ENV{CALLIE_GOOGLE_CLIENT_ID}" STREQUAL "")
+    set(callie_google_client_id "$ENV{CALLIE_GOOGLE_CLIENT_ID}")
+    set(callie_google_client_secret "$ENV{CALLIE_GOOGLE_CLIENT_SECRET}")
+endif()
 if(callie_google_client_id STREQUAL "" AND EXISTS "${CALLIE_GOOGLE_CREDENTIALS_FILE}")
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CALLIE_GOOGLE_CREDENTIALS_FILE}")
     file(READ "${CALLIE_GOOGLE_CREDENTIALS_FILE}" callie_google_json)
@@ -35,6 +41,10 @@ foreach(value IN ITEMS "${callie_google_client_id}" "${callie_google_client_secr
     endif()
 endforeach()
 
+# Release packages must be able to sign in, so their builds stop without a client.
+if(callie_google_client_id STREQUAL "" AND "$ENV{CALLIE_REQUIRE_GOOGLE_CLIENT}")
+    message(FATAL_ERROR "No Google OAuth client, which CALLIE_REQUIRE_GOOGLE_CLIENT asks for")
+endif()
 if(callie_google_client_id STREQUAL "")
     message(STATUS "Google OAuth client: not configured, set it at runtime to use Google accounts")
 else()

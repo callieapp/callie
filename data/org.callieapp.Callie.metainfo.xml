@@ -41,6 +41,12 @@
   </categories>
 
   <releases>
+    <release version="0.2.2" date="2026-10-10">
+      <description>
+        <p>Installed Callie can connect Google accounts: earlier packages were built without
+          the sign-in client they need.</p>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-10-09">
       <description>
         <p>A system tray entry while Callie keeps running, your working location (Home, Office)

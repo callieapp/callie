@@ -3,6 +3,20 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.2.2 - 2026-10-10
+
+### Fixed
+
+- Callie installed from a package can connect Google accounts. The packages for 0.1.0 to 0.2.1
+  were built without the sign-in client Google needs, so Settings and `callie accounts add google`
+  said no client was configured.
+
+### New
+
+- Install with one command on Fedora 44 or later and Debian 13 or later:
+  `curl -fsSL https://callieapp.org/install.sh | sh`. It checks the download and installs it with
+  your package manager, and running it again updates Callie.
+
 ## 0.2.1 - 2026-10-09
 
 Fixes and polish from using 0.2.0 every day, and a tray entry.

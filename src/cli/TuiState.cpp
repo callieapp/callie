@@ -28,6 +28,8 @@ TuiState::TuiState(CalendarSource &source, Settings &settings, Now now, QObject 
     // A sync that finds nothing new, or fails, says so only here.
     connect(m_source, &CalendarSource::statusChanged, this, &TuiState::changed);
     connect(&m_settings, &Settings::hiddenCalendarsChanged, this, &TuiState::reload);
+    connect(m_source, &CalendarSource::errorOccurred, this,
+            [this](const QString &message) { say(message, true); });
     // Each change can be taken back while it is held.
     connect(m_source, &CalendarSource::changeMade, this,
             [this](const QString &id, const QString &what) {
@@ -408,7 +410,8 @@ void TuiState::jumpTo(const Event &event)
     m_day = m_settings.times()->date(event.start).date();
     reload();
     for (int i = 0; i < m_events.size(); ++i) {
-        if (m_events.at(i).eventId == event.eventId)
+        if (m_events.at(i).eventId == event.eventId &&
+            m_events.at(i).calendarId == event.calendarId)
             m_selected = i;
     }
     Q_EMIT changed();

@@ -65,6 +65,8 @@ private Q_SLOTS:
     void newEventsAsCallieAddReadsThem();
     void searchAndInvitationsJumpToTheDay();
     void foundAsTheCliListsIt();
+    void foundKeepsItsCalendar();
+    void refusedChangesAreShown();
     void calendarsShowAndHide();
     void callsOpen();
 
@@ -440,6 +442,43 @@ void TestTui::foundAsTheCliListsIt()
     for (const QString &key : {u"/"_s, u"p"_s, u"l"_s, u"a"_s, u"n"_s, u"Enter"_s})
         state.press(key);
     QCOMPARE(state.found().size(), 1);
+}
+
+void TestTui::foundKeepsItsCalendar()
+{
+    // One meeting on two calendars, with the same id in each.
+    QList<Event> events;
+    for (const QString &calendar : {u"work"_s, u"team"_s}) {
+        Event e;
+        e.calendarId = calendar;
+        e.eventId = e.uid = u"review"_s;
+        e.summary = u"Review"_s;
+        e.start = kNow.addDays(2);
+        e.end = e.start.addSecs(3600);
+        events.append(e);
+    }
+    FixedSource source(events);
+    TuiState state(source, *m_settings, [] { return kNow; });
+    for (int pick = 0; pick < 2; ++pick) {
+        for (const QString &key : {u"/"_s, u"r"_s, u"e"_s, u"v"_s, u"Enter"_s})
+            state.press(key);
+        QCOMPARE(state.found().size(), 2);
+        state.press(u"g"_s);
+        state.press(u"g"_s);
+        if (pick == 1)
+            state.press(u"j"_s);
+        QCOMPARE(state.foundSelected(), pick);
+        const QString calendar = state.found().at(pick).calendarId;
+        state.press(u"Enter"_s);
+        QCOMPARE(state.current()->calendarId, calendar);
+    }
+}
+
+void TestTui::refusedChangesAreShown()
+{
+    Q_EMIT m_source->errorOccurred(u"Delete Dentist: not allowed"_s);
+    QVERIFY(m_state->messageIsError());
+    QCOMPARE(m_state->message(), u"Delete Dentist: not allowed"_s);
 }
 
 void TestTui::calendarsShowAndHide()

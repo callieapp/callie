@@ -582,15 +582,21 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         cli::TuiState state(queued, settings, [] { return QDateTime::currentDateTime(); });
         queued.refresh();
         const int code = cli::runTui(state, settings, cli::Palette::forTheme(settings.theme()));
-        // What is still held goes now, given a moment to arrive.
+        // What is still held goes now, given a moment to arrive. A change the
+        // calendar turns down is dropped, so it is reported here.
+        QStringList refused;
+        QObject::connect(&queued, &CalendarSource::errorOccurred,
+                         [&refused](const QString &message) { refused.append(message); });
         queued.sendAll();
         QElapsedTimer waited;
         waited.start();
         while (!queued.changes().isEmpty() && waited.elapsed() < 15000)
             QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);
+        for (const QString &message : std::as_const(refused))
+            err << QObject::tr("callie: not made: %1").arg(message) << "\n";
         for (const PendingChange &change : queued.changes())
             err << QObject::tr("callie: not sent: %1").arg(change.describe()) << "\n";
-        return queued.changes().isEmpty() ? code : 1;
+        return queued.changes().isEmpty() && refused.isEmpty() ? code : 1;
 #else
         err << QObject::tr("callie: this build has no TUI; try: callie agenda") << "\n";
         return 1;

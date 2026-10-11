@@ -1,5 +1,7 @@
 #include "Views.h"
 
+#include "EventActions.h"
+
 #include "callie/ViewRange.h"
 
 namespace callie {
@@ -32,7 +34,7 @@ QDateTime Views::dayAt(const QDateTime &start, int index) const
 
 int Views::daysBetween(const QDateTime &from, const QDateTime &to) const
 {
-    return int(from.date().daysTo(to.date()));
+    return EventActions::daysBetween(from, to);
 }
 
 QString Views::heading(const QDateTime &day, const QDateTime &today) const

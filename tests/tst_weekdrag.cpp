@@ -328,6 +328,7 @@ void TestWeekDrag::heldAtAnEdgeCarriesToOtherDays()
     QTRY_VERIFY((item = climbing()));
     QTest::qWait(300);
     const QString id = item->property("event").toMap().value(u"eventId"_s).toString();
+    const QDateTime startBefore = byId(id).start;
     const QPoint pick = item->mapToScene(QPointF(item->width() / 2, item->height() / 2)).toPoint();
     const QPoint edge = month->mapToScene(QPointF(month->width() - 4, 0)).toPoint();
     QTest::mousePress(window, Qt::LeftButton, {}, pick);
@@ -347,6 +348,8 @@ void TestWeekDrag::heldAtAnEdgeCarriesToOtherDays()
     move(window, QPoint(edge.x(), pick.y()), drop);
     QTest::mouseRelease(window, Qt::LeftButton, {}, drop);
     QTRY_COMPARE(byId(id).start.date(), QDate(2026, 11, 20));
+    // At the same time of day, across Los Angeles' clock change on November 1.
+    QCOMPARE(byId(id).start.time(), startBefore.time());
 
     // Escape leaves no day marked for a drop.
     QTRY_VERIFY((item = climbing()));

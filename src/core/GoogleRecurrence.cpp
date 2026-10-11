@@ -231,6 +231,32 @@ QList<Event> expandGoogleEvents(const QList<GoogleEvent> &events, const QDateTim
     return result;
 }
 
+std::optional<QDateTime> seriesEnd(const GoogleEvent &series)
+{
+    const bool allDay = series.start.isAllDay();
+    const QDateTime start =
+        allDay ? QDateTime(series.start.date, QTime(0, 0), QTimeZone::UTC) : series.start.dateTime;
+    const QDateTime end =
+        allDay ? QDateTime(series.end.date, QTime(0, 0), QTimeZone::UTC) : series.end.dateTime;
+    if (!start.isValid())
+        return std::nullopt;
+    KCalendarCore::Recurrence recurrence;
+    if (!buildRecurrence(recurrence, series, start, allDay))
+        return (end.isValid() ? end : start).toUTC();
+    if (recurrence.duration() == -1)
+        return std::nullopt;
+    QDateTime last = recurrence.endDateTime();
+    if (!last.isValid())
+        return std::nullopt;
+    // An UNTIL can fall between occurrences.
+    if (!recurrence.recursAt(last)) {
+        const QDateTime before = recurrence.getPreviousDateTime(last);
+        if (before.isValid())
+            last = before;
+    }
+    return last.addSecs(end.isValid() ? std::max<qint64>(0, start.secsTo(end)) : 0).toUTC();
+}
+
 QList<QDate> excludedDays(const GoogleEvent &series, const QTimeZone &zone)
 {
     const QTimeZone own =

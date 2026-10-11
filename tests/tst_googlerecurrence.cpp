@@ -73,6 +73,7 @@ private Q_SLOTS:
     void splitSharesACount();
     void splitAllDaySeriesEndsOnADate();
     void splitAfterAClockChangeEndsOnTheOldClock();
+    void seriesEndIsItsLastOccurrence();
 };
 
 void TestGoogleRecurrence::guestsListPeopleOrganizerFirst()
@@ -523,6 +524,28 @@ void TestGoogleRecurrence::splitAfterAClockChangeEndsOnTheOldClock()
     const SplitRecurrence split =
         splitRecurrence(series, QDateTime(QDate(2026, 11, 2), QTime(9, 30), kNewYork));
     QCOMPARE(split.before, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261102T142959Z"_s});
+}
+
+void TestGoogleRecurrence::seriesEndIsItsLastOccurrence()
+{
+    const auto end = [](const char *recurrence, const char *start = "2026-10-05T10:00:00Z",
+                        const char *finish = "2026-10-05T11:00:00Z") {
+        const QByteArray json = QByteArray(R"({"id":"s","start":{"dateTime":")") + start +
+                                R"("},"end":{"dateTime":")" + finish + R"("},"recurrence":[")" +
+                                recurrence + R"("]})";
+        return seriesEnd(parsed(json.constData())).value_or(QDateTime());
+    };
+    // Forever, or by a count, an end time, extra dates or an unreadable rule.
+    QVERIFY(!seriesEnd(parsed(kStandup)));
+    QCOMPARE(end("RRULE:FREQ=DAILY;COUNT=3"), utc(2026, 10, 7, 11));
+    QCOMPARE(end("RRULE:FREQ=WEEKLY;UNTIL=20261020T000000Z"), utc(2026, 10, 19, 11));
+    QCOMPARE(end("RDATE:20261008T100000Z,20261012T100000Z"), utc(2026, 10, 12, 11));
+    QCOMPARE(end("RRULE:NOT A RULE"), utc(2026, 10, 5, 11));
+    // An all-day series by its dates.
+    QCOMPARE(seriesEnd(parsed(R"({"id":"s","start":{"date":"2026-10-05"},
+        "end":{"date":"2026-10-07"},"recurrence":["RRULE:FREQ=YEARLY;COUNT=2"]})"))
+                 .value_or(QDateTime()),
+             utc(2027, 10, 7));
 }
 
 QTEST_GUILESS_MAIN(TestGoogleRecurrence)

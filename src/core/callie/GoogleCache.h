@@ -95,6 +95,8 @@ private:
     bool writeEvents(const QString &key, const QString &calendarId,
                      const QList<GoogleEvent> &events);
     bool exec(const QString &statement);
+    /// Brings a schema 6 cache up to date by noting when each series ends.
+    bool addSeriesEnds();
     bool fail(const QString &message);
 
     QString m_path;

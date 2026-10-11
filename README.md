@@ -104,8 +104,10 @@ checkForUpdates false`, or Settings in the app, turns that off, as does setting
 
 Run on its own in a terminal, `callie` opens your calendar full screen, in the app's theme: a day, a
 week or the next two weeks, with the app's vi keys (`h` and `l` to move, `t` for today, `j` and `k`
-between events, the leader then `d`, `w` or `a` for a view, `?` for the rest). Piped, it prints the
-agenda as before.
+between events, the leader then `d`, `w` or `a` for a view, `?` for the rest). Enter opens an event:
+answer it with `y`, `m` or `n`, join its call with `o`, or delete it with `x`. `n` adds an event as
+`callie add` reads it, `/` searches, `i` lists invitations, `c` shows or hides calendars, and `u`
+takes back the last change while it is held. Piped, it prints the agenda as before.
 
 On a terminal, the CLI takes its colors from the app's theme: today and links in its accent, a dot in
 each event's calendar color, and declined events struck through. `NO_COLOR` turns colors off, as

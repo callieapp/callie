@@ -10,6 +10,7 @@
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
 #include "callie/LogFile.h"
+#include "callie/QueuedSource.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 #include "callie/Times.h"
@@ -29,6 +30,7 @@
 #include <QCoreApplication>
 #include <QDate>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QLocale>
 #include <QNetworkAccessManager>
@@ -574,10 +576,21 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         return commands.agenda(parser.value(u"days"_s).toInt(), json);
     if (command == u"tui") {
 #ifdef CALLIE_HAVE_TUI
-        cli::TuiState state(*backend->source, settings,
-                            [] { return QDateTime::currentDateTime(); });
-        backend->source->refresh();
-        return cli::runTui(state, settings, cli::Palette::forTheme(settings.theme()));
+        // Changes show at once and can be taken back while held, as in the app.
+        // The queue lives only while the TUI runs, apart from the app's.
+        QueuedSource queued(*backend->source, QString());
+        cli::TuiState state(queued, settings, [] { return QDateTime::currentDateTime(); });
+        queued.refresh();
+        const int code = cli::runTui(state, settings, cli::Palette::forTheme(settings.theme()));
+        // What is still held goes now, given a moment to arrive.
+        queued.sendAll();
+        QElapsedTimer waited;
+        waited.start();
+        while (!queued.changes().isEmpty() && waited.elapsed() < 15000)
+            QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, 100);
+        for (const PendingChange &change : queued.changes())
+            err << QObject::tr("callie: not sent: %1").arg(change.describe()) << "\n";
+        return queued.changes().isEmpty() ? code : 1;
 #else
         err << QObject::tr("callie: this build has no TUI; try: callie agenda") << "\n";
         return 1;

@@ -611,6 +611,17 @@ void QueuedSource::flush()
     send(next);
 }
 
+void QueuedSource::sendAll()
+{
+    const QDateTime now = m_now();
+    for (PendingChange &change : m_changes) {
+        if (change.notBefore > now)
+            change.notBefore = now;
+    }
+    save();
+    flush();
+}
+
 void QueuedSource::send(const PendingChange &change)
 {
     m_sending = change.id;

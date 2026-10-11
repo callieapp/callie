@@ -2,6 +2,7 @@
 #include "Tui.h"
 #include "TuiState.h"
 
+#include "callie/QueuedSource.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 
@@ -58,6 +59,12 @@ private Q_SLOTS:
     void daysAreTheSettingsZones();
     void syncStatusRedraws();
     void drawsInTheTheme();
+    void detailsAnswerAndTakeBack();
+    void deletingCanBeTakenBack();
+    void newEventsAsCallieAddReadsThem();
+    void searchAndInvitationsJumpToTheDay();
+    void calendarsShowAndHide();
+    void callsOpen();
 
 private:
     [[nodiscard]] QStringList summaries() const;
@@ -66,7 +73,10 @@ private:
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<Settings> m_settings;
     std::unique_ptr<SampleSource> m_source;
+    std::unique_ptr<QueuedSource> m_queue;
     std::unique_ptr<TuiState> m_state;
+    /// Selects the first event called `summary` in what is shown.
+    bool select(const QString &summary);
 };
 
 void TestTui::init()
@@ -75,7 +85,11 @@ void TestTui::init()
     m_settings = std::make_unique<Settings>(m_dir->filePath(u"settings.ini"_s));
     m_settings->setTimeZoneId(u"UTC"_s);
     m_source = std::make_unique<SampleSource>();
-    m_state = std::make_unique<TuiState>(*m_source, *m_settings, [] { return kNow; });
+    m_source->setNow([] { return kNow; });
+    // As the TUI runs it: changes held a moment, so they can be taken back.
+    m_queue = std::make_unique<QueuedSource>(*m_source, QString());
+    m_queue->setNow([] { return kNow; });
+    m_state = std::make_unique<TuiState>(*m_queue, *m_settings, [] { return kNow; });
 }
 
 QStringList TestTui::summaries() const
@@ -245,6 +259,151 @@ void TestTui::drawsInTheTheme()
     drawn = renderTui(*m_state, *m_settings, palette, 110, 30);
     QVERIFY(drawn.contains(u"Keys"_s));
     QVERIFY(drawn.contains(u"Agenda view"_s));
+}
+
+bool TestTui::select(const QString &summary)
+{
+    m_state->press(u"g"_s);
+    m_state->press(u"g"_s);
+    for (int i = 0; i < m_state->events().size(); ++i) {
+        if (m_state->events().at(m_state->selected()).summary == summary)
+            return true;
+        m_state->press(u"j"_s);
+    }
+    return false;
+}
+
+void TestTui::detailsAnswerAndTakeBack()
+{
+    // The coming week's Berlin sync waits for an answer.
+    m_state->press(m_settings->leaderKey());
+    m_state->press(u"a"_s);
+    QVERIFY(select(u"Berlin sync"_s));
+    m_state->press(u"Enter"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Details);
+    QString drawn = renderTui(*m_state, *m_settings, Palette::forTheme({}), 110, 30);
+    QVERIFY2(drawn.contains(u"Not answered"_s), qPrintable(drawn));
+    QVERIFY(drawn.contains(u"y yes"_s));
+
+    m_state->press(u"y"_s);
+    QCOMPARE(m_state->current()->responseStatus, u"accepted"_s);
+    QVERIFY2(m_state->message().contains(u"u takes it back"_s), qPrintable(m_state->message()));
+    m_state->press(u"Escape"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+    m_state->press(u"u"_s);
+    QCOMPARE(m_state->current()->responseStatus, u"needsAction"_s);
+    // Only an invitation can be answered.
+    QVERIFY(select(u"Dentist"_s));
+    m_state->press(u"Enter"_s);
+    m_state->press(u"y"_s);
+    QVERIFY(m_state->messageIsError());
+}
+
+void TestTui::deletingCanBeTakenBack()
+{
+    QVERIFY(select(u"Dentist"_s));
+    m_state->press(u"Enter"_s);
+    m_state->press(u"x"_s);
+    QVERIFY(!summaries().contains(u"Dentist"_s));
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+    m_state->press(u"u"_s);
+    QVERIFY(summaries().contains(u"Dentist"_s));
+    // Nothing more to take back.
+    m_state->press(u"u"_s);
+    QVERIFY(m_state->messageIsError());
+}
+
+void TestTui::newEventsAsCallieAddReadsThem()
+{
+    m_state->press(u"n"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Typing);
+    for (const QChar c : u"Pottery today 6-8pm"_s)
+        m_state->press(QString(c));
+    m_state->press(u"Backspace"_s);
+    m_state->press(u"m"_s);
+    QCOMPARE(m_state->input(), u"Pottery today 6-8pm"_s);
+    const QString drawn = renderTui(*m_state, *m_settings, Palette::forTheme({}), 110, 30);
+    QVERIFY(drawn.contains(u"New event: Pottery today 6-8pm"_s));
+    m_state->press(u"Enter"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+    QVERIFY2(summaries().contains(u"Pottery"_s), qPrintable(summaries().join(u", "_s)));
+    QVERIFY(!m_state->messageIsError());
+
+    // What callie add cannot read, such as a time with no title, it says so.
+    m_state->press(u"n"_s);
+    for (const QChar c : u"tomorrow 3pm"_s)
+        m_state->press(QString(c));
+    m_state->press(u"Enter"_s);
+    QVERIFY(m_state->messageIsError());
+    // Escape gives up on the line.
+    m_state->press(u"n"_s);
+    m_state->press(u"x"_s);
+    m_state->press(u"Escape"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+}
+
+void TestTui::searchAndInvitationsJumpToTheDay()
+{
+    m_state->press(u"/"_s);
+    for (const QChar c : u"climbing"_s)
+        m_state->press(QString(c));
+    m_state->press(u"Enter"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Found);
+    QVERIFY(!m_state->found().isEmpty());
+    const Event climbing = m_state->found().at(m_state->foundSelected());
+    QCOMPARE(climbing.summary, u"Climbing"_s);
+    m_state->press(u"Enter"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+    QCOMPARE(m_state->view(), TuiState::View::Day);
+    QCOMPARE(m_state->day(), climbing.start.date());
+    QCOMPARE(m_state->current()->eventId, climbing.eventId);
+
+    // A repeating event is found once, at its next occurrence.
+    m_state->press(u"/"_s);
+    for (const QChar c : u"standup"_s)
+        m_state->press(QString(c));
+    m_state->press(u"Enter"_s);
+    QCOMPARE(m_state->found().size(), 1);
+    QVERIFY(m_state->found().first().end > kNow);
+    m_state->press(u"Escape"_s);
+
+    m_state->press(u"i"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Found);
+    for (const Event &e : m_state->found())
+        QCOMPARE(e.responseStatus, u"needsAction"_s);
+    QVERIFY(!m_state->found().isEmpty());
+    m_state->press(u"Escape"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+}
+
+void TestTui::calendarsShowAndHide()
+{
+    m_state->press(u"c"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Calendars);
+    const CalendarInfo first = m_state->calendars().first();
+    QVERIFY(m_state->calendarShown(first));
+    QString drawn = renderTui(*m_state, *m_settings, Palette::forTheme({}), 110, 30);
+    QVERIFY(drawn.contains(u"Calendars"_s) && drawn.contains(first.displayName));
+    m_state->press(u" "_s);
+    QVERIFY(!m_state->calendarShown(first));
+    for (const Event &e : m_state->events())
+        QVERIFY(e.calendarId != first.id);
+    m_state->press(u" "_s);
+    QVERIFY(m_state->calendarShown(first));
+    m_state->press(u"Escape"_s);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+}
+
+void TestTui::callsOpen()
+{
+    QSignalSpy opened(m_state.get(), &TuiState::openRequested);
+    m_state->press(m_settings->leaderKey());
+    m_state->press(u"a"_s);
+    QVERIFY(select(u"Standup"_s));
+    m_state->press(u"Enter"_s);
+    m_state->press(u"o"_s);
+    QCOMPARE(opened.size(), 1);
+    QCOMPARE(opened.first().first().toUrl(), m_state->current()->joinUrl());
 }
 
 QTEST_GUILESS_MAIN(TestTui)

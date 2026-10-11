@@ -128,6 +128,7 @@ private Q_SLOTS:
     void offlineChangesWaitAndSurviveARestart();
     void refusedChangeIsDroppedAndReported();
     void changesCanBeTakenBack();
+    void sendAllEndsTheHold();
     void changesFoldedIntoACreationCanBeTakenBack();
     void pendingCreationTakesLaterChanges();
     void changesGoOutInOrder();
@@ -257,6 +258,18 @@ void TestQueuedSource::changesCanBeTakenBack()
     QCOMPARE(m_server.calls, QStringList{u"delete lunch"_s});
     // Gone out, so too late to take back.
     QVERIFY(!source->undoChange(made.last().first().toString()));
+}
+
+void TestQueuedSource::sendAllEndsTheHold()
+{
+    // As when the TUI quits: what was waiting goes now, in order.
+    auto source = make();
+    source->deleteEvent(makeEvent(u"lunch"_s, 12), false, [](const QString &) {});
+    source->respond(makeEvent(u"standup"_s, 9), u"accepted"_s, false, [](const QString &) {});
+    QVERIFY(m_server.calls.isEmpty());
+    source->sendAll();
+    QTRY_COMPARE(m_server.calls, (QStringList{u"delete lunch"_s, u"respond standup accepted"_s}));
+    QVERIFY(source->changes().isEmpty());
 }
 
 void TestQueuedSource::changesFoldedIntoACreationCanBeTakenBack()

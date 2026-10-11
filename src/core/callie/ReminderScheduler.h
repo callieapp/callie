@@ -44,7 +44,8 @@ public:
     void snooze(const Event &event, int minutes);
 
     /// Says which reminders fell due since the last check, then waits for the
-    /// next one. Runs by itself; public so tests can step the clock.
+    /// next one. The events are read off the UI thread when the source can, so
+    /// this may finish later. Runs by itself; public so tests can step the clock.
     void check();
 
     /// How far ahead events are read. Reminders set further ahead than this
@@ -64,6 +65,8 @@ private:
     };
 
     [[nodiscard]] QList<int> remindersFor(const Event &event) const;
+    /// The rest of check(), once the events from `now` on are read.
+    void review(const QDateTime &now, const QList<Event> &events);
     void schedule(const QDateTime &now, const QDateTime &next);
 
     QPointer<CalendarSource> m_source;
@@ -77,6 +80,9 @@ private:
     QHash<QString, QDateTime> m_said;
     QList<Snoozed> m_snoozed;
     QTimer m_timer;
+    /// A read is under way, and whether another check was asked for meanwhile.
+    bool m_reading = false;
+    bool m_checkAgain = false;
 };
 
 } // namespace callie

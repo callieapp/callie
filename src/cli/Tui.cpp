@@ -8,6 +8,7 @@
 
 #include <QCoreApplication>
 #include <QLocale>
+#include <QProcess>
 #include <QRegularExpression>
 #include <QTimer>
 
@@ -183,6 +184,8 @@ Element weekView(const TuiState &state, const Look &look)
 
 QString title(const TuiState &state)
 {
+    if (state.mode() == TuiState::Mode::Found)
+        return state.foundTitle();
     const QLocale locale;
     switch (state.view()) {
     case TuiState::View::Day: return dayHeading(state.day(), state);
@@ -217,15 +220,169 @@ Element header(const TuiState &state, const Look &look)
     return hbox({label(title(state)) | bold, filler(), hbox(std::move(tabs))});
 }
 
+/// Google's descriptions are HTML; the terminal shows their text.
+QString plainText(QString html)
+{
+    static const QRegularExpression breaks(u"<br\\s*/?>|</p>|</div>|</li>"_s,
+                                           QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression tags(u"<[^>]*>"_s);
+    html.replace(breaks, u"\n"_s).remove(tags);
+    html.replace(u"&nbsp;"_s, u" "_s)
+        .replace(u"&lt;"_s, u"<"_s)
+        .replace(u"&gt;"_s, u">"_s)
+        .replace(u"&quot;"_s, u"\""_s)
+        .replace(u"&#39;"_s, u"'"_s)
+        .replace(u"&amp;"_s, u"&"_s);
+    return html.trimmed();
+}
+
+QString answerName(const QString &response)
+{
+    if (response == u"accepted")
+        return QObject::tr("Yes");
+    if (response == u"tentative")
+        return QObject::tr("Maybe");
+    if (response == u"declined")
+        return QObject::tr("No");
+    return QObject::tr("Not answered");
+}
+
+Element detailsView(const TuiState &state, const Look &look)
+{
+    using namespace ftxui;
+    const std::optional<Event> found = state.current();
+    if (!found)
+        return text("");
+    const Event &event = *found;
+    const auto row = [&look](const QString &name, Element value) {
+        return hbox({label(name.leftJustified(12)) | color(rgb(look.c.textMuted)), value | flex});
+    };
+    const QString day =
+        QLocale().toString(look.settings.times()->date(event.start).date(), u"dddd, MMMM d"_s);
+    Elements rows = {
+        sticker(event, event.summary, look) | bold, text(""),
+        row(QObject::tr("When"), label(event.allDay ? day : day + u", "_s + when(event, look)))};
+    if (!event.location.isEmpty())
+        rows.push_back(row(QObject::tr("Where"), label(event.location)));
+    for (const CalendarInfo &calendar : state.calendars()) {
+        if (calendar.id == event.calendarId) {
+            rows.push_back(row(QObject::tr("Calendar"),
+                               hbox({text("● ") | color(rgb(look.palette.fill(event.color))),
+                                     label(calendar.displayName)})));
+        }
+    }
+    if (!event.joinUrl().isEmpty())
+        rows.push_back(row(QObject::tr("Call"), label(event.joinUrl().host())));
+    if (event.canRespond)
+        rows.push_back(row(QObject::tr("Your answer"), label(answerName(event.responseStatus))));
+    if (!event.guests.isEmpty()) {
+        Elements guests;
+        for (const Guest &guest : event.guests) {
+            const QString name = guest.name.isEmpty() ? guest.email : guest.name;
+            guests.push_back(hbox({label(name), label(u"  "_s + answerName(guest.response)) |
+                                                    color(rgb(look.c.textFaint))}));
+        }
+        rows.push_back(row(QObject::tr("Guests"), vbox(std::move(guests))));
+    }
+    const QString notes = plainText(event.description);
+    if (!notes.isEmpty()) {
+        rows.push_back(text(""));
+        for (const QString &line : notes.split(u'\n'))
+            rows.push_back(paragraph(line.toStdString()));
+    }
+    return vbox(std::move(rows));
+}
+
+Element foundView(const TuiState &state, const Look &look)
+{
+    using namespace ftxui;
+    Elements rows;
+    for (int i = 0; i < state.found().size(); ++i) {
+        const Event &event = state.found().at(i);
+        const bool selected = i == state.foundSelected();
+        const QString day = QLocale().toString(look.settings.times()->date(event.start).date(),
+                                               u"ddd d MMM yyyy"_s);
+        Element line = hbox({marker(selected, look),
+                             label(day.leftJustified(16)) | color(rgb(look.c.textMuted)),
+                             label((event.allDay ? QObject::tr("all day")
+                                                 : look.settings.times()->time(event.start))
+                                       .leftJustified(10)) |
+                                 color(rgb(look.c.textMuted)),
+                             sticker(event, event.summary, look), filler()});
+        if (event.end <= state.now())
+            line = line | dim;
+        rows.push_back(selected ? line | focus : line);
+    }
+    if (state.found().isEmpty())
+        rows.push_back(empty(QObject::tr("Nothing found."), look));
+    return vbox(std::move(rows));
+}
+
+Element calendarsWindow(const TuiState &state, const Look &look)
+{
+    using namespace ftxui;
+    Elements rows;
+    const QList<CalendarInfo> calendars = state.calendars();
+    for (int i = 0; i < calendars.size(); ++i) {
+        const CalendarInfo &calendar = calendars.at(i);
+        const bool shown = state.calendarShown(calendar);
+        rows.push_back(
+            hbox({marker(i == state.calendarSelected(), look),
+                  text(shown ? "● " : "○ ") | color(rgb(look.palette.fill(calendar.color))),
+                  label(calendar.displayName) | color(rgb(shown ? look.c.text : look.c.textFaint)),
+                  text(" ")}));
+    }
+    if (rows.empty())
+        rows.push_back(empty(QObject::tr("No calendars yet."), look));
+    return window(label(QObject::tr(" Calendars ")) | bold, vbox(std::move(rows))) |
+           color(rgb(look.c.text)) | bgcolor(rgb(look.c.surface)) | clear_under | center;
+}
+
+/// The keys for what is open, at the bottom right.
+QString keysFor(const TuiState &state)
+{
+    switch (state.mode()) {
+    case TuiState::Mode::Details: {
+        const std::optional<Event> event = state.current();
+        QStringList keys;
+        if (event && event->canRespond)
+            keys << QObject::tr("y yes   m maybe   n no");
+        if (event && !event->joinUrl().isEmpty())
+            keys << QObject::tr("o join");
+        if (event && event->canEdit)
+            keys << QObject::tr("x delete");
+        keys << QObject::tr("Esc back");
+        return keys.join(u"   "_s);
+    }
+    case TuiState::Mode::Typing:
+        return state.typing() == TuiState::Typing::NewEvent
+                   ? QObject::tr("Enter add   Esc cancel")
+                   : QObject::tr("Enter search   Esc cancel");
+    case TuiState::Mode::Found: return QObject::tr("Enter go to it   Esc back");
+    case TuiState::Mode::Calendars: return QObject::tr("Space show or hide   Esc back");
+    case TuiState::Mode::Browse: break;
+    }
+    return QObject::tr("? keys   q quit");
+}
+
 Element footer(const TuiState &state, const Look &look)
 {
     using namespace ftxui;
     Element left = label(state.syncStatus()) |
                    color(rgb(state.syncFailed() ? look.c.danger : look.c.textMuted));
+    if (!state.message().isEmpty())
+        left = label(state.message()) |
+               color(rgb(state.messageIsError() ? look.c.danger : look.c.accent));
     if (state.pending() == u"leader")
         left = label(QObject::tr("d day   w week   a agenda")) | color(rgb(look.c.accent));
-    return hbox(
-        {left, filler(), label(QObject::tr("? keys   q quit")) | color(rgb(look.c.textFaint))});
+    if (state.mode() == TuiState::Mode::Typing) {
+        const QString prompt = state.typing() == TuiState::Typing::NewEvent
+                                   ? QObject::tr("New event: ")
+                                   : QObject::tr("Search: ");
+        left = hbox({label(prompt) | bold | color(rgb(look.c.accent)), label(state.input()),
+                     text("█") | color(rgb(look.c.accent))});
+    }
+    return hbox({left, filler(), label(keysFor(state)) | color(rgb(look.c.textFaint))});
 }
 
 Element help(const Look &look)
@@ -241,6 +398,12 @@ Element help(const Look &look)
         {leader + u" w"_s, QObject::tr("Week view")},
         {leader + u" a"_s, QObject::tr("Agenda view")},
         {u"Tab"_s, QObject::tr("Next view")},
+        {u"Enter"_s, QObject::tr("The event's details")},
+        {u"n"_s, QObject::tr("New event, as callie add reads it")},
+        {u"/"_s, QObject::tr("Search")},
+        {u"i"_s, QObject::tr("Invitations")},
+        {u"c"_s, QObject::tr("Show or hide calendars")},
+        {u"u"_s, QObject::tr("Take back the last change")},
         {u"r"_s, QObject::tr("Sync now")},
         {u"q"_s, QObject::tr("Quit")},
     };
@@ -257,14 +420,20 @@ Element help(const Look &look)
 Element render(const TuiState &state, const Look &look)
 {
     using namespace ftxui;
-    Element body = state.view() == TuiState::View::Week     ? weekView(state, look)
+    Element body = state.mode() == TuiState::Mode::Details  ? detailsView(state, look)
+                   : state.mode() == TuiState::Mode::Found  ? foundView(state, look)
+                   : state.view() == TuiState::View::Week   ? weekView(state, look)
                    : state.view() == TuiState::View::Agenda ? agendaView(state, look)
                                                             : dayView(state, look);
     Element page = vbox({header(state, look), separatorLight() | color(rgb(look.c.hairline)),
                          body | yframe | flex, footer(state, look)});
     Element screen = hbox({text(" "), page | flex, text(" ")}) | color(rgb(look.c.text)) |
                      bgcolor(rgb(look.c.background));
-    return state.helpShown() ? dbox({screen, help(look)}) : screen;
+    if (state.helpShown())
+        return dbox({screen, help(look)});
+    if (state.mode() == TuiState::Mode::Calendars)
+        return dbox({screen, calendarsWindow(state, look)});
+    return screen;
 }
 
 /// The name TuiState gives a key, or nothing for one it does not take.
@@ -289,6 +458,8 @@ QString keyName(const ftxui::Event &event)
         return u"Escape"_s;
     if (event == Event::Tab)
         return u"Tab"_s;
+    if (event == Event::Backspace)
+        return u"Backspace"_s;
     if (event.is_character())
         return QString::fromStdString(event.character());
     return {};
@@ -332,6 +503,9 @@ int runTui(TuiState &state, const Settings &settings, const Palette &palette)
     });
     QObject::connect(&state, &TuiState::changed, &tick,
                      [&screen] { screen.PostEvent(ftxui::Event::Custom); });
+    QObject::connect(&state, &TuiState::openRequested, &tick, [](const QUrl &url) {
+        QProcess::startDetached(u"xdg-open"_s, {url.toString()});
+    });
     tick.start();
     return QCoreApplication::exec();
 }

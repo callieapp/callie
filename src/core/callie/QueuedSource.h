@@ -88,6 +88,8 @@ public:
     bool undoChange(const QString &id) override;
     /// Sends what is ready, in order, one at a time.
     void flush();
+    /// Ends every change's hold and sends them, as when quitting.
+    void sendAll();
 
     /// Puts the changes on what the source read.
     static void apply(QList<Event> &events, const QList<PendingChange> &changes,

@@ -786,6 +786,27 @@ Popup {
             }
         }
 
+        Section {
+            title: qsTr("Updates")
+            visible: root.tab === "general" && !Release.devel
+
+            Toggle {
+                width: parent.width
+                text: qsTr("Say when a new release is out")
+                checked: Settings.checkForUpdates
+                onToggled: Settings.checkForUpdates = checked
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr(
+                          "Once a day, Callie asks GitHub for its latest release. The app shows it in the ? menu, and the callie command after it runs.")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+            }
+        }
+
         DangerButton {
             visible: root.tab === "general"
             label: qsTr("Reset to defaults")

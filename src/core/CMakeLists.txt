@@ -80,6 +80,8 @@ add_library(calliecore STATIC
     callie/Outcome.h
     callie/Releases.h
     Releases.cpp
+    callie/UpdateCheck.h
+    UpdateCheck.cpp
     callie/EventEdit.h
     EventEdit.cpp
     callie/Repeat.h

@@ -3,13 +3,16 @@
 #include "EventModelForeign.h"
 #include "FakeHttpServer.h"
 #include "PlaceSearch.h"
+#include "ReleaseInfo.h"
 #include "ThemeController.h"
 
 #include "callie/ContactBook.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
+#include "callie/UpdateCheck.h"
 
 #include <QClipboard>
+#include <QFile>
 #include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -117,6 +120,7 @@ private Q_SLOTS:
     void topOfACascadeOpens();
     void titleBarFitsNarrowWindows();
     void buttonsTellTheirShortcuts();
+    void newerReleaseIsOffered();
     void guestsComeFromSuggestions();
     void placesComeFromSuggestions();
     void callsInNotesJoinWithoutAVideoCall();
@@ -487,6 +491,47 @@ void TestEventEdit::buttonsTellTheirShortcuts()
     QTest::qWait(300);
     click(m_window, help);
     QTRY_VERIFY(help->property("tip").toString().isEmpty());
+}
+
+void TestEventEdit::newerReleaseIsOffered()
+{
+    // GitHub said yesterday that 9.9.9 is out.
+    UpdateCheck check(m_dir->filePath(u"latest-release.json"_s));
+    check.setDevel(false);
+    {
+        QFile file(m_dir->filePath(u"latest-release.json"_s));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(QJsonDocument(QJsonObject{{u"version"_s, u"9.9.9"_s},
+                                             {u"page"_s, u"https://example.com/v9.9.9"_s},
+                                             {u"asked"_s, QDateTime::currentDateTimeUtc().toString(
+                                                              Qt::ISODateWithMs)}})
+                       .toJson());
+    }
+    auto *release = m_engine->singletonInstance<ReleaseInfo *>("Callie.Ui", "Release");
+    QVERIFY(release);
+    QVERIFY(release->update().isEmpty());
+    release->watchForUpdates(m_settings.get(), &check);
+    QCOMPARE(release->update(), u"9.9.9"_s);
+
+    // The ? menu offers it, and says how to install it.
+    QQuickItem *help = find(m_window->contentItem(), "StickerButton", "text", u"?"_s);
+    QVERIFY(help);
+    QTest::qWait(300);
+    click(m_window, help);
+    QObject *entry = nullptr;
+    for (QObject *o : m_window->findChildren<QObject *>()) {
+        if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"MenuEntry"_s) &&
+            o->property("text").toString() == u"Update to Callie 9.9.9..."_s)
+            entry = o;
+    }
+    QVERIFY(entry);
+    QTRY_VERIFY(entry->property("visible").toBool());
+    QVERIFY(QMetaObject::invokeMethod(entry, "triggered"));
+    QTRY_VERIFY(find(m_window->contentItem(), "QQuickText", "text", u"callie upgrade"_s));
+
+    // Turned off, it says nothing.
+    m_settings->setCheckForUpdates(false);
+    QCOMPARE(release->update(), QString());
 }
 
 void TestEventEdit::titleBarFitsNarrowWindows()

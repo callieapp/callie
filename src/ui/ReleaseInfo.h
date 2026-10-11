@@ -2,10 +2,15 @@
 
 #include <QDateTime>
 #include <QObject>
+#include <QPointer>
 #include <QQmlEngine>
+#include <QTimer>
 #include <QUrl>
 
 namespace callie {
+
+class Settings;
+class UpdateCheck;
 
 /// What the About and "What's new?" popups say: this build's version, the
 /// newest notes in the bundled CHANGELOG.md, and where to read more.
@@ -30,6 +35,10 @@ class ReleaseInfo : public QObject
     Q_PROPERTY(QUrl support READ support CONSTANT)
     /// A development build, kept apart from an installed Callie.
     Q_PROPERTY(bool devel READ devel CONSTANT)
+    /// A newer release that is out, such as "0.3.1", or empty.
+    Q_PROPERTY(QString update READ update NOTIFY updateChanged)
+    /// That release's page.
+    Q_PROPERTY(QUrl updatePage READ updatePage NOTIFY updateChanged)
 
 public:
     explicit ReleaseInfo(QObject *parent = nullptr);
@@ -45,12 +54,29 @@ public:
     [[nodiscard]] QUrl support() const;
     [[nodiscard]] bool devel() const;
     [[nodiscard]] QUrl history() const;
+    [[nodiscard]] QString update() const { return m_update; }
+    [[nodiscard]] QUrl updatePage() const { return m_updatePage; }
+
+    /// Says when a newer release is out, asking `check` once a day while the
+    /// user's settings allow it.
+    void watchForUpdates(Settings *settings, UpdateCheck *check);
 
     /// True once, the first time a version starts after another one ran;
     /// a first run and later starts say no. Records this version either way.
     Q_INVOKABLE bool takeUpdateNotice();
 
+Q_SIGNALS:
+    void updateChanged();
+
 private:
+    void showUpdate();
+    void checkIfDue();
+
+    QPointer<Settings> m_settings;
+    QPointer<UpdateCheck> m_check;
+    QTimer m_checkTimer;
+    QString m_update;
+    QUrl m_updatePage;
     QString m_notesVersion;
     QDateTime m_notesDate;
     QString m_notes;

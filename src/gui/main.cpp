@@ -4,6 +4,7 @@
 #include "LiveQml.h"
 #include "NotificationServer.h"
 #include "PlaceSearch.h"
+#include "ReleaseInfo.h"
 #include "Reminders.h"
 #include "SingleInstance.h"
 #include "StartAtLogin.h"
@@ -26,6 +27,7 @@
 #include "callie/ReminderScheduler.h"
 #include "callie/SampleSource.h"
 #include "callie/TokenStore.h"
+#include "callie/UpdateCheck.h"
 
 #include <QCommandLineParser>
 #include <QElapsedTimer>
@@ -271,6 +273,7 @@ int main(int argc, char *argv[])
     }
     callie::AccountsController::instance()->setUp(accountSetup);
 
+    callie::UpdateCheck updates;
     QQmlApplicationEngine engine;
     // Started at login, Callie waits hidden until it is opened or a reminder is
     // clicked; that only makes sense while it is set to keep running.
@@ -312,6 +315,12 @@ int main(int argc, char *argv[])
             static_cast<Qt::ConnectionType>(Qt::QueuedConnection | Qt::SingleShotConnection));
     } else {
         contacts.setSource(source);
+    }
+
+    // Sample data and screenshots never ask GitHub about releases.
+    if (!standalone) {
+        if (auto *release = engine.singletonInstance<callie::ReleaseInfo *>("Callie.Ui", "Release"))
+            release->watchForUpdates(&settings, &updates);
     }
 
     // A second launch, a reminder or the tray brings back a hidden window.

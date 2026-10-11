@@ -24,6 +24,7 @@ void TestRelease::notesComeFromTheBundledChangelog()
     QVERIFY(!release.notesVersion().isEmpty());
     QVERIFY(release.notesDate().isValid());
     QVERIFY(release.notes().contains(u"### New"_s));
+    QCOMPARE(release.support(), QUrl(u"https://ko-fi.com/sayonara_lara"_s));
 }
 
 void TestRelease::updateNoticeShowsOncePerNewVersion()

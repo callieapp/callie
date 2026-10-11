@@ -167,6 +167,11 @@ cmake --preset dev && cmake --build --preset dev && ctest --preset dev
 cmake --workflow --preset ci   # what CI runs, with warnings as errors
 ```
 
+## Support
+
+Callie is free, with no subscription. If it makes your days easier, you can support its
+development on [Ko-fi](https://ko-fi.com/sayonara_lara), or through the Sponsor button on GitHub.
+
 ## Contributing
 
 Read [GUIDELINES.md](GUIDELINES.md) for the layout and conventions,

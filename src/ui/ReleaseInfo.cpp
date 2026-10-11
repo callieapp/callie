@@ -47,6 +47,11 @@ QUrl ReleaseInfo::source() const
     return QUrl(u"https://github.com/callieapp/callie"_s);
 }
 
+QUrl ReleaseInfo::support() const
+{
+    return QUrl(u"https://ko-fi.com/sayonara_lara"_s);
+}
+
 QUrl ReleaseInfo::history() const
 {
     return QUrl(u"https://github.com/callieapp/callie/blob/main/CHANGELOG.md"_s);

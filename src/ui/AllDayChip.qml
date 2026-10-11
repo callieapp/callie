@@ -105,7 +105,16 @@ Rectangle {
     }
 
     HoverHandler {
-        cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+        cursorShape: drag.active ? Qt.ClosedHandCursor : denied.active ? Qt.ForbiddenCursor :
+                                                                         Qt.PointingHandCursor
+
+    }
+    // A read-only event cannot move; trying to drag it shows as much.
+    DragHandler {
+        id: denied
+        target: null
+        enabled: !chip.canEdit
+        cursorShape: Qt.ForbiddenCursor
     }
     TapHandler {
         gesturePolicy: TapHandler.ReleaseWithinBounds

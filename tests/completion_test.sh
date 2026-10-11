@@ -50,6 +50,9 @@ expect 'callie add x --calendar "Work: t' 'Work: team'
 candidate="--calendar=Deep work"
 expect 'callie add x --calendar=Deep\ w' 'Deep\ work'
 expect 'callie add x --calendar="Deep w' 'Deep work'
+# Without : as a word break, bash replaces the whole word.
+candidate="Work: team"
+COMP_WORDBREAKS=${COMP_WORDBREAKS//:/} expect 'callie add x --calendar Work:\ t' 'Work:\ team'
 
 if [ "$failures" -gt 0 ]; then
     printf '%s check(s) failed\n' "$failures"

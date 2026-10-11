@@ -3,6 +3,27 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.2.3 - 2026-10-11
+
+### New
+
+- Drag an event to the left or right edge of the week, day or month view and hold it there: the
+  view moves to the days before or after, and you can drop the event there. Escape puts it back.
+- Buttons in the title bar and on an event's card say what they do when you hover them, with the
+  keyboard shortcut for the same thing, and the vi key too in vi mode.
+- Support Callie on Ko-fi from the ? menu, the About window or callieapp.org.
+
+### Fixed
+
+- The map app and the choice to look places up online are kept when Callie restarts. Callie
+  forgot them before, so pick your map app again once after updating.
+- An occurrence of a repeating event that was already changed on its own, such as one moved to
+  another day in Google Calendar, is edited, moved, answered and deleted on its own, without
+  asking about the rest of the series. Invitations and `callie invites` list it separately.
+- The title bar folds its buttons away by what actually fits, so nothing overlaps as the window
+  narrows, whatever the month's name or the language.
+- Dragging an event you cannot change shows a not-allowed cursor.
+
 ## 0.2.2 - 2026-10-10
 
 ### Fixed

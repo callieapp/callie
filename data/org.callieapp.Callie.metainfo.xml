@@ -42,6 +42,13 @@
   </categories>
 
   <releases>
+    <release version="0.2.3" date="2026-10-11">
+      <description>
+        <p>Drag an event to the edge of the view to carry it to the next or previous week or
+          month, tooltips with keyboard shortcuts, place settings that stay put, and changes to
+          one occurrence of a repeating event that no longer ask about the whole series.</p>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-10-10">
       <description>
         <p>Installed Callie can connect Google accounts: earlier packages were built without

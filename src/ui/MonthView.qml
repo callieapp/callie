@@ -299,6 +299,9 @@ Item {
     }
 
     function carryFrom(chip, scenePosition) {
+        // Kept, rather than bound to the carry, so the chip stays out of the
+        // drag until the page replaces it.
+        chip.carried = true
         const grab = chip.mapFromItem(null, scenePosition.x, scenePosition.y)
         pager.carry = {
             "event": chip.event,
@@ -401,9 +404,10 @@ Item {
         DragHandler {
             id: drag
             target: null
-            enabled: chip.event.canEdit === true && !chip.settling
+            // Handing the drag off ends it here.
+            enabled: chip.event.canEdit === true && !chip.settling && !chip.carried
             onCentroidChanged: {
-                if (active)
+                if (active && !chip.carried)
                     chip.dragged(centroid.scenePosition)
             }
             onActiveChanged: {

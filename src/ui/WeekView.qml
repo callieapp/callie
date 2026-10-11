@@ -811,6 +811,9 @@ Item {
     /// Notes what `item` drags, so the drag survives the page rebuilding it.
     function carryFrom(item, scenePosition) {
         const event = root.model.eventAt(item.index)
+        // Kept, rather than bound to the carry, so the item stays out of the
+        // drag until the page replaces it.
+        item.carried = true
         if (item instanceof AllDayChip) {
             pager.carry = {
                 "event": event,

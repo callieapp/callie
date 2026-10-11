@@ -24,6 +24,7 @@
 #include <QtQml/qqmlextensionplugin.h>
 
 #include <functional>
+#include <utility>
 
 Q_IMPORT_QML_PLUGIN(Callie_UiPlugin)
 
@@ -31,6 +32,39 @@ using namespace callie;
 using namespace Qt::StringLiterals;
 
 namespace {
+
+/// SampleSource that also notes how widely each change was asked to apply.
+class RecordingSource : public SampleSource
+{
+public:
+    /// "respond", "delete" or "move", then "series" or "one"; or "update"
+    /// with the scope and whether the repeat changes.
+    QStringList calls;
+
+    void respond(const Event &event, const QString &status, bool wholeSeries, Created done) override
+    {
+        calls.append(u"respond "_s + (wholeSeries ? u"series"_s : u"one"_s));
+        SampleSource::respond(event, status, wholeSeries, std::move(done));
+    }
+    void deleteEvent(const Event &event, bool wholeSeries, Created done) override
+    {
+        calls.append(u"delete "_s + (wholeSeries ? u"series"_s : u"one"_s));
+        SampleSource::deleteEvent(event, wholeSeries, std::move(done));
+    }
+    void moveEvent(const Event &event, const QDateTime &start, const QDateTime &end,
+                   bool wholeSeries, Created done) override
+    {
+        calls.append(u"move "_s + (wholeSeries ? u"series"_s : u"one"_s));
+        SampleSource::moveEvent(event, start, end, wholeSeries, std::move(done));
+    }
+    void updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
+                     Created done) override
+    {
+        calls.append(u"update "_s + (scope == EditScope::ThisEvent ? u"one"_s : u"more"_s) +
+                     (edit.recurrence ? u" repeat"_s : QString()));
+        SampleSource::updateEvent(event, edit, scope, std::move(done));
+    }
+};
 
 /// The first visible item under `item` whose class starts with `type` and
 /// whose `property` reads `value`.
@@ -94,7 +128,7 @@ private Q_SLOTS:
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<Settings> m_settings;
-    std::unique_ptr<SampleSource> m_source;
+    std::unique_ptr<RecordingSource> m_source;
     std::unique_ptr<ContactBook> m_contacts;
     std::unique_ptr<FakeHttpServer> m_photon;
     std::unique_ptr<PlaceSearch> m_places;
@@ -133,7 +167,7 @@ void TestEventEdit::init()
     m_settings = std::make_unique<Settings>(m_dir->filePath(u"s.ini"_s));
     SettingsForeign::s_instance = m_settings.get();
     Clock::instance()->freeze(QDateTime(QDate(2026, 10, 7), QTime(13, 40)));
-    m_source = std::make_unique<SampleSource>();
+    m_source = std::make_unique<RecordingSource>();
     m_contacts = std::make_unique<ContactBook>(QString());
     m_contacts->setSource(m_source.get());
     ContactBookForeign::s_instance = m_contacts.get();
@@ -747,20 +781,56 @@ void TestEventEdit::detachedOccurrencesChangeAlone()
 {
     QQuickItem *form = openEditor(u"Climbing"_s);
     QVERIFY(form);
-    // Climbing as one occurrence of a series, changed on its own in Google.
-    QVariantMap detached = form->property("event").toMap();
-    detached.insert(u"seriesId"_s, u"climbing"_s);
-    detached.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=FR"_s});
+    // Climbing as one occurrence of a series, first still part of it.
+    QVariantMap occurrence = form->property("event").toMap();
+    occurrence.insert(u"seriesId"_s, u"climbing"_s);
+    occurrence.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=FR"_s});
+    QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, occurrence)));
+    QTRY_VERIFY(find(m_window->contentItem(), "QQuickText", "text", u"Repeats"_s));
+
+    // Then changed on its own in Google, so it has no repeat of its own to change.
+    QVariantMap detached = occurrence;
     detached.insert(u"detached"_s, true);
     QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, detached)));
     QVERIFY(!form->property("repeating").toBool());
-    // It has no repeat of its own to change.
     QTRY_VERIFY(!find(m_window->contentItem(), "QQuickText", "text", u"Repeats"_s));
 
     form->setProperty("title", u"Bouldering"_s);
     QVERIFY(QMetaObject::invokeMethod(form, "save"));
     QVERIFY(!form->property("asking").toBool());
     QVERIFY(!find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
+    QTRY_COMPARE(m_source->calls, QStringList{u"update one"_s});
+
+    // Its card answers and deletes it alone, without asking.
+    QObject *card = nullptr;
+    for (QObject *o : m_window->findChildren<QObject *>()) {
+        if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"EventDetails"_s))
+            card = o;
+    }
+    QVERIFY(card);
+    card->setProperty("event", detached);
+    QVERIFY(!card->property("repeats").toBool());
+    QVERIFY(QMetaObject::invokeMethod(card, "act", Q_ARG(QVariant, u"accepted"_s)));
+    QVERIFY(card->property("pending").toString().isEmpty());
+    QTRY_COMPARE(m_source->calls.size(), 2);
+    QVERIFY(QMetaObject::invokeMethod(card, "act", Q_ARG(QVariant, u"delete"_s)));
+    QTRY_COMPARE(m_source->calls.size(), 3);
+
+    // And dragging moves it alone too.
+    QObject *mover = nullptr;
+    for (QObject *o : m_window->findChildren<QObject *>()) {
+        if (QString::fromLatin1(o->metaObject()->className()).startsWith(u"EventMover"_s))
+            mover = o;
+    }
+    QVERIFY(mover);
+    QQuickItem *block = find(m_window->contentItem(), "EventBlock", "summary", u"Dentist"_s);
+    QVERIFY(block);
+    const QDateTime start = detached.value(u"start"_s).toDateTime();
+    QVERIFY(QMetaObject::invokeMethod(mover, "move", Q_ARG(QVariant, QVariant::fromValue(block)),
+                                      Q_ARG(QVariant, detached), Q_ARG(QVariant, start),
+                                      Q_ARG(QVariant, start.addSecs(3600))));
+    QTRY_COMPARE(m_source->calls,
+                 (QStringList{u"update one"_s, u"respond one"_s, u"delete one"_s, u"move one"_s}));
 }
 
 void TestEventEdit::customRepeatsAreWritten()

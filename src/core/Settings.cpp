@@ -24,8 +24,10 @@ const QString kWorkStart = u"week/workStart"_s;
 const QString kWorkEnd = u"week/workEnd"_s;
 const QString kShowWorkHours = u"week/showWorkHours"_s;
 const QString kDeveloperMode = u"developer/mode"_s;
-const QString kMapApp = u"general/mapApp"_s;
-const QString kSearchPlaces = u"general/searchPlacesOnline"_s;
+// Not "general": QSettings keeps keys without a group in [General], so a group of
+// that name is written as [%General] and read back as "General", losing it.
+const QString kMapApp = u"places/mapApp"_s;
+const QString kSearchPlaces = u"places/searchPlacesOnline"_s;
 const QStringList kMapApps = {u"system"_s, u"google"_s, u"osm"_s, u"apple"_s};
 const QString kVerboseLogging = u"developer/verboseLogging"_s;
 const QString kViMode = u"keyboard/viMode"_s;
@@ -53,6 +55,7 @@ const QStringList kViews{u"day"_s, u"week"_s, u"month"_s, u"agenda"_s};
 Settings::Settings(const QString &path, QObject *parent)
     : QObject(parent), m_store(path, QSettings::IniFormat)
 {
+    migrate();
     load();
     rebuildTimes();
 }
@@ -61,6 +64,21 @@ QString Settings::defaultPath()
 {
     return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + u'/' +
            identity::dirName() + u"/settings.ini"_s;
+}
+
+void Settings::migrate()
+{
+    // Callie 0.2 kept the place settings under "general", which a restart read
+    // back as "General", so the value found there, if any, is the last one saved.
+    for (const QString &group : {u"General"_s, u"general"_s}) {
+        for (const QString &key : {u"mapApp"_s, u"searchPlacesOnline"_s}) {
+            const QString old = group + u'/' + key;
+            const QString now = u"places/"_s + key;
+            if (m_store.contains(old) && !m_store.contains(now))
+                m_store.setValue(now, m_store.value(old));
+        }
+        m_store.remove(group);
+    }
 }
 
 void Settings::load()

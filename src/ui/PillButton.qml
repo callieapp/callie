@@ -8,6 +8,8 @@ AbstractButton {
     id: root
 
     property string label: ""
+    /// Shown on hover: what the button does, with its shortcut.
+    property string tip
     property bool selected: false
     /// Behind the label on hover, for places already on surfaceAlt.
     property color hoverColor: Theme.surfaceAlt
@@ -61,5 +63,15 @@ AbstractButton {
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
         font.weight: root.selected ? Font.ExtraBold : Font.Bold
+    }
+
+    // What the button does, and its shortcut, after resting on it a moment.
+    Tip {
+        parent: root
+        visible: root.tip !== "" && root.hovered && !root.pressed
+        text: root.tip
+        delay: Theme.durSlow * 2
+        // An open popup that takes Escape keeps the window's shortcuts from working.
+        closePolicy: Popup.NoAutoClose
     }
 }

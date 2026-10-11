@@ -106,6 +106,11 @@ Popup {
     function keysFor(id) {
         return keyTable.actions.find(a => a.id === id).standard
     }
+    /// `label` with the first key that does the same.
+    function tip(label, id) {
+        const keys = keyTable.actions.find(a => a.id === id).keys
+        return keys.length > 0 ? qsTr("%1 (%2)").arg(label).arg(keys[0]) : label
+    }
     Shortcut {
         sequences: root.keysFor("copy")
         enabled: root.opened && !root.editing
@@ -473,6 +478,7 @@ Popup {
                 }
                 StickerButton {
                     text: qsTr("Duplicate")
+                    tip: root.tip(qsTr("Duplicate this event"), "duplicate")
                     enabled: !actions.busy
                     onClicked: root.duplicate()
                 }

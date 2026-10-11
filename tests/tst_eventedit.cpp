@@ -82,6 +82,7 @@ private Q_SLOTS:
     void clickOutsideOnlyCloses();
     void topOfACascadeOpens();
     void titleBarFitsNarrowWindows();
+    void buttonsTellTheirShortcuts();
     void guestsComeFromSuggestions();
     void placesComeFromSuggestions();
     void callsInNotesJoinWithoutAVideoCall();
@@ -431,6 +432,20 @@ void TestEventEdit::topOfACascadeOpens()
     QCOMPARE(openCard(m_window), u"Quick sync w/ Sam"_s);
 }
 
+void TestEventEdit::buttonsTellTheirShortcuts()
+{
+    QQuickItem *today = find(m_window->contentItem(), "StickerButton", "text", u"Today"_s);
+    QVERIFY(today);
+    QCOMPARE(today->property("tip").toString(), u"Go to today (Alt+Home)"_s);
+    // In vi mode its single key too.
+    m_settings->setViMode(true);
+    QTRY_COMPARE(today->property("tip").toString(), u"Go to today (Alt+Home or t)"_s);
+    m_settings->setViMode(false);
+    QQuickItem *week = find(m_window->contentItem(), "PillButton", "label", u"Week"_s);
+    QVERIFY(week);
+    QCOMPARE(week->property("tip").toString(), u"Week view (Ctrl+2)"_s);
+}
+
 void TestEventEdit::titleBarFitsNarrowWindows()
 {
     // Every control in the title bar, wherever it sits in the item tree.
@@ -449,21 +464,42 @@ void TestEventEdit::titleBarFitsNarrowWindows()
             for (QQuickItem *child : item->childItems())
                 controls(child, found);
         };
-    // Each step's narrowest width, and the width just below it.
-    for (const int width : {1280, 1200, 1199, 1000, 999, 880, 879, 780, 779, 600}) {
-        m_window->resize(width, 600);
-        QTest::qWait(100);
-        QList<QRectF> boxes;
-        controls(m_window->contentItem(), boxes);
-        QVERIFY(boxes.size() >= 6);
-        std::sort(boxes.begin(), boxes.end(),
-                  [](const QRectF &a, const QRectF &b) { return a.left() < b.left(); });
-        for (qsizetype i = 1; i < boxes.size(); ++i)
-            QVERIFY2(boxes.at(i - 1).right() <= boxes.at(i).left() + 0.5,
-                     qPrintable(
-                         u"%1 px: controls overlap at x %2"_s.arg(width).arg(boxes.at(i).left())));
-        QVERIFY(boxes.last().right() <= width);
-    }
+    // Every width, narrowing, since what fits depends on what the bar shows:
+    // a month's name, or a week across two months, which is longer.
+    const QList<std::pair<QString, QDate>> titles = {{u"week"_s, QDate(2026, 10, 7)},
+                                                     {u"week"_s, QDate(2026, 9, 30)},
+                                                     {u"day"_s, QDate(2026, 9, 30)},
+                                                     {u"month"_s, QDate(2026, 9, 30)}};
+    for (const auto &[view, day] : titles)
+        for (int width = 1300; width >= 600; width -= 5) {
+            if (width == 1300) {
+                m_settings->setView(view);
+                m_window->setProperty("focusDate", day.startOfDay());
+            }
+            m_window->resize(width, 600);
+            QTest::qWait(30);
+            QList<QRectF> boxes;
+            controls(m_window->contentItem(), boxes);
+            QVERIFY(boxes.size() >= 6);
+            std::sort(boxes.begin(), boxes.end(),
+                      [](const QRectF &a, const QRectF &b) { return a.left() < b.left(); });
+            for (qsizetype i = 1; i < boxes.size(); ++i)
+                QVERIFY2(boxes.at(i - 1).right() <= boxes.at(i).left() + 0.5,
+                         qPrintable(u"%1 view of %2 at %3 px: controls overlap at x %4"_s
+                                        .arg(view, day.toString(Qt::ISODate))
+                                        .arg(width)
+                                        .arg(boxes.at(i).left())));
+            QVERIFY(boxes.last().right() <= width);
+            // Nor do the bar's two ends, titles included.
+            QObject *root = m_engine->rootObjects().first();
+            auto *leading = root->findChild<QQuickItem *>(u"leading"_s);
+            auto *trailing = root->findChild<QQuickItem *>(u"trailing"_s);
+            QVERIFY(leading && trailing);
+            QVERIFY2(leading->mapToScene({leading->width(), 0}).x() <= trailing->mapToScene({}).x(),
+                     qPrintable(u"%1 view of %2 at %3 px: the title bar's ends meet"_s
+                                    .arg(view, day.toString(Qt::ISODate))
+                                    .arg(width)));
+        }
 
     // Paging leaves the arrows where they were, even with short month names.
     m_window->resize(800, 600);

@@ -78,6 +78,8 @@ add_library(calliecore STATIC
     callie/LookedSource.h
     LookedSource.cpp
     callie/Outcome.h
+    callie/Releases.h
+    Releases.cpp
     callie/EventEdit.h
     EventEdit.cpp
     callie/Repeat.h

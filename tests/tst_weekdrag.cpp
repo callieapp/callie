@@ -339,13 +339,27 @@ void TestWeekDrag::heldAtAnEdgeCarriesToOtherDays()
                    i->property("date").toDateTime().date() == date;
         });
     };
+    // Found once the new grid has laid it out, in the fourth row.
     QQuickItem *target = nullptr;
-    QTRY_VERIFY((target = day(QDate(2026, 11, 20))));
+    QTRY_VERIFY((target = day(QDate(2026, 11, 20))) && target->y() > 0);
     const QPoint drop =
         target->mapToScene(QPointF(target->width() / 2, target->height() / 2)).toPoint();
     move(window, QPoint(edge.x(), pick.y()), drop);
     QTest::mouseRelease(window, Qt::LeftButton, {}, drop);
     QTRY_COMPARE(byId(id).start.date(), QDate(2026, 11, 20));
+
+    // Escape leaves no day marked for a drop.
+    QTRY_VERIFY((item = climbing()));
+    QTest::qWait(300);
+    const QPoint from = item->mapToScene(QPointF(item->width() / 2, item->height() / 2)).toPoint();
+    QTest::mousePress(window, Qt::LeftButton, {}, from);
+    move(window, from, QPoint(edge.x(), from.y()));
+    QTRY_VERIFY(focus().month() == 12);
+    move(window, QPoint(edge.x(), from.y()), from);
+    QTRY_VERIFY(month->property("dropIndex").toInt() >= 0);
+    QTest::keyClick(window, Qt::Key_Escape);
+    QTest::mouseRelease(window, Qt::LeftButton, {}, from);
+    QCOMPARE(month->property("dropIndex").toInt(), -1);
 }
 
 QTEST_MAIN(TestWeekDrag)

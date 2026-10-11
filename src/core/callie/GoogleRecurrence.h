@@ -6,6 +6,8 @@
 #include <QList>
 #include <QTimeZone>
 
+#include <optional>
+
 namespace callie {
 
 /// The occurrences of `events`, as stored by GoogleCache for one calendar,
@@ -15,6 +17,10 @@ namespace callie {
 [[nodiscard]] QList<Event> expandGoogleEvents(const QList<GoogleEvent> &events,
                                               const QDateTime &from, const QDateTime &to,
                                               const QTimeZone &viewZone);
+
+/// When the series' last occurrence ends, in UTC, or nothing when it repeats
+/// forever. An all-day series' dates are taken as UTC days.
+[[nodiscard]] std::optional<QDateTime> seriesEnd(const GoogleEvent &series);
 
 /// The days the series' EXDATE lines take out, in `zone`.
 [[nodiscard]] QList<QDate> excludedDays(const GoogleEvent &series, const QTimeZone &zone);

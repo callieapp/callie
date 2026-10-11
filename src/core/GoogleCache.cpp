@@ -1,4 +1,5 @@
 #include "callie/GoogleCache.h"
+#include "callie/GoogleRecurrence.h"
 #include "callie/Identity.h"
 
 #include "callie/Logging.h"
@@ -20,8 +21,9 @@ namespace callie {
 
 namespace {
 
-// Bump when the tables change. Older caches are dropped and fully re-synced.
-constexpr int kSchemaVersion = 6;
+// Bump when the tables change. Older caches are dropped and fully re-synced,
+// unless open() knows how to bring them up to date.
+constexpr int kSchemaVersion = 7;
 
 const char *const kSchema[] = {
     R"(CREATE TABLE calendars (
@@ -55,9 +57,21 @@ const char *const kSchema[] = {
         reminders_default INTEGER NOT NULL DEFAULT 1,
         reminders TEXT,
         event_type TEXT,
+        series_end TEXT,
         PRIMARY KEY (account, calendar_id, id)))",
     "CREATE INDEX events_series ON events (account, calendar_id, recurring_event_id)",
 };
+
+/// When a series' last occurrence ends, as stored so that reads can pass over
+/// series that ended long ago; null for anything else, or a series without end.
+QVariant seriesEndValue(const GoogleEvent &event)
+{
+    if (event.recurrence.isEmpty() || !event.recurringEventId.isEmpty())
+        return QVariant(QMetaType::fromType<QString>());
+    const std::optional<QDateTime> end = seriesEnd(event);
+    return end ? QVariant(end->toString(Qt::ISODateWithMs))
+               : QVariant(QMetaType::fromType<QString>());
+}
 
 QString accountKey(const Account &account)
 {
@@ -146,6 +160,17 @@ bool GoogleCache::open()
     version.finish();
     if (found == kSchemaVersion)
         return exec(QStringLiteral("PRAGMA journal_mode=WAL"));
+    // Schema 6 lacks only when each series ends, which its rows can tell.
+    if (found == 6) {
+        if (!db.transaction())
+            return fail(db.lastError().text());
+        if (!addSeriesEnds() ||
+            !exec(QStringLiteral("PRAGMA user_version = %1").arg(kSchemaVersion)) || !db.commit()) {
+            db.rollback();
+            return false;
+        }
+        return exec(QStringLiteral("PRAGMA journal_mode=WAL"));
+    }
 
     if (found != 0)
         qCInfo(lcSync) << "cache schema" << found << "is outdated, starting over";
@@ -162,6 +187,35 @@ bool GoogleCache::open()
         return ok ? fail(db.lastError().text()) : false;
     }
     return exec(QStringLiteral("PRAGMA journal_mode=WAL"));
+}
+
+bool GoogleCache::addSeriesEnds()
+{
+    QSqlDatabase db = QSqlDatabase::database(m_connection);
+    if (!exec(QStringLiteral("ALTER TABLE events ADD COLUMN series_end TEXT")))
+        return false;
+    const QString series = QStringLiteral(" FROM events WHERE IFNULL(recurrence, '') <> '' AND "
+                                          "IFNULL(recurring_event_id, '') = '' ORDER BY rowid");
+    QSqlQuery rows(db);
+    if (!rows.exec(u"SELECT rowid"_s + series))
+        return fail(rows.lastError().text());
+    QList<qint64> ids;
+    while (rows.next())
+        ids.append(rows.value(0).toLongLong());
+    QSqlQuery read(db);
+    read.prepare(u"SELECT *"_s + series);
+    const QList<GoogleEvent> events = readEvents(read);
+    if (events.size() != ids.size())
+        return fail(QObject::tr("the cache changed while being updated"));
+    QSqlQuery update(db);
+    update.prepare(QStringLiteral("UPDATE events SET series_end = ? WHERE rowid = ?"));
+    for (qsizetype i = 0; i < ids.size(); ++i) {
+        update.addBindValue(seriesEndValue(events.at(i)));
+        update.addBindValue(ids.at(i));
+        if (!update.exec())
+            return fail(update.lastError().text());
+    }
+    return true;
 }
 
 bool GoogleCache::openForReading()
@@ -327,13 +381,13 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         "end_zone, recurrence, recurring_event_id, original_date, original_time, original_zone, "
         "updated, response_status, attendees, organizer_self, guests_can_modify, "
         "reminders_default, "
-        "reminders, event_type) VALUES (:account, "
+        "reminders, event_type, series_end) VALUES (:account, "
         ":calendar, :id, :status, :summary, "
         ":description, :location, "
         ":conference, :start_date, :start_time, :start_zone, :end_date, :end_time, :end_zone, "
         ":recurrence, :series, :original_date, :original_time, :original_zone, :updated, "
         ":response, :attendees, :organizer_self, :guests_can_modify, :reminders_default, "
-        ":reminders, :event_type)"));
+        ":reminders, :event_type, :series_end)"));
     QSqlQuery remove(db);
     remove.prepare(QStringLiteral("DELETE FROM events WHERE account = :account AND "
                                   "calendar_id = :calendar AND (id = :id OR "
@@ -373,6 +427,7 @@ bool GoogleCache::writeEvents(const QString &key, const QString &calendarId,
         upsert.bindValue(QStringLiteral(":reminders_default"), event.remindersUseDefault);
         upsert.bindValue(QStringLiteral(":reminders"), joinMinutes(event.reminders));
         upsert.bindValue(QStringLiteral(":event_type"), event.eventType);
+        upsert.bindValue(QStringLiteral(":series_end"), seriesEndValue(event));
         ok = run(upsert);
     }
 
@@ -459,12 +514,15 @@ QList<GoogleEvent> GoogleCache::events(const Account &account, const QString &ca
         return {};
     QSqlDatabase db = QSqlDatabase::database(m_connection);
 
-    // Every series can reach the range, so they are read whole.
+    // Every series that has not ended can reach the range, so they are read
+    // whole. A day's slack covers all-day series, whose ends are UTC days.
     QSqlQuery series(db);
     series.prepare(QStringLiteral("SELECT * FROM events WHERE account = ? AND calendar_id = ? "
-                                  "AND IFNULL(recurrence, '') <> '' ORDER BY rowid"));
+                                  "AND IFNULL(recurrence, '') <> '' "
+                                  "AND (series_end IS NULL OR series_end >= ?) ORDER BY rowid"));
     series.addBindValue(accountKey(account));
     series.addBindValue(calendarId);
+    series.addBindValue(from.toUTC().addDays(-1).toString(Qt::ISODateWithMs));
     QList<GoogleEvent> result = readEvents(series);
 
     // An exception matters while the occurrence it replaces could overlap the

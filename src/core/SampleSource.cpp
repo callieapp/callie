@@ -147,6 +147,28 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
             if (e.end > from && e.start < to && !m_deleted.contains(e.eventId))
                 out.append(e);
         }
+
+        // Where Sam works each weekday, as Google's working locations say.
+        static const std::pair<Qt::DayOfWeek, const char *> kPlaces[] = {{Qt::Monday, "Office"},
+                                                                         {Qt::Tuesday, "Office"},
+                                                                         {Qt::Wednesday, "Home"},
+                                                                         {Qt::Thursday, "Office"},
+                                                                         {Qt::Friday, "Home"}};
+        for (const auto &[day, place] : kPlaces) {
+            const QDate date = week.addDays(day - Qt::Monday);
+            Event e;
+            e.uid = QStringLiteral("sample-place-%1").arg(int(day));
+            e.eventId = e.uid + u'-' + date.toString(Qt::ISODate);
+            e.calendarId = m_calendars.first().id;
+            e.color = m_calendars.first().color;
+            e.summary = QString::fromUtf8(place);
+            e.allDay = true;
+            e.workPlace = true;
+            e.start = QDateTime(date, QTime(0, 0), tz);
+            e.end = QDateTime(date.addDays(1), QTime(0, 0), tz);
+            if (e.end > from && e.start < to)
+                out.append(e);
+        }
     }
     for (Event e : m_created) {
         if (e.end > from && e.start < to && !m_deleted.contains(e.eventId)) {

@@ -94,6 +94,8 @@ private:
     bool pressFound(const QString &key);
     bool pressCalendars(const QString &key);
     void submit();
+    /// What `what` lists, asked of the CLI's commands so both list the same.
+    [[nodiscard]] QList<Event> ask(const std::function<QList<Event>(const Commands &)> &what) const;
     void showFound(const QString &title, QList<Event> events);
     void jumpTo(const Event &event);
     /// Answers or deletes through the commands the CLI runs, so the TUI

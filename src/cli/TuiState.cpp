@@ -3,7 +3,6 @@
 #include "Commands.h"
 
 #include "callie/QueuedSource.h"
-#include "callie/SearchModel.h"
 #include "callie/Settings.h"
 #include "callie/Times.h"
 
@@ -95,10 +94,15 @@ void TuiState::reload()
     m_selected = -1;
     if (was) {
         for (int i = 0; i < m_events.size(); ++i) {
-            if (m_events.at(i).eventId == was->eventId)
+            if (m_events.at(i).eventId == was->eventId &&
+                m_events.at(i).calendarId == was->calendarId)
                 m_selected = i;
         }
     }
+    // Details are of one event; once it is no longer shown, such as after
+    // declining it with declined events hidden, they close rather than move on.
+    if (m_selected < 0 && m_mode == Mode::Details)
+        m_mode = Mode::Browse;
     if (m_selected < 0 && !m_events.isEmpty())
         m_selected = 0;
     Q_EMIT changed();
@@ -214,16 +218,8 @@ bool TuiState::pressBrowsing(const QString &key)
         m_typing = key == u"n" ? Typing::NewEvent : Typing::Search;
         m_input.clear();
     } else if (key == u"i") {
-        // Invitations still waiting, as callie invites lists them.
-        const QDateTime now = m_now();
-        QList<Event> waiting;
-        for (const Event &e :
-             m_source->eventsBetween(now, now.addDays(90), m_settings.times()->zone())) {
-            if (e.responseStatus == u"needsAction" && e.canRespond &&
-                !m_settings.hiddenCalendars().contains(e.calendarId))
-                waiting.append(e);
-        }
-        showFound(tr("Invitations"), waiting);
+        showFound(tr("Invitations"),
+                  ask([](const Commands &commands) { return commands.waitingInvites(); }));
         return true;
     } else if (key == u"c") {
         m_mode = Mode::Calendars;
@@ -374,25 +370,17 @@ void TuiState::submit()
         });
         return;
     }
-    // A search, a year either side, as callie search reads.
     const QStringList words = text.split(u' ', Qt::SkipEmptyParts);
-    const QDateTime now = m_now();
-    // A repeating event once, as callie search lists it: its next occurrence,
-    // or its last if all have passed.
-    QHash<QString, Event> found;
-    for (const Event &e :
-         m_source->eventsBetween(now.addDays(-365), now.addDays(365), m_settings.times()->zone())) {
-        if (!SearchModel::matches(e, words) || m_settings.hiddenCalendars().contains(e.calendarId))
-            continue;
-        const QString key =
-            e.calendarId + u'/' + (e.detached || e.seriesId.isEmpty() ? e.eventId : e.seriesId);
-        const auto seen = found.constFind(key);
-        const bool upcoming = e.end > now;
-        if (seen == found.cend() || (upcoming ? (seen->end <= now || e.start < seen->start)
-                                              : (seen->end <= now && e.start > seen->start)))
-            found.insert(key, e);
-    }
-    showFound(tr("Found for %1").arg(text), found.values());
+    showFound(tr("Found for %1").arg(text),
+              ask([&words](const Commands &commands) { return commands.found(words); }));
+}
+
+QList<Event> TuiState::ask(const std::function<QList<Event>(const Commands &)> &what) const
+{
+    QString unused;
+    QTextStream out(&unused), err(&unused);
+    const Commands commands(*m_source, m_settings, out, err, m_now(), m_settings.times()->zone());
+    return what(commands);
 }
 
 void TuiState::showFound(const QString &title, QList<Event> events)

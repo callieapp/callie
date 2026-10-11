@@ -19,7 +19,7 @@ Popup {
     /// An answer ("accepted", "tentative", "declined") or "delete" waiting for
     /// its this-event-or-all choice, which repeating events ask for.
     property string pending
-    readonly property bool repeats: (event.seriesId || "") !== ""
+    readonly property bool repeats: (event.seriesId || "") !== "" && !event.detached
 
     property string summary
     property string when

@@ -113,6 +113,8 @@ Event toEvent(const GoogleEvent &source, const QTimeZone &viewZone)
     event.responseStatus = source.responseStatus;
     event.eventId = source.id;
     event.seriesId = source.recurringEventId;
+    // Google keeps an occurrence changed on its own as an exception of its own.
+    event.detached = !source.recurringEventId.isEmpty();
     bool invited = false;
     for (const QJsonValue &attendee : QJsonDocument::fromJson(source.attendees).array()) {
         // Rooms and other resources answer for themselves and are not people.

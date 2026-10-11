@@ -27,7 +27,8 @@ Item {
             return
         }
         moving = item
-        if (event.seriesId !== "") {
+        // A detached occurrence moves on its own, with nothing to ask.
+        if (event.seriesId !== "" && !event.detached) {
             placeBeside(item, choice)
             choice.ask(event, from, to)
         } else {

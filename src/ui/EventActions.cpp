@@ -17,6 +17,7 @@ Event EventActions::toEvent(const QVariantMap &event)
     e.calendarId = event.value(u"calendarId"_s).toString();
     e.eventId = event.value(u"eventId"_s).toString();
     e.seriesId = event.value(u"seriesId"_s).toString();
+    e.detached = event.value(u"detached"_s).toBool();
     e.summary = event.value(u"summary"_s).toString();
     e.allDay = event.value(u"allDay"_s).toBool();
     e.start = event.value(u"start"_s).toDateTime();

@@ -43,7 +43,8 @@ Column {
     property bool moreOptions: false
     /// Waiting to ask which occurrences a repeating event's change is for.
     property bool asking: false
-    readonly property bool repeating: (event.seriesId || "") !== ""
+    /// Asks which occurrences a change is for; a detached one changes alone.
+    readonly property bool repeating: (event.seriesId || "") !== "" && !event.detached
     /// The widest label of the repeat rows, so their controls line up.
     readonly property real labelWidth: Math.ceil(Math.max(repeatsMetrics.advanceWidth,
                                                           everyMetrics.advanceWidth,
@@ -289,7 +290,9 @@ Column {
     }
 
     // Repeat, from the choices for the start day.
+    // Google keeps one repeat rule per series, so a detached occurrence has none to change.
     FormRow {
+        visible: !root.event.detached
         width: parent.width
         label: qsTr("Repeats")
         labelWidth: root.labelWidth
@@ -321,7 +324,7 @@ Column {
     }
 
     CustomRepeat {
-        visible: root.repeat === "custom"
+        visible: root.repeat === "custom" && !root.event.detached
         width: parent.width
         editor: root
     }

@@ -112,8 +112,11 @@ void TestGoogleRecurrence::movedOccurrencesKeepTheSeriesRule()
                     "end":{"dateTime":"2026-10-06T12:00:00Z"}})")},
                utc(2026, 10, 5), utc(2026, 10, 8));
     QCOMPARE(events.size(), 3);
-    for (const Event &e : events)
+    for (const Event &e : events) {
         QCOMPARE(e.recurrence, QStringList{u"RRULE:FREQ=DAILY;COUNT=3"_s});
+        // Only the one changed on its own stands apart from the series.
+        QCOMPARE(e.detached, e.eventId == u"s_x");
+    }
 }
 
 void TestGoogleRecurrence::singleEventOverlapsRange()

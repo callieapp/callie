@@ -87,7 +87,7 @@ void InvitesModel::apply(const QList<Event> &events)
               [](const Event &a, const Event &b) { return a.start < b.start; });
     // Only the next occurrence of each series.
     invites.removeIf([&series](const Event &event) {
-        if (event.seriesId.isEmpty())
+        if (event.seriesId.isEmpty() || event.detached)
             return false;
         const QString key = event.calendarId + u'|' + event.seriesId;
         if (series.contains(key))
@@ -123,6 +123,7 @@ QVariantMap InvitesModel::inviteAt(int row) const
             {u"calendarId"_s, e.calendarId},
             {u"eventId"_s, e.eventId},
             {u"seriesId"_s, e.seriesId},
+            {u"detached"_s, e.detached},
             {u"recurrenceId"_s, e.recurrenceId},
             {u"allDay"_s, e.allDay},
             {u"start"_s, e.start},
@@ -146,7 +147,8 @@ QVariant InvitesModel::data(const QModelIndex &index, int role) const
     case EndRole: return e.end;
     case AllDayRole: return e.allDay;
     case CalendarColorRole: return e.color;
-    case RepeatsRole: return !e.seriesId.isEmpty();
+    // A detached occurrence is answered on its own.
+    case RepeatsRole: return !e.seriesId.isEmpty() && !e.detached;
     default: return {};
     }
 }

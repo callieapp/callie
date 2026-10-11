@@ -450,6 +450,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     case CalendarIdRole: return e.calendarId;
     case EventIdRole: return e.eventId;
     case SeriesIdRole: return e.seriesId;
+    case DetachedRole: return e.detached;
     case ResponseRole: return e.responseStatus;
     case AttendeesRole: return e.attendees;
     case ZoneRole: return e.zone;
@@ -502,6 +503,7 @@ QHash<int, QByteArray> EventModel::roleNames() const
         {CalendarIdRole, "calendarId"},
         {EventIdRole, "eventId"},
         {SeriesIdRole, "seriesId"},
+        {DetachedRole, "detached"},
         {ResponseRole, "response"},
         {AttendeesRole, "attendees"},
         {GuestsRole, "guests"},

@@ -59,6 +59,7 @@ class TestInvitesModel : public QObject
 private Q_SLOTS:
     void listsWaitingInvitesSoonestFirst();
     void answeringOneDropsIt();
+    void detachedInvitesAreAnsweredAlone();
     void clockTicksKeepTheList();
 };
 
@@ -97,6 +98,27 @@ void TestInvitesModel::listsWaitingInvitesSoonestFirst()
     // Once the review has passed it drops out, without a fresh read.
     model.setNow(at(8, 16));
     QCOMPARE(model.count(), 1);
+}
+
+void TestInvitesModel::detachedInvitesAreAnsweredAlone()
+{
+    // One occurrence changed on its own is its own invitation, beside its series.
+    ListSource source;
+    Event weekly = invite(u"Weekly"_s, at(9, 10));
+    weekly.seriesId = u"weekly"_s;
+    Event moved = invite(u"Weekly"_s, at(8, 14));
+    moved.seriesId = u"weekly"_s;
+    moved.detached = true;
+    source.events = {weekly, moved};
+
+    InvitesModel model;
+    model.setNow(at(7, 12));
+    model.setSource(&source);
+
+    QCOMPARE(model.count(), 2);
+    QVERIFY(!model.data(model.index(0), InvitesModel::RepeatsRole).toBool());
+    QVERIFY(model.inviteAt(0).value(u"detached"_s).toBool());
+    QVERIFY(model.data(model.index(1), InvitesModel::RepeatsRole).toBool());
 }
 
 void TestInvitesModel::answeringOneDropsIt()

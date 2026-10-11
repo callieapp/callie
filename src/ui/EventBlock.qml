@@ -172,7 +172,16 @@ Rectangle {
 
     HoverHandler {
         id: hover
-        cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+        cursorShape: drag.active ? Qt.ClosedHandCursor : denied.active ? Qt.ForbiddenCursor :
+                                                                         Qt.PointingHandCursor
+
+    }
+    // A read-only event cannot move; trying to drag it shows as much.
+    DragHandler {
+        id: denied
+        target: null
+        enabled: !root.canEdit
+        cursorShape: Qt.ForbiddenCursor
     }
     // Takes the tap for itself, so the event under it in a cascade does not open too.
     TapHandler {

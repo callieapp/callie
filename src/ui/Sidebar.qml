@@ -387,12 +387,25 @@ Rectangle {
                             }
                         }
 
-                        Repeater {
-                            model: group.collapsed && group.titled ? [] : root.events.calendars.filter(c
-                                                                                                       => c.account
-                                                                                                          === group.modelData)
+                        // Made a few at a time once the calendars are known, since
+                        // someone with many would otherwise hold up the window.
+                        Loader {
+                            width: parent.width
+                            active: root.events.calendars.length > 0
+                            asynchronous: true
 
-                            CalendarRow {}
+                            sourceComponent: Column {
+                                spacing: Theme.space1
+
+                                Repeater {
+                                    model: group.collapsed && group.titled ? [] :
+                                                                             root.events.calendars.filter(
+                                                                                 c => c.account
+                                                                                      === group.modelData)
+
+                                    CalendarRow {}
+                                }
+                            }
                         }
                     }
                 }
@@ -434,14 +447,19 @@ Rectangle {
             radius: Theme.radiusSm
             color: more.hovered ? Theme.border : "transparent"
         }
+        // Drawn once it shows, since every row has one.
         contentItem: Item {
-            Glyph {
+            Loader {
                 anchors.centerIn: parent
-                width: Theme.smallGlyphSize + 2
-                height: Theme.smallGlyphSize + 2
-                stroke: Theme.smallGlyphStroke
-                name: "more"
-                color: Theme.textMuted
+                active: more.opacity > 0
+
+                sourceComponent: Glyph {
+                    width: Theme.smallGlyphSize + 2
+                    height: Theme.smallGlyphSize + 2
+                    stroke: Theme.smallGlyphStroke
+                    name: "more"
+                    color: Theme.textMuted
+                }
             }
         }
     }

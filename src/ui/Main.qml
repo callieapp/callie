@@ -886,38 +886,58 @@ ApplicationWindow {
         }
     }
 
-    AboutDialog {
+    LazyPopup {
         id: about
-        onWhatsNewRequested: whatsNew.open()
+        sourceComponent: AboutDialog {
+            onWhatsNewRequested: whatsNew.open()
+        }
     }
 
-    WhatsNewDialog {
+    LazyPopup {
         id: whatsNew
+        sourceComponent: WhatsNewDialog {}
     }
 
-    // The first start of a new version says what changed, once.
+    // The first start of a new version says what changed, once. It waits for
+    // the first events to show, so the card does not open over a window still
+    // busy loading.
+    Connections {
+        target: events
+        enabled: !whatsNewDelay.checked
+        function onRevisionChanged() {
+            whatsNewDelay.start()
+        }
+    }
     Timer {
-        running: true
-        interval: 600
+        id: whatsNewDelay
+
+        property bool checked: false
+
+        interval: 400
         onTriggered: {
+            checked = true
             if (Release.takeUpdateNotice())
                 whatsNew.open()
         }
     }
 
-    SettingsDialog {
+    LazyPopup {
         id: settingsDialog
-        syncReport: window.source.syncReport
-        source: window.source
-        onEditColorsRequested: {
-            close()
-            themeEditor.open()
+        sourceComponent: SettingsDialog {
+            syncReport: window.source.syncReport
+            source: window.source
+            onEditColorsRequested: {
+                close()
+                themeEditor.open()
+            }
         }
     }
 
-    ThemeEditor {
+    LazyPopup {
         id: themeEditor
-        onFinished: settingsDialog.open()
+        sourceComponent: ThemeEditor {
+            onFinished: settingsDialog.open()
+        }
     }
 
     SearchPopup {
@@ -1071,9 +1091,17 @@ ApplicationWindow {
         }
     }
 
+    /// KeyRouter's actions by id, read once: the list is rebuilt on every read.
+    readonly property var keyActions: {
+        const byId = {}
+        for (const action of keys.actions)
+            byId[action.id] = action
+        return byId
+    }
+
     /// `label` with the keys that do the same, from the table the help lists.
     function tip(label, actionId) {
-        const action = keys.actions.find(a => a.id === actionId)
+        const action = keyActions[actionId]
         if (!action)
             return label
         const shortcuts = action.keys.slice(0, 1)
@@ -1116,9 +1144,11 @@ ApplicationWindow {
         router: keys
     }
 
-    KeyHelp {
+    LazyPopup {
         id: keyHelp
-        actions: keys.actions
+        sourceComponent: KeyHelp {
+            actions: keys.actions
+        }
     }
 
     Rectangle {

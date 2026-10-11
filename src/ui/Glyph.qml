@@ -46,176 +46,228 @@ Item {
         }
     }
 
-    Repeater {
-        model: root.bars
+    // Icons drawn from bars.
+    Loader {
+        anchors.fill: parent
+        active: root.bars.length > 0
 
-        Rectangle {
-            required property var modelData
+        sourceComponent: Item {
+            Repeater {
+                model: root.bars
 
-            width: root.width * modelData[0]
-            height: root.stroke
-            radius: root.stroke / 2
-            color: root.color
-            antialiasing: true
-            x: root.width * modelData[2] - width / 2
-            y: root.height * modelData[3] - height / 2
-            rotation: modelData[1]
+                Rectangle {
+                    required property var modelData
+
+                    width: root.width * modelData[0]
+                    height: root.stroke
+                    radius: root.stroke / 2
+                    color: root.color
+                    antialiasing: true
+                    x: root.width * modelData[2] - width / 2
+                    y: root.height * modelData[3] - height / 2
+                    rotation: modelData[1]
+                }
+            }
         }
     }
 
-    // A bell: a dome flaring to a rim, with the clapper below.
-    Canvas {
-        id: bell
-        visible: root.name === "bell"
+    // The rest have shapes of their own; only the one shown is made.
+    Loader {
         anchors.fill: parent
-        antialiasing: true
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.reset()
-            const w = width, h = height, s = root.stroke
-            ctx.strokeStyle = root.color
-            ctx.fillStyle = root.color
-            ctx.lineWidth = s
-            ctx.lineCap = "round"
-            ctx.lineJoin = "round"
-            ctx.beginPath()
-            ctx.moveTo(w * 0.14, h * 0.74)
-            ctx.quadraticCurveTo(w * 0.26, h * 0.62, w * 0.26, h * 0.44)
-            ctx.arc(w * 0.5, h * 0.44, w * 0.24, Math.PI, 0)
-            ctx.quadraticCurveTo(w * 0.74, h * 0.62, w * 0.86, h * 0.74)
-            ctx.closePath()
-            ctx.stroke()
-            ctx.beginPath()
-            ctx.arc(w * 0.5, h * 0.86, s * 0.9, 0, 2 * Math.PI)
-            ctx.fill()
-        }
+        sourceComponent: ({
+                              "bell": bellShape,
+                              "refresh": refreshShape,
+                              "more": moreShape,
+                              "search": searchShape,
+                              "video": videoShape,
+                              "maximize": frameShape,
+                              "restore": frameShape
+                          })[root.name] ?? null
+    }
 
-        Connections {
-            target: root
-            function onColorChanged() {
-                bell.requestPaint()
+    // A bell: a dome flaring to a rim, with the clapper below.
+    Component {
+        id: bellShape
+
+        Item {
+            Canvas {
+                id: bell
+                anchors.fill: parent
+                antialiasing: true
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.reset()
+                    const w = width, h = height, s = root.stroke
+                    ctx.strokeStyle = root.color
+                    ctx.fillStyle = root.color
+                    ctx.lineWidth = s
+                    ctx.lineCap = "round"
+                    ctx.lineJoin = "round"
+                    ctx.beginPath()
+                    ctx.moveTo(w * 0.14, h * 0.74)
+                    ctx.quadraticCurveTo(w * 0.26, h * 0.62, w * 0.26, h * 0.44)
+                    ctx.arc(w * 0.5, h * 0.44, w * 0.24, Math.PI, 0)
+                    ctx.quadraticCurveTo(w * 0.74, h * 0.62, w * 0.86, h * 0.74)
+                    ctx.closePath()
+                    ctx.stroke()
+                    ctx.beginPath()
+                    ctx.arc(w * 0.5, h * 0.86, s * 0.9, 0, 2 * Math.PI)
+                    ctx.fill()
+                }
+
+                Connections {
+                    target: root
+                    function onColorChanged() {
+                        bell.requestPaint()
+                    }
+                }
             }
         }
     }
 
     // Most of a circle with an arrowhead at its open end, for refresh.
-    Canvas {
-        id: arc
-        visible: root.name === "refresh"
-        anchors.fill: parent
-        antialiasing: true
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.reset()
-            // On a 24-unit grid inset by half the stroke, so nothing pokes out.
-            const unit = (width - root.stroke) / 24
-            const at = v => root.stroke / 2 + v * unit
-            ctx.strokeStyle = root.color
-            ctx.lineWidth = root.stroke
-            ctx.lineCap = "round"
-            ctx.lineJoin = "round"
-            // Round from the right, open at the upper right.
-            ctx.beginPath()
-            ctx.arc(at(12), at(12), 9 * unit, 0, Math.PI * 1.78)
-            ctx.stroke()
-            // A corner for the head, inside the circle's box.
-            ctx.beginPath()
-            ctx.moveTo(at(21), at(3))
-            ctx.lineTo(at(21), at(9))
-            ctx.lineTo(at(15), at(9))
-            ctx.stroke()
-        }
+    Component {
+        id: refreshShape
 
-        Connections {
-            target: root
-            function onColorChanged() {
-                arc.requestPaint()
-            }
-            function onStrokeChanged() {
-                arc.requestPaint()
+        Item {
+            Canvas {
+                id: arc
+                anchors.fill: parent
+                antialiasing: true
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.reset()
+                    // On a 24-unit grid inset by half the stroke, so nothing pokes out.
+                    const unit = (width - root.stroke) / 24
+                    const at = v => root.stroke / 2 + v * unit
+                    ctx.strokeStyle = root.color
+                    ctx.lineWidth = root.stroke
+                    ctx.lineCap = "round"
+                    ctx.lineJoin = "round"
+                    // Round from the right, open at the upper right.
+                    ctx.beginPath()
+                    ctx.arc(at(12), at(12), 9 * unit, 0, Math.PI * 1.78)
+                    ctx.stroke()
+                    // A corner for the head, inside the circle's box.
+                    ctx.beginPath()
+                    ctx.moveTo(at(21), at(3))
+                    ctx.lineTo(at(21), at(9))
+                    ctx.lineTo(at(15), at(9))
+                    ctx.stroke()
+                }
+
+                Connections {
+                    target: root
+                    function onColorChanged() {
+                        arc.requestPaint()
+                    }
+                    function onStrokeChanged() {
+                        arc.requestPaint()
+                    }
+                }
             }
         }
     }
 
     // More: three dots in a row.
-    Repeater {
-        model: root.name === "more" ? [0.2, 0.5, 0.8] : []
+    Component {
+        id: moreShape
 
-        Rectangle {
-            required property real modelData
+        Item {
+            Repeater {
+                model: root.name === "more" ? [0.2, 0.5, 0.8] : []
 
-            width: root.stroke * 1.5
-            height: width
-            radius: width / 2
-            color: root.color
-            antialiasing: true
-            x: root.width * modelData - width / 2
-            y: root.height / 2 - height / 2
+                Rectangle {
+                    required property real modelData
+
+                    width: root.stroke * 1.5
+                    height: width
+                    radius: width / 2
+                    color: root.color
+                    antialiasing: true
+                    x: root.width * modelData - width / 2
+                    y: root.height / 2 - height / 2
+                }
+            }
         }
     }
 
     // Search: a lens with a handle.
-    Rectangle {
-        visible: root.name === "search"
-        x: root.width * 0.08
-        y: root.height * 0.08
-        width: root.width * 0.6
-        height: width
-        radius: width / 2
-        color: "transparent"
-        border.width: root.stroke
-        border.color: root.color
-        antialiasing: true
-    }
-    Rectangle {
-        visible: root.name === "search"
-        width: root.width * 0.34
-        height: root.stroke
-        radius: root.stroke / 2
-        color: root.color
-        antialiasing: true
-        rotation: 45
-        x: root.width * 0.76 - width / 2
-        y: root.height * 0.76 - height / 2
+    Component {
+        id: searchShape
+
+        Item {
+            Rectangle {
+                x: root.width * 0.08
+                y: root.height * 0.08
+                width: root.width * 0.6
+                height: width
+                radius: width / 2
+                color: "transparent"
+                border.width: root.stroke
+                border.color: root.color
+                antialiasing: true
+            }
+            Rectangle {
+                width: root.width * 0.34
+                height: root.stroke
+                radius: root.stroke / 2
+                color: root.color
+                antialiasing: true
+                rotation: 45
+                x: root.width * 0.76 - width / 2
+                y: root.height * 0.76 - height / 2
+            }
+        }
     }
 
     // The video camera's body.
-    Rectangle {
-        visible: root.name === "video"
-        x: 0
-        y: root.height * 0.24
-        width: root.width * 0.62
-        height: root.height * 0.52
-        radius: root.stroke * 1.2
-        color: "transparent"
-        border.width: root.stroke * 0.85
-        border.color: root.color
-        antialiasing: true
+    Component {
+        id: videoShape
+
+        Item {
+            Rectangle {
+                x: 0
+                y: root.height * 0.24
+                width: root.width * 0.62
+                height: root.height * 0.52
+                radius: root.stroke * 1.2
+                color: "transparent"
+                border.width: root.stroke * 0.85
+                border.color: root.color
+                antialiasing: true
+            }
+        }
     }
 
     // Maximize is a rounded square; restore adds a second one behind it.
-    Rectangle {
-        visible: root.name === "maximize" || root.name === "restore"
-        anchors.centerIn: parent
-        width: root.width * (root.name === "restore" ? 0.48 : 0.6)
-        height: width
-        radius: root.stroke
-        color: "transparent"
-        border.width: root.stroke * 0.85
-        border.color: root.color
-        antialiasing: true
-    }
-    Rectangle {
-        visible: root.name === "restore"
-        x: root.width * 0.38
-        y: root.height * 0.14
-        width: root.width * 0.48
-        height: width
-        radius: root.stroke
-        color: "transparent"
-        border.width: root.stroke * 0.85
-        border.color: root.color
-        opacity: 0.6
-        antialiasing: true
+    Component {
+        id: frameShape
+
+        Item {
+            Rectangle {
+                anchors.centerIn: parent
+                width: root.width * (root.name === "restore" ? 0.48 : 0.6)
+                height: width
+                radius: root.stroke
+                color: "transparent"
+                border.width: root.stroke * 0.85
+                border.color: root.color
+                antialiasing: true
+            }
+            Rectangle {
+                visible: root.name === "restore"
+                x: root.width * 0.38
+                y: root.height * 0.14
+                width: root.width * 0.48
+                height: width
+                radius: root.stroke
+                color: "transparent"
+                border.width: root.stroke * 0.85
+                border.color: root.color
+                opacity: 0.6
+                antialiasing: true
+            }
+        }
     }
 }

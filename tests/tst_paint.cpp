@@ -1,7 +1,11 @@
 #include "Paint.h"
 
+#include "callie/Color.h"
+#include "callie/ThemeLoader.h"
+
 #include <QTest>
 
+using namespace callie;
 using namespace callie::cli;
 using namespace Qt::StringLiterals;
 
@@ -14,6 +18,7 @@ private Q_SLOTS:
     void nearestColorsAreClose();
     void plainWhenOff();
     void pipesGetNoColor();
+    void calendarsLookAsInTheApp();
 };
 
 void TestPaint::eachDepthHasItsOwnCodes()
@@ -54,6 +59,27 @@ void TestPaint::pipesGetNoColor()
     qputenv("NO_COLOR", "1");
     QCOMPARE(Paint::detect(1), Paint::Depth::None);
     qunsetenv("NO_COLOR");
+}
+
+void TestPaint::calendarsLookAsInTheApp()
+{
+    // Fitted to the theme: the fill and the ink keep the calendar's hue.
+    ThemeSpec fitted = ThemeLoader::defaultTheme();
+    fitted.calendar.harmonize = true;
+    const Palette themed(fitted);
+    const QColor red(213, 0, 0);
+    QCOMPARE(themed.fill(red),
+             color::harmonize(red, fitted.calendar.lightness, fitted.calendar.chroma));
+    QCOMPARE(themed.ink(red),
+             color::harmonize(red, fitted.calendar.inkLightness, fitted.calendar.inkChroma));
+
+    // A theme that shows calendars as they are: black or white ink, whichever reads.
+    ThemeSpec plain = ThemeLoader::defaultTheme();
+    plain.calendar.harmonize = false;
+    const Palette raw(plain);
+    QCOMPARE(raw.fill(red), red);
+    QCOMPARE(raw.ink(QColor(250, 240, 120)), QColor(0, 0, 0));
+    QCOMPARE(raw.ink(QColor(30, 30, 90)), QColor(255, 255, 255));
 }
 
 QTEST_GUILESS_MAIN(TestPaint)

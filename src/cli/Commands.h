@@ -50,7 +50,6 @@ public:
     Commands(CalendarSource &source, Settings &settings, QTextStream &out, QTextStream &err,
              QDateTime now, QTimeZone zone);
 
-    /// Colors the output for a terminal.
     /// Colors for a terminal; output is plain without them.
     void setPaint(const Paint &paint) { m_paint = paint; }
 

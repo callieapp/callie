@@ -9,6 +9,8 @@ AbstractButton {
     id: root
 
     property string glyph
+    /// Shown on hover: what the button does, with its shortcut.
+    property string tip
     /// Line weight of the glyph; busy glyphs such as settings read better thinner.
     property real glyphStroke: 2.2
     property bool accent: false
@@ -85,5 +87,15 @@ AbstractButton {
                 font.weight: Font.ExtraBold
             }
         }
+    }
+
+    // What the button does, and its shortcut, after resting on it a moment.
+    Tip {
+        parent: root
+        visible: root.tip !== "" && root.hovered && !root.pressed
+        text: root.tip
+        delay: Theme.durSlow * 2
+        // An open popup that takes Escape keeps the window's shortcuts from working.
+        closePolicy: Popup.NoAutoClose
     }
 }

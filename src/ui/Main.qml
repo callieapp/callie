@@ -32,7 +32,27 @@ ApplicationWindow {
     /// How much the title bar gives up to fit: 0 shows everything; 1 folds the
     /// view switcher into a menu; 2 shortens the month and the New button; 3
     /// drops the logo and year and moves Settings into the ? menu.
-    readonly property int squeeze: width >= 1200 ? 0 : width >= 1000 ? 1 : width >= 780 ? 2 : 3
+    /// How far the title bar folds, from 0 with everything to 3: chosen by what
+    /// fits, since its parts' widths follow the month, the sync label and the language.
+    property int squeeze: 0
+    /// The width the title bar needed at each fold when last shown, to know when
+    /// a wider one fits again.
+    property var squeezeNeeds: [0, 0, 0, 0]
+
+    /// Folds the title bar one step when its two ends would meet, and unfolds
+    /// one when the wider layout last fitted the space there is now.
+    function fitTitleBar() {
+        const available = titleBar.width
+        const needed = leading.anchors.leftMargin + leading.width + Theme.space5 + trailing.width
+              + trailing.anchors.rightMargin
+        const needs = squeezeNeeds.slice()
+        needs[squeeze] = needed
+        squeezeNeeds = needs
+        if (needed > available && squeeze < 3)
+            squeeze += 1
+        else if (squeeze > 0 && needs[squeeze - 1] > 0 && needs[squeeze - 1] <= available)
+            squeeze -= 1
+    }
     /// The sidebar gives way to the calendar in a narrow window.
     readonly property bool showSidebar: width >= 880
     minimumHeight: 560
@@ -215,8 +235,12 @@ ApplicationWindow {
                 color: Theme.border
             }
 
+            onWidthChanged: Qt.callLater(window.fitTitleBar)
+
             Row {
                 id: leading
+                objectName: "leading"
+                onWidthChanged: Qt.callLater(window.fitTitleBar)
                 anchors {
                     left: parent.left
                     verticalCenter: parent.verticalCenter
@@ -236,6 +260,7 @@ ApplicationWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     glyph: "menu"
                     Accessible.name: qsTr("Calendars and today")
+                    tip: Accessible.name
                     onClicked: sidebarDrawer.open()
                 }
 
@@ -319,6 +344,7 @@ ApplicationWindow {
                                               "agenda": qsTr("Previous %n days", "",
                                                              window.rangeDays)
                                           })[window.view]
+                        tip: window.tip(Accessible.name, "previous")
                         onClicked: window.step(-1)
                     }
                     StickerButton {
@@ -329,6 +355,7 @@ ApplicationWindow {
                                               "month": qsTr("Next month"),
                                               "agenda": qsTr("Next %n days", "", window.rangeDays)
                                           })[window.view]
+                        tip: window.tip(Accessible.name, "next")
                         onClicked: window.step(1)
                     }
                 }
@@ -336,6 +363,7 @@ ApplicationWindow {
                 StickerButton {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("Today")
+                    tip: window.tip(qsTr("Go to today"), "today")
                     onClicked: window.focusDate = window.today()
                 }
 
@@ -347,6 +375,7 @@ ApplicationWindow {
                     glyph: "plus"
                     text: window.squeeze >= 2 ? "" : qsTr("New")
                     Accessible.name: qsTr("New event")
+                    tip: window.tip(Accessible.name, "newEvent")
                     onClicked: quickAdd.open()
 
                     QuickAddPopup {
@@ -367,6 +396,8 @@ ApplicationWindow {
 
             Row {
                 id: trailing
+                objectName: "trailing"
+                onWidthChanged: Qt.callLater(window.fitTitleBar)
                 anchors {
                     right: parent.right
                     verticalCenter: parent.verticalCenter
@@ -384,6 +415,14 @@ ApplicationWindow {
                     Accessible.name: invites.count > 0 ? qsTr("%1 invitations waiting").arg(
                                                              invites.count) : qsTr("Invitations")
                     onClicked: invitesTray.opened ? invitesTray.close() : invitesTray.open()
+
+                    Tip {
+                        parent: invitesButton
+                        visible: invitesButton.hovered && !invitesTray.opened
+                        text: window.tip(invitesButton.Accessible.name, "invites")
+                        delay: Theme.durSlow * 2
+                        closePolicy: Popup.NoAutoClose
+                    }
 
                     HoverHandler {
                         cursorShape: Qt.PointingHandCursor
@@ -445,6 +484,14 @@ ApplicationWindow {
                     enabled: !window.source.syncing
                     Accessible.name: qsTr("Sync now")
                     onClicked: window.source.refresh()
+
+                    Tip {
+                        parent: refreshButton
+                        visible: refreshButton.hovered
+                        text: window.tip(refreshButton.Accessible.name, "refresh")
+                        delay: Theme.durSlow * 2
+                        closePolicy: Popup.NoAutoClose
+                    }
 
                     HoverHandler {
                         cursorShape: Qt.PointingHandCursor
@@ -611,6 +658,8 @@ ApplicationWindow {
                                 required property var modelData
                                 label: modelData.label
                                 selected: window.view === modelData.id
+                                tip: window.tip(qsTr("%1 view").arg(modelData.label), modelData.id
+                                                + "View")
                                 onClicked: Settings.view = modelData.id
                             }
                         }
@@ -646,6 +695,7 @@ ApplicationWindow {
                         glyph: "search"
                         glyphStroke: Theme.fineGlyphStroke
                         Accessible.name: qsTr("Search events")
+                        tip: window.tip(Accessible.name, "search")
                         onClicked: searchPopup.open()
                     }
 
@@ -655,6 +705,7 @@ ApplicationWindow {
                         glyph: "settings"
                         glyphStroke: Theme.fineGlyphStroke
                         Accessible.name: qsTr("Settings")
+                        tip: window.tip(Accessible.name, "settings")
                         onClicked: settingsDialog.open()
                     }
 
@@ -664,6 +715,7 @@ ApplicationWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "?"
                         Accessible.name: qsTr("Help")
+                        tip: qsTr("Help, shortcuts and about")
                         onClicked: helpMenu.popup(helpButton, 0, helpButton.height + Theme.space3)
 
                         Tip {
@@ -1015,6 +1067,18 @@ ApplicationWindow {
             Qt.quit()
             break
         }
+    }
+
+    /// `label` with the keys that do the same, from the table the help lists.
+    function tip(label, actionId) {
+        const action = keys.actions.find(a => a.id === actionId)
+        if (!action)
+            return label
+        const shortcuts = action.keys.slice(0, 1)
+        if (Settings.viMode && action.vi !== "")
+            shortcuts.push(action.vi)
+        return shortcuts.length > 0 ? qsTr("%1 (%2)").arg(label).arg(shortcuts.join(qsTr(" or "))) :
+                                      label
     }
 
     KeyRouter {

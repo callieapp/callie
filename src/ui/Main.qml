@@ -29,11 +29,10 @@ ApplicationWindow {
             "label": qsTr("Agenda")
         }
     ]
-    /// How much the title bar gives up to fit: 0 shows everything; 1 folds the
-    /// view switcher into a menu; 2 shortens the month and the New button; 3
-    /// drops the logo and year and moves Settings into the ? menu.
-    /// How far the title bar folds, from 0 with everything to 3: chosen by what
-    /// fits, since its parts' widths follow the month, the sync label and the language.
+    /// How far the title bar folds, chosen by what fits since its parts' widths
+    /// follow the month, the sync label and the language: 0 shows everything; 1
+    /// folds the view switcher into a menu; 2 shortens the month and the New
+    /// button; 3 drops the logo and year and moves Settings into the ? menu.
     property int squeeze: 0
     /// The width the title bar needed at each fold when last shown, to know when
     /// a wider one fits again.

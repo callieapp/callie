@@ -464,42 +464,52 @@ void TestEventEdit::titleBarFitsNarrowWindows()
             for (QQuickItem *child : item->childItems())
                 controls(child, found);
         };
-    // Every width, narrowing, since what fits depends on what the bar shows:
-    // a month's name, or a week across two months, which is longer.
+    // What is wrong with the bar at this width, or nothing.
+    QObject *root = m_engine->rootObjects().first();
+    auto *leading = root->findChild<QQuickItem *>(u"leading"_s);
+    auto *trailing = root->findChild<QQuickItem *>(u"trailing"_s);
+    QVERIFY(leading && trailing);
+    const auto problem = [&](int width) -> QString {
+        QList<QRectF> boxes;
+        controls(m_window->contentItem(), boxes);
+        if (boxes.size() < 6)
+            return u"controls are missing"_s;
+        std::sort(boxes.begin(), boxes.end(),
+                  [](const QRectF &a, const QRectF &b) { return a.left() < b.left(); });
+        for (qsizetype i = 1; i < boxes.size(); ++i) {
+            if (boxes.at(i - 1).right() > boxes.at(i).left() + 0.5)
+                return u"controls overlap at x %1"_s.arg(boxes.at(i).left());
+        }
+        if (boxes.last().right() > width)
+            return u"controls run off the edge"_s;
+        // Nor do the bar's two ends, titles included.
+        if (leading->mapToScene({leading->width(), 0}).x() > trailing->mapToScene({}).x())
+            return u"the title bar's ends meet"_s;
+        return {};
+    };
+    // Every width, narrowing then widening, since what fits depends on what
+    // the bar shows: a month's name, or a week across two months, which is longer.
     const QList<std::pair<QString, QDate>> titles = {{u"week"_s, QDate(2026, 10, 7)},
                                                      {u"week"_s, QDate(2026, 9, 30)},
                                                      {u"day"_s, QDate(2026, 9, 30)},
                                                      {u"month"_s, QDate(2026, 9, 30)}};
-    for (const auto &[view, day] : titles)
-        for (int width = 1300; width >= 600; width -= 5) {
-            if (width == 1300) {
-                m_settings->setView(view);
-                m_window->setProperty("focusDate", day.startOfDay());
-            }
+    for (const auto &[view, day] : titles) {
+        m_settings->setView(view);
+        m_window->setProperty("focusDate", day.startOfDay());
+        QList<int> widths;
+        for (int width = 1300; width >= 600; width -= 5)
+            widths.append(width);
+        for (int width = 605; width <= 1300; width += 5)
+            widths.append(width);
+        for (int width : std::as_const(widths)) {
             m_window->resize(width, 600);
-            QTest::qWait(30);
-            QList<QRectF> boxes;
-            controls(m_window->contentItem(), boxes);
-            QVERIFY(boxes.size() >= 6);
-            std::sort(boxes.begin(), boxes.end(),
-                      [](const QRectF &a, const QRectF &b) { return a.left() < b.left(); });
-            for (qsizetype i = 1; i < boxes.size(); ++i)
-                QVERIFY2(boxes.at(i - 1).right() <= boxes.at(i).left() + 0.5,
-                         qPrintable(u"%1 view of %2 at %3 px: controls overlap at x %4"_s
-                                        .arg(view, day.toString(Qt::ISODate))
-                                        .arg(width)
-                                        .arg(boxes.at(i).left())));
-            QVERIFY(boxes.last().right() <= width);
-            // Nor do the bar's two ends, titles included.
-            QObject *root = m_engine->rootObjects().first();
-            auto *leading = root->findChild<QQuickItem *>(u"leading"_s);
-            auto *trailing = root->findChild<QQuickItem *>(u"trailing"_s);
-            QVERIFY(leading && trailing);
-            QVERIFY2(leading->mapToScene({leading->width(), 0}).x() <= trailing->mapToScene({}).x(),
-                     qPrintable(u"%1 view of %2 at %3 px: the title bar's ends meet"_s
-                                    .arg(view, day.toString(Qt::ISODate))
-                                    .arg(width)));
+            // Let the resize land before checking, then give any folds time.
+            QTest::qWait(20);
+            QTRY_COMPARE_WITH_TIMEOUT(problem(width), QString(), 2000);
         }
+        // Wide again, nothing stays folded.
+        QTRY_COMPARE(m_window->property("squeeze").toInt(), 0);
+    }
 
     // Paging leaves the arrows where they were, even with short month names.
     m_window->resize(800, 600);

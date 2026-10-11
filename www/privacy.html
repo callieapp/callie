@@ -22,15 +22,17 @@
 </header>
 
 <h1>Privacy Policy</h1>
-<p class="meta">Last updated: 9 October 2026</p>
+<p class="meta">Last updated: 11 October 2026</p>
 
 <h2>Summary</h2>
 <p>
   Callie is a desktop application that runs entirely on your computer. It has no servers,
   no accounts, and no analytics. It does not collect, transmit, or sell your data. Your
   calendar information travels between your computer and the calendar providers you
-  choose to connect, and nowhere else. The one exception is place search, which sends
-  what you type as an event's place to a map search service, and which you can turn off.
+  choose to connect, and nowhere else. Two things reach other services, and you can turn
+  either off: place search, which sends what you type as an event's place to a map search
+  service, and a daily check for a new release, which asks GitHub for Callie's latest
+  version.
 </p>
 
 <h2>What Callie accesses</h2>
@@ -62,6 +64,17 @@
   times or guests. You can turn this off in Settings, under General, with "Search
   OpenStreetMap for places". Clicking an event's place opens it in the map app or website
   you choose there, which then receives the place.
+</p>
+
+<h2>Update checks</h2>
+<p>
+  Once a day, the Callie app and the <code>callie</code> command ask GitHub for the version
+  number of Callie's latest release, so they can say when a newer one is out. GitHub
+  receives a request for that public information and, like any website, your IP address;
+  nothing about your calendars or accounts. You can turn this off in Settings, under
+  General, with "Say when a new release is out", or with
+  <code>callie settings checkForUpdates false</code>. <code>callie upgrade</code> and
+  <code>callie downgrade</code> download a release from GitHub only when you run them.
 </p>
 
 <h2>Where information is stored</h2>

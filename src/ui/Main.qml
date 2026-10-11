@@ -723,6 +723,19 @@ ApplicationWindow {
                             text: qsTr("Debug info copied")
                         }
 
+                        // A newer release is out; the menu says which.
+                        Rectangle {
+                            visible: Release.update !== ""
+                            x: parent.width - width + 2
+                            y: -2
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: Theme.accent
+                            border.width: 2
+                            border.color: Theme.bg
+                        }
+
                         Timer {
                             id: copiedTip
                             interval: 2000
@@ -739,6 +752,12 @@ ApplicationWindow {
                             id: helpMenu
                             minimumWidth: 200
 
+                            MenuEntry {
+                                text: qsTr("Update to Callie %1...").arg(Release.update)
+                                visible: Release.update !== ""
+                                height: visible ? implicitHeight : 0
+                                onTriggered: updateDialog.open()
+                            }
                             // Here when the title bar has no room for its own button.
                             MenuEntry {
                                 text: qsTr("Settings")
@@ -891,6 +910,11 @@ ApplicationWindow {
         sourceComponent: AboutDialog {
             onWhatsNewRequested: whatsNew.open()
         }
+    }
+
+    LazyPopup {
+        id: updateDialog
+        sourceComponent: UpdateDialog {}
     }
 
     LazyPopup {

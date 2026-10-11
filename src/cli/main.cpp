@@ -13,6 +13,7 @@
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 #include "callie/TokenStore.h"
+#include "callie/UpdateCheck.h"
 
 #include "Commands.h"
 #include "Upgrade.h"
@@ -62,6 +63,51 @@ QString warn(const QString &s)
 }
 
 const QString kGoogle = QStringLiteral("google");
+
+/// After a command on a terminal, says once a newer release is out. GitHub is
+/// asked at most once a day, by a copy of callie left running on its own, so no
+/// command waits for it.
+class UpdateHint
+{
+public:
+    UpdateHint(const QString &command, bool json)
+    {
+        static const QStringList quiet = {u"upgrade"_s, u"downgrade"_s, u"update-check"_s,
+                                          u"gui"_s};
+        m_wanted = !json && !quiet.contains(command) && ::isatty(STDERR_FILENO) &&
+                   UpdateCheck().wanted(Settings(Settings::defaultPath()).checkForUpdates());
+    }
+    UpdateHint(const UpdateHint &) = delete;
+    UpdateHint &operator=(const UpdateHint &) = delete;
+
+    ~UpdateHint()
+    {
+        if (!m_wanted)
+            return;
+        UpdateCheck check;
+        const QVersionNumber running =
+            QVersionNumber::fromString(QCoreApplication::applicationVersion());
+        if (const std::optional<Release> newer = check.newerThan(running)) {
+            err << dim(QObject::tr("callie: Callie %1 is out, and this is %2. Update with: "
+                                   "callie upgrade")
+                           .arg(newer->version.toString(), running.toString()))
+                << "\n"
+                << Qt::flush;
+        }
+        if (check.due()) {
+            check.markAsked();
+            QProcess asker;
+            asker.setProgram(QCoreApplication::applicationFilePath());
+            asker.setArguments({u"update-check"_s});
+            asker.setStandardOutputFile(QProcess::nullDevice());
+            asker.setStandardErrorFile(QProcess::nullDevice());
+            asker.startDetached();
+        }
+    }
+
+private:
+    bool m_wanted = false;
+};
 
 /// Ends the event loop with `code` after flushing, since exit codes are the
 /// only signal a script gets.
@@ -661,6 +707,15 @@ int main(int argc, char *argv[])
 
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
+    const UpdateHint hint(command, parser.isSet(u"json"_s));
+
+    // Run by UpdateHint, on its own, to learn the latest release.
+    if (command == u"update-check" && args.size() == 1) {
+        UpdateCheck check;
+        QObject::connect(&check, &UpdateCheck::checked, &app, &QCoreApplication::quit);
+        check.check();
+        return app.exec();
+    }
 
     static const QStringList kEventCommands = {u"agenda"_s,  u"search"_s,    u"invites"_s,
                                                u"add"_s,     u"edit"_s,      u"delete"_s,

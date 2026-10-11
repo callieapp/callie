@@ -48,6 +48,7 @@ const QString kDefaultCalendar = u"events/defaultCalendar"_s;
 const QString kNotify = u"reminders/notify"_s;
 const QString kReminderMinutes = u"reminders/defaultMinutes"_s;
 const QString kKeepRunning = u"reminders/keepRunning"_s;
+const QString kCheckForUpdates = u"updates/check"_s;
 const QStringList kViews{u"day"_s, u"week"_s, u"month"_s, u"agenda"_s};
 
 } // namespace
@@ -122,6 +123,7 @@ void Settings::load()
     m_notify = m_store.value(kNotify, true).toBool();
     m_reminderMinutes = std::max(-1, m_store.value(kReminderMinutes, 10).toInt());
     m_keepRunning = m_store.value(kKeepRunning, false).toBool();
+    m_checkForUpdates = m_store.value(kCheckForUpdates, true).toBool();
 }
 
 void Settings::setTimeFormat(TimeFormat format)
@@ -457,6 +459,15 @@ void Settings::setReminderMinutes(int minutes)
     Q_EMIT reminderMinutesChanged();
 }
 
+void Settings::setCheckForUpdates(bool check)
+{
+    if (m_checkForUpdates == check)
+        return;
+    m_checkForUpdates = check;
+    m_store.setValue(kCheckForUpdates, check);
+    Q_EMIT checkForUpdatesChanged();
+}
+
 void Settings::setKeepRunning(bool keep)
 {
     if (m_keepRunning == keep)
@@ -590,7 +601,7 @@ void Settings::reset()
     const QString theme = m_theme;
     const QString view = m_view;
     const QString defaultCalendar = m_defaultCalendar;
-    const bool notify = m_notify, keep = m_keepRunning;
+    const bool notify = m_notify, keep = m_keepRunning, updates = m_checkForUpdates;
     const int minutes = m_reminderMinutes;
     const int weekStart = m_weekStart, workStart = m_workStart, workEnd = m_workEnd;
     const bool showWorkHours = m_showWorkHours;
@@ -637,6 +648,8 @@ void Settings::reset()
         Q_EMIT reminderMinutesChanged();
     if (keep != m_keepRunning)
         Q_EMIT keepRunningChanged();
+    if (updates != m_checkForUpdates)
+        Q_EMIT checkForUpdatesChanged();
     if (weekStart != m_weekStart || hideWeekends != m_hideWeekends || weekNumbers != m_weekNumbers)
         Q_EMIT weekChanged();
     if (workStart != m_workStart || workEnd != m_workEnd || showWorkHours != m_showWorkHours)

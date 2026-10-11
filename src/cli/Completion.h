@@ -24,7 +24,7 @@ class Completion
 public:
     struct Option
     {
-        /// The long name, without its dashes.
+        /// A long name, or a letter, without the dashes.
         QString name;
         QString about;
         bool takesValue = false;
@@ -46,6 +46,11 @@ public:
     /// `words` follow `callie`, the last being the one typed so far, which
     /// may be empty. Gives the candidates that start with it.
     [[nodiscard]] QList<Candidate> complete(const QStringList &words) const;
+
+    /// The words of a command line up to the cursor, as the shell reads them:
+    /// quotes and backslashes taken out, and an empty last word when the line
+    /// ends in a space. The first, the command's own name, is left out.
+    [[nodiscard]] static QStringList wordsOf(const QString &line);
 
 private:
     [[nodiscard]] QList<Candidate> valuesOf(const QString &option) const;

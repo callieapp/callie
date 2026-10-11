@@ -27,20 +27,72 @@ Completion::Completion(QList<Candidate> commands, QList<Option> options, Sources
     : m_commands(std::move(commands)), m_options(std::move(options)), m_sources(std::move(sources))
 {}
 
+QStringList Completion::wordsOf(const QString &line)
+{
+    QStringList words;
+    QString word;
+    bool inWord = false;
+    QChar quote;
+    for (qsizetype i = 0; i < line.size(); ++i) {
+        const QChar c = line.at(i);
+        if (!quote.isNull()) {
+            if (c == quote)
+                quote = QChar();
+            else if (c == u'\\' && quote == u'"' && i + 1 < line.size())
+                word += line.at(++i);
+            else
+                word += c;
+        } else if (c == u'\'' || c == u'"') {
+            quote = c;
+            inWord = true;
+        } else if (c == u'\\') {
+            if (i + 1 < line.size())
+                word += line.at(++i);
+            inWord = true;
+        } else if (c.isSpace()) {
+            if (inWord)
+                words.append(std::exchange(word, QString()));
+            inWord = false;
+        } else {
+            word += c;
+            inWord = true;
+        }
+    }
+    // The word being typed, even when nothing of it is yet.
+    words.append(word);
+    return words.mid(1);
+}
+
 QList<Candidate> Completion::complete(const QStringList &words) const
 {
-    const QString typed = words.isEmpty() ? QString() : words.last();
+    QString typed = words.isEmpty() ? QString() : words.last();
     const QStringList before = words.mid(0, words.size() - 1);
 
+    // --name or -n, by the dashes it is written with.
+    const auto option = [this](const QString &word) -> const Option * {
+        for (const Option &o : m_options) {
+            if (word == (o.name.size() == 1 ? u"-"_s : u"--"_s) + o.name)
+                return &o;
+        }
+        return nullptr;
+    };
+
     QList<Candidate> found;
-    const QString previous = before.isEmpty() ? QString() : before.last();
-    const auto option = std::find_if(m_options.cbegin(), m_options.cend(),
-                                     [&](const Option &o) { return previous == u"--"_s + o.name; });
-    if (option != m_options.cend() && option->takesValue) {
-        found = valuesOf(option->name);
+    QString prefix;
+    const Option *previous = before.isEmpty() ? nullptr : option(before.last());
+    if (typed.startsWith(u"--"_s) && typed.contains(u'=')) {
+        // --name=value: the value, written after the name.
+        prefix = typed.section(u'=', 0, 0) + u'=';
+        typed = typed.mid(prefix.size());
+        if (const Option *named = option(prefix.chopped(1)); named && named->takesValue)
+            found = valuesOf(named->name);
+    } else if (previous && previous->takesValue) {
+        found = valuesOf(previous->name);
     } else if (typed.startsWith(u'-')) {
-        for (const Option &each : m_options)
-            found.append({u"--"_s + each.name, each.about});
+        for (const Option &each : m_options) {
+            if (each.name.size() > 1)
+                found.append({u"--"_s + each.name, each.about});
+        }
     } else {
         // The words that are not options or their values.
         QStringList positional;
@@ -50,16 +102,16 @@ QList<Candidate> Completion::complete(const QStringList &words) const
                 positional.append(word);
                 continue;
             }
-            const auto named =
-                std::find_if(m_options.cbegin(), m_options.cend(),
-                             [&](const Option &o) { return word == u"--"_s + o.name; });
-            if (named != m_options.cend() && named->takesValue && !word.contains(u'='))
+            const Option *named = option(word);
+            if (named && named->takesValue)
                 ++i;
         }
         found = positional.isEmpty() ? m_commands : argument(positional);
     }
 
     found.removeIf([&typed](const Candidate &c) { return !c.value.startsWith(typed); });
+    for (Candidate &candidate : found)
+        candidate.value.prepend(prefix);
     return found;
 }
 

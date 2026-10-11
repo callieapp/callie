@@ -28,6 +28,7 @@
 #include "callie/TokenStore.h"
 
 #include <QCommandLineParser>
+#include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QNetworkAccessManager>
@@ -43,6 +44,8 @@
 
 int main(int argc, char *argv[])
 {
+    QElapsedTimer started;
+    started.start();
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("Callie"));
     app.setOrganizationName(QStringLiteral("Callie"));
@@ -201,7 +204,6 @@ int main(int argc, char *argv[])
     seedCalendars();
     // People to suggest as guests: from the events, and from Google's contacts.
     callie::ContactBook contacts(standalone ? QString() : callie::ContactBook::defaultPath());
-    contacts.setSource(source);
     contacts.setShown([&settings](const callie::CalendarInfo &c) { return settings.isShown(c); });
     QObject::connect(&settings, &callie::Settings::hiddenCalendarsChanged, &contacts,
                      &callie::ContactBook::reread);
@@ -295,14 +297,32 @@ int main(int argc, char *argv[])
             [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("Callie.Ui", "Main");
 
+    // Guests are suggested from two years of events, a read that waits until
+    // the window has drawn so it does not hold up the window's own.
+    auto *window = engine.rootObjects().isEmpty()
+                       ? nullptr
+                       : qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    if (window && window->isVisible()) {
+        QObject::connect(
+            window, &QQuickWindow::frameSwapped, &contacts,
+            [&contacts, source, &started] {
+                qCInfo(lcUi) << "window shown after" << started.elapsed() << "ms";
+                contacts.setSource(source);
+            },
+            static_cast<Qt::ConnectionType>(Qt::QueuedConnection | Qt::SingleShotConnection));
+    } else {
+        contacts.setSource(source);
+    }
+
     // A second launch, a reminder or the tray brings back a hidden window.
     const auto showWindow = [&engine] {
         if (engine.rootObjects().isEmpty())
             return;
-        if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first())) {
-            window->show();
-            window->raise();
-            window->requestActivate();
+        // Looked up each time: live QML replaces the window.
+        if (auto *shown = qobject_cast<QQuickWindow *>(engine.rootObjects().first())) {
+            shown->show();
+            shown->raise();
+            shown->requestActivate();
         }
     };
     QObject::connect(&single, &callie::SingleInstance::activated, &engine, showWindow);
@@ -319,15 +339,10 @@ int main(int argc, char *argv[])
         QObject::connect(&tray, &callie::TrayItem::quitRequested, &app, &QCoreApplication::quit);
     }
 
-    if (windowSize.isValid() && !engine.rootObjects().isEmpty()) {
-        if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first()))
-            window->resize(windowSize);
-    }
+    if (windowSize.isValid() && window)
+        window->resize(windowSize);
 
     if (!screenshot.isEmpty()) {
-        auto *window = engine.rootObjects().isEmpty()
-                           ? nullptr
-                           : qobject_cast<QQuickWindow *>(engine.rootObjects().first());
         if (!window)
             return 1;
         QTimer::singleShot(1000, window, [window, screenshot] {

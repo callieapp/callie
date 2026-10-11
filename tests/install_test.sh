@@ -13,13 +13,30 @@ failures=0
 
 # Runs the installer on a system whose /etc/os-release holds the arguments,
 # with Callie ${installed:-not} installed and the installer given ${options:-nothing}.
+# With installed=ask, it asks the package manager standing in on $PATH.
 installs_on() {
     printf '%s\n' "$@" >"$tmp/os-release"
-    # shellcheck disable=SC2086
-    output="$(CALLIE_INSTALL_OS_RELEASE="$tmp/os-release" \
-        CALLIE_INSTALL_RELEASE_JSON="${json:-$release}" CALLIE_INSTALL_INSTALLED="${installed:-}" \
-        sh "$script" --dry-run ${options:-} 2>&1)"
+    if [ "${installed:-}" = ask ]; then
+        # shellcheck disable=SC2086
+        output="$(PATH="$tmp/bin:$PATH" CALLIE_INSTALL_OS_RELEASE="$tmp/os-release" \
+            CALLIE_INSTALL_RELEASE_JSON="${json:-$release}" \
+            sh "$script" --dry-run ${options:-} 2>&1)"
+    else
+        # shellcheck disable=SC2086
+        output="$(CALLIE_INSTALL_OS_RELEASE="$tmp/os-release" \
+            CALLIE_INSTALL_RELEASE_JSON="${json:-$release}" CALLIE_INSTALL_INSTALLED="${installed:-}" \
+            sh "$script" --dry-run ${options:-} 2>&1)"
+    fi
     status=$?
+}
+
+# A package manager that answers a query with $1 and exits with $2.
+answers() {
+    mkdir -p "$tmp/bin"
+    for tool in rpm dpkg-query; do
+        printf '#!/bin/sh\nprintf %%s %s\nexit %s\n' "'$1'" "$2" >"$tmp/bin/$tool"
+        chmod +x "$tmp/bin/$tool"
+    done
 }
 
 refuse() {
@@ -127,6 +144,23 @@ expect "downgrade" "apt-get install -y --allow-downgrades ./callie_0.2.1-1_amd64
 installs_on ID=fedora VERSION_ID=44 "$fedora"
 expect "downgrade rpm" "dnf downgrade -y ./callie-0.2.1-1.fc44.x86_64.rpm"
 unset options installed
+
+# The installed version comes from rpm or dpkg-query, without the packaging's
+# revision; a removed deb that left its configuration is not installed.
+installed=ask
+answers 0.2.1 0
+installs_on ID=fedora VERSION_ID=44 "$fedora"
+expect "rpm current" "Callie 0.2.1 is installed and up to date."
+answers 'package callie is not installed' 1
+installs_on ID=fedora VERSION_ID=44 "$fedora"
+expect "rpm missing" "installing Callie 0.2.1 on"
+answers 'install ok installed|0.2.0-1' 0
+installs_on ID=debian VERSION_ID=13 "$debian"
+expect "deb older" "updating Callie 0.2.0 to 0.2.1"
+answers 'deinstall ok config-files|0.2.1-1' 0
+installs_on ID=debian VERSION_ID=13 "$debian"
+expect "deb removed" "installing Callie 0.2.1 on"
+unset installed
 
 if [ "$failures" -gt 0 ]; then
     printf '%s check(s) failed\n' "$failures"

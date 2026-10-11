@@ -18,6 +18,7 @@ private Q_SLOTS:
     void nearestColorsAreClose();
     void plainWhenOff();
     void pipesGetNoColor();
+    void terminalsSayHowManyColors();
     void calendarsLookAsInTheApp();
 };
 
@@ -59,6 +60,20 @@ void TestPaint::pipesGetNoColor()
     qputenv("NO_COLOR", "1");
     QCOMPARE(Paint::detect(1), Paint::Depth::None);
     qunsetenv("NO_COLOR");
+}
+
+void TestPaint::terminalsSayHowManyColors()
+{
+    using D = Paint::Depth;
+    QCOMPARE(Paint::depthFor(true, "xterm-256color", "truecolor", false), D::True);
+    QCOMPARE(Paint::depthFor(true, "xterm-kitty", "24bit", false), D::True);
+    QCOMPARE(Paint::depthFor(true, "xterm-256color", "", false), D::Ansi256);
+    QCOMPARE(Paint::depthFor(true, "xterm", "", false), D::Basic);
+    QCOMPARE(Paint::depthFor(true, "linux", "", false), D::Basic);
+    // Never for a dumb terminal, with NO_COLOR, or off a terminal.
+    QCOMPARE(Paint::depthFor(true, "dumb", "truecolor", false), D::None);
+    QCOMPARE(Paint::depthFor(true, "xterm-256color", "truecolor", true), D::None);
+    QCOMPARE(Paint::depthFor(false, "xterm-256color", "truecolor", false), D::None);
 }
 
 void TestPaint::calendarsLookAsInTheApp()

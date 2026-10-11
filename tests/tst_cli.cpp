@@ -10,11 +10,31 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <utility>
+
 using namespace callie;
 using namespace callie::cli;
 using namespace Qt::StringLiterals;
 
 namespace {
+
+/// SampleSource that also notes whether answers and deletions were for the whole series.
+class RecordingSource : public SampleSource
+{
+public:
+    QList<bool> wholeSeries;
+
+    void respond(const Event &event, const QString &status, bool whole, Created done) override
+    {
+        wholeSeries.append(whole);
+        SampleSource::respond(event, status, whole, std::move(done));
+    }
+    void deleteEvent(const Event &event, bool whole, Created done) override
+    {
+        wholeSeries.append(whole);
+        SampleSource::deleteEvent(event, whole, std::move(done));
+    }
+};
 
 /// The sample, with Dentist and the vendor call also in a second calendar
 /// under the same ids, as events both calendars were invited to would be.
@@ -88,6 +108,7 @@ private Q_SLOTS:
     void hiddenCalendarsStayHidden();
     void searchListsASeriesOnce();
     void invitesWaitingAnswerOnce();
+    void detachedOccurrencesStandAlone();
     void addGoesInTheDefaultCalendar();
     void editMovesAndKeepsTheLength();
     void editAllDayEndsOnItsLastDay();
@@ -108,7 +129,7 @@ private Q_SLOTS:
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
     std::unique_ptr<Settings> m_settings;
-    std::unique_ptr<SampleSource> m_source;
+    std::unique_ptr<RecordingSource> m_source;
     QString m_out;
     QString m_err;
     std::unique_ptr<QTextStream> m_outStream;
@@ -140,7 +161,7 @@ void TestCli::init()
 {
     m_dir = std::make_unique<QTemporaryDir>();
     m_settings = std::make_unique<Settings>(m_dir->filePath(u"settings.ini"_s));
-    m_source = std::make_unique<SampleSource>();
+    m_source = std::make_unique<RecordingSource>();
     m_out.clear();
     m_err.clear();
     m_outStream = std::make_unique<QTextStream>(&m_out);
@@ -274,6 +295,49 @@ void TestCli::invitesWaitingAnswerOnce()
     QCOMPARE(m_out.count(u"Vendor call"_s), 1);
     QCOMPARE(m_out.count(u"Berlin sync"_s), 1);
     QVERIFY(!m_out.contains(u"Retro"_s));
+}
+
+void TestCli::detachedOccurrencesStandAlone()
+{
+    // Next week's Berlin sync, renamed on its own, leaves its series.
+    const QString id = named(u"Berlin sync"_s, QDate(2026, 10, 13)).eventId;
+    QVERIFY(!id.isEmpty());
+    EditOptions rename;
+    rename.title = u"Berlin sync (moved room)"_s;
+    QCOMPARE(run([&](auto done) { m_commands->edit(id, rename, u"this"_s, done); }), 0);
+    QCOMPARE(named(u"Berlin sync"_s, QDate(2026, 10, 20)).summary, u"Berlin sync"_s);
+
+    // So it waits for an answer of its own, beside the series.
+    QCOMPARE(m_commands->invites(true), 0);
+    m_outStream->flush();
+    const QJsonArray invites = QJsonDocument::fromJson(m_out.toUtf8()).array();
+    QJsonObject detached;
+    int series = 0;
+    for (const QJsonValue &invite : invites) {
+        if (invite[u"title"] == u"Berlin sync (moved room)"_s)
+            detached = invite.toObject();
+        else if (invite[u"title"] == u"Berlin sync"_s)
+            ++series;
+    }
+    QCOMPARE(series, 1);
+    QVERIFY(!detached.isEmpty());
+    QCOMPARE(detached[u"repeats"].toBool(), false);
+
+    // Changed, answered or given a repeat for all, it stays alone.
+    rename.where = u"Room 4"_s;
+    QCOMPARE(run([&](auto done) { m_commands->edit(id, rename, u"all"_s, done); }), 0);
+    QCOMPARE(named(u"Berlin sync (moved room)"_s, QDate(2026, 10, 13)).location, u"Room 4"_s);
+    QVERIFY(named(u"Berlin sync"_s, QDate(2026, 10, 20)).location.isEmpty());
+    QCOMPARE(run([&](auto done) { m_commands->respond(id, u"yes"_s, u"all"_s, done); }), 0);
+    QCOMPARE(named(u"Berlin sync (moved room)"_s, QDate(2026, 10, 13)).responseStatus,
+             u"accepted"_s);
+    QCOMPARE(named(u"Berlin sync"_s, QDate(2026, 10, 20)).responseStatus, u"needsAction"_s);
+    EditOptions repeat;
+    repeat.repeat = u"weekly"_s;
+    QCOMPARE(run([&](auto done) { m_commands->edit(id, repeat, u"all"_s, done); }), 2);
+    QVERIFY(m_err.contains(u"apart from its series"_s));
+    QCOMPARE(run([&](auto done) { m_commands->remove(id, u"all"_s, done); }), 0);
+    QCOMPARE(m_source->wholeSeries, (QList<bool>{false, false}));
 }
 
 void TestCli::addGoesInTheDefaultCalendar()

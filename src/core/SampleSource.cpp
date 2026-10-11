@@ -125,8 +125,12 @@ QList<Event> SampleSource::eventsBetween(const QDateTime &from, const QDateTime 
                                  : change.scope == EditScope::ThisAndFollowing
                                      ? inSeries && e.start >= change.edited.start
                                      : e.eventId == change.edited.eventId;
-                if (hit)
-                    applyEdit(e, change.edited, change.edit);
+                if (!hit)
+                    continue;
+                applyEdit(e, change.edited, change.edit);
+                // As in Google, an occurrence changed alone leaves its series.
+                if (change.scope == EditScope::ThisEvent && !e.seriesId.isEmpty())
+                    e.detached = true;
             }
             if (const auto moved = m_moved.constFind(e.eventId); moved != m_moved.cend()) {
                 e.start = moved->first.toTimeZone(tz);

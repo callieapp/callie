@@ -84,7 +84,10 @@ int Commands::search(const QString &query, bool json)
     for (const Event &e : all) {
         if (!SearchModel::matches(e, words))
             continue;
-        const QString key = e.calendarId + u'/' + (e.seriesId.isEmpty() ? e.uid : e.seriesId);
+        const QString key = e.calendarId + u'/' +
+                            (e.detached             ? e.eventId
+                             : e.seriesId.isEmpty() ? e.uid
+                                                    : e.seriesId);
         const auto seen = found.constFind(key);
         const bool upcoming = e.end > m_now;
         if (seen == found.cend() || (upcoming ? (seen->end <= m_now || e.start < seen->start)
@@ -116,8 +119,10 @@ int Commands::invites(bool json)
     for (const Event &e : visibleEvents(m_now, m_now.addDays(kInviteDays))) {
         if (e.responseStatus != u"needsAction" || !e.canRespond)
             continue;
-        // A repeating invitation is answered once, so it is listed once.
-        const QString key = e.calendarId + u'/' + (e.seriesId.isEmpty() ? e.eventId : e.seriesId);
+        // A repeating invitation is answered once, so it is listed once; an
+        // occurrence changed apart from its series is answered on its own.
+        const QString key =
+            e.calendarId + u'/' + (e.seriesId.isEmpty() || e.detached ? e.eventId : e.seriesId);
         if (series.contains(key))
             continue;
         series.insert(key);
@@ -207,7 +212,7 @@ void Commands::print(const QList<Event> &events, bool json, bool byDay)
                                 {u"allDay"_s, e.allDay},
                                 {u"location"_s, e.location},
                                 {u"response"_s, e.responseStatus},
-                                {u"repeats"_s, !e.seriesId.isEmpty()}});
+                                {u"repeats"_s, !e.seriesId.isEmpty() && !e.detached}});
     }
     m_out << QJsonDocument(list).toJson(QJsonDocument::Indented);
 }
@@ -351,7 +356,8 @@ void Commands::edit(const QString &id, const EditOptions &options, const QString
         done(2);
         return;
     }
-    if (event.seriesId.isEmpty())
+    // An occurrence changed apart from its series changes alone.
+    if (event.seriesId.isEmpty() || event.detached)
         scope = EditScope::ThisEvent;
     const auto mistake = [this, &done](const QString &message) {
         m_err << "callie: " << message << "\n";
@@ -411,6 +417,9 @@ void Commands::edit(const QString &id, const EditOptions &options, const QString
     if (options.repeat) {
         if (!Repeat::choices().contains(*options.repeat))
             return mistake(tr("--repeat is one of %1").arg(Repeat::choices().join(u", "_s)));
+        if (event.detached)
+            return mistake(
+                tr("%1 was changed apart from its series, so it cannot repeat").arg(event.summary));
         if (!event.seriesId.isEmpty() && *scope == EditScope::ThisEvent)
             return mistake(tr("a repeat is for the whole series; add --scope all or following"));
         const QDate day = (edit.start ? *edit.start : event.start).toTimeZone(m_zone).date();
@@ -437,7 +446,7 @@ void Commands::remove(const QString &id, const QString &scopeText, const Done &d
         done(2);
         return;
     }
-    m_source.deleteEvent(*event, *scope == EditScope::AllEvents,
+    m_source.deleteEvent(*event, *scope == EditScope::AllEvents && !event->detached,
                          [this, done](const Outcome &outcome) { report(outcome, done); });
 }
 
@@ -471,7 +480,7 @@ void Commands::respond(const QString &id, const QString &answer, const QString &
         done(2);
         return;
     }
-    m_source.respond(*event, status, *scope == EditScope::AllEvents,
+    m_source.respond(*event, status, *scope == EditScope::AllEvents && !event->detached,
                      [this, done](const Outcome &outcome) { report(outcome, done); });
 }
 

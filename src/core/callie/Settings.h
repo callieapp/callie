@@ -241,6 +241,8 @@ Q_SIGNALS:
     void keepRunningChanged();
 
 private:
+    /// Moves settings kept where an older Callie put them.
+    void migrate();
     void load();
     void rebuildTimes();
 

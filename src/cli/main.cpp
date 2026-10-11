@@ -15,6 +15,7 @@
 #include "callie/TokenStore.h"
 
 #include "Commands.h"
+#include "Upgrade.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
@@ -591,6 +592,8 @@ int main(int argc, char *argv[])
         "  status     Sync state, keyring and configuration\n"
         "  doctor     Details for a bug report; --report opens a new issue\n"
         "  sync       Refresh all accounts now\n"
+        "  upgrade    Install the latest release, or the one given: callie upgrade 0.3.1\n"
+        "  downgrade  Go back to the release before this one, or the one given\n"
         "  daemon     Run background sync and notifications\n"
         "  gui        Launch the desktop app"));
     parser.addHelpOption();
@@ -616,6 +619,14 @@ int main(int argc, char *argv[])
     QCommandLineOption reportOption(QStringLiteral("report"),
                                     QStringLiteral("With doctor: open a new GitHub issue."));
     parser.addOption(reportOption);
+    QCommandLineOption forceOption(
+        QStringLiteral("force"),
+        QStringLiteral("With upgrade: install the release even when it is the one installed."));
+    parser.addOption(forceOption);
+    QCommandLineOption dryRunOption(
+        QStringLiteral("dry-run"),
+        QStringLiteral("With upgrade and downgrade: say what would happen, and change nothing."));
+    parser.addOption(dryRunOption);
     for (
         const auto &[names, description, valueName] :
         std::initializer_list<std::tuple<QStringList, QString, QString>>{
@@ -683,6 +694,22 @@ int main(int argc, char *argv[])
 
     if (command == QLatin1String("sync") && args.size() == 1)
         return runSync(app);
+
+    if ((command == u"upgrade" || command == u"downgrade") && args.size() <= 2) {
+        cli::Upgrade upgrade(out, err);
+        cli::Upgrade::Options options;
+        options.downgrade = command == u"downgrade";
+        if (args.size() == 2)
+            options.version = args.at(1);
+        options.force = parser.isSet(forceOption);
+        options.dryRun = parser.isSet(dryRunOption);
+        std::optional<int> result;
+        upgrade.run(options, [&result](int code) {
+            result = code;
+            QCoreApplication::exit(code);
+        });
+        return result ? *result : app.exec();
+    }
 
     if (command == QLatin1String("calendars"))
         return args.size() == 1 ? runCalendars(app)

@@ -89,6 +89,8 @@ callie sync                              # fetch changes from every account
 callie logs                              # log file paths; -f follows them, --open opens the folder
 callie status                            # last sync and errors per calendar, keyring and setup
 callie doctor                            # details for a bug report; --report opens a new issue
+callie upgrade                           # install the latest release; --dry-run shows how first
+callie downgrade                         # go back to the release before; or name one: 0.2.3
 callie --verbose sync                    # any command, printing progress as well as warnings
 ```
 

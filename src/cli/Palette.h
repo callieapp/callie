@@ -21,6 +21,8 @@ public:
     [[nodiscard]] const ThemeSpec::Colors &colors() const { return m_theme.colors; }
     /// A calendar's color as the app shows it with this theme.
     [[nodiscard]] QColor fill(const QColor &calendar) const;
+    /// The text color that reads on that fill, for an event drawn as a sticker.
+    [[nodiscard]] QColor ink(const QColor &calendar) const;
 
 private:
     ThemeSpec m_theme;

@@ -1,0 +1,17 @@
+#compdef callie
+# zsh completion for callie. The candidates come from callie itself, which
+# knows its commands, settings, calendars and events.
+_callie() {
+    local -a candidates
+    local tab=$'\t' line value about
+    for line in "${(@f)$(callie __complete "${(@)words[2,CURRENT]}" 2>/dev/null)}"; do
+        [[ -n $line ]] || continue
+        value=${line%%$tab*}
+        about=
+        [[ $line == *$tab* ]] && about=${line#*$tab}
+        # _describe reads a colon as the start of the description.
+        candidates+=("${value//:/\\:}${about:+:$about}")
+    done
+    _describe -t callie 'callie' candidates
+}
+_callie "$@"

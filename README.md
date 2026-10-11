@@ -94,6 +94,9 @@ callie downgrade                         # go back to the release before; or nam
 callie --verbose sync                    # any command, printing progress as well as warnings
 ```
 
+The packages install tab completion for bash, zsh and fish, which also completes calendar names and
+event ids. In a build from source, `callie completions bash` (or zsh or fish) prints the script.
+
 Once a day the app and the CLI ask GitHub for Callie's latest release, and say when a newer one
 is out: in the app's ? menu, and in a line after a command run in a terminal. `callie settings
 checkForUpdates false`, or Settings in the app, turns that off, as does setting

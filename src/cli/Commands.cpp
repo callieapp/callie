@@ -573,6 +573,18 @@ std::optional<QVariant> parsed(const QMetaProperty &property, const QString &tex
 
 } // namespace
 
+QStringList Commands::settingNames(const Settings &settings)
+{
+    const QMetaObject *meta = settings.metaObject();
+    QStringList names;
+    for (int i = meta->propertyOffset(); i < meta->propertyCount(); ++i) {
+        const QMetaProperty property = meta->property(i);
+        if (property.isWritable() && !internal(property.name()))
+            names << QString::fromLatin1(property.name());
+    }
+    return names;
+}
+
 int Commands::settings(Settings &settings, QTextStream &out, QTextStream &err, const QString &name,
                        const std::optional<QString> &value)
 {

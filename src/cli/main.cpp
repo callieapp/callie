@@ -16,6 +16,7 @@
 #include "callie/UpdateCheck.h"
 
 #include "Commands.h"
+#include "Completion.h"
 #include "UpdateHint.h"
 #include "Upgrade.h"
 
@@ -23,6 +24,8 @@
 #include <QCoreApplication>
 #include <QDate>
 #include <QDir>
+#include <QFile>
+#include <QLocale>
 #include <QNetworkAccessManager>
 #include <QProcess>
 #include <QTemporaryDir>
@@ -64,6 +67,32 @@ QString warn(const QString &s)
 }
 
 const QString kGoogle = QStringLiteral("google");
+
+/// The commands, for --help and for completion.
+const QList<std::pair<QString, QString>> kCommands = {
+    {u"agenda"_s, u"Upcoming events (default); --json for scripts, with ids"_s},
+    {u"search"_s, u"Events with every word given"_s},
+    {u"invites"_s, u"Invitations waiting for an answer"_s},
+    {u"contacts"_s, u"People to invite whose name or address matches"_s},
+    {u"add"_s, u"Create an event: callie add \"Lunch tomorrow 12-1pm\""_s},
+    {u"edit"_s, u"Change an event: callie edit <id> --start \"friday 3pm\""_s},
+    {u"delete"_s, u"Delete an event"_s},
+    {u"respond"_s, u"Answer an invitation: callie respond <id> yes|maybe|no"_s},
+    {u"duplicate"_s, u"Copy an event, to --start if given"_s},
+    {u"accounts"_s, u"List, add, remove or rename calendar accounts"_s},
+    {u"calendars"_s,
+     u"List the calendars in each account; hide, show, rename, color or reset one"_s},
+    {u"settings"_s, u"List settings, or read or change one: callie settings viMode true"_s},
+    {u"logs"_s, u"Show, follow (-f) or open (--open) the log files"_s},
+    {u"status"_s, u"Sync state, keyring and configuration"_s},
+    {u"doctor"_s, u"Details for a bug report; --report opens a new issue"_s},
+    {u"sync"_s, u"Refresh all accounts now"_s},
+    {u"upgrade"_s, u"Install the latest release, or the one given: callie upgrade 0.3.1"_s},
+    {u"downgrade"_s, u"Go back to the release before this one, or the one given"_s},
+    {u"completions"_s, u"Print the shell completion script: bash, zsh or fish"_s},
+    {u"daemon"_s, u"Run background sync and notifications"_s},
+    {u"gui"_s, u"Launch the desktop app"_s},
+};
 
 /// After a command on a terminal, says once a newer release is out. GitHub is
 /// asked at most once a day, by a copy of callie left running on its own, so no
@@ -608,62 +637,47 @@ int main(int argc, char *argv[])
     app.setApplicationVersion(QStringLiteral(CALLIE_VERSION));
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral(
-        "Callie: an elegant calendar for Linux.\n"
-        "\n"
-        "Commands:\n"
-        "  agenda     Upcoming events (default); --json for scripts, with ids\n"
-        "  search     Events with every word given\n"
-        "  invites    Invitations waiting for an answer\n"
-        "  contacts   People to invite whose name or address matches\n"
-        "  add        Create an event: callie add \"Lunch tomorrow 12-1pm\"\n"
-        "  edit       Change an event: callie edit <id> --start \"friday 3pm\"\n"
-        "  delete     Delete an event\n"
-        "  respond    Answer an invitation: callie respond <id> yes|maybe|no\n"
-        "  duplicate  Copy an event, to --start if given\n"
-        "  accounts   List, add, remove or rename calendar accounts\n"
-        "  calendars  List the calendars in each account; hide, show, rename,\n"
-        "             color or reset one\n"
-        "  settings   List settings, or read or change one: callie settings viMode true\n"
-        "  logs       Show, follow (-f) or open (--open) the log files\n"
-        "  status     Sync state, keyring and configuration\n"
-        "  doctor     Details for a bug report; --report opens a new issue\n"
-        "  sync       Refresh all accounts now\n"
-        "  upgrade    Install the latest release, or the one given: callie upgrade 0.3.1\n"
-        "  downgrade  Go back to the release before this one, or the one given\n"
-        "  daemon     Run background sync and notifications\n"
-        "  gui        Launch the desktop app"));
+    QString description = u"Callie: an elegant calendar for Linux.\n\nCommands:"_s;
+    for (const auto &[name, about] : kCommands)
+        description += u"\n  "_s + name.leftJustified(11) + about;
+    parser.setApplicationDescription(description);
     parser.addHelpOption();
     parser.addVersionOption();
+    // Kept for completion too, since the parser does not list them.
+    QList<QCommandLineOption> options;
+    const auto addOption = [&parser, &options](const QCommandLineOption &option) {
+        parser.addOption(option);
+        options.append(option);
+    };
     parser.addPositionalArgument(QStringLiteral("command"), QStringLiteral("Command to run."));
 
     QCommandLineOption daysOption({QStringLiteral("d"), QStringLiteral("days")},
                                   QStringLiteral("Days of agenda to show."), QStringLiteral("n"),
                                   QStringLiteral("7"));
-    parser.addOption(daysOption);
+    addOption(daysOption);
     QCommandLineOption sampleOption(
         QStringLiteral("sample"), QStringLiteral("Show a made-up week instead of your calendars."));
-    parser.addOption(sampleOption);
+    addOption(sampleOption);
     QCommandLineOption followOption({QStringLiteral("f"), QStringLiteral("follow")},
                                     QStringLiteral("With logs: keep printing new lines."));
-    parser.addOption(followOption);
+    addOption(followOption);
     QCommandLineOption openOption(QStringLiteral("open"),
                                   QStringLiteral("With logs: open the folder."));
-    parser.addOption(openOption);
+    addOption(openOption);
     QCommandLineOption verboseOption(QStringLiteral("verbose"),
                                      QStringLiteral("Print progress as well as warnings."));
-    parser.addOption(verboseOption);
+    addOption(verboseOption);
     QCommandLineOption reportOption(QStringLiteral("report"),
                                     QStringLiteral("With doctor: open a new GitHub issue."));
-    parser.addOption(reportOption);
+    addOption(reportOption);
     QCommandLineOption forceOption(
         QStringLiteral("force"),
         QStringLiteral("With upgrade: install the release even when it is the one installed."));
-    parser.addOption(forceOption);
+    addOption(forceOption);
     QCommandLineOption dryRunOption(
         QStringLiteral("dry-run"),
         QStringLiteral("With upgrade and downgrade: say what would happen, and change nothing."));
-    parser.addOption(dryRunOption);
+    addOption(dryRunOption);
     for (
         const auto &[names, description, valueName] :
         std::initializer_list<std::tuple<QStringList, QString, QString>>{
@@ -689,8 +703,74 @@ int main(int argc, char *argv[])
             {{u"guests"_s}, u"With edit: every guest's address, comma separated."_s, u"list"_s},
             {{u"video"_s}, u"With edit: on or off, to add or remove a video call."_s, u"on"_s},
         }) {
-        parser.addOption(QCommandLineOption(names, description, valueName));
+        addOption(QCommandLineOption(names, description, valueName));
     }
+    // Run by the shell completion scripts with the words typed so far, which
+    // are not parsed as options since they are still being typed.
+    if (app.arguments().value(1) == u"__complete") {
+        const QStringList words = app.arguments().mid(2);
+        std::unique_ptr<Backend> backend;
+        const auto source = [&backend, &words]() -> CalendarSource * {
+            int code = 0;
+            if (!backend)
+                backend = openBackend(words.contains(u"--sample"_s), false, code);
+            return backend ? backend->source.get() : nullptr;
+        };
+        const auto events = [&source](bool invitations) {
+            QList<cli::Candidate> found;
+            CalendarSource *calendar = source();
+            if (!calendar)
+                return found;
+            const QDateTime now = QDateTime::currentDateTime();
+            for (const Event &e : calendar->eventsBetween(now.addDays(-1), now.addDays(30),
+                                                          QTimeZone::systemTimeZone())) {
+                if (invitations && (e.responseStatus != u"needsAction" || !e.canRespond))
+                    continue;
+                found.append(
+                    {cli::Commands::reference(e),
+                     QLocale().toString(e.start, u"ddd d MMM HH:mm"_s) + u' ' + e.summary});
+            }
+            return found;
+        };
+        cli::Completion::Sources sources;
+        sources.calendars = [&source] {
+            QList<cli::Candidate> found;
+            if (CalendarSource *calendar = source()) {
+                for (const CalendarInfo &info : calendar->calendars())
+                    found.append({info.displayName, {}});
+            }
+            return found;
+        };
+        sources.events = [events] { return events(false); };
+        sources.invitations = [events] { return events(true); };
+        sources.accounts = [] {
+            QList<Account> accounts;
+            AccountStore(AccountStore::defaultPath()).load(accounts);
+            QList<cli::Candidate> found;
+            for (const Account &account : std::as_const(accounts))
+                found.append({account.id, account.provider});
+            return found;
+        };
+        sources.settings = [] {
+            return cli::Commands::settingNames(Settings(Settings::defaultPath()));
+        };
+        QList<cli::Candidate> commands;
+        for (const auto &[name, about] : kCommands)
+            commands.append({name, about});
+        QList<cli::Completion::Option> named;
+        for (const QCommandLineOption &option : std::as_const(options)) {
+            for (const QString &name : option.names()) {
+                if (name.size() > 1)
+                    named.append({name, option.description(), !option.valueName().isEmpty()});
+            }
+        }
+        const cli::Completion completion(commands, named, sources);
+        for (const cli::Candidate &candidate : completion.complete(words))
+            out << candidate.value
+                << (candidate.about.isEmpty() ? QString() : u'\t' + candidate.about) << "\n";
+        return 0;
+    }
+
     parser.process(app);
     logfile::install(QStringLiteral("callie"));
     logfile::setVerboseTerminal(parser.isSet(verboseOption) ||
@@ -699,6 +779,18 @@ int main(int argc, char *argv[])
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
     const HintAfterwards hint(command, parser.isSet(u"json"_s));
+
+    if (command == u"completions" && args.size() == 2) {
+        const QHash<QString, QString> files = {
+            {u"bash"_s, u"callie.bash"_s}, {u"zsh"_s, u"_callie"_s}, {u"fish"_s, u"callie.fish"_s}};
+        QFile script(u":/completions/"_s + files.value(args.at(1), u"none"_s));
+        if (!script.open(QIODevice::ReadOnly)) {
+            err << QObject::tr("usage: callie completions bash|zsh|fish") << "\n";
+            return 2;
+        }
+        out << script.readAll();
+        return 0;
+    }
 
     // Run by UpdateHint, on its own, to learn the latest release.
     if (command == u"update-check" && args.size() == 1) {

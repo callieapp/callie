@@ -48,23 +48,29 @@ namespace {
 QTextStream out(stdout);
 QTextStream err(stderr);
 
-bool useColor()
+/// Colors from the user's theme when stdout is a terminal.
+const cli::Paint &paint()
 {
-    static const bool tty = ::isatty(STDOUT_FILENO) && qEnvironmentVariableIsEmpty("NO_COLOR");
-    return tty;
+    static const cli::Paint paint = [] {
+        const cli::Paint::Depth depth = cli::Paint::detect(STDOUT_FILENO);
+        if (depth == cli::Paint::Depth::None)
+            return cli::Paint();
+        return cli::Paint(depth, cli::Palette::forTheme(Settings(Settings::defaultPath()).theme()));
+    }();
+    return paint;
 }
 
 QString dim(const QString &s)
 {
-    return useColor() ? QStringLiteral("\033[2m%1\033[0m").arg(s) : s;
+    return paint().dim(s);
 }
 QString bold(const QString &s)
 {
-    return useColor() ? QStringLiteral("\033[1m%1\033[0m").arg(s) : s;
+    return paint().bold(s);
 }
 QString warn(const QString &s)
 {
-    return useColor() ? QStringLiteral("\033[31m%1\033[0m").arg(s) : s;
+    return paint().danger(s);
 }
 
 const QString kGoogle = QStringLiteral("google");
@@ -550,7 +556,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
                                : QTimeZone(settings.timeZoneId().toUtf8());
     cli::Commands commands(*backend->source, settings, out, err, QDateTime::currentDateTime(),
                            zone);
-    commands.setColor(useColor());
+    commands.setPaint(paint());
     const bool json = parser.isSet(u"json"_s);
 
     if (command == u"calendars")

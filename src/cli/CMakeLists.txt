@@ -4,6 +4,10 @@ add_library(calliecli STATIC
     Commands.cpp
     Completion.h
     Completion.cpp
+    Paint.h
+    Paint.cpp
+    Palette.h
+    Palette.cpp
     UpdateHint.h
     UpdateHint.cpp
     Upgrade.h

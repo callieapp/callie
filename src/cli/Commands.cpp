@@ -163,9 +163,6 @@ int Commands::contacts(ContactBook &book, const QString &text, bool json)
 
 void Commands::print(const QList<Event> &events, bool json, bool byDay)
 {
-    const auto paint = [this](const char *code, const QString &s) {
-        return m_color ? u"\033["_s + QLatin1StringView(code) + u'm' + s + u"\033[0m"_s : s;
-    };
     const QDate today = m_now.toTimeZone(m_zone).date();
     QDate current;
     for (const Event &e : events) {
@@ -179,18 +176,23 @@ void Commands::print(const QList<Event> &events, bool json, bool byDay)
             current = day;
             const QString label =
                 day == today ? tr("Today") : QLocale().toString(day, QStringLiteral("ddd d MMM"));
-            m_out << "\n" << paint("1", label) << "\n";
+            m_out << "\n" << m_paint.bold(day == today ? m_paint.accent(label) : label) << "\n";
         }
         QString time = e.allDay ? u"all-day"_s
                                 : start.toString(u"HH:mm"_s) + u"–"_s + end.toString(u"HH:mm"_s);
         time = time.leftJustified(11);
         if (!byDay)
             time = QLocale().toString(day, u"ddd d MMM"_s).leftJustified(10) + u"  "_s + time;
-        m_out << u"  "_s << paint("2", time) << u"  "_s << e.summary;
+        // On a terminal, each event's calendar shows as a dot in its color.
+        m_out << u"  "_s;
+        if (m_paint.enabled())
+            m_out << m_paint.calendar(e.color, u"●"_s) << u' ';
+        m_out << m_paint.dim(time) << u"  "_s
+              << (e.declined ? m_paint.strike(m_paint.dim(e.summary)) : e.summary);
         if (!e.joinUrl().isEmpty())
-            m_out << "  " << paint("36", u"↗"_s);
+            m_out << "  " << m_paint.accent(u"↗"_s);
         else if (!e.location.isEmpty())
-            m_out << "  " << paint("2", e.location);
+            m_out << "  " << m_paint.dim(e.location);
         m_out << "\n";
     }
     if (byDay && !json)

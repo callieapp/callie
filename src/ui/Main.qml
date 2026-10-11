@@ -714,7 +714,8 @@ ApplicationWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "?"
                         Accessible.name: qsTr("Help")
-                        tip: qsTr("Help, shortcuts and about")
+                        // Not beside its own open menu, which leaves the button hovered.
+                        tip: helpMenu.visible ? "" : qsTr("Help, shortcuts and about")
                         onClicked: helpMenu.popup(helpButton, 0, helpButton.height + Theme.space3)
 
                         Tip {

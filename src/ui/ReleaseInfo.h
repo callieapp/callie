@@ -26,6 +26,8 @@ class ReleaseInfo : public QObject
     Q_PROPERTY(QUrl source READ source CONSTANT)
     /// Every version's notes.
     Q_PROPERTY(QUrl history READ history CONSTANT)
+    /// Where to support Callie's development.
+    Q_PROPERTY(QUrl support READ support CONSTANT)
     /// A development build, kept apart from an installed Callie.
     Q_PROPERTY(bool devel READ devel CONSTANT)
 
@@ -40,6 +42,7 @@ public:
     [[nodiscard]] QUrl privacy() const;
     [[nodiscard]] QUrl terms() const;
     [[nodiscard]] QUrl source() const;
+    [[nodiscard]] QUrl support() const;
     [[nodiscard]] bool devel() const;
     [[nodiscard]] QUrl history() const;
 

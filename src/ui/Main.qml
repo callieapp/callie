@@ -724,6 +724,10 @@ ApplicationWindow {
                                 text: qsTr("About Callie")
                                 onTriggered: about.open()
                             }
+                            MenuEntry {
+                                text: qsTr("Support Callie on Ko-fi")
+                                onTriggered: Qt.openUrlExternally(Release.support)
+                            }
                             // Closing the window leaves Callie running then, so
                             // this is the way out.
                             MenuEntry {

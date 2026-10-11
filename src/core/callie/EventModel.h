@@ -55,6 +55,7 @@ public:
         CalendarIdRole,
         EventIdRole,
         SeriesIdRole,
+        DetachedRole,
         ResponseRole,
         AttendeesRole,
         GuestsRole,

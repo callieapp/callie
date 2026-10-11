@@ -70,6 +70,9 @@ public:
     /// to (empty for a one-off event), which actions on it need.
     QString eventId;
     QString seriesId;
+    /// An occurrence changed on its own, apart from its series: what is done to
+    /// it is done to it alone, never to the series.
+    bool detached = false;
     /// Whether the user may change or delete it, and answer the invitation.
     bool canEdit = false;
     bool canRespond = false;

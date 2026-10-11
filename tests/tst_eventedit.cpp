@@ -89,6 +89,7 @@ private Q_SLOTS:
     void trayAsksWhichOccurrences();
     void developerModeShowsIds();
     void customRepeatsAreWritten();
+    void detachedOccurrencesChangeAlone();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -740,6 +741,26 @@ void TestEventEdit::developerModeShowsIds()
     };
     QTRY_COMPARE(copied()[u"summary"].toString(), u"Dentist"_s);
     QCOMPARE(copied()[u"eventId"].toString(), u"sample-3-16-0-2026-10-07"_s);
+}
+
+void TestEventEdit::detachedOccurrencesChangeAlone()
+{
+    QQuickItem *form = openEditor(u"Climbing"_s);
+    QVERIFY(form);
+    // Climbing as one occurrence of a series, changed on its own in Google.
+    QVariantMap detached = form->property("event").toMap();
+    detached.insert(u"seriesId"_s, u"climbing"_s);
+    detached.insert(u"recurrence"_s, QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=FR"_s});
+    detached.insert(u"detached"_s, true);
+    QVERIFY(QMetaObject::invokeMethod(form, "load", Q_ARG(QVariant, detached)));
+    QVERIFY(!form->property("repeating").toBool());
+    // It has no repeat of its own to change.
+    QTRY_VERIFY(!find(m_window->contentItem(), "QQuickText", "text", u"Repeats"_s));
+
+    form->setProperty("title", u"Bouldering"_s);
+    QVERIFY(QMetaObject::invokeMethod(form, "save"));
+    QVERIFY(!form->property("asking").toBool());
+    QVERIFY(!find(m_window->contentItem(), "StickerButton", "text", u"This event"_s));
 }
 
 void TestEventEdit::customRepeatsAreWritten()

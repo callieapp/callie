@@ -6,6 +6,7 @@
 #include "callie/Settings.h"
 
 #include <QLocale>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -16,6 +17,30 @@ using namespace Qt::StringLiterals;
 namespace {
 
 const QDateTime kNow(QDate(2026, 10, 7), QTime(13, 40), QTimeZone::UTC);
+
+/// A few fixed events.
+class FixedSource : public CalendarSource
+{
+public:
+    explicit FixedSource(QList<Event> events) : m_events(std::move(events)) {}
+
+    QString sourceId() const override { return u"fixed"_s; }
+    QList<CalendarInfo> calendars() const override { return {}; }
+    void refresh() override {}
+    QList<Event> eventsBetween(const QDateTime &from, const QDateTime &to,
+                               const QTimeZone &) const override
+    {
+        QList<Event> out;
+        for (const Event &e : m_events) {
+            if (e.end > from && e.start < to)
+                out.append(e);
+        }
+        return out;
+    }
+
+private:
+    QList<Event> m_events;
+};
 
 } // namespace
 
@@ -30,6 +55,8 @@ private Q_SLOTS:
     void keysMoveAroundAsInTheApp();
     void viewsCoverTheirDays();
     void hiddenCalendarsStayHidden();
+    void daysAreTheSettingsZones();
+    void syncStatusRedraws();
     void drawsInTheTheme();
 
 private:
@@ -147,6 +174,57 @@ void TestTui::hiddenCalendarsStayHidden()
     m_state->reload();
     for (const Event &e : m_state->events())
         QVERIFY(e.calendarId != calendar);
+}
+
+void TestTui::daysAreTheSettingsZones()
+{
+    // Los Angeles leaves daylight time early on November 1, so that day has
+    // 25 hours. 07:30 UTC is 00:30 there, still the start of the day.
+    m_settings->setTimeZoneId(u"America/Los_Angeles"_s);
+    const QTimeZone la("America/Los_Angeles");
+    const auto at = [&](int day, int hour, int minute) {
+        return QDateTime(QDate(2026, 11, day), QTime(hour, minute), la);
+    };
+    const auto event = [](const QString &summary, const QDateTime &start, const QDateTime &end) {
+        Event e;
+        e.eventId = summary;
+        e.summary = summary;
+        e.start = start;
+        e.end = end;
+        return e;
+    };
+    FixedSource source({
+        event(u"Late"_s, QDateTime(QDate(2026, 10, 31), QTime(23, 30), la), at(1, 0, 15)),
+        event(u"Brunch"_s, at(1, 11, 0), at(1, 12, 0)),
+        event(u"Night"_s, at(1, 23, 30), at(1, 23, 50)),
+        event(u"Tomorrow"_s, at(2, 0, 30), at(2, 1, 0)),
+    });
+    const QDateTime now(QDate(2026, 11, 1), QTime(7, 30), QTimeZone::UTC);
+    TuiState state(source, *m_settings, [now] { return now; });
+
+    QCOMPARE(state.today(), QDate(2026, 11, 1));
+    QStringList shown;
+    for (const Event &e : state.events())
+        shown.append(e.summary);
+    QCOMPARE(shown, (QStringList{u"Late"_s, u"Brunch"_s, u"Night"_s}));
+    QCOMPARE(state.dayOf(state.events().first()), QDate(2026, 11, 1));
+
+    state.press(u"Tab"_s);
+    QCOMPARE(state.view(), TuiState::View::Week);
+    for (const Event &e : state.events()) {
+        const QDate expected = e.summary == u"Tomorrow"_s ? QDate(2026, 11, 2)
+                               : e.summary == u"Late"_s && state.rangeStart() < QDate(2026, 11, 1)
+                                   ? QDate(2026, 10, 31)
+                                   : QDate(2026, 11, 1);
+        QCOMPARE(state.dayOf(e), expected);
+    }
+}
+
+void TestTui::syncStatusRedraws()
+{
+    QSignalSpy redraws(m_state.get(), &TuiState::changed);
+    Q_EMIT m_source->statusChanged();
+    QCOMPARE(redraws.count(), 1);
 }
 
 void TestTui::drawsInTheTheme()

@@ -40,7 +40,7 @@ command-line interface is included for power users.
 %autosetup
 
 %build
-%cmake -GNinja
+%cmake -GNinja -DCALLIE_TUI=ON
 %cmake_build
 
 %install

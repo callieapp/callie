@@ -19,17 +19,24 @@ set(CALLIE_APP_ID "org.callieapp.Callie" CACHE STRING "Reverse-DNS application i
 # folders and keyring entries, so the two never share accounts or a cache.
 option(CALLIE_DEVEL "Give this build its own identity, apart from an installed Callie" OFF)
 
-# `callie` in a terminal opens a TUI when FTXUI is there; without it the CLI is
-# the same, so building does not need it. FTXUI says only its own major version
-# is compatible, so the minimum is checked here rather than asked of find_package.
-find_package(ftxui CONFIG QUIET)
+# `callie` in a terminal opens a TUI built with FTXUI. CALLIE_TUI=AUTO leaves it
+# out when FTXUI is missing; packages and CI ask for ON. FTXUI says only its own
+# major version is compatible, so the minimum is checked here rather than asked
+# of find_package.
+set(CALLIE_TUI "AUTO" CACHE STRING "Build the TUI: ON, OFF or AUTO, when FTXUI is there")
+set_property(CACHE CALLIE_TUI PROPERTY STRINGS ON OFF AUTO)
+if(NOT CALLIE_TUI STREQUAL "OFF")
+    find_package(ftxui CONFIG QUIET)
+endif()
 if(ftxui_FOUND AND ftxui_VERSION VERSION_LESS 5)
     set(ftxui_FOUND FALSE)
 endif()
 if(ftxui_FOUND)
     message(STATUS "Callie: TUI with FTXUI ${ftxui_VERSION}")
+elseif(CALLIE_TUI STREQUAL "ON")
+    message(FATAL_ERROR "CALLIE_TUI is ON, but FTXUI 5 or later is not installed")
 else()
-    message(STATUS "Callie: no FTXUI, so no TUI")
+    message(STATUS "Callie: no TUI")
 endif()
 
 option(CALLIE_BUILD_TESTS "Build the unit tests" ON)

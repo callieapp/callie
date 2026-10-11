@@ -36,7 +36,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CALLIE_WERROR": "ON",
-        "CALLIE_LIVE_QML": "ON"
+        "CALLIE_LIVE_QML": "ON",
+        "CALLIE_TUI": "ON"
       }
     }
   ],

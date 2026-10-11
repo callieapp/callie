@@ -89,6 +89,13 @@ target_link_libraries(tst_composer PRIVATE callieui)
 # Drives the real main window with the pointer.
 callie_add_test(tst_weekdrag)
 target_link_libraries(tst_weekdrag PRIVATE callieui callieuiplugin Qt6::QuickControls2)
+# Drags carry events across clock changes, so they run in zones that have them too.
+foreach(zone America/Los_Angeles Europe/Berlin)
+    string(REPLACE "/" "_" suffix ${zone})
+    add_test(NAME tst_weekdrag_${suffix} COMMAND tst_weekdrag)
+    set_tests_properties(tst_weekdrag_${suffix} PROPERTIES
+        ENVIRONMENT "TZ=${zone};QT_QPA_PLATFORM=offscreen")
+endforeach()
 callie_add_test(tst_eventedit)
 target_link_libraries(tst_eventedit PRIVATE callieui callieuiplugin Qt6::QuickControls2)
 

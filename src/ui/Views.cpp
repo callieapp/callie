@@ -30,6 +30,11 @@ QDateTime Views::dayAt(const QDateTime &start, int index) const
     return start.date().addDays(index).startOfDay();
 }
 
+int Views::daysBetween(const QDateTime &from, const QDateTime &to) const
+{
+    return int(from.date().daysTo(to.date()));
+}
+
 QString Views::heading(const QDateTime &day, const QDateTime &today) const
 {
     return ViewRange::heading(day.date(), today.date());

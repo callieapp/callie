@@ -790,7 +790,7 @@ Item {
             return null
         const at = grid.contentItem.mapFromItem(null, pager.point.x, pager.point.y)
         const column = root.columnAtX(at.x) - (carry.timed ? 0 : carry.grab)
-        const days = Math.round((root.dateForColumn(column) - carry.origin) / 86400000)
+        const days = Views.daysBetween(carry.origin, root.dateForColumn(column))
         let minutes = 0
         let top = 0
         if (carry.timed) {

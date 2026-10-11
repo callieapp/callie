@@ -316,7 +316,7 @@ Item {
         const carry = pager.carry
         const index = root.cellAt(scenePosition)
         root.dropIndex = -1
-        const days = index < 0 ? 0 : Math.round((root.dateFor(index) - carry.origin) / 86400000)
+        const days = index < 0 ? 0 : Views.daysBetween(carry.origin, root.dateFor(index))
         if (days === 0) {
             pager.clear()
             return
@@ -333,6 +333,11 @@ Item {
         id: pager
         onHandOff: (item, scenePosition) => root.carryFrom(item, scenePosition)
         onPageRequested: direction => root.pageRequested(direction)
+        // Dropped or cancelled, no day waits for it.
+        onCarryChanged: {
+            if (!carry)
+                root.dropIndex = -1
+        }
         onMoved: scenePosition => {
             root.dropIndex = root.cellAt(scenePosition)
             pager.track(null, scenePosition, root.edgeAt(scenePosition))

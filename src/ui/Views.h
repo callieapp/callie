@@ -25,6 +25,8 @@ public:
     Q_INVOKABLE QDateTime step(const QString &view, const QDateTime &focus, int count) const;
     /// The day `index` days after `start`.
     Q_INVOKABLE QDateTime dayAt(const QDateTime &start, int index) const;
+    /// Whole days from one day to another, however long the days between are.
+    Q_INVOKABLE int daysBetween(const QDateTime &from, const QDateTime &to) const;
     Q_INVOKABLE QString heading(const QDateTime &day, const QDateTime &today) const;
 };
 

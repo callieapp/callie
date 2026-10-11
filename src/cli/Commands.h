@@ -73,6 +73,8 @@ public:
     /// A copy of the event, at `start` if given, else at the same time.
     void duplicate(const QString &id, const std::optional<QString> &start, const Done &done);
 
+    /// The settings settings() reads and changes, by name.
+    [[nodiscard]] static QStringList settingNames(const Settings &settings);
     /// With no name, every setting and its value; with a name, its value; with
     /// a value too, changes it quietly. The app reads settings when it starts.
     static int settings(Settings &settings, QTextStream &out, QTextStream &err, const QString &name,
@@ -87,6 +89,9 @@ public:
     /// `day`, or anything `callie add` understands, such as "friday 3pm".
     [[nodiscard]] std::optional<QDateTime> when(const QString &text, QDate day) const;
 
+    /// The id the commands take: the calendar, a slash, and the event.
+    [[nodiscard]] static QString reference(const Event &event);
+
 private:
     /// The calendars the user hides.
     [[nodiscard]] QSet<QString> hiddenCalendarIds() const;
@@ -95,8 +100,6 @@ private:
     [[nodiscard]] std::optional<Event> find(const QString &id);
     [[nodiscard]] std::optional<EditScope> scopeOf(const QString &scope);
     void print(const QList<Event> &events, bool json, bool byDay);
-    /// The id the commands take: the calendar, a slash, and the event.
-    [[nodiscard]] static QString reference(const Event &event);
     [[nodiscard]] QString writableCalendar(const QString &wanted) const;
     void report(const Outcome &outcome, const Done &done);
 

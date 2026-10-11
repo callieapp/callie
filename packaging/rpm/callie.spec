@@ -56,6 +56,9 @@ appstream-util validate-relax --nonet \
 %doc README.md
 %{_bindir}/callie
 %{_bindir}/callie-gui
+%{_datadir}/bash-completion/completions/callie
+%{_datadir}/zsh/site-functions/_callie
+%{_datadir}/fish/vendor_completions.d/callie.fish
 %{_datadir}/applications/org.callieapp.Callie.desktop
 %{_datadir}/metainfo/org.callieapp.Callie.metainfo.xml
 %{_datadir}/icons/hicolor/scalable/apps/org.callieapp.Callie.svg

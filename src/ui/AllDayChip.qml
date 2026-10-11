@@ -132,9 +132,10 @@ Rectangle {
 
         target: null
         yAxis.enabled: false
-        enabled: chip.canEdit && !chip.settling
+        // Handing the drag off ends it here.
+        enabled: chip.canEdit && !chip.settling && !chip.carried
         onCentroidChanged: {
-            if (!active)
+            if (!active || chip.carried)
                 return
             chip.dayShift = chip.daysDragged(drag)
             chip.draggedTo(centroid.scenePosition)

@@ -199,9 +199,10 @@ Rectangle {
         property int minutes: 0
 
         target: null
-        enabled: root.canEdit && !root.settling
+        // Handing the drag off ends it here.
+        enabled: root.canEdit && !root.settling && !root.carried
         onCentroidChanged: {
-            if (!active)
+            if (!active || root.carried)
                 return
             minutes = root.snapped(centroid.scenePosition.y - centroid.scenePressPosition.y)
             root.draggedTo(centroid.scenePosition)

@@ -201,6 +201,14 @@ void TestCli::agendaTakesTheThemesColors()
         line.contains(Paint::foreground(palette.fill(dentist.color), Paint::Depth::True) + u"●"_s),
         qPrintable(line));
 
+    // Declined events are struck through.
+    m_source->respond(named(u"Vendor call"_s, QDate(2026, 10, 7)), u"declined"_s, false,
+                      [](const QString &) {});
+    m_out.clear();
+    QCOMPARE(m_commands->agenda(1, false), 0);
+    m_outStream->flush();
+    QVERIFY2(m_out.contains(u"\033[9m\033[2mVendor call"_s), qPrintable(m_out));
+
     // Plain without, as when piped.
     m_out.clear();
     m_commands->setPaint(Paint());

@@ -2,6 +2,7 @@
 
 #include "Palette.h"
 
+#include <QByteArray>
 #include <QColor>
 #include <QString>
 
@@ -21,6 +22,9 @@ public:
     /// 24-bit when COLORTERM says so, 256 colors when TERM does, else the
     /// basic sixteen.
     [[nodiscard]] static Depth detect(int fd);
+    /// detect() for a terminal or not, with TERM, COLORTERM and NO_COLOR as given.
+    [[nodiscard]] static Depth depthFor(bool terminal, const QByteArray &term,
+                                        const QByteArray &colorTerm, bool noColor);
 
     /// Plain text.
     Paint() = default;

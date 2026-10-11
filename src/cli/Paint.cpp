@@ -63,12 +63,15 @@ int nearestBasic(const QColor &color)
 
 Paint::Depth Paint::detect(int fd)
 {
-    if (!qEnvironmentVariableIsEmpty("NO_COLOR") || !::isatty(fd))
+    return depthFor(::isatty(fd), qgetenv("TERM"), qgetenv("COLORTERM"),
+                    !qEnvironmentVariableIsEmpty("NO_COLOR"));
+}
+
+Paint::Depth Paint::depthFor(bool terminal, const QByteArray &term, const QByteArray &colorTerm,
+                             bool noColor)
+{
+    if (noColor || !terminal || term == "dumb")
         return Depth::None;
-    const QByteArray term = qgetenv("TERM");
-    if (term == "dumb")
-        return Depth::None;
-    const QByteArray colorTerm = qgetenv("COLORTERM");
     if (colorTerm == "truecolor" || colorTerm == "24bit")
         return Depth::True;
     return term.contains("256color") ? Depth::Ansi256 : Depth::Basic;

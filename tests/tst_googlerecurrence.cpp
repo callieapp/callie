@@ -541,7 +541,26 @@ void TestGoogleRecurrence::seriesEndIsItsLastOccurrence()
     QCOMPARE(end("RRULE:FREQ=WEEKLY;UNTIL=20261020T000000Z"), utc(2026, 10, 19, 11));
     QCOMPARE(end("RDATE:20261008T100000Z,20261012T100000Z"), utc(2026, 10, 12, 11));
     QCOMPARE(end("RRULE:NOT A RULE"), utc(2026, 10, 5, 11));
-    // An all-day series by its dates.
+    // In the series' own zone, across a clock change: Berlin falls back on
+    // October 25, so the last occurrence, 12:00 to 13:00 there, ends at 12:00
+    // UTC rather than 11:00.
+    QCOMPARE(seriesEnd(parsed(R"({"id":"s",
+        "start":{"dateTime":"2026-10-19T12:00:00+02:00","timeZone":"Europe/Berlin"},
+        "end":{"dateTime":"2026-10-19T13:00:00+02:00","timeZone":"Europe/Berlin"},
+        "recurrence":["RRULE:FREQ=WEEKLY;COUNT=2"]})"))
+                 .value_or(QDateTime()),
+             utc(2026, 10, 26, 12));
+    QCOMPARE(seriesEnd(parsed(R"({"id":"s",
+        "start":{"dateTime":"2026-10-19T12:00:00+02:00","timeZone":"Europe/Berlin"},
+        "end":{"dateTime":"2026-10-19T13:00:00+02:00","timeZone":"Europe/Berlin"},
+        "recurrence":["RRULE:FREQ=WEEKLY;UNTIL=20261030T000000Z"]})"))
+                 .value_or(QDateTime()),
+             utc(2026, 10, 26, 12));
+    // An all-day series by its dates, also when it ends on one.
+    QCOMPARE(seriesEnd(parsed(R"({"id":"s","start":{"date":"2026-10-05"},
+        "end":{"date":"2026-10-06"},"recurrence":["RRULE:FREQ=WEEKLY;UNTIL=20261020"]})"))
+                 .value_or(QDateTime()),
+             utc(2026, 10, 20));
     QCOMPARE(seriesEnd(parsed(R"({"id":"s","start":{"date":"2026-10-05"},
         "end":{"date":"2026-10-07"},"recurrence":["RRULE:FREQ=YEARLY;COUNT=2"]})"))
                  .value_or(QDateTime()),

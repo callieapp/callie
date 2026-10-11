@@ -805,10 +805,11 @@ int main(int argc, char *argv[])
                                 !qEnvironmentVariableIsEmpty("QT_LOGGING_RULES"));
 
     const QStringList args = parser.positionalArguments();
-    // On its own in a terminal, `callie` opens the TUI; piped, or in a build
-    // without one, it lists the agenda.
+    // On its own in a terminal, `callie` opens the TUI; piped, asked for the
+    // agenda's options, or in a build without a TUI, it lists the agenda.
 #ifdef CALLIE_HAVE_TUI
-    const bool interactive = ::isatty(STDIN_FILENO) && ::isatty(STDOUT_FILENO);
+    const bool interactive = ::isatty(STDIN_FILENO) && ::isatty(STDOUT_FILENO) &&
+                             !parser.isSet(u"json"_s) && !parser.isSet(daysOption);
 #else
     const bool interactive = false;
 #endif

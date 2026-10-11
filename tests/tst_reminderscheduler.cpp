@@ -1,5 +1,6 @@
 #include "callie/ReminderScheduler.h"
 
+#include <QPromise>
 #include <QSignalSpy>
 #include <QTest>
 
@@ -32,6 +33,35 @@ public:
         return result;
     }
     void refresh() override {}
+};
+
+/// A ListSource whose reads finish only when told to, as a cache read on
+/// another thread does.
+class SlowSource : public ListSource
+{
+public:
+    /// How many reads were started.
+    mutable int reads = 0;
+
+    QFuture<SourceSnapshot> load(const QDateTime &from, const QDateTime &to,
+                                 const QTimeZone &tz) const override
+    {
+        auto promise = std::make_shared<QPromise<SourceSnapshot>>();
+        promise->start();
+        pending.append({promise, SourceSnapshot{eventsBetween(from, to, tz), {}}});
+        ++reads;
+        return promise->future();
+    }
+
+    /// Finishes the oldest read still waiting.
+    void finishOne()
+    {
+        auto [promise, snapshot] = pending.takeFirst();
+        promise->addResult(snapshot);
+        promise->finish();
+    }
+
+    mutable QList<std::pair<std::shared_ptr<QPromise<SourceSnapshot>>, SourceSnapshot>> pending;
 };
 
 QDateTime at(int hour, int minute = 0)
@@ -68,6 +98,7 @@ private Q_SLOTS:
     void endedEventsAreNotCaughtUp();
     void snoozeRemindsAgain();
     void stoppedSaysNothing();
+    void slowReadsRemindWhenDone();
 
 private:
     void stepTo(const QDateTime &moment);
@@ -225,6 +256,33 @@ void TestReminderScheduler::stoppedSaysNothing()
     m_scheduler->setDefaultMinutes(15);
     m_scheduler->setEnabled(true);
     QVERIFY(m_said.isEmpty());
+}
+
+void TestReminderScheduler::slowReadsRemindWhenDone()
+{
+    SlowSource slow;
+    slow.events = {eventAt(u"standup"_s, at(10))};
+    m_scheduler->setSource(&slow);
+    m_scheduler->setEnabled(true);
+    QCOMPARE(slow.reads, 1);
+    slow.finishOne();
+    QTRY_COMPARE(slow.pending.size(), 0);
+
+    // Due while the events are still being read: said once they are.
+    m_now = at(9, 50);
+    m_scheduler->check();
+    QVERIFY(m_said.isEmpty());
+    // Asked again meanwhile, it reads once more afterwards, not alongside.
+    m_now = at(9, 51);
+    m_scheduler->check();
+    QCOMPARE(slow.reads, 2);
+    slow.finishOne();
+    QTRY_COMPARE(m_said, (QList<QPair<QString, int>>{{u"standup"_s, 10}}));
+    QTRY_COMPARE(slow.reads, 3);
+    slow.finishOne();
+    QTest::qWait(10);
+    QCOMPARE(m_said.size(), 1);
+    m_scheduler->setSource(nullptr);
 }
 
 QTEST_GUILESS_MAIN(TestReminderScheduler)

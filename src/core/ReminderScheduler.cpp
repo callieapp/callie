@@ -1,6 +1,7 @@
 #include "callie/ReminderScheduler.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace callie {
 
@@ -99,7 +100,35 @@ void ReminderScheduler::check()
 {
     if (!m_enabled)
         return;
+    // One read at a time; a check asked for meanwhile follows it.
+    if (m_reading) {
+        m_checkAgain = true;
+        return;
+    }
     const QDateTime now = m_now();
+    if (!m_source) {
+        review(now, {});
+        return;
+    }
+    // Events that already ended are left out: a reminder for one is no use,
+    // even if it fell due while the computer slept.
+    QFuture<SourceSnapshot> read = m_source->load(now, now.addDays(kLookAheadDays), m_zone);
+    if (read.isFinished()) {
+        review(now, read.resultCount() > 0 ? read.result().events : QList<Event>());
+        return;
+    }
+    m_reading = true;
+    read.then(this, [this, now](const SourceSnapshot &snapshot) {
+        m_reading = false;
+        if (m_enabled)
+            review(now, snapshot.events);
+        if (std::exchange(m_checkAgain, false))
+            check();
+    });
+}
+
+void ReminderScheduler::review(const QDateTime &now, const QList<Event> &events)
+{
     const QDateTime since = m_lastCheck.isValid() ? m_lastCheck : now.addSecs(-kStartupGraceSecs);
     m_lastCheck = now;
     QDateTime next;
@@ -119,26 +148,20 @@ void ReminderScheduler::check()
         }
     }
 
-    if (m_source) {
-        // Events that already ended are left out: a reminder for one is no use,
-        // even if it fell due while the computer slept.
-        const QList<Event> events =
-            m_source->eventsBetween(now, now.addDays(kLookAheadDays), m_zone);
-        for (const Event &event : events) {
-            if (event.declined || event.workPlace || m_hidden.contains(event.calendarId))
+    for (const Event &event : events) {
+        if (event.declined || event.workPlace || m_hidden.contains(event.calendarId))
+            continue;
+        for (int minutes : remindersFor(event)) {
+            const QDateTime at = event.start.addSecs(-qint64(minutes) * 60);
+            if (at > now) {
+                consider(at);
                 continue;
-            for (int minutes : remindersFor(event)) {
-                const QDateTime at = event.start.addSecs(-qint64(minutes) * 60);
-                if (at > now) {
-                    consider(at);
-                    continue;
-                }
-                const QString key = keyOf(event, minutes);
-                if (at <= since || m_said.contains(key))
-                    continue;
-                m_said.insert(key, at);
-                Q_EMIT due(event, minutes);
             }
+            const QString key = keyOf(event, minutes);
+            if (at <= since || m_said.contains(key))
+                continue;
+            m_said.insert(key, at);
+            Q_EMIT due(event, minutes);
         }
     }
 

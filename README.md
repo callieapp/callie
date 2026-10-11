@@ -102,6 +102,9 @@ is out: in the app's ? menu, and in a line after a command run in a terminal. `c
 checkForUpdates false`, or Settings in the app, turns that off, as does setting
 `CALLIE_NO_UPDATE_CHECK` in the environment.
 
+On a terminal, the CLI takes its colors from the app's theme: today and links in its accent, and a dot
+in each event's calendar color. `NO_COLOR` turns colors off, as does piping the output.
+
 Output meant for scripts goes to stdout, and everything else to stderr. Exit codes are 0 for
 success, 1 for an error, and 2 for a usage mistake.
 

@@ -105,6 +105,7 @@ private Q_SLOTS:
     void agendaGivesIdsToScripts();
     void agendaMarksCallsInNotes();
     void agendaLeavesOutWorkPlaces();
+    void agendaTakesTheThemesColors();
     void hiddenCalendarsStayHidden();
     void searchListsASeriesOnce();
     void invitesWaitingAnswerOnce();
@@ -183,6 +184,30 @@ void TestCli::agendaMarksCallsInNotes()
     m_outStream->flush();
     const QString line = m_out.split(u'\n').filter(u"Pairing"_s).value(0);
     QVERIFY2(line.contains(u"↗"_s), qPrintable(m_out));
+}
+
+void TestCli::agendaTakesTheThemesColors()
+{
+    const Palette palette = Palette::forTheme({});
+    m_commands->setPaint(Paint(Paint::Depth::True, palette));
+    QCOMPARE(m_commands->agenda(1, false), 0);
+    m_outStream->flush();
+    // Today in the accent, and each event's calendar as a dot in its sticker color.
+    QVERIFY(m_out.contains(Paint::foreground(palette.colors().accent, Paint::Depth::True) +
+                           u"Today"_s));
+    const Event dentist = named(u"Dentist"_s, QDate(2026, 10, 7));
+    const QString line = m_out.split(u'\n').filter(u"Dentist"_s).value(0);
+    QVERIFY2(
+        line.contains(Paint::foreground(palette.fill(dentist.color), Paint::Depth::True) + u"●"_s),
+        qPrintable(line));
+
+    // Plain without, as when piped.
+    m_out.clear();
+    m_commands->setPaint(Paint());
+    QCOMPARE(m_commands->agenda(1, false), 0);
+    m_outStream->flush();
+    QVERIFY(!m_out.contains(u'\033'));
+    QVERIFY(!m_out.contains(u"●"_s));
 }
 
 void TestCli::agendaLeavesOutWorkPlaces()

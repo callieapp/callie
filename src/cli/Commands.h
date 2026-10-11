@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Paint.h"
+
 #include "callie/CalendarSource.h"
 
 #include <QCoreApplication>
@@ -49,7 +51,8 @@ public:
              QDateTime now, QTimeZone zone);
 
     /// Colors the output for a terminal.
-    void setColor(bool color) { m_color = color; }
+    /// Colors for a terminal; output is plain without them.
+    void setPaint(const Paint &paint) { m_paint = paint; }
 
     /// The next `days` days, by day. With `json`, a JSON array whose ids are
     /// what the other commands take.
@@ -109,7 +112,7 @@ private:
     QTextStream &m_err;
     QDateTime m_now;
     QTimeZone m_zone;
-    bool m_color = false;
+    Paint m_paint;
 };
 
 } // namespace cli

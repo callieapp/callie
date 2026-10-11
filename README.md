@@ -96,7 +96,8 @@ callie --verbose sync                    # any command, printing progress as wel
 
 Once a day the app and the CLI ask GitHub for Callie's latest release, and say when a newer one
 is out: in the app's ? menu, and in a line after a command run in a terminal. `callie settings
-checkForUpdates false`, or Settings in the app, turns that off.
+checkForUpdates false`, or Settings in the app, turns that off, as does setting
+`CALLIE_NO_UPDATE_CHECK` in the environment.
 
 Output meant for scripts goes to stdout, and everything else to stderr. Exit codes are 0 for
 success, 1 for an error, and 2 for a usage mistake.

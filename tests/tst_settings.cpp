@@ -23,6 +23,7 @@ private Q_SLOTS:
     void developerSettingsAreKept();
     void placeSettingsAreKept();
     void placeSettingsSurviveARealRestart();
+    void updateChecksCanBeTurnedOff();
     void newCalendarsStartAsTheirProviderShowsThem();
     void keyboardSettingsKeepToWhatWorks();
     void weekSettingsResetAndSignal();
@@ -187,6 +188,24 @@ void TestSettings::workingHoursStayInOrder()
     settings.setShowWorkHours(true);
     QCOMPARE(changed.size(), 1);
     QVERIFY(Settings(path()).showWorkHours());
+}
+
+void TestSettings::updateChecksCanBeTurnedOff()
+{
+    {
+        Settings settings(path());
+        QVERIFY(settings.checkForUpdates());
+        QSignalSpy changed(&settings, &Settings::checkForUpdatesChanged);
+        settings.setCheckForUpdates(false);
+        settings.setCheckForUpdates(false);
+        QCOMPARE(changed.size(), 1);
+    }
+    Settings settings(path());
+    QVERIFY(!settings.checkForUpdates());
+    QSignalSpy changed(&settings, &Settings::checkForUpdatesChanged);
+    settings.reset();
+    QVERIFY(settings.checkForUpdates());
+    QCOMPARE(changed.size(), 1);
 }
 
 void TestSettings::newCalendarsStartAsTheirProviderShowsThem()

@@ -16,6 +16,7 @@
 #include "callie/UpdateCheck.h"
 
 #include "Commands.h"
+#include "UpdateHint.h"
 #include "Upgrade.h"
 
 #include <QCommandLineParser>
@@ -67,34 +68,23 @@ const QString kGoogle = QStringLiteral("google");
 /// After a command on a terminal, says once a newer release is out. GitHub is
 /// asked at most once a day, by a copy of callie left running on its own, so no
 /// command waits for it.
-class UpdateHint
+class HintAfterwards
 {
 public:
-    UpdateHint(const QString &command, bool json)
-    {
-        static const QStringList quiet = {u"upgrade"_s, u"downgrade"_s, u"update-check"_s,
-                                          u"gui"_s};
-        m_wanted = !json && !quiet.contains(command) && ::isatty(STDERR_FILENO) &&
-                   UpdateCheck().wanted(Settings(Settings::defaultPath()).checkForUpdates());
-    }
-    UpdateHint(const UpdateHint &) = delete;
-    UpdateHint &operator=(const UpdateHint &) = delete;
+    HintAfterwards(QString command, bool json) : m_command(std::move(command)), m_json(json) {}
+    HintAfterwards(const HintAfterwards &) = delete;
+    HintAfterwards &operator=(const HintAfterwards &) = delete;
 
-    ~UpdateHint()
+    ~HintAfterwards()
     {
-        if (!m_wanted)
-            return;
         UpdateCheck check;
-        const QVersionNumber running =
-            QVersionNumber::fromString(QCoreApplication::applicationVersion());
-        if (const std::optional<Release> newer = check.newerThan(running)) {
-            err << dim(QObject::tr("callie: Callie %1 is out, and this is %2. Update with: "
-                                   "callie upgrade")
-                           .arg(newer->version.toString(), running.toString()))
-                << "\n"
-                << Qt::flush;
-        }
-        if (check.due()) {
+        const cli::UpdateHint hint = cli::UpdateHint::after(
+            m_command, m_json, ::isatty(STDERR_FILENO),
+            Settings(Settings::defaultPath()).checkForUpdates(), check,
+            QVersionNumber::fromString(QCoreApplication::applicationVersion()));
+        if (!hint.line.isEmpty())
+            err << dim(hint.line) << "\n" << Qt::flush;
+        if (hint.ask) {
             check.markAsked();
             QProcess asker;
             asker.setProgram(QCoreApplication::applicationFilePath());
@@ -106,7 +96,8 @@ public:
     }
 
 private:
-    bool m_wanted = false;
+    QString m_command;
+    bool m_json;
 };
 
 /// Ends the event loop with `code` after flushing, since exit codes are the
@@ -707,11 +698,13 @@ int main(int argc, char *argv[])
 
     const QStringList args = parser.positionalArguments();
     const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
-    const UpdateHint hint(command, parser.isSet(u"json"_s));
+    const HintAfterwards hint(command, parser.isSet(u"json"_s));
 
     // Run by UpdateHint, on its own, to learn the latest release.
     if (command == u"update-check" && args.size() == 1) {
         UpdateCheck check;
+        if (!check.wanted(Settings(Settings::defaultPath()).checkForUpdates()))
+            return 0;
         QObject::connect(&check, &UpdateCheck::checked, &app, &QCoreApplication::quit);
         check.check();
         return app.exec();

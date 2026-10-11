@@ -1,4 +1,5 @@
 #include "FakeHttpServer.h"
+#include "UpdateHint.h"
 #include "Upgrade.h"
 
 #include <QCryptographicHash>
@@ -26,6 +27,7 @@ private Q_SLOTS:
     void mismatchedPackageIsNotInstalled();
     void dryRunChangesNothing();
     void refusesWhatItCannotDo();
+    void hintsOnlyWhereWanted();
     void systemsWithoutPackagesSayWhy_data();
     void systemsWithoutPackagesSayWhy();
     void failuresStopBeforeInstalling();
@@ -250,6 +252,46 @@ void TestUpgrade::refusesWhatItCannotDo()
     QCOMPARE(run({}, QString()), 1);
     QVERIFY(m_err.contains(u"install.sh"_s));
     QVERIFY(m_ran.isEmpty());
+}
+
+void TestUpgrade::hintsOnlyWhereWanted()
+{
+    // 0.2.3 is known to be out, and GitHub was asked just now.
+    UpdateCheck check(m_dir->filePath(u"latest-release.json"_s));
+    check.setDevel(false);
+    {
+        QFile file(m_dir->filePath(u"latest-release.json"_s));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(QJsonDocument(QJsonObject{{u"version"_s, u"0.2.3"_s},
+                                             {u"asked"_s, QDateTime::currentDateTimeUtc().toString(
+                                                              Qt::ISODateWithMs)}})
+                       .toJson());
+    }
+    const QVersionNumber running(0, 2, 1);
+    const auto hint = [&](const QString &command, bool json, bool terminal, bool setting) {
+        return UpdateHint::after(command, json, terminal, setting, check, running);
+    };
+    UpdateHint said = hint(u"agenda"_s, false, true, true);
+    QCOMPARE(said.line,
+             u"callie: Callie 0.2.3 is out, and this is 0.2.1. Update with: callie upgrade"_s);
+    QVERIFY(!said.ask);
+    // Not for scripts, not off a terminal, not about releases, and not once turned off.
+    QVERIFY(hint(u"agenda"_s, true, true, true).line.isEmpty());
+    QVERIFY(hint(u"agenda"_s, false, false, true).line.isEmpty());
+    QVERIFY(hint(u"upgrade"_s, false, true, true).line.isEmpty());
+    QVERIFY(hint(u"__complete"_s, false, true, true).line.isEmpty());
+    said = hint(u"settings"_s, false, true, false);
+    QVERIFY(said.line.isEmpty());
+    QVERIFY(!said.ask);
+    // Nor in a development build.
+    check.setDevel(true);
+    QVERIFY(hint(u"agenda"_s, false, true, true).line.isEmpty());
+    check.setDevel(false);
+    // Up to date, it says nothing; a day on, it asks again.
+    QVERIFY(UpdateHint::after(u"agenda"_s, false, true, true, check, QVersionNumber(0, 2, 3))
+                .line.isEmpty());
+    check.setNow([] { return QDateTime::currentDateTimeUtc().addDays(2); });
+    QVERIFY(hint(u"agenda"_s, false, true, true).ask);
 }
 
 void TestUpgrade::systemsWithoutPackagesSayWhy_data()

@@ -2,6 +2,8 @@
 add_library(calliecli STATIC
     Commands.h
     Commands.cpp
+    UpdateHint.h
+    UpdateHint.cpp
     Upgrade.h
     Upgrade.cpp
 )

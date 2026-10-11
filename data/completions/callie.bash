@@ -1,11 +1,13 @@
 # bash completion for callie. The candidates come from callie itself, which
 # knows its commands, settings, calendars and events.
 _callie() {
-    local IFS=$'\n' line typed=${COMP_LINE:0:COMP_POINT} cur=${COMP_WORDS[COMP_CWORD]}
-    # bash splits words at = and : too, so callie reads the line itself, and what
-    # bash already took as earlier words is cut from the front of each candidate.
+    local IFS=$'\n' line typed=${COMP_LINE:0:COMP_POINT}
+    # bash splits words at = and : too, and replaces only what follows the last
+    # of them, so callie reads the line itself and that much of the word is cut
+    # from the front of each candidate.
     local word=${typed##*[[:space:]]}
-    local ahead=${word%"$cur"}
+    local tail=${word##*[=:]}
+    local ahead=${word%"$tail"}
     COMPREPLY=()
     for line in $(callie __complete --line "$typed" 2>/dev/null); do
         line=${line%%$'\t'*}

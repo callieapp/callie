@@ -23,9 +23,10 @@ curl -fsSL https://callieapp.org/install.sh | sh
 
 It finds the latest [GitHub release](https://github.com/callieapp/callie/releases), checks the
 package against the checksum GitHub records for it, and installs it with `dnf` or `apt`. On any
-other system it stops before changing anything. `sh -s -- --dry-run` shows what it would do, and
-`--version 0.2.1` installs that version. The packages can also be downloaded from the release and
-installed by hand.
+other system it stops before changing anything. Run again, it updates Callie, or says it is up to
+date. `sh -s -- --dry-run` shows what it would do, `--version 0.2.1` installs that version, older
+ones included, and `--force` installs it again. The packages can also be downloaded from the
+release and installed by hand.
 
 Installation provides the `Callie` desktop app and a `callie` CLI for those who prefer to live in
 the terminal 🖥️

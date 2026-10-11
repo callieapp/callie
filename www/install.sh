@@ -7,14 +7,19 @@
 # Installs the latest release's package with the system's package manager, on
 # the systems Callie ships packages for: Fedora 44 or later, and Debian 13
 # (trixie) or later, on x86_64. Anything else stops before changing anything.
+# Run again, it updates Callie, or says it is up to date without downloading.
 set -eu
 
 repo="callieapp/callie"
 dry_run=0
+force=0
 version=""
 # Tests stand in for this system and for GitHub with these.
 os_release="${CALLIE_INSTALL_OS_RELEASE:-/etc/os-release}"
 release_file="${CALLIE_INSTALL_RELEASE_JSON:-}"
+# Set, even empty, it stands in for the installed version.
+installed_override="${CALLIE_INSTALL_INSTALLED-}"
+installed_overridden="${CALLIE_INSTALL_INSTALLED+yes}"
 
 say() { printf 'callie: %s\n' "$*"; }
 fail() {
@@ -30,6 +35,7 @@ On other systems, build Callie from source: https://github.com/$repo#development
 while [ $# -gt 0 ]; do
     case "$1" in
     --dry-run) dry_run=1 ;;
+    --force) force=1 ;;
     --version)
         [ $# -ge 2 ] || fail "--version needs a version, such as 0.2.1"
         version="$2"
@@ -37,8 +43,10 @@ while [ $# -gt 0 ]; do
         ;;
     --version=*) version="${1#--version=}" ;;
     -h | --help)
-        printf '%s\n' "usage: install.sh [--dry-run] [--version X.Y.Z]" \
-            "Installs Callie from its GitHub release with dnf or apt."
+        printf '%s\n' "usage: install.sh [--dry-run] [--force] [--version X.Y.Z]" \
+            "Installs or updates Callie from its GitHub release with dnf or apt." \
+            "--version installs that release, older ones included; --force installs" \
+            "it again when it is the one installed."
         exit 0
         ;;
     *) fail "unknown option $1; try --help" ;;
@@ -130,15 +138,64 @@ digest="$(printf '%s\n' "$release" | awk -v name="\"$package\"" '
 tag="$(printf '%s\n' "$release" | grep -o '"tag_name": *"[^"]*"' | head -n 1 |
     sed 's/.*"\([^"]*\)"$/\1/')"
 url="https://github.com/$repo/releases/download/$tag/$package"
+target="${tag#v}"
+
+# ---- What is installed now -----------------------------------------------
+
+if [ -n "$installed_overridden" ]; then
+    installed="$installed_override"
+else
+    installed=""
+    case "$kind" in
+    rpm) installed="$(rpm -q --qf '%{VERSION}' callie 2>/dev/null)" || installed="" ;;
+    deb)
+        state="$(dpkg-query -W -f='${Status}|${Version}' callie 2>/dev/null)" || state=""
+        case "$state" in
+        "install ok installed|"*) installed="${state#*|}" ;;
+        esac
+        ;;
+    esac
+    # Only the release, without the packaging's own revision.
+    installed="${installed%%-*}"
+fi
+
+# Whether version $1 comes before version $2.
+older() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]; }
+
+action=install
+if [ -n "$installed" ]; then
+    if [ "$installed" = "$target" ]; then
+        if [ "$force" -eq 0 ]; then
+            say "Callie $target is installed and up to date."
+            exit 0
+        fi
+        action=reinstall
+    elif older "$target" "$installed"; then
+        # Only on request: the latest release can trail a build from source.
+        if [ -z "$version" ]; then
+            say "Callie $installed is installed, newer than the latest release, $target."
+            exit 0
+        fi
+        action=downgrade
+    else
+        action=update
+    fi
+fi
 
 # apt resolves Callie's dependencies from its package lists, which may be
 # stale or, on a fresh system, empty; dnf refreshes its own when they expire.
 refresh=""
-case "$kind" in
-rpm) install="dnf install -y" ;;
-deb)
+case "$kind:$action" in
+rpm:reinstall) install="dnf reinstall -y" ;;
+rpm:downgrade) install="dnf downgrade -y" ;;
+rpm:*) install="dnf install -y" ;;
+deb:*)
     refresh="apt-get update"
     install="apt-get install -y"
+    case "$action" in
+    reinstall) install="$install --reinstall" ;;
+    downgrade) install="$install --allow-downgrades" ;;
+    esac
     ;;
 esac
 if [ -n "$sudo" ]; then
@@ -146,7 +203,12 @@ if [ -n "$sudo" ]; then
     [ -z "$refresh" ] || refresh="$sudo $refresh"
 fi
 
-say "installing Callie ${tag#v} on $system"
+case "$action" in
+install) say "installing Callie $target on $system" ;;
+update) say "updating Callie $installed to $target on $system" ;;
+reinstall) say "installing Callie $target again on $system" ;;
+downgrade) say "going back from Callie $installed to $target on $system" ;;
+esac
 say "package: $url"
 if [ "$dry_run" -eq 1 ]; then
     say "would check it against sha256 $digest"
@@ -174,4 +236,4 @@ if [ -n "$refresh" ]; then
 fi
 (cd "$dir" && $install "./$package") </dev/null || fail "The package manager could not install $package."
 
-say "Callie ${tag#v} is installed. Open it from your app menu, or run callie-gui."
+say "Callie $target is installed. Open it from your app menu, or run callie-gui."

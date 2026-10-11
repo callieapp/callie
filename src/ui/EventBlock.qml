@@ -45,6 +45,10 @@ Rectangle {
     /// The change was dropped and waits to be saved; the event stays where it
     /// landed until the view reloads it or calls settle().
     property bool settling: false
+    /// Being dragged to another time or day.
+    readonly property bool dragging: drag.active
+    /// The view has taken over the drag to carry the event onto other days.
+    property bool carried: false
     /// How much taller the block is drawn while being stretched.
     readonly property real stretchHeight: lengthChange / 60 * Theme.hourHeight
 
@@ -203,7 +207,7 @@ Rectangle {
             root.draggedTo(centroid.scenePosition)
         }
         onActiveChanged: {
-            if (active)
+            if (active || root.carried)
                 return
             if (root.minuteShift !== 0 || root.dayShift !== 0) {
                 root.settling = true

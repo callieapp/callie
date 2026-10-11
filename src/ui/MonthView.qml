@@ -16,6 +16,8 @@ Item {
     required property int month
 
     signal dayClicked(date day)
+    /// An event held at an edge asks for the month before (-1) or after (1).
+    signal pageRequested(int direction)
 
     readonly property int weeks: Math.max(1, Math.ceil(dayCount / 7))
     /// Which of the seven columns show: all, or only working days.
@@ -78,9 +80,10 @@ Item {
         return index < root.dayCount ? index : -1
     }
 
-    function dragChip(from, scenePosition) {
+    function dragChip(from, chip, scenePosition) {
         root.dragFrom = from
         root.dropIndex = root.cellAt(scenePosition)
+        pager.track(chip, scenePosition, root.edgeAt(scenePosition))
     }
 
     /// Moves the chip's event by the days between where it was and where it landed.
@@ -245,8 +248,11 @@ Item {
                         MonthChip {
                             id: chipItem
                             width: cell.width - 2 * Theme.space2
+                            carried: pager.carry !== null && pager.carry.event.eventId
+                                     === chipItem.event.eventId
                             onClicked: root.showEvent(chipItem.event, chipItem)
-                            onDragged: scenePosition => root.dragChip(cell.index, scenePosition)
+                            onDragged: scenePosition => root.dragChip(cell.index, chipItem,
+                                                                      scenePosition)
                             onDropped: root.dropChip(chipItem)
                         }
                     }
@@ -277,6 +283,76 @@ Item {
         id: mover
         anchors.fill: parent
         source: root.model.source
+        // Saved or put back: either way the stand-in is done.
+        onMovingChanged: {
+            if (!moving && pager.dropped)
+                pager.clear()
+        }
+    }
+
+    // ---- Carrying events to other months -----------------------------------
+    /// The edge an event dragged to `scenePosition` is held at: -1 at the left
+    /// or past it, 1 at the right, else 0.
+    function edgeAt(scenePosition) {
+        const at = root.mapFromItem(null, scenePosition.x, scenePosition.y)
+        return at.x < Theme.space4 ? -1 : at.x > root.width - Theme.space4 ? 1 : 0
+    }
+
+    function carryFrom(chip, scenePosition) {
+        const grab = chip.mapFromItem(null, scenePosition.x, scenePosition.y)
+        pager.carry = {
+            "event": chip.event,
+            "origin": root.dateFor(root.dragFrom),
+            "grab": grab,
+            "width": chip.width
+        }
+        root.dragFrom = -1
+    }
+
+    function dropCarried(scenePosition) {
+        const carry = pager.carry
+        const index = root.cellAt(scenePosition)
+        root.dropIndex = -1
+        const days = index < 0 ? 0 : Math.round((root.dateFor(index) - carry.origin) / 86400000)
+        if (days === 0) {
+            pager.clear()
+            return
+        }
+        pager.dropped = true
+        mover.move(ghost.item, carry.event, Settings.times.shifted(carry.event.start, days, 0),
+                   Settings.times.shifted(carry.event.end, days, 0))
+        // Busy with another change, so nothing is waiting to be saved.
+        if (!mover.moving)
+            pager.clear()
+    }
+
+    DragPager {
+        id: pager
+        onHandOff: (item, scenePosition) => root.carryFrom(item, scenePosition)
+        onPageRequested: direction => root.pageRequested(direction)
+        onMoved: scenePosition => {
+            root.dropIndex = root.cellAt(scenePosition)
+            pager.track(null, scenePosition, root.edgeAt(scenePosition))
+        }
+        onReleased: scenePosition => root.dropCarried(scenePosition)
+    }
+
+    // The event being carried to another month, under the pointer.
+    Loader {
+        id: ghost
+
+        readonly property point at: root.mapFromItem(null, pager.point.x, pager.point.y)
+
+        active: pager.carry !== null
+        z: 10
+        x: pager.carry ? at.x - pager.carry.grab.x : 0
+        y: pager.carry ? at.y - pager.carry.grab.y : 0
+
+        sourceComponent: MonthChip {
+            enabled: false
+            modelData: pager.carry.event
+            width: pager.carry.width
+        }
     }
 
     /// One event in a day cell: all-day events as stickers, timed ones as a dot,
@@ -291,6 +367,10 @@ Item {
         /// Where the chip was dropped, held there while the move is saved.
         property point held
         property bool settling: false
+        /// Being dragged to another day.
+        readonly property bool dragging: drag.active
+        /// The view has taken over the drag to carry the event to another month.
+        property bool carried: false
 
         signal dragged(point scenePosition)
         signal dropped
@@ -300,7 +380,7 @@ Item {
         }
 
         height: Theme.monthChipHeight
-        opacity: faded ? Theme.fadedOpacity : 1
+        opacity: carried ? 0 : faded ? Theme.fadedOpacity : 1
         Accessible.name: event.summary
         transform: Translate {
             x: chip.settling ? chip.held.x : drag.activeTranslation.x
@@ -327,7 +407,7 @@ Item {
                     chip.dragged(centroid.scenePosition)
             }
             onActiveChanged: {
-                if (active)
+                if (active || chip.carried)
                     return
                 chip.held = Qt.point(activeTranslation.x, activeTranslation.y)
                 chip.settling = true

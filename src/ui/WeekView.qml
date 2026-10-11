@@ -14,6 +14,8 @@ Item {
     /// A time was drawn on the grid for a new event: minutes into `day`, with
     /// the drawn block to open the composer beside.
     signal rangeDrawn(date day, int fromMinutes, int toMinutes, Item block)
+    /// An event held at an edge asks for the days before (-1) or after (1).
+    signal pageRequested(int direction)
 
     /// Forgets the drawn block, once its composer has closed.
     function clearDraft() {
@@ -225,9 +227,38 @@ Item {
             AllDayChip {
                 id: chip
                 view: root
+                carried: pager.carry !== null && pager.carry.event.eventId === eventId
                 onActivated: root.showDetails(chip)
+                onDraggedTo: scenePosition => pager.track(chip, scenePosition, root.edgeAt(
+                                                              scenePosition))
                 onMoveRequested: (days, endDays) => root.commitChange(chip, 0, days, 0, endDays)
             }
+        }
+
+        // The all-day event being carried to other days, where it would land.
+        AllDayChip {
+            id: chipGhost
+
+            readonly property var event: pager.carry && !pager.carry.timed ? pager.carry.event :
+                                                                             null
+
+            visible: event !== null && root.carried !== null
+            enabled: false
+            view: root
+            z: 3
+            index: -1
+            eventId: event ? event.eventId : ""
+            summary: event ? event.summary : ""
+            allDay: true
+            firstDay: root.carried ? root.carried.column : 0
+            daySpan: event !== null ? pager.carry.span : 1
+            lane: 0
+            calendarColor: event ? event.calendarColor : "transparent"
+            declined: event ? event.declined : false
+            response: event ? event.response : ""
+            end: event ? event.end : new Date()
+            joinUrl: event ? event.joinUrl : ""
+            canEdit: false
         }
 
         Rectangle {
@@ -464,6 +495,7 @@ Item {
 
                     required property int index
                     required property string uid
+                    required property string eventId
                     required property int dayIndex
                     required property int startMinutes
                     required property int durationMinutes
@@ -478,7 +510,8 @@ Item {
                                                             / 2)
 
                     visible: !allDay && dayIndex >= 0 && dayIndex < root.dayCount
-                             && root.columnWidth(dayIndex) > 0
+                             && root.columnWidth(dayIndex) > 0 && !carried
+                    carried: pager.carry !== null && pager.carry.event.eventId === eventId
 
                     x: root.columnX(dayIndex) + 3 + lane * laneWidth + indent
                     width: laneWidth - indent - (laneCount > 1 ? 3 : 0)
@@ -498,6 +531,36 @@ Item {
                                                                                     deltaDays, 0)
                     onResizeRequested: deltaMinutes => root.commitChange(block, 0, 0, deltaMinutes)
                 }
+            }
+
+            // The timed event being carried to other days, where it would land.
+            EventBlock {
+                id: ghost
+
+                readonly property var event: pager.carry && pager.carry.timed ? pager.carry.event :
+                                                                                null
+
+                visible: event !== null && root.carried !== null
+                enabled: false
+                z: 100
+                opacity: 0.85
+                x: root.carried ? root.columnX(root.carried.column) + 3 : 0
+                y: root.carried ? root.carried.minutes / 60 * Theme.hourHeight : 0
+                width: root.carried ? root.columnWidth(root.carried.column) - 6 : 0
+                height: Math.max(Theme.minEventHeight, (event !== null ? pager.carry.length : 0) / 60
+                                 * Theme.hourHeight - Theme.space2 - Theme.stickerEdge)
+                summary: event ? event.summary : ""
+                location: event ? event.location : ""
+                joinUrl: event ? event.joinUrl : ""
+                calendarName: event ? event.calendarName : ""
+                description: event ? event.description : ""
+                calendarColor: event ? event.calendarColor : "transparent"
+                start: root.carried ? root.carried.from : new Date()
+                end: root.carried ? root.carried.to : new Date()
+                declined: event ? event.declined : false
+                depth: 0
+                response: event ? event.response : ""
+                canEdit: false
             }
 
             // The current time across the whole week, faint beside today's line.
@@ -592,6 +655,8 @@ Item {
     }
 
     function blockHovered(block, hovered) {
+        if (hovered && pager.carry)
+            return
         if (hovered) {
             hoveredBlock = block
             tipDelay.restart()
@@ -685,6 +750,7 @@ Item {
         const column = root.columnAtX(at.x)
         block.dayShift = column - block.dayIndex
         block.dayShiftX = root.columnX(column) - root.columnX(block.dayIndex)
+        pager.track(block, scenePosition, root.edgeAt(scenePosition))
     }
 
     /// Saves a drop: `minutes` and `days` move the event, `length` minutes and
@@ -701,6 +767,89 @@ Item {
         id: mover
         anchors.fill: parent
         source: root.model.source
+        // Saved or put back: either way the stand-in is done.
+        onMovingChanged: {
+            if (!moving && pager.dropped)
+                pager.clear()
+        }
+    }
+
+    // ---- Carrying events to other days -------------------------------------
+    /// The edge an event dragged to `scenePosition` is held at: -1 over the
+    /// hours or past them, 1 at the right edge, else 0.
+    function edgeAt(scenePosition) {
+        const at = root.mapFromItem(null, scenePosition.x, scenePosition.y)
+        return at.x < Theme.gutterWidth ? -1 : at.x > root.width - Theme.space5 ? 1 : 0
+    }
+
+    /// Where the carried event would land if dropped now: its new times, and
+    /// the column (its first, when all day) and the minutes into the day it shows at.
+    readonly property var carried: {
+        const carry = pager.carry
+        if (!carry)
+            return null
+        const at = grid.contentItem.mapFromItem(null, pager.point.x, pager.point.y)
+        const column = root.columnAtX(at.x) - (carry.timed ? 0 : carry.grab)
+        const days = Math.round((root.dateForColumn(column) - carry.origin) / 86400000)
+        let minutes = 0
+        let top = 0
+        if (carry.timed) {
+            const latest = 24 * 60 - Theme.snapMinutes
+            top = Math.max(0, Math.min(latest, Math.round((at.y - carry.grab) / Theme.hourHeight * 60
+                                                          / Theme.snapMinutes) * Theme.snapMinutes))
+            minutes = top - Settings.times.minutesIntoDay(carry.event.start)
+        }
+        return {
+            "column": column,
+            "minutes": top,
+            "days": days,
+            "from": Settings.times.shifted(carry.event.start, days, minutes),
+            "to": Settings.times.shifted(carry.event.end, days, minutes)
+        }
+    }
+
+    /// Notes what `item` drags, so the drag survives the page rebuilding it.
+    function carryFrom(item, scenePosition) {
+        const event = root.model.eventAt(item.index)
+        if (item instanceof AllDayChip) {
+            pager.carry = {
+                "event": event,
+                "timed": false,
+                "origin": root.dateForColumn(item.firstDay),
+                "grab": Math.max(0, item.grabColumn - item.firstDay),
+                "span": item.daySpan
+            }
+        } else {
+            pager.carry = {
+                "event": event,
+                "timed": true,
+                "origin": root.dateForColumn(item.dayIndex),
+                "grab": item.mapFromItem(null, scenePosition.x, scenePosition.y).y,
+                "length": item.durationMinutes
+            }
+        }
+    }
+
+    function dropCarried() {
+        const move = root.carried
+        const carry = pager.carry
+        if (!move || move.from.getTime() === carry.event.start.getTime()) {
+            pager.clear()
+            return
+        }
+        pager.dropped = true
+        mover.move(carry.timed ? ghost : chipGhost, carry.event, move.from, move.to)
+        // Busy with another change, so nothing is waiting to be saved.
+        if (!mover.moving)
+            pager.clear()
+    }
+
+    DragPager {
+        id: pager
+        onHandOff: (item, scenePosition) => root.carryFrom(item, scenePosition)
+        onPageRequested: direction => root.pageRequested(direction)
+        onMoved: scenePosition => pager.track(null, scenePosition, root.edgeAt(scenePosition))
+        onReleased: root.dropCarried()
     }
 
     /// An event copied from its card.

@@ -18,6 +18,7 @@ Rectangle {
     required property date end
     required property url joinUrl
     required property bool canEdit
+    required property string eventId
     /// The week view, for its column edges (columnX) and the shown column under
     /// an x in the strip (columnAtX).
     required property var view
@@ -28,10 +29,15 @@ Rectangle {
     /// Waiting for the change to be saved, drawn where it was dropped.
     property bool settling: false
     property int grabColumn: -1
+    /// Being dragged to other days.
+    readonly property bool dragging: drag.active
+    /// The view has taken over the drag to carry the event onto other days.
+    property bool carried: false
     readonly property bool pending: response === "needsAction"
 
     signal activated
     signal moveRequested(int days, int endDays)
+    signal draggedTo(point scenePosition)
 
     /// Back to where the model has it.
     function settle() {
@@ -52,7 +58,7 @@ Rectangle {
         return columnUnder(handler.centroid.scenePosition) - grabColumn
     }
 
-    visible: allDay && width > 0
+    visible: allDay && width > 0 && !carried
     opacity: declined || (Settings.dimPast && end < Clock.now) ? Theme.fadedOpacity : 1
     layer.enabled: opacity < 1
     x: view.columnX(firstDay + dayShift) + 3
@@ -128,11 +134,13 @@ Rectangle {
         yAxis.enabled: false
         enabled: chip.canEdit && !chip.settling
         onCentroidChanged: {
-            if (active)
-                chip.dayShift = chip.daysDragged(drag)
+            if (!active)
+                return
+            chip.dayShift = chip.daysDragged(drag)
+            chip.draggedTo(centroid.scenePosition)
         }
         onActiveChanged: {
-            if (active)
+            if (active || chip.carried)
                 return
             if (chip.dayShift !== 0) {
                 chip.settling = true

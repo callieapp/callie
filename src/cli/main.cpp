@@ -18,6 +18,10 @@
 
 #include "Commands.h"
 #include "Completion.h"
+#ifdef CALLIE_HAVE_TUI
+#include "Tui.h"
+#include "TuiState.h"
+#endif
 #include "UpdateHint.h"
 #include "Upgrade.h"
 
@@ -77,7 +81,8 @@ const QString kGoogle = QStringLiteral("google");
 
 /// The commands, for --help and for completion.
 const QList<std::pair<QString, QString>> kCommands = {
-    {u"agenda"_s, u"Upcoming events (default); --json for scripts, with ids"_s},
+    {u"tui"_s, u"Your calendar in the terminal, in the app's theme; the default on a terminal"_s},
+    {u"agenda"_s, u"Upcoming events; --json for scripts, with ids. The default when piped"_s},
     {u"search"_s, u"Events with every word given"_s},
     {u"invites"_s, u"Invitations waiting for an answer"_s},
     {u"contacts"_s, u"People to invite whose name or address matches"_s},
@@ -543,7 +548,9 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     };
     const bool reading = command == u"agenda" || command == u"search" || command == u"invites" ||
                          command == u"contacts" || command == u"calendars" ||
-                         command == u"accounts";
+                         command == u"accounts" ||
+                         // The TUI syncs when it can, and shows the cache when it cannot.
+                         (command == u"tui" && !GoogleClientConfig::resolve().isValid());
     // Sample data and scripts that only read leave the user's settings alone.
     QTemporaryDir scratch;
     Settings settings(sample ? scratch.filePath(u"settings.ini"_s) : Settings::defaultPath());
@@ -565,6 +572,17 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         return commands.renameAccount(args.value(2), args.mid(3).join(u' '));
     if (command == u"agenda")
         return commands.agenda(parser.value(u"days"_s).toInt(), json);
+    if (command == u"tui") {
+#ifdef CALLIE_HAVE_TUI
+        cli::TuiState state(*backend->source, settings,
+                            [] { return QDateTime::currentDateTime(); });
+        backend->source->refresh();
+        return cli::runTui(state, settings, cli::Palette::forTheme(settings.theme()));
+#else
+        err << QObject::tr("callie: this build has no TUI; try: callie agenda") << "\n";
+        return 1;
+#endif
+    }
     if (command == u"search")
         return commands.search(args.mid(1).join(u' '), json);
     if (command == u"invites")
@@ -787,7 +805,14 @@ int main(int argc, char *argv[])
                                 !qEnvironmentVariableIsEmpty("QT_LOGGING_RULES"));
 
     const QStringList args = parser.positionalArguments();
-    const QString command = args.isEmpty() ? QStringLiteral("agenda") : args.first();
+    // On its own in a terminal, `callie` opens the TUI; piped, or in a build
+    // without one, it lists the agenda.
+#ifdef CALLIE_HAVE_TUI
+    const bool interactive = ::isatty(STDIN_FILENO) && ::isatty(STDOUT_FILENO);
+#else
+    const bool interactive = false;
+#endif
+    const QString command = !args.isEmpty() ? args.first() : interactive ? u"tui"_s : u"agenda"_s;
     const HintAfterwards hint(command, parser.isSet(u"json"_s));
 
     if (command == u"completions" && args.size() == 2) {
@@ -812,9 +837,9 @@ int main(int argc, char *argv[])
         return app.exec();
     }
 
-    static const QStringList kEventCommands = {u"agenda"_s,  u"search"_s,    u"invites"_s,
-                                               u"add"_s,     u"edit"_s,      u"delete"_s,
-                                               u"respond"_s, u"duplicate"_s, u"contacts"_s};
+    static const QStringList kEventCommands = {
+        u"agenda"_s, u"search"_s,  u"invites"_s,   u"add"_s,      u"edit"_s,
+        u"delete"_s, u"respond"_s, u"duplicate"_s, u"contacts"_s, u"tui"_s};
     if (kEventCommands.contains(command))
         return runEvents(app, command, args, parser, parser.isSet(sampleOption));
 

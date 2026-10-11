@@ -102,6 +102,11 @@ is out: in the app's ? menu, and in a line after a command run in a terminal. `c
 checkForUpdates false`, or Settings in the app, turns that off, as does setting
 `CALLIE_NO_UPDATE_CHECK` in the environment.
 
+Run on its own in a terminal, `callie` opens your calendar full screen, in the app's theme: a day, a
+week or the next two weeks, with the app's vi keys (`h` and `l` to move, `t` for today, `j` and `k`
+between events, the leader then `d`, `w` or `a` for a view, `?` for the rest). Piped, it prints the
+agenda as before.
+
 On a terminal, the CLI takes its colors from the app's theme: today and links in its accent, a dot in
 each event's calendar color, and declined events struck through. `NO_COLOR` turns colors off, as
 does piping the output.

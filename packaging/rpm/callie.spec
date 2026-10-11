@@ -24,6 +24,7 @@ BuildRequires:  cmake(Qt6Test)
 BuildRequires:  cmake(KF6CalendarCore)
 BuildRequires:  cmake(Qt6Keychain)
 BuildRequires:  cmake(tomlplusplus)
+BuildRequires:  cmake(ftxui)
 BuildRequires:  desktop-file-utils
 BuildRequires:  libappstream-glib
 

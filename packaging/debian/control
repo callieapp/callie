@@ -15,6 +15,7 @@ Build-Depends: debhelper-compat (= 13),
                qml6-module-qtquick-effects,
                qml6-module-qtquick-dialogs,
                libkf6calendarcore-dev,
+               libftxui-dev,
                desktop-file-utils,
                appstream-util
 Standards-Version: 4.7.0

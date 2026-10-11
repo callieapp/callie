@@ -16,6 +16,12 @@ add_library(calliecli STATIC
 target_include_directories(calliecli PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(calliecli PUBLIC Qt6::Core calliecore)
 
+if(ftxui_FOUND)
+    target_sources(calliecli PRIVATE TuiState.h TuiState.cpp Tui.h Tui.cpp)
+    target_link_libraries(calliecli PUBLIC ftxui::component ftxui::dom ftxui::screen)
+    target_compile_definitions(calliecli PUBLIC CALLIE_HAVE_TUI)
+endif()
+
 qt_add_executable(callie
     main.cpp
 )

@@ -323,6 +323,16 @@ void TestCli::detachedOccurrencesStandAlone()
     QVERIFY(!detached.isEmpty());
     QCOMPARE(detached[u"repeats"].toBool(), false);
 
+    // And search finds it beside its series, not folded into it.
+    m_out.clear();
+    QCOMPARE(m_commands->search(u"berlin sync"_s, true), 0);
+    m_outStream->flush();
+    QStringList titles;
+    for (const QJsonValue &found : QJsonDocument::fromJson(m_out.toUtf8()).array())
+        titles.append(found[u"title"].toString());
+    titles.sort();
+    QCOMPARE(titles, (QStringList{u"Berlin sync"_s, u"Berlin sync (moved room)"_s}));
+
     // Changed, answered or given a repeat for all, it stays alone.
     rename.where = u"Room 4"_s;
     QCOMPARE(run([&](auto done) { m_commands->edit(id, rename, u"all"_s, done); }), 0);

@@ -845,6 +845,7 @@ ApplicationWindow {
                             dayCount: window.view === "day" ? 1 : 7
                             onDayClicked: day => window.showDay(day)
                             onEventCopied: event => window.copyEvent(event)
+                            onPageRequested: direction => window.step(direction)
                             onRangeDrawn: (day, from, to, block) => quickAdd.openFor(
                                                                         Settings.times.at(day, from),
                                                                         Settings.times.at(day, to),
@@ -864,6 +865,7 @@ ApplicationWindow {
                             month: window.focusDate.getMonth()
                             onDayClicked: day => window.showDay(day)
                             onEventCopied: event => window.copyEvent(event)
+                            onPageRequested: direction => window.step(direction)
                         }
                     }
                 }

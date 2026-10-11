@@ -26,6 +26,7 @@ class TestWeekDrag : public QObject
 private Q_SLOTS:
     void dragMovesStretchesAndClickStillOpens();
     void allDayAndMonthDragsMoveByDays();
+    void heldAtAnEdgeCarriesToOtherDays();
 };
 
 /// The visible event block showing `summary`.
@@ -72,14 +73,20 @@ static Event climbing(SampleSource &source)
     return {};
 }
 
-/// Presses at `from` and moves to `to` in steps, as a hand would.
-static void drag(QQuickWindow *window, QPoint from, QPoint to)
+/// Moves the pressed mouse from `from` to `to` in steps, as a hand would.
+static void move(QQuickWindow *window, QPoint from, QPoint to)
 {
-    QTest::mousePress(window, Qt::LeftButton, {}, from);
     for (int i = 1; i <= 10; ++i) {
         QTest::mouseMove(window, from + (to - from) * i / 10);
         QTest::qWait(16);
     }
+}
+
+/// Presses at `from` and moves to `to` in steps, as a hand would.
+static void drag(QQuickWindow *window, QPoint from, QPoint to)
+{
+    QTest::mousePress(window, Qt::LeftButton, {}, from);
+    move(window, from, to);
     QTest::mouseRelease(window, Qt::LeftButton, {}, to);
     QTest::qWait(300);
 }
@@ -216,6 +223,129 @@ void TestWeekDrag::allDayAndMonthDragsMoveByDays()
     const Event after = named(source, u"Climbing"_s);
     QCOMPARE(after.start, before.start.addDays(7));
     QCOMPARE(after.end, before.end.addDays(7));
+}
+
+void TestWeekDrag::heldAtAnEdgeCarriesToOtherDays()
+{
+    QQuickStyle::setStyle(u"Basic"_s);
+    QTemporaryDir dir;
+    Settings settings(dir.filePath(u"s.ini"_s));
+    SettingsForeign::s_instance = &settings;
+    Clock::instance()->freeze(QDateTime(QDate(2026, 10, 7), QTime(13, 40)));
+    SampleSource source;
+    EventDraft trip;
+    trip.calendarId = source.calendars().first().id;
+    trip.summary = u"Trip"_s;
+    trip.allDay = true;
+    trip.start = QDate(2026, 10, 6).startOfDay();
+    trip.end = QDate(2026, 10, 8).startOfDay();
+    source.createEvent(trip, [](const QString &) {});
+    QQmlApplicationEngine engine;
+    engine.setInitialProperties({{u"source"_s, QVariant::fromValue<CalendarSource *>(&source)}});
+    engine.loadFromModule("Callie.Ui", "Main");
+    QVERIFY(!engine.rootObjects().isEmpty());
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    window->resize(1280, 1300);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    QTest::qWait(500);
+    const auto focus = [window] { return window->property("focusDate").toDateTime().date(); };
+    const auto week = [window] {
+        return findItem(window->contentItem(), "WeekView"_L1, [](QQuickItem *) { return true; });
+    };
+    QVERIFY(week());
+    const auto byId = [&source](const QString &id) {
+        const QDateTime from(QDate(2026, 9, 28), QTime(0, 0));
+        for (const Event &e :
+             source.eventsBetween(from, from.addDays(70), QTimeZone::systemTimeZone()))
+            if (e.eventId == id)
+                return e;
+        return Event();
+    };
+
+    // Held at the right edge, the next week shows, and the event lands there:
+    // a week later, an hour later.
+    QQuickItem *block = nullptr;
+    QTRY_VERIFY((block = findBlock(window->contentItem(), u"Climbing"_s)));
+    const Event before = byId(block->property("eventId").toString());
+    QVERIFY(!before.eventId.isEmpty());
+    const QPoint grip = block->mapToScene(QPointF(block->width() / 2, 10)).toPoint();
+    const QPoint right(window->width() - 4, grip.y());
+    const int hour = ThemeController::instance()->hourHeight();
+    QTest::mousePress(window, Qt::LeftButton, {}, grip);
+    move(window, grip, right);
+    QTRY_VERIFY(focus() >= QDate(2026, 10, 12));
+    move(window, right, grip + QPoint(0, hour));
+    QTest::mouseRelease(window, Qt::LeftButton, {}, grip + QPoint(0, hour));
+    QTRY_COMPARE(byId(before.eventId).start, before.start.addDays(7).addSecs(3600));
+    QCOMPARE(byId(before.eventId).end, before.end.addDays(7).addSecs(3600));
+    QVERIFY(focus() < QDate(2026, 10, 19));
+
+    // Escape puts it back, wherever the drag had paged to.
+    QTRY_VERIFY((block = findBlock(window->contentItem(), u"Climbing"_s)));
+    QTest::qWait(300);
+    const Event moved = byId(block->property("eventId").toString());
+    QVERIFY(!moved.eventId.isEmpty());
+    const QPoint again = block->mapToScene(QPointF(block->width() / 2, 10)).toPoint();
+    const QPoint left = week()->mapToScene(QPointF(10, again.y() - week()->y())).toPoint();
+    QTest::mousePress(window, Qt::LeftButton, {}, again);
+    move(window, again, QPoint(left.x(), again.y()));
+    QTRY_VERIFY(focus() < QDate(2026, 10, 12));
+    QTest::keyClick(window, Qt::Key_Escape);
+    QTest::mouseRelease(window, Qt::LeftButton, {}, QPoint(left.x(), again.y()));
+    QTest::qWait(300);
+    QCOMPARE(byId(moved.eventId).start, moved.start);
+
+    // An all-day event goes back a week by its first day.
+    const auto chip = [window] {
+        return findItem(window->contentItem(), "AllDayChip"_L1,
+                        [](QQuickItem *i) { return i->property("summary").toString() == u"Trip"; });
+    };
+    QQuickItem *item = nullptr;
+    QTRY_VERIFY((item = chip()));
+    QTest::qWait(300);
+    const QPoint hold = item->mapToScene(QPointF(10, item->height() / 2)).toPoint();
+    const QPoint gutter = week()->mapToScene(QPointF(10, 0)).toPoint();
+    QTest::mousePress(window, Qt::LeftButton, {}, hold);
+    move(window, hold, QPoint(gutter.x(), hold.y()));
+    QTRY_VERIFY(focus() < QDate(2026, 10, 5));
+    move(window, QPoint(gutter.x(), hold.y()), hold);
+    QTest::mouseRelease(window, Qt::LeftButton, {}, hold);
+    QTRY_COMPARE(named(source, u"Trip"_s).start.date(), QDate(2026, 9, 29));
+    QCOMPARE(named(source, u"Trip"_s).end.date(), QDate(2026, 10, 1));
+
+    // In the month, onto a day of the next.
+    settings.setView(u"month"_s);
+    window->setProperty("focusDate", QDate(2026, 10, 7).startOfDay());
+    QQuickItem *month = nullptr;
+    QTRY_VERIFY((month = findItem(window->contentItem(), "MonthView"_L1,
+                                  [](QQuickItem *) { return true; })));
+    const auto climbing = [window] {
+        return findItem(window->contentItem(), "MonthChip"_L1, [](QQuickItem *i) {
+            return i->property("event").toMap().value(u"summary"_s).toString() == u"Climbing" &&
+                   i->opacity() > 0;
+        });
+    };
+    QTRY_VERIFY((item = climbing()));
+    QTest::qWait(300);
+    const QString id = item->property("event").toMap().value(u"eventId"_s).toString();
+    const QPoint pick = item->mapToScene(QPointF(item->width() / 2, item->height() / 2)).toPoint();
+    const QPoint edge = month->mapToScene(QPointF(month->width() - 4, 0)).toPoint();
+    QTest::mousePress(window, Qt::LeftButton, {}, pick);
+    move(window, pick, QPoint(edge.x(), pick.y()));
+    QTRY_VERIFY(focus().month() == 11);
+    const auto day = [window](QDate date) {
+        return findItem(window->contentItem(), "QQuickRectangle"_L1, [date](QQuickItem *i) {
+            return i->property("inMonth").isValid() &&
+                   i->property("date").toDateTime().date() == date;
+        });
+    };
+    QQuickItem *target = nullptr;
+    QTRY_VERIFY((target = day(QDate(2026, 11, 20))));
+    const QPoint drop =
+        target->mapToScene(QPointF(target->width() / 2, target->height() / 2)).toPoint();
+    move(window, QPoint(edge.x(), pick.y()), drop);
+    QTest::mouseRelease(window, Qt::LeftButton, {}, drop);
+    QTRY_COMPARE(byId(id).start.date(), QDate(2026, 11, 20));
 }
 
 QTEST_MAIN(TestWeekDrag)

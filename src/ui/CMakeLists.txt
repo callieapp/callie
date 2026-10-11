@@ -20,6 +20,8 @@ qt_add_qml_module(callieui
         EventActions.cpp
         KeyRouter.h
         KeyRouter.cpp
+        PointerWatch.h
+        PointerWatch.cpp
         PlaceSearch.h
         PlaceSearch.cpp
         EventModelForeign.h
@@ -72,6 +74,7 @@ qt_add_qml_module(callieui
         MenuEntry.qml
         MenuCard.qml
         MoveChoice.qml
+        DragPager.qml
         EventMover.qml
         KeyCap.qml
         Scrim.qml

@@ -2,17 +2,39 @@
 # knows its commands, settings, calendars and events.
 _callie() {
     local IFS=$'\n' line typed=${COMP_LINE:0:COMP_POINT}
-    # bash splits words at = and : too, and replaces only what follows the last
-    # of them, so callie reads the line itself and that much of the word is cut
-    # from the front of each candidate.
-    local word=${typed##*[[:space:]]}
-    local tail=${word##*[=:]}
-    local ahead=${word%"$tail"}
+    # The word being typed, as typed: from the last space that is not escaped
+    # or quoted. bash also splits it at an = or : outside quotes and replaces
+    # only what follows, so callie reads the line itself and that much of the
+    # word is cut from the front of each candidate.
+    local word='' quote='' ahead='' c i
+    for ((i = 0; i < ${#typed}; i++)); do
+        c=${typed:i:1}
+        if [[ $c == "\\" && $quote != "'" ]]; then
+            word+=${typed:i:2}
+            ((i++))
+        elif [[ -n $quote ]]; then
+            [[ $c == "$quote" ]] && quote=''
+            word+=$c
+        elif [[ $c == [[:space:]] ]]; then
+            word=''
+            ahead=''
+        else
+            [[ $c == [\"\'] ]] && quote=$c
+            word+=$c
+            [[ $c == [=:] ]] && ahead=$word
+        fi
+    done
+    ahead=${ahead//[\\\"\']/}
     COMPREPLY=()
     for line in $(callie __complete --line "$typed" 2>/dev/null); do
         line=${line%%$'\t'*}
         [[ -n $ahead && $line == "$ahead"* ]] && line=${line#"$ahead"}
-        COMPREPLY+=("$(printf '%q' "$line")")
+        # Inside an open quote, bash quotes what it puts in place itself.
+        if [[ -n $quote ]]; then
+            COMPREPLY+=("$line")
+        else
+            COMPREPLY+=("$(printf '%q' "$line")")
+        fi
     done
 }
 complete -F _callie callie

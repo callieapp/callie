@@ -42,6 +42,15 @@ expect "callie --sample edit x --scope=f" "following"
 expect "callie --sample calendars hide Fo" "Focus"
 expect "callie -d 3 ag" "agenda"
 
+# Escaped and quoted spaces, against a stand-in callie offering one name.
+callie() { printf '%s\n' "$candidate"; }
+candidate="Work: team"
+expect 'callie add x --calendar Work:\ t' '\ team'
+expect 'callie add x --calendar "Work: t' 'Work: team'
+candidate="--calendar=Deep work"
+expect 'callie add x --calendar=Deep\ w' 'Deep\ work'
+expect 'callie add x --calendar="Deep w' 'Deep work'
+
 if [ "$failures" -gt 0 ]; then
     printf '%s check(s) failed\n' "$failures"
     exit 1

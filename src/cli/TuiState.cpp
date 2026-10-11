@@ -19,6 +19,8 @@ TuiState::TuiState(CalendarSource &source, Settings &settings, Now now, QObject 
 {
     m_day = today();
     connect(m_source, &CalendarSource::changed, this, &TuiState::reload);
+    // A sync that finds nothing new, or fails, says so only here.
+    connect(m_source, &CalendarSource::statusChanged, this, &TuiState::changed);
     reload();
     selectFirstOf(m_day);
 }

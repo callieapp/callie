@@ -444,6 +444,14 @@ void TestEventEdit::buttonsTellTheirShortcuts()
     QQuickItem *week = find(m_window->contentItem(), "PillButton", "label", u"Week"_s);
     QVERIFY(week);
     QCOMPARE(week->property("tip").toString(), u"Week view (Ctrl+2)"_s);
+
+    // Help keeps quiet beside its own open menu.
+    QQuickItem *help = find(m_window->contentItem(), "StickerButton", "text", u"?"_s);
+    QVERIFY(help);
+    QCOMPARE(help->property("tip").toString(), u"Help, shortcuts and about"_s);
+    QTest::qWait(300);
+    click(m_window, help);
+    QTRY_VERIFY(help->property("tip").toString().isEmpty());
 }
 
 void TestEventEdit::titleBarFitsNarrowWindows()

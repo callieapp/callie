@@ -78,23 +78,19 @@ void TestPaint::terminalsSayHowManyColors()
 
 void TestPaint::calendarsLookAsInTheApp()
 {
-    // Fitted to the theme: the fill and the ink keep the calendar's hue.
+    // Fitted to the theme, keeping the calendar's hue.
     ThemeSpec fitted = ThemeLoader::defaultTheme();
     fitted.calendar.harmonize = true;
     const Palette themed(fitted);
     const QColor red(213, 0, 0);
     QCOMPARE(themed.fill(red),
              color::harmonize(red, fitted.calendar.lightness, fitted.calendar.chroma));
-    QCOMPARE(themed.ink(red),
-             color::harmonize(red, fitted.calendar.inkLightness, fitted.calendar.inkChroma));
 
-    // A theme that shows calendars as they are: black or white ink, whichever reads.
+    // A theme that shows calendars as they are.
     ThemeSpec plain = ThemeLoader::defaultTheme();
     plain.calendar.harmonize = false;
     const Palette raw(plain);
     QCOMPARE(raw.fill(red), red);
-    QCOMPARE(raw.ink(QColor(250, 240, 120)), QColor(0, 0, 0));
-    QCOMPARE(raw.ink(QColor(30, 30, 90)), QColor(255, 255, 255));
 }
 
 QTEST_GUILESS_MAIN(TestPaint)

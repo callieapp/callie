@@ -15,6 +15,7 @@ private Q_SLOTS:
     void reportListsEachAccount();
     void syncTimeFollowsTheClock();
     void answersReachTheGuestList();
+    void eachWeekdaySaysWhereSamWorks();
 };
 
 void TestSampleSource::countsAsSyncedFromTheStart()
@@ -81,6 +82,29 @@ void TestSampleSource::answersReachTheGuestList()
     const Event after = invitation();
     QCOMPARE(after.responseStatus, u"accepted"_s);
     QCOMPARE(self(after), u"accepted"_s);
+}
+
+void TestSampleSource::eachWeekdaySaysWhereSamWorks()
+{
+    const SampleSource source;
+    const QTimeZone zone("America/New_York");
+    const QDate monday(2026, 10, 5);
+    const QDateTime from(monday, QTime(0, 0), zone);
+    QHash<QDate, QString> places;
+    for (const Event &e : source.eventsBetween(from, from.addDays(7), zone)) {
+        if (!e.workPlace)
+            continue;
+        QVERIFY(e.allDay);
+        QCOMPARE(e.start.date(), e.end.date().addDays(-1));
+        QVERIFY2(!places.contains(e.start.date()), qPrintable(e.start.toString()));
+        places.insert(e.start.date(), e.summary);
+    }
+    const QHash<QDate, QString> expected = {{monday, u"Office"_s},
+                                            {monday.addDays(1), u"Office"_s},
+                                            {monday.addDays(2), u"Home"_s},
+                                            {monday.addDays(3), u"Office"_s},
+                                            {monday.addDays(4), u"Home"_s}};
+    QCOMPARE(places, expected);
 }
 
 QTEST_GUILESS_MAIN(TestSampleSource)

@@ -12,6 +12,7 @@
 #include "callie/LogFile.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
+#include "callie/Times.h"
 #include "callie/TokenStore.h"
 #include "callie/UpdateCheck.h"
 
@@ -708,7 +709,10 @@ int main(int argc, char *argv[])
     // Run by the shell completion scripts with the words typed so far, which
     // are not parsed as options since they are still being typed.
     if (app.arguments().value(1) == u"__complete") {
-        const QStringList words = app.arguments().mid(2);
+        // The shells hand over the line as typed, up to the cursor.
+        const QStringList words = app.arguments().value(2) == u"--line"
+                                      ? cli::Completion::wordsOf(app.arguments().value(3))
+                                      : app.arguments().mid(2);
         std::unique_ptr<Backend> backend;
         const auto source = [&backend, &words]() -> CalendarSource * {
             int code = 0;
@@ -716,19 +720,23 @@ int main(int argc, char *argv[])
                 backend = openBackend(words.contains(u"--sample"_s), false, code);
             return backend ? backend->source.get() : nullptr;
         };
-        const auto events = [&source](bool invitations) {
+        const Settings settings(Settings::defaultPath());
+        const auto events = [&source, &settings](bool invitations) {
             QList<cli::Candidate> found;
             CalendarSource *calendar = source();
             if (!calendar)
                 return found;
+            // Times in the zone the user chose, as every command shows them.
+            const Times &times = *settings.times();
             const QDateTime now = QDateTime::currentDateTime();
-            for (const Event &e : calendar->eventsBetween(now.addDays(-1), now.addDays(30),
-                                                          QTimeZone::systemTimeZone())) {
+            for (const Event &e :
+                 calendar->eventsBetween(now.addDays(-1), now.addDays(30), times.zone())) {
                 if (invitations && (e.responseStatus != u"needsAction" || !e.canRespond))
                     continue;
+                const QString day = QLocale().toString(times.date(e.start).date(), u"ddd d MMM"_s);
                 found.append(
                     {cli::Commands::reference(e),
-                     QLocale().toString(e.start, u"ddd d MMM HH:mm"_s) + u' ' + e.summary});
+                     (e.allDay ? day : day + u' ' + times.time(e.start)) + u' ' + e.summary});
             }
             return found;
         };
@@ -751,18 +759,14 @@ int main(int argc, char *argv[])
                 found.append({account.id, account.provider});
             return found;
         };
-        sources.settings = [] {
-            return cli::Commands::settingNames(Settings(Settings::defaultPath()));
-        };
+        sources.settings = [&settings] { return cli::Commands::settingNames(settings); };
         QList<cli::Candidate> commands;
         for (const auto &[name, about] : kCommands)
             commands.append({name, about});
         QList<cli::Completion::Option> named;
         for (const QCommandLineOption &option : std::as_const(options)) {
-            for (const QString &name : option.names()) {
-                if (name.size() > 1)
-                    named.append({name, option.description(), !option.valueName().isEmpty()});
-            }
+            for (const QString &name : option.names())
+                named.append({name, option.description(), !option.valueName().isEmpty()});
         }
         const cli::Completion completion(commands, named, sources);
         for (const cli::Candidate &candidate : completion.complete(words))

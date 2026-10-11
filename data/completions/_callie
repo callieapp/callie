@@ -4,7 +4,8 @@
 _callie() {
     local -a candidates
     local tab=$'\t' line value about
-    for line in "${(@f)$(callie __complete "${(@)words[2,CURRENT]}" 2>/dev/null)}"; do
+    # The words without the quotes and backslashes they were typed with.
+    for line in "${(@f)$(callie __complete "${(@Q)words[2,CURRENT]}" 2>/dev/null)}"; do
         [[ -n $line ]] || continue
         value=${line%%$tab*}
         about=

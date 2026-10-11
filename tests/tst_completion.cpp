@@ -14,6 +14,8 @@ private Q_SLOTS:
     void optionsAndTheirValues();
     void argumentsByCommand();
     void namesComeFromTheSources();
+    void linesAreReadAsTheShellReadsThem();
+    void valuesAfterAnEqualsSignOrAShortOption();
 
 private:
     [[nodiscard]] static Completion make();
@@ -40,6 +42,7 @@ Completion TestCompletion::make()
                        {u"accounts"_s, {}},
                        {u"completions"_s, {}}},
                       {{u"json"_s, u"Print JSON"_s, false},
+                       {u"d"_s, u"Days of agenda"_s, true},
                        {u"days"_s, u"Days of agenda"_s, true},
                        {u"scope"_s, {}, true},
                        {u"repeat"_s, {}, true},
@@ -118,6 +121,33 @@ void TestCompletion::namesComeFromTheSources()
     // Without a source, nothing rather than a crash.
     const Completion bare({}, {}, {});
     QVERIFY(bare.complete({u"edit"_s, QString()}).isEmpty());
+}
+
+void TestCompletion::linesAreReadAsTheShellReadsThem()
+{
+    QCOMPARE(Completion::wordsOf(u"callie edit "_s), (QStringList{u"edit"_s, QString()}));
+    QCOMPARE(Completion::wordsOf(u"callie calendars hide Deep\\ w"_s),
+             (QStringList{u"calendars"_s, u"hide"_s, u"Deep w"_s}));
+    QCOMPARE(Completion::wordsOf(u"callie add 'Lunch at 1' --calendar \"Deep w"_s),
+             (QStringList{u"add"_s, u"Lunch at 1"_s, u"--calendar"_s, u"Deep w"_s}));
+    // Still typing callie itself, which is the shell's to finish.
+    QVERIFY(Completion::wordsOf(u"callie"_s).isEmpty());
+    // So a quoted name being typed still finds its calendar.
+    QCOMPARE(values(make().complete(Completion::wordsOf(u"callie calendars hide Deep\\ "_s))),
+             QStringList{u"Deep work"_s});
+}
+
+void TestCompletion::valuesAfterAnEqualsSignOrAShortOption()
+{
+    const Completion completion = make();
+    QCOMPARE(values(completion.complete({u"edit"_s, u"x"_s, u"--scope=f"_s})),
+             QStringList{u"--scope=following"_s});
+    QCOMPARE(values(completion.complete({u"--days=3"_s, u"ag"_s})), QStringList{u"agenda"_s});
+    // -d 3 is an option and its value, not two words of the command.
+    QCOMPARE(values(completion.complete({u"-d"_s, u"3"_s, u"ag"_s})), QStringList{u"agenda"_s});
+    QVERIFY(completion.complete({u"-d"_s, QString()}).isEmpty());
+    // Short names are not offered, only long ones.
+    QVERIFY(!values(completion.complete({u"-"_s})).contains(u"-d"_s));
 }
 
 QTEST_GUILESS_MAIN(TestCompletion)

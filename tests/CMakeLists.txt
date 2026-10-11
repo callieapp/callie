@@ -112,3 +112,12 @@ if(EXISTS ${PROJECT_SOURCE_DIR}/www/install.sh AND CMAKE_SYSTEM_PROCESSOR STREQU
         COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/install_test.sh
             ${PROJECT_SOURCE_DIR}/www/install.sh ${CMAKE_CURRENT_SOURCE_DIR}/data/github-release.json)
 endif()
+
+# The bash completion script, against the built callie on sample data.
+find_program(BASH bash)
+if(BASH)
+    add_test(NAME completion_script
+        COMMAND ${BASH} ${CMAKE_CURRENT_SOURCE_DIR}/completion_test.sh
+            ${PROJECT_SOURCE_DIR}/data/completions/callie.bash $<TARGET_FILE:callie>)
+    set_tests_properties(completion_script PROPERTIES ENVIRONMENT "TZ=UTC;NO_COLOR=1")
+endif()

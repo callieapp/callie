@@ -75,6 +75,7 @@ qt_add_qml_module(callieui
         MenuCard.qml
         MoveChoice.qml
         DragPager.qml
+        LazyPopup.qml
         EventMover.qml
         KeyCap.qml
         Scrim.qml

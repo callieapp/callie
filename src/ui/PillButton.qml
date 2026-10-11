@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import Callie.Ui
 import QtQuick
 import QtQuick.Controls
@@ -66,12 +67,17 @@ AbstractButton {
     }
 
     // What the button does, and its shortcut, after resting on it a moment.
-    Tip {
-        parent: root
-        visible: root.tip !== "" && root.hovered && !root.pressed
-        text: root.tip
-        delay: Theme.durSlow * 2
-        // An open popup that takes Escape keeps the window's shortcuts from working.
-        closePolicy: Popup.NoAutoClose
+    // Made on hover, since most buttons are never rested on.
+    Loader {
+        active: root.tip !== "" && root.hovered
+
+        sourceComponent: Tip {
+            parent: root
+            visible: !root.pressed
+            text: root.tip
+            delay: Theme.durSlow * 2
+            // An open popup that takes Escape keeps the window's shortcuts from working.
+            closePolicy: Popup.NoAutoClose
+        }
     }
 }

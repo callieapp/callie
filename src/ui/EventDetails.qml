@@ -103,12 +103,19 @@ Popup {
     KeyRouter {
         id: keyTable
     }
+    /// The key actions by id, read once: the list is rebuilt on every read.
+    readonly property var keyActions: {
+        const byId = {}
+        for (const action of keyTable.actions)
+            byId[action.id] = action
+        return byId
+    }
     function keysFor(id) {
-        return keyTable.actions.find(a => a.id === id).standard
+        return keyActions[id].standard
     }
     /// `label` with the first key that does the same.
     function tip(label, id) {
-        const keys = keyTable.actions.find(a => a.id === id).keys
+        const keys = keyActions[id].keys
         return keys.length > 0 ? qsTr("%1 (%2)").arg(label).arg(keys[0]) : label
     }
     Shortcut {

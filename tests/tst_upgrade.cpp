@@ -26,6 +26,9 @@ private Q_SLOTS:
     void mismatchedPackageIsNotInstalled();
     void dryRunChangesNothing();
     void refusesWhatItCannotDo();
+    void systemsWithoutPackagesSayWhy_data();
+    void systemsWithoutPackagesSayWhy();
+    void failuresStopBeforeInstalling();
 
 private:
     /// A release with a package for each system, whose bodies name the version.
@@ -38,6 +41,9 @@ private:
     std::unique_ptr<FakeHttpServer> m_github;
     QHash<QString, QJsonObject> m_releases;
     QList<QStringList> m_ran;
+    /// The exit code the package manager gives each command, by its program.
+    QHash<QString, int> m_fails;
+    bool m_devel = false;
     QString m_out;
     QString m_err;
     QStringList m_downloads;
@@ -69,6 +75,8 @@ void TestUpgrade::init()
     m_github = std::make_unique<FakeHttpServer>();
     m_ran.clear();
     m_downloads.clear();
+    m_fails.clear();
+    m_devel = false;
     m_corrupt = false;
     m_releases = {{u"0.2.1"_s, release(u"0.2.1"_s)},
                   {u"0.2.2"_s, release(u"0.2.2"_s)},
@@ -114,7 +122,7 @@ int TestUpgrade::run(const Upgrade::Options &options, const QString &installed,
     QTextStream out(&m_out);
     QTextStream err(&m_err);
     Upgrade upgrade(out, err);
-    upgrade.setDevel(false);
+    upgrade.setDevel(m_devel);
     upgrade.setApi(m_github->url(QString()));
     upgrade.setSystem(PackageSystem::detect(osRelease.fileName(), u"x86_64"_s));
     upgrade.setInstalled(installed);
@@ -126,7 +134,8 @@ int TestUpgrade::run(const Upgrade::Options &options, const QString &installed,
              !command.last().endsWith(QString::fromUtf8(package.readAll()))))
             return 1;
         m_ran.append(command);
-        return 0;
+        return m_fails.value(command.at(command.first() == u"sudo" ? 1 : 0) + u' ' +
+                             command.at(command.first() == u"sudo" ? 2 : 1));
     });
     std::optional<int> result;
     upgrade.run(options, [&result](int code) { result = code; });
@@ -240,6 +249,91 @@ void TestUpgrade::refusesWhatItCannotDo()
     // Not from a package: the installer is the way in.
     QCOMPARE(run({}, QString()), 1);
     QVERIFY(m_err.contains(u"install.sh"_s));
+    QVERIFY(m_ran.isEmpty());
+}
+
+void TestUpgrade::systemsWithoutPackagesSayWhy_data()
+{
+    QTest::addColumn<QByteArray>("osRelease");
+    QTest::addColumn<QString>("architecture");
+    QTest::addColumn<int>("kind");
+    QTest::addColumn<QString>("why");
+
+    const auto rpm = int(PackageSystem::Kind::Rpm);
+    const auto deb = int(PackageSystem::Kind::Deb);
+    const auto none = int(PackageSystem::Kind::Unsupported);
+    QTest::newRow("fedora 44") << QByteArray("ID=fedora\nVERSION_ID=44\n") << u"x86_64"_s << rpm
+                               << QString();
+    QTest::newRow("fedora 45") << QByteArray("ID=fedora\nVERSION_ID=45\n") << u"x86_64"_s << rpm
+                               << QString();
+    QTest::newRow("fedora 43") << QByteArray("ID=fedora\nVERSION_ID=43\nPRETTY_NAME='Fedora 43'\n")
+                               << u"x86_64"_s << none << u"Fedora 43 is older than Fedora 44"_s;
+    QTest::newRow("fedora rawhide") << QByteArray("ID=fedora\nVERSION_ID=rawhide\n") << u"x86_64"_s
+                                    << none << u"cannot read the Fedora version"_s;
+    QTest::newRow("debian 13") << QByteArray("ID=debian\nVERSION_ID=\"13\"\n") << u"x86_64"_s << deb
+                               << QString();
+    QTest::newRow("debian testing") << QByteArray("ID=debian\nPRETTY_NAME=\"Debian forky/sid\"\n")
+                                    << u"x86_64"_s << deb << QString();
+    QTest::newRow("debian 12") << QByteArray("ID=debian\nVERSION_ID=12\nPRETTY_NAME=Debian 12\n")
+                               << u"x86_64"_s << none << u"older than Debian 13"_s;
+    QTest::newRow("ubuntu") << QByteArray("ID=ubuntu\nVERSION_ID=24.04\n") << u"x86_64"_s << none
+                            << u"Callie needs Qt 6.8"_s;
+    QTest::newRow("arch") << QByteArray("ID=arch\nPRETTY_NAME=\"Arch Linux\"\n") << u"x86_64"_s
+                          << none << u"Arch Linux is not one Callie ships packages for"_s;
+    QTest::newRow("arm") << QByteArray("ID=fedora\nVERSION_ID=44\n") << u"arm64"_s << none
+                         << u"no packages for arm64"_s;
+    QTest::newRow("unknown") << QByteArray() << u"x86_64"_s << none << u"is missing"_s;
+}
+
+void TestUpgrade::systemsWithoutPackagesSayWhy()
+{
+    QFETCH(QByteArray, osRelease);
+    QFETCH(QString, architecture);
+    QFETCH(int, kind);
+    QFETCH(QString, why);
+    QString path = m_dir->filePath(u"missing"_s);
+    if (!osRelease.isEmpty()) {
+        QFile file(m_dir->filePath(u"os-release"_s));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(osRelease);
+        path = file.fileName();
+    }
+    const PackageSystem system = PackageSystem::detect(path, architecture);
+    QCOMPARE(int(system.kind), kind);
+    QVERIFY2(why.isEmpty() ? system.why.isEmpty() : system.why.contains(why),
+             qPrintable(system.why));
+}
+
+void TestUpgrade::failuresStopBeforeInstalling()
+{
+    // apt cannot refresh its lists: the package is not installed after all.
+    m_fails.insert(u"apt-get update"_s, 100);
+    QCOMPARE(run({}, u"0.2.1"_s, u"debian"_s), 1);
+    QVERIFY(m_err.contains(u"this did not work"_s));
+    QCOMPARE(m_ran.size(), 1);
+    m_fails.clear();
+    m_ran.clear();
+    m_downloads.clear();
+
+    // A release without this system's package, or without its checksum.
+    QJsonObject bare = m_releases[u"0.2.3"_s];
+    QJsonArray assets = bare[u"assets"_s].toArray();
+    QJsonObject rpm = assets.at(1).toObject();
+    rpm.remove(u"digest"_s);
+    assets[1] = rpm;
+    assets.removeAt(2);
+    bare[u"assets"_s] = assets;
+    m_releases[u"0.2.3"_s] = bare;
+    QCOMPARE(run({}, u"0.2.1"_s, u"debian"_s), 1);
+    QVERIFY(m_err.contains(u"has no package for Debian 13"_s));
+    QCOMPARE(run({}, u"0.2.1"_s), 1);
+    QVERIFY(m_err.contains(u"no checksum for callie-0.2.3-1.fc44.x86_64.rpm"_s));
+    QVERIFY(m_downloads.isEmpty());
+
+    // A development build updates from its source.
+    m_devel = true;
+    QCOMPARE(run({}, u"0.2.1"_s), 1);
+    QVERIFY(m_err.contains(u"git pull"_s));
     QVERIFY(m_ran.isEmpty());
 }
 

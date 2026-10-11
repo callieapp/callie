@@ -71,17 +71,11 @@ int Commands::agenda(int days, bool json)
     return 0;
 }
 
-int Commands::search(const QString &query, bool json)
+QList<Event> Commands::found(const QStringList &words) const
 {
-    const QStringList words = query.split(u' ', Qt::SkipEmptyParts);
-    if (words.isEmpty()) {
-        m_err << tr("usage: callie search <words>") << "\n";
-        return 2;
-    }
-    const QList<Event> all = visibleEvents(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround));
     // A repeating event once: its next occurrence, or its last if all have passed.
     QHash<QString, Event> found;
-    for (const Event &e : all) {
+    for (const Event &e : visibleEvents(m_now.addDays(-kDaysAround), m_now.addDays(kDaysAround))) {
         if (!SearchModel::matches(e, words))
             continue;
         const QString key = e.calendarId + u'/' +
@@ -102,17 +96,26 @@ int Commands::search(const QString &query, bool json)
             return aUp;
         return aUp ? a.start < b.start : a.start > b.start;
     });
-    if (results.isEmpty()) {
-        if (!json) {
-            m_err << tr("No events match.") << "\n";
-            return 0;
-        }
+    return results;
+}
+
+int Commands::search(const QString &query, bool json)
+{
+    const QStringList words = query.split(u' ', Qt::SkipEmptyParts);
+    if (words.isEmpty()) {
+        m_err << tr("usage: callie search <words>") << "\n";
+        return 2;
+    }
+    const QList<Event> results = found(words);
+    if (results.isEmpty() && !json) {
+        m_err << tr("No events match.") << "\n";
+        return 0;
     }
     print(results, json, false);
     return 0;
 }
 
-int Commands::invites(bool json)
+QList<Event> Commands::waitingInvites() const
 {
     QList<Event> pending;
     QSet<QString> series;
@@ -129,6 +132,12 @@ int Commands::invites(bool json)
         pending.append(e);
     }
     std::sort(pending.begin(), pending.end(), byStart);
+    return pending;
+}
+
+int Commands::invites(bool json)
+{
+    const QList<Event> pending = waitingInvites();
     if (pending.isEmpty() && !json) {
         m_err << tr("No invitations waiting.") << "\n";
         return 0;

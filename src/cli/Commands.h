@@ -91,6 +91,10 @@ public:
     /// `day`, or anything `callie add` understands, such as "friday 3pm".
     [[nodiscard]] std::optional<QDateTime> when(const QString &text, QDate day) const;
 
+    /// What search() and invites() list, for the TUI to show its own way.
+    [[nodiscard]] QList<Event> found(const QStringList &words) const;
+    [[nodiscard]] QList<Event> waitingInvites() const;
+
     /// The id the commands take: the calendar, a slash, and the event.
     [[nodiscard]] static QString reference(const Event &event);
 

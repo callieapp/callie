@@ -60,9 +60,11 @@ private Q_SLOTS:
     void syncStatusRedraws();
     void drawsInTheTheme();
     void detailsAnswerAndTakeBack();
+    void decliningAHiddenOneClosesItsDetails();
     void deletingCanBeTakenBack();
     void newEventsAsCallieAddReadsThem();
     void searchAndInvitationsJumpToTheDay();
+    void foundAsTheCliListsIt();
     void calendarsShowAndHide();
     void callsOpen();
 
@@ -299,6 +301,25 @@ void TestTui::detailsAnswerAndTakeBack()
     QVERIFY(m_state->messageIsError());
 }
 
+void TestTui::decliningAHiddenOneClosesItsDetails()
+{
+    m_settings->setShowDeclined(false);
+    m_state->press(m_settings->leaderKey());
+    m_state->press(u"a"_s);
+    QVERIFY(select(u"Berlin sync"_s));
+    const QString declined = m_state->current()->eventId;
+    const int shown = int(m_state->events().size());
+    m_state->press(u"Enter"_s);
+    m_state->press(u"n"_s);
+    // Declined, so no longer shown, and the details do not move on to another
+    // event that a following x would delete.
+    for (const Event &e : m_state->events())
+        QVERIFY(e.eventId != declined);
+    QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+    QVERIFY(!m_state->press(u"x"_s));
+    QCOMPARE(int(m_state->events().size()), shown - 1);
+}
+
 void TestTui::deletingCanBeTakenBack()
 {
     QVERIFY(select(u"Dentist"_s));
@@ -374,6 +395,51 @@ void TestTui::searchAndInvitationsJumpToTheDay()
     QVERIFY(!m_state->found().isEmpty());
     m_state->press(u"Escape"_s);
     QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
+}
+
+void TestTui::foundAsTheCliListsIt()
+{
+    // A repeating invitation, answered once, and where the user works, which
+    // labels a day rather than being an event.
+    QList<Event> events;
+    for (int week = 0; week < 3; ++week) {
+        Event e;
+        e.calendarId = u"work"_s;
+        e.eventId = u"planning-%1"_s.arg(week);
+        e.seriesId = u"planning"_s;
+        e.uid = u"planning"_s;
+        e.summary = u"Planning"_s;
+        e.start = kNow.addDays(1 + 7 * week);
+        e.end = e.start.addSecs(3600);
+        e.responseStatus = u"needsAction"_s;
+        e.canRespond = true;
+        events.append(e);
+    }
+    Event office;
+    office.calendarId = u"work"_s;
+    office.eventId = office.uid = u"office"_s;
+    office.summary = u"Office"_s;
+    office.start = kNow.addDays(1);
+    office.end = office.start.addDays(1);
+    office.allDay = office.workPlace = true;
+    office.responseStatus = u"needsAction"_s;
+    office.canRespond = true;
+    events.append(office);
+    FixedSource source(events);
+    TuiState state(source, *m_settings, [] { return kNow; });
+
+    state.press(u"i"_s);
+    QCOMPARE(state.found().size(), 1);
+    QCOMPARE(state.found().first().eventId, u"planning-0"_s);
+    state.press(u"Escape"_s);
+
+    for (const QString &key : {u"/"_s, u"o"_s, u"f"_s, u"f"_s, u"Enter"_s})
+        state.press(key);
+    QVERIFY(state.found().isEmpty());
+    state.press(u"Escape"_s);
+    for (const QString &key : {u"/"_s, u"p"_s, u"l"_s, u"a"_s, u"n"_s, u"Enter"_s})
+        state.press(key);
+    QCOMPARE(state.found().size(), 1);
 }
 
 void TestTui::calendarsShowAndHide()

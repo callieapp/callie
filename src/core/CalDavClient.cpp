@@ -231,7 +231,7 @@ void CalDavClient::send(const QByteArray &method, const QUrl &url, const QByteAr
                 location.isValid()) {
                 const QUrl next = url.resolved(location);
                 // Never from https down to http, nor round and round.
-                if (url.scheme() == u"https" && next.scheme() != u"https") {
+                if (!mayFollow(url, next)) {
                     answered(reply, {status, tr("The server sent Callie from https to plain "
                                                 "http, which Callie does not follow.")});
                     return;
@@ -243,12 +243,24 @@ void CalDavClient::send(const QByteArray &method, const QUrl &url, const QByteAr
                 send(method, next, body, headers, answered, redirects + 1);
                 return;
             }
+            // Turned away where the password was never sent: not the password's fault.
+            if (status == 401 && !m_user.isEmpty() && !m_trusted.contains(url.host())) {
+                answered(reply, {status, tr("The server sent Callie on to %1, which it does not "
+                                            "trust with the password.")
+                                             .arg(url.host())});
+                return;
+            }
             if (reply->error() != QNetworkReply::NoError && status != 207) {
                 answered(reply, failure(reply));
                 return;
             }
             answered(reply, {});
         });
+}
+
+bool CalDavClient::mayFollow(const QUrl &from, const QUrl &to)
+{
+    return from.scheme() != u"https" || to.scheme() == u"https";
 }
 
 void CalDavClient::learnHost(QNetworkReply *reply, const QUrl &named)

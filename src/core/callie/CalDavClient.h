@@ -71,6 +71,10 @@ public:
 
     void setCredentials(const QString &user, const QString &password);
 
+    /// Whether a redirect from `from` to `to` is followed: never from https
+    /// down to http.
+    [[nodiscard]] static bool mayFollow(const QUrl &from, const QUrl &to);
+
     /// Finds the account's calendars from the server's address, through the
     /// well-known address when the one given does not lead to them.
     void discover(const QUrl &server,

@@ -18,6 +18,7 @@ private Q_SLOTS:
     void removesOneOrAll();
     void movesOneOrAll();
     void seriesKeepTheirHourAcrossAClockChange();
+    void allDaySeriesMoveByDays();
     void editsThisAndFollowingSplitTheSeries();
     void answersAsTheUser();
 };
@@ -242,6 +243,46 @@ END:VEVENT
     QCOMPARE(after.size(), 2);
     QCOMPARE(after.first().start, later);
     QCOMPARE(after.last().start, QDateTime(QDate(2026, 11, 2), QTime(9, 0), kBerlin));
+}
+
+void TestIcs::allDaySeriesMoveByDays()
+{
+    // Bins out on Mondays, not on the 12th, and the 19th's on the Tuesday.
+    const ics::Group events = ics::parse(calendar(R"(BEGIN:VEVENT
+UID:bins
+DTSTART;VALUE=DATE:20261005
+DTEND;VALUE=DATE:20261006
+RRULE:FREQ=WEEKLY
+EXDATE;VALUE=DATE:20261012
+SUMMARY:Bins
+END:VEVENT
+BEGIN:VEVENT
+UID:bins
+RECURRENCE-ID;VALUE=DATE:20261019
+DTSTART;VALUE=DATE:20261020
+DTEND;VALUE=DATE:20261021
+SUMMARY:Bins, late
+END:VEVENT
+)"));
+    const QDateTime from(QDate(2026, 10, 5), QTime(0, 0), kBerlin);
+    const auto days = [&from](const ics::Group &group) {
+        QStringList list;
+        for (const Event &event : ics::expand(group, kHome, from, from.addDays(28), kBerlin))
+            list << event.start.date().toString(u"MMM d"_s) + u' ' + event.summary;
+        list.sort();
+        return list;
+    };
+    QCOMPARE(days(events),
+             (QStringList{u"Oct 20 Bins, late"_s, u"Oct 26 Bins"_s, u"Oct 5 Bins"_s}));
+
+    // A day later, the gap and the changed one move with it.
+    QString error;
+    const Event first = ics::expand(events, kHome, from, from.addDays(1), kBerlin).value(0);
+    const auto moved =
+        ics::move(events, first, first.start.addDays(1), first.end.addDays(1), true, &error);
+    QVERIFY2(moved, qPrintable(error));
+    QCOMPARE(days(moved->group),
+             (QStringList{u"Oct 20 Bins, late"_s, u"Oct 27 Bins"_s, u"Oct 6 Bins"_s}));
 }
 
 void TestIcs::editsThisAndFollowingSplitTheSeries()

@@ -249,14 +249,93 @@ KEvent::Ptr ownCopy(Group &group, const Event &occurrence)
     return copy;
 }
 
+/// The `pos`th `weekday` of the month `inMonth` is in, counting from the end
+/// when negative; invalid when the month has no such day.
+QDate nthWeekday(QDate inMonth, int pos, int weekday)
+{
+    if (pos > 0) {
+        QDate first(inMonth.year(), inMonth.month(), 1);
+        first = first.addDays((weekday - first.dayOfWeek() + 7) % 7);
+        const QDate day = first.addDays(7 * (pos - 1));
+        return day.month() == inMonth.month() ? day : QDate();
+    }
+    QDate last(inMonth.year(), inMonth.month(), inMonth.daysInMonth());
+    last = last.addDays(-((last.dayOfWeek() - weekday + 7) % 7));
+    const QDate day = last.addDays(7 * (pos + 1));
+    return day.month() == inMonth.month() ? day : QDate();
+}
+
+/// Moves the days a series' rule names, as one occurrence moves `days` days to
+/// `landing`, and gives the series' new first day. Rules Callie cannot carry
+/// over, such as several ordinals or a month, are refused rather than left to
+/// repeat somewhere else.
+bool moveRule(KEvent &series, int days, QDate landing, QDate *first, QString *error)
+{
+    using Rule = KCalendarCore::RecurrenceRule;
+    *first = series.dtStart().date().addDays(days);
+    const QList<Rule *> rules = series.recurrence()->rRules();
+    const auto refuse = [error] {
+        *error = QObject::tr("This event repeats in a way Callie cannot move all at once. Move "
+                             "this one alone, or change how it repeats first.");
+        return false;
+    };
+    for (Rule *rule : rules) {
+        const bool others = !rule->byMonths().isEmpty() || !rule->byYearDays().isEmpty() ||
+                            !rule->byWeekNumbers().isEmpty() || !rule->bySetPos().isEmpty();
+        const QList<Rule::WDayPos> weekdays = rule->byDays();
+        const QList<int> monthDays = rule->byMonthDays();
+        if (others || rules.size() > 1)
+            return refuse();
+        if (weekdays.isEmpty() && monthDays.isEmpty())
+            continue;
+        const bool plainWeekdays = std::ranges::all_of(
+            weekdays, [](const Rule::WDayPos &weekday) { return weekday.pos() == 0; });
+        if (rule->recurrenceType() == Rule::rWeekly && plainWeekdays && monthDays.isEmpty()) {
+            QList<Rule::WDayPos> moved = weekdays;
+            for (Rule::WDayPos &weekday : moved)
+                weekday.setDay(short(((weekday.day() - 1 + days) % 7 + 7) % 7 + 1));
+            rule->setByDays(moved);
+            continue;
+        }
+        if (rule->recurrenceType() != Rule::rMonthly)
+            return refuse();
+        // The nth weekday or the day of the month the moved one lands on, from
+        // the series' first month.
+        const QDate month = series.dtStart().date();
+        if (weekdays.size() == 1 && weekdays.first().pos() != 0 && monthDays.isEmpty()) {
+            const int pos = weekdays.first().pos() > 0
+                                ? (landing.day() - 1) / 7 + 1
+                                : -((landing.daysInMonth() - landing.day()) / 7 + 1);
+            rule->setByDays({Rule::WDayPos(pos, short(landing.dayOfWeek()))});
+            *first = nthWeekday(month, pos, landing.dayOfWeek());
+        } else if (weekdays.isEmpty() && monthDays.size() == 1 && monthDays.first() > 0) {
+            rule->setByMonthDays({landing.day()});
+            *first =
+                QDate(month.year(), month.month(), std::min(landing.day(), month.daysInMonth()));
+        } else {
+            return refuse();
+        }
+        if (!first->isValid())
+            return refuse();
+    }
+    return true;
+}
+
 /// Moves a whole series, with what is kept about its occurrences, as one of
 /// them moves from `from` to `to`, giving each occurrence `length` seconds.
-void shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint64 length,
-                 bool allDay)
+bool shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint64 length,
+                 bool allDay, QString *error)
 {
     const KEvent::Ptr series = master(group);
     const Shift shift = shiftBetween(from, to, series->dtStart(), allDay);
-    const QDateTime start = shift.apply(series->dtStart());
+    QDateTime start = shift.apply(series->dtStart());
+    if (series->recurs() && shift.days != 0) {
+        QDate first;
+        const QDate landing = allDay ? to.date() : inZoneOf(to, series->dtStart()).date();
+        if (!moveRule(*series, shift.days, landing, &first, error))
+            return false;
+        start.setDate(first);
+    }
     if (series->recurs()) {
         QList<QDateTime> excluded;
         for (const QDateTime &date : series->recurrence()->exDateTimes())
@@ -266,33 +345,6 @@ void shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint6
         for (const QDate &date : series->recurrence()->exDates())
             excludedDays << date.addDays(shift.days);
         series->recurrence()->setExDates(excludedDays);
-        // A rule's own days move too, or a series moved to Wednesday would
-        // carry on on Mondays. An ordinal or a single day of the month is read
-        // again from the new start, which may be in another week or month.
-        const QDate day = start.date();
-        for (KCalendarCore::RecurrenceRule *rule : series->recurrence()->rRules()) {
-            QList<KCalendarCore::RecurrenceRule::WDayPos> weekdays = rule->byDays();
-            for (KCalendarCore::RecurrenceRule::WDayPos &weekday : weekdays) {
-                if (weekday.pos() == 0) {
-                    weekday.setDay(short(((weekday.day() - 1 + shift.days) % 7 + 7) % 7 + 1));
-                    continue;
-                }
-                weekday.setDay(short(day.dayOfWeek()));
-                weekday.setPos(weekday.pos() > 0 ? (day.day() - 1) / 7 + 1
-                                                 : -((day.daysInMonth() - day.day()) / 7 + 1));
-            }
-            rule->setByDays(weekdays);
-            QList<int> monthDays = rule->byMonthDays();
-            if (monthDays.size() == 1) {
-                monthDays = {monthDays.first() > 0 ? day.day() : day.day() - day.daysInMonth() - 1};
-            } else {
-                for (int &each : monthDays) {
-                    if (each > 0 && each + shift.days >= 1 && each + shift.days <= 31)
-                        each += shift.days;
-                }
-            }
-            rule->setByMonthDays(monthDays);
-        }
     }
     // All-day lengths in whole days, which a change of clocks makes 23 or 25 hours.
     const QDateTime end = allDay ? start.addDays(std::max<qint64>(1, qRound(length / 86400.0)))
@@ -302,6 +354,7 @@ void shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint6
         if (event->hasRecurrenceId())
             event->setRecurrenceId(shift.apply(event->recurrenceId()));
     }
+    return true;
 }
 
 bool setRecurrence(KEvent &series, const QStringList &lines, QString *error)
@@ -399,8 +452,9 @@ bool editSeries(Group &group, const Event &occurrence, const EventEdit &edit, QS
                              : QDateTime(first.date(), times.start.time(), times.start.timeZone());
             setTimes(*series, start, start.addSecs(times.start.secsTo(times.end)), times.allDay);
         } else {
-            shiftSeries(group, occurrence.start, times.start, times.start.secsTo(times.end),
-                        times.allDay);
+            if (!shiftSeries(group, occurrence.start, times.start, times.start.secsTo(times.end),
+                             times.allDay, error))
+                return false;
         }
     }
     if (edit.recurrence && !setRecurrence(*series, *edit.recurrence, error))
@@ -552,7 +606,9 @@ std::optional<Changed> move(const Group &group, const Event &occurrence, const Q
     if (!series->recurs()) {
         setTimes(*series, start, end, occurrence.allDay);
     } else if (wholeSeries) {
-        shiftSeries(after, occurrence.start, start, start.secsTo(end), occurrence.allDay);
+        if (!shiftSeries(after, occurrence.start, start, start.secsTo(end), occurrence.allDay,
+                         error))
+            return std::nullopt;
     } else {
         setTimes(*ownCopy(after, occurrence), start, end, occurrence.allDay);
     }

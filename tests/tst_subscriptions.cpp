@@ -128,7 +128,7 @@ void TestSubscriptions::badLinksSayWhy()
     QTemporaryDir dir;
     FakeHttpServer server;
     server.replier = [](const FakeHttpServer::Request &request) {
-        if (request.target == "/missing.ics")
+        if (request.target.startsWith("/missing.ics"))
             return FakeHttpServer::Reply{404, "gone", {}, "text/plain"};
         return FakeHttpServer::Reply{200, "<html>a web page</html>", {}, "text/html"};
     };
@@ -139,9 +139,14 @@ void TestSubscriptions::badLinksSayWhy()
     QVERIFY(subscriptions.add(u"ftp://example.com/x.ics"_s, {}, &error).isEmpty());
     QVERIFY(!error.isEmpty());
 
-    subscriptions.add(server.url(u"/missing.ics"_s).toString(), u"Missing"_s, &error);
+    // A private link's secret stays out of what is kept and shown.
+    subscriptions.add(server.url(u"/missing.ics"_s).toString() + u"?token=s3cret"_s, u"Missing"_s,
+                      &error);
     QVERIFY(fetched.wait());
     QVERIFY(subscriptions.lastError().startsWith(u"Missing: "_s));
+    QVERIFY(subscriptions.lastError().contains(u"404"_s));
+    QVERIFY(!subscriptions.lastError().contains(u"s3cret"_s));
+    QVERIFY(!subscriptions.lastError().contains(u"missing.ics"_s));
     subscriptions.add(server.url(u"/page"_s).toString(), u"Page"_s, &error);
     QVERIFY(fetched.wait());
     QCOMPARE(subscriptions.syncReport().size(), 2);

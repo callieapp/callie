@@ -16,6 +16,7 @@
 #include "callie/QueuedSource.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
+#include "callie/Subscriptions.h"
 #include "callie/Times.h"
 #include "callie/TokenStore.h"
 #include "callie/UpdateCheck.h"
@@ -34,6 +35,7 @@
 #include <QDate>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QLocale>
@@ -103,6 +105,8 @@ const QList<std::pair<QString, QString>> kCommands = {
     {u"contacts"_s, u"People to invite whose name or address matches"_s},
     {u"add"_s, u"Create an event: callie add \"Lunch tomorrow 12-1pm\""_s},
     {u"import"_s, u"Add the events of an .ics file to a calendar on this computer"_s},
+    {u"subscribe"_s, u"Subscribe to a calendar by its webcal:// or https:// link"_s},
+    {u"unsubscribe"_s, u"Stop a subscription"_s},
     {u"edit"_s, u"Change an event: callie edit <id> --start \"friday 3pm\""_s},
     {u"delete"_s, u"Delete an event"_s},
     {u"respond"_s, u"Answer an invitation: callie respond <id> yes|maybe|no"_s},
@@ -390,6 +394,26 @@ int runLogs(bool follow, bool open)
 /// Quiet on success. Each failure is one line on stderr, and any failure exits 1.
 int runSync(QCoreApplication &app)
 {
+    // Subscribed calendars first, since they need no account.
+    QNetworkAccessManager network;
+    Subscriptions subscriptions(Subscriptions::defaultRoot(), &network);
+    bool failed = false;
+    if (!subscriptions.calendars().isEmpty()) {
+        QEventLoop fetching;
+        QObject::connect(&subscriptions, &Subscriptions::fetched, &fetching, &QEventLoop::quit);
+        subscriptions.fetchAll();
+        if (subscriptions.syncing())
+            fetching.exec();
+        for (const QVariant &entry : subscriptions.syncReport()) {
+            const QVariantMap feed = entry.toMap();
+            if (const QString error = feed.value(u"error"_s).toString(); !error.isEmpty()) {
+                err << QStringLiteral("callie: %1: %2\n")
+                           .arg(feed.value(u"account"_s).toString(), error);
+                failed = true;
+            }
+        }
+    }
+
     AccountStore store(AccountStore::defaultPath());
     QList<Account> accounts;
     if (!store.load(accounts)) {
@@ -398,8 +422,9 @@ int runSync(QCoreApplication &app)
     }
     accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
     if (accounts.isEmpty()) {
-        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
-        return 0;
+        if (subscriptions.calendars().isEmpty())
+            err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        return failed ? 1 : 0;
     }
 
     GoogleCache cache(GoogleCache::defaultPath());
@@ -412,12 +437,10 @@ int runSync(QCoreApplication &app)
         return 1;
     KeychainTokenStore tokens;
     GoogleTokenProvider provider(*client, tokens);
-    QNetworkAccessManager network;
     GoogleCalendarApi api(&network);
     GoogleSync sync(provider, api, cache);
 
     qsizetype remaining = accounts.size();
-    bool failed = false;
     QTimer::singleShot(0, &app, [&] {
         for (const Account &account : std::as_const(accounts)) {
             sync.sync(account, [&, account](const QStringList &errors) {
@@ -472,6 +495,66 @@ int runLocalCalendars(const QString &action, const QString &name)
     return 0;
 }
 
+/// `callie subscribe <link> [name]`, fetched at once, and `callie unsubscribe
+/// <calendar>`.
+int runSubscription(const QString &command, const QString &target, const QString &name)
+{
+    if (target.isEmpty()) {
+        err << (command == u"subscribe" ? QObject::tr("usage: callie subscribe <link> [name]")
+                                        : QObject::tr("usage: callie unsubscribe <calendar>"))
+            << "\n";
+        return 2;
+    }
+    QNetworkAccessManager network;
+    Subscriptions subscriptions(Subscriptions::defaultRoot(), &network);
+    QString error;
+    if (command == u"subscribe") {
+        QEventLoop fetching;
+        QObject::connect(&subscriptions, &Subscriptions::fetched, &fetching, &QEventLoop::quit);
+        const QString id = subscriptions.add(target, name, &error);
+        if (id.isEmpty()) {
+            err << QStringLiteral("callie: %1\n").arg(error);
+            return 1;
+        }
+        if (subscriptions.syncing())
+            fetching.exec();
+        const QList<CalendarInfo> calendars = subscriptions.calendars();
+        const QVariantList report = subscriptions.syncReport();
+        for (qsizetype i = 0; i < calendars.size(); ++i) {
+            if (calendars.at(i).id != id)
+                continue;
+            // Kept, so a link that is down for now works once it is back.
+            if (const QString problem = report.value(i).toMap().value(u"error"_s).toString();
+                !problem.isEmpty()) {
+                err << QStringLiteral("callie: %1: %2\n").arg(calendars.at(i).displayName, problem);
+                return 1;
+            }
+            out << QObject::tr("Subscribed to %1.").arg(calendars.at(i).displayName) << "\n";
+        }
+        return 0;
+    }
+    QStringList ids;
+    for (const CalendarInfo &calendar : subscriptions.calendars()) {
+        if (calendar.id == target ||
+            calendar.displayName.compare(target, Qt::CaseInsensitive) == 0 ||
+            subscriptions.link(calendar.id) == target)
+            ids << calendar.id;
+    }
+    if (ids.size() != 1) {
+        err << (ids.isEmpty() ? QObject::tr("callie: no subscription is called %1").arg(target)
+                              : QObject::tr("callie: more than one is called %1; give its id: %2")
+                                    .arg(target, ids.join(u", "_s)))
+            << "\n";
+        return ids.isEmpty() ? 1 : 2;
+    }
+    if (!subscriptions.remove(ids.first(), &error)) {
+        err << QStringLiteral("callie: %1\n").arg(error);
+        return 1;
+    }
+    out << QObject::tr("Unsubscribed from %1.").arg(target) << "\n";
+    return 0;
+}
+
 /// One line per calendar, tab-separated: account, calendar id, name.
 int runCalendars(QCoreApplication &app)
 {
@@ -485,9 +568,13 @@ int runCalendars(QCoreApplication &app)
     for (const CalendarInfo &calendar : local.calendars())
         out << LocalCalendars::kAccount << "\t" << calendar.id << "\t" << calendar.displayName
             << "\n";
+    const Subscriptions subscriptions(Subscriptions::defaultRoot(), nullptr);
+    for (const CalendarInfo &calendar : subscriptions.calendars())
+        out << Subscriptions::kAccount << "\t" << calendar.id << "\t" << calendar.displayName
+            << "\n";
     accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
     if (accounts.isEmpty()) {
-        if (local.calendars().isEmpty())
+        if (local.calendars().isEmpty() && subscriptions.calendars().isEmpty())
             err << QObject::tr("No calendars. Add an account with: callie accounts add google, "
                                "or make a calendar with: callie calendars new <name>")
                 << "\n";
@@ -550,6 +637,7 @@ struct Backend
     std::unique_ptr<GoogleSync> sync;
     std::unique_ptr<GoogleSource> google;
     std::unique_ptr<LocalCalendars> local;
+    std::unique_ptr<Subscriptions> subscriptions;
     std::unique_ptr<CalendarSource> source;
 };
 
@@ -571,7 +659,10 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
     }
     backend->accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
     backend->local = std::make_unique<LocalCalendars>(LocalCalendars::defaultRoot());
-    const bool local = !backend->local->calendars().isEmpty();
+    // Read as last fetched; `callie sync` fetches them.
+    backend->subscriptions = std::make_unique<Subscriptions>(Subscriptions::defaultRoot(), nullptr);
+    const bool local =
+        !backend->local->calendars().isEmpty() || !backend->subscriptions->calendars().isEmpty();
     if (backend->accounts.isEmpty() && !local) {
         err << QObject::tr("No calendars. Add an account with: callie accounts add google, or "
                            "make a calendar with: callie calendars new <name>")
@@ -580,7 +671,7 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
     }
     auto combined = std::make_unique<CombinedSource>();
     if (backend->accounts.isEmpty()) {
-        combined->setSources({backend->local.get()});
+        combined->setSources({backend->local.get(), backend->subscriptions.get()});
         backend->source = std::move(combined);
         return backend;
     }
@@ -610,7 +701,8 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
         google->setSync(backend->sync.get());
     }
     backend->google = std::move(google);
-    combined->setSources({backend->google.get(), backend->local.get()});
+    combined->setSources(
+        {backend->google.get(), backend->local.get(), backend->subscriptions.get()});
     backend->source = std::move(combined);
     return backend;
 }
@@ -1011,6 +1103,8 @@ int main(int argc, char *argv[])
         return cli::Commands::importFile(local, args.value(1), parser.value(u"calendar"_s), out,
                                          err);
     }
+    if (command == u"subscribe" || command == u"unsubscribe")
+        return runSubscription(command, args.value(1), args.mid(2).join(u' '));
     if (command == QLatin1String("calendars") &&
         (args.value(1) == u"new" || args.value(1) == u"remove"))
         return runLocalCalendars(args.value(1), args.mid(2).join(u' '));

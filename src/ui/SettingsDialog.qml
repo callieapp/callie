@@ -165,6 +165,15 @@ Popup {
         }
 
         Section {
+            title: qsTr("Subscriptions")
+            visible: root.tab === "accounts"
+
+            SubscriptionsSection {
+                width: parent.width
+            }
+        }
+
+        Section {
             title: qsTr("Theme")
             visible: root.tab === "appearance"
 

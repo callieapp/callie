@@ -16,6 +16,8 @@ qt_add_qml_module(callieui
         LocalController.cpp
         ImportController.h
         ImportController.cpp
+        SubscriptionsController.h
+        SubscriptionsController.cpp
         Clock.h
         Clock.cpp
         Composer.h
@@ -94,6 +96,8 @@ qt_add_qml_module(callieui
         PickerButton.qml
         LocalSection.qml
         ImportDialog.qml
+        SubscribeDialog.qml
+        SubscriptionsSection.qml
         DatePicker.qml
         CustomRepeat.qml
         FormRow.qml

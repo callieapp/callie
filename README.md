@@ -65,6 +65,11 @@ Open an `.ics` file with Callie, or drop one on its window, to add its events to
 calendars or to a new one named after the file. Adding the same file again updates its events
 rather than repeating them.
 
+Subscribe to a calendar others publish as a link, such as holidays or a team's schedule, in
+Settings, under Accounts, or by opening a `webcal://` link. Callie keeps a read-only copy under
+`$XDG_DATA_HOME/callie/subscriptions` and fetches it again every hour, skipping the download when
+the calendar has not changed.
+
 Pick a theme in Settings, under Theme: Callie, Callie Light, Paper, Minimal, Minimal Dark,
 Tomorrow or Tomorrow Night. Customize colors copies the theme into
 `$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
@@ -97,6 +102,7 @@ callie accounts remove google you@example.com
 callie calendars                         # calendars in each account, tab-separated
 callie calendars new "Book club"         # a calendar on this computer; remove takes it away
 callie import party.ics                  # its events into a calendar here; --calendar picks one
+callie subscribe webcal://example.com/holidays.ics # unsubscribe <calendar> stops it
 callie calendars rename Focus "Deep work" # also hide, show, color <calendar> <#rrggbb>, reset
 callie accounts rename you@example.com Work
 callie settings                          # every setting; callie settings viMode true changes one
@@ -228,6 +234,7 @@ Roughly in the order it needs to happen:
       100 users, and review takes weeks, so this wants starting early)
 - [ ] CalDAV accounts, credentials stored in the system keyring
 - [x] Calendars on this computer, as vdir folders of .ics files
+- [x] Subscriptions to calendar links, refreshed hourly
 - [x] SQLite cache so the app works offline
 - [x] Replace the placeholder sample data
 

@@ -996,8 +996,21 @@ ApplicationWindow {
         }
     }
 
-    /// Opens the .ics files among `urls`, from a drop or the file manager.
+    LazyPopup {
+        id: subscribeDialog
+        sourceComponent: SubscribeDialog {}
+    }
+
+    /// Opens the .ics files among `urls`, from a drop or the file manager, and
+    /// asks about the calendar links a browser hands over.
     function openFiles(urls) {
+        const link = urls.find(url => Subscribed.accepts(url))
+        if (link) {
+            subscribeDialog.active = true
+            subscribeDialog.popup.link = link.toString()
+            subscribeDialog.open()
+            return
+        }
         if (!Importer.open(urls) && Importer.error !== "")
             undoToast.show("", Importer.error)
     }

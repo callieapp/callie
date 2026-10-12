@@ -61,6 +61,10 @@ public:
     QByteArray password = "app-password";
     /// Off for servers that only list versions.
     bool syncTokens = true;
+    /// Paths that send requests elsewhere, as Location headers.
+    QHash<QByteArray, QByteArray> redirects;
+    /// The calendar home as the principal names it, when not the usual path.
+    QByteArray homeHref = "/dav/calendars/me/";
     QMap<QByteArray, Calendar> calendars;
 
 private:
@@ -99,6 +103,8 @@ private:
 
     FakeHttpServer::Reply answer(const FakeHttpServer::Request &request)
     {
+        if (redirects.contains(request.target))
+            return {301, "", {{"Location", redirects.value(request.target)}}, "text/plain"};
         if (request.headers.value("authorization") != "Basic " + (user + ':' + password).toBase64())
             return {401, "no", {{"WWW-Authenticate", "Basic realm=\"test\""}}, "text/plain"};
         const QByteArray path = request.target;
@@ -110,10 +116,11 @@ private:
             return xml(response(path, "<d:current-user-principal><d:href>/dav/principals/me/"
                                       "</d:href></d:current-user-principal>"));
         if (request.method == "PROPFIND" && path == "/dav/principals/me/")
-            return xml(response(path, "<c:calendar-home-set><d:href>/dav/calendars/me/</d:href>"
-                                      "</c:calendar-home-set><c:calendar-user-address-set>"
-                                      "<d:href>mailto:me@example.com</d:href><d:href>/dav/"
-                                      "principals/me/</d:href></c:calendar-user-address-set>"));
+            return xml(
+                response(path, "<c:calendar-home-set><d:href>" + homeHref +
+                                   "</d:href></c:calendar-home-set><c:calendar-user-address-set>"
+                                   "<d:href>mailto:me@example.com</d:href><d:href>/dav/"
+                                   "principals/me/</d:href></c:calendar-user-address-set>"));
         if (request.method == "PROPFIND" && path == "/dav/calendars/me/") {
             QByteArray body = response(path, "<d:resourcetype><d:collection/></d:resourcetype>");
             for (auto it = calendars.cbegin(); it != calendars.cend(); ++it)
@@ -186,6 +193,9 @@ private:
         if (request.method == "REPORT" && body.contains("sync-collection")) {
             if (!syncTokens)
                 return {403, "", {}, "text/plain"};
+            // As strict servers do: RFC 6578 allows only depth 0.
+            if (request.headers.value("depth") != "0")
+                return {400, "", {}, "text/plain"};
             static const QRegularExpression tokenText(
                 QStringLiteral("<d:sync-token>([^<]*)</d:sync-token>"));
             const QString given = tokenText.match(QString::fromUtf8(body)).captured(1);

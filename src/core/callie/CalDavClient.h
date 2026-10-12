@@ -4,6 +4,7 @@
 #include <QList>
 #include <QObject>
 #include <QPointer>
+#include <QSet>
 #include <QString>
 #include <QUrl>
 
@@ -105,8 +106,9 @@ private:
     struct Response;
     using Answered = std::function<void(QNetworkReply *reply, const DavError &error)>;
 
-    /// Sends a request, following redirects with the same method, and keeps
-    /// the password to the host it was given for.
+    /// Sends a request, following redirects with the same method. The
+    /// password goes only over https, or to this machine, and only to hosts
+    /// the account trusts.
     void send(const QByteArray &method, const QUrl &url, const QByteArray &body,
               const QList<std::pair<QByteArray, QByteArray>> &headers, Answered answered,
               int redirects = 0);
@@ -119,8 +121,9 @@ private:
     QPointer<QNetworkAccessManager> m_network;
     QString m_user;
     QString m_password;
-    /// The host the password is for; redirects elsewhere go without it.
-    QString m_host;
+    /// The hosts the password goes to: the server's own, and those it names in
+    /// its signed-in answers. Redirects elsewhere go without it.
+    QSet<QString> m_trusted;
 };
 
 } // namespace callie

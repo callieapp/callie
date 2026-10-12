@@ -22,6 +22,7 @@ private Q_SLOTS:
     void listsWhereThereAreNoTokens();
     void fetchesInBatches();
     void writesOnlyOverWhatWasRead();
+    void thePasswordGoesOnlyWhereItShould();
 
 private:
     std::unique_ptr<FakeCalDavServer> m_server;
@@ -198,6 +199,48 @@ void TestCalDavClient::writesOnlyOverWhatWasRead()
                       [done](const QString &etag, const DavError &e) { done({etag, e}); });
     });
     QCOMPARE(refused.second.status, 403);
+}
+
+void TestCalDavClient::thePasswordGoesOnlyWhereItShould()
+{
+    using Found = std::pair<DavAccount, DavError>;
+    const auto discover = [this](const QUrl &url) {
+        return wait<Found>([&](auto done) {
+            m_client->discover(url,
+                               [done](const DavAccount &a, const DavError &e) { done({a, e}); });
+        });
+    };
+    // "localhost" is the same server under another name, which a redirect
+    // there does not earn the password.
+    const QUrl elsewhere(u"http://localhost:%1/dav/"_s.arg(m_server->url().port()));
+    m_server->redirects.insert("/hop", elsewhere.toEncoded());
+    QVERIFY(discover(m_server->url(u"/hop"_s)).second.isAuth());
+
+    // A host the server names itself, as iCloud names each account's, does.
+    m_server->homeHref =
+        u"http://localhost:%1/dav/calendars/me/"_s.arg(m_server->url().port()).toUtf8();
+    const Found named = discover(m_server->url());
+    QVERIFY2(!named.second, qPrintable(named.second.message));
+    QCOMPARE(named.first.home.host(), u"localhost"_s);
+    QCOMPARE(named.first.calendars.size(), 2);
+
+    // Never over plain http to anywhere but this machine.
+    const qsizetype before = m_server->server.requests.size();
+    using Listed = std::pair<QList<DavCalendar>, DavError>;
+    const Listed refused = wait<Listed>([&](auto done) {
+        m_client->calendars(QUrl(u"http://calendar.example/dav/"_s),
+                            [done](const auto &c, const DavError &e) { done({c, e}); });
+    });
+    QVERIFY(refused.second.message.contains(u"https"_s));
+    QCOMPARE(m_server->server.requests.size(), before);
+
+    // Nor around in circles.
+    m_server->redirects.insert("/loop", "/loop");
+    const Listed circled = wait<Listed>([&](auto done) {
+        m_client->calendars(m_server->url(u"/loop"_s),
+                            [done](const auto &c, const DavError &e) { done({c, e}); });
+    });
+    QVERIFY(circled.second.message.contains(u"too often"_s));
 }
 
 QTEST_MAIN(TestCalDavClient)

@@ -6,7 +6,10 @@ namespace callie {
 
 QUrl Event::joinUrl() const
 {
-    if (!conferenceUrl.isEmpty())
+    // The provider's link comes from whoever sent the invitation, so only a web
+    // link is opened, never a file or share.
+    if (conferenceUrl.isValid() &&
+        (conferenceUrl.scheme() == u"https" || conferenceUrl.scheme() == u"http"))
         return conferenceUrl;
     return places::findCallLink(location + u'\n' + description);
 }

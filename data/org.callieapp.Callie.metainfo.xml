@@ -42,6 +42,13 @@
   </categories>
 
   <releases>
+    <release version="0.3.0" date="2026-10-11">
+      <description>
+        <p>A faster start, a full-screen calendar in the terminal, agenda colors from your theme,
+          upgrade and downgrade commands, a note when a newer release is out, and tab completion
+          for bash, zsh and fish.</p>
+      </description>
+    </release>
     <release version="0.2.3" date="2026-10-11">
       <description>
         <p>Drag an event to the edge of the view to carry it to the next or previous week or

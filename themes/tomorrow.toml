@@ -1,0 +1,35 @@
+# Tomorrow: the light half of Chris Kempson's Tomorrow palette, white with a
+# plum accent. Anything not set here comes from callie.toml.
+
+[theme]
+name = "Tomorrow"
+variant = "light"
+
+[colors]
+background = "#f7f7f7"
+surface = "#ffffff"
+surface-alt = "#efefef"
+hairline = "#eaeaea"
+border = "#d6d6d6"
+text = "#4d4d4c"
+text-muted = "#666665"
+text-faint = "#8e908c"
+accent = "#8959a8"
+accent-text = "#ffffff"
+danger = "#c82829"
+edge = "#d6d6d6"
+accent-edge = "#653f80"
+
+[calendar]
+lightness = 0.88
+chroma = 0.07
+ink-lightness = 0.3
+ink-chroma = 0.06
+edge-lightness = 0.72
+edge-chroma = 0.08
+
+[shadow]
+color = "#4d4d4c"
+opacity = 0.14
+blur = 28
+offset = 10

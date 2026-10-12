@@ -58,7 +58,8 @@ Theming is a first-class feature, in the spirit of Winamp skins but safer.
 3. A theme may set only the values it cares about. Everything it omits comes from the default.
 4. Themes can be exported, imported, and edited while Callie is running. base16 color schemes can
    be imported, so a terminal or editor setup carries over.
-5. Built-in themes: Callie, Callie Light, Paper, Minimal, Minimal Dark, and Tomorrow Night.
+5. Built-in themes: Callie, Callie Light, Paper, Minimal, Minimal Dark, Tomorrow, and Tomorrow
+   Night.
 6. Contrast is checked. Body text needs 4.5:1 against its surface, and Callie warns when a user
    theme falls short instead of refusing it.
 7. The CLI uses the active theme's colors.

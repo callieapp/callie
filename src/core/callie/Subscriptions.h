@@ -9,6 +9,7 @@
 #include <chrono>
 
 class QNetworkAccessManager;
+class QNetworkReply;
 
 namespace callie {
 
@@ -76,6 +77,8 @@ private:
     QPointer<QNetworkAccessManager> m_network;
     /// The ids of the feeds being fetched.
     QSet<QString> m_fetching;
+    /// The fetch under way for each feed, so a stopped feed's is abandoned.
+    QHash<QString, QPointer<QNetworkReply>> m_replies;
 };
 
 } // namespace callie

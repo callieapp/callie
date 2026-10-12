@@ -162,8 +162,9 @@ void TestSubscriptions::removingForgetsTheCopy()
 {
     QTemporaryDir dir;
     FakeHttpServer server;
-    server.replier = [](const FakeHttpServer::Request &) {
-        return FakeHttpServer::Reply{200, kTwo, {}, "text/calendar"};
+    server.replier = [](const FakeHttpServer::Request &request) {
+        return FakeHttpServer::Reply{
+            200, request.target == "/one.ics" ? kOne : kTwo, {}, "text/calendar"};
     };
     QNetworkAccessManager network;
     Subscriptions subscriptions(dir.path(), &network);
@@ -175,14 +176,16 @@ void TestSubscriptions::removingForgetsTheCopy()
     QVERIFY(subscriptions.calendars().isEmpty());
     QVERIFY(QDir(dir.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
 
-    // Stopped while its first fetch is under way, it does not come back.
+    // Stopped while its first fetch is under way, it does not come back, nor
+    // land in a feed of the same name added before it would have arrived.
     subscriptions.add(server.url(u"/h.ics"_s).toString(), u"Again"_s, &error);
     QVERIFY(subscriptions.syncing());
     QVERIFY(subscriptions.remove(u"subscription:again"_s, &error));
-    QVERIFY(fetched.wait());
+    QVERIFY(!subscriptions.syncing());
     QVERIFY(QDir(dir.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
-    subscriptions.refresh();
-    QVERIFY(subscriptions.calendars().isEmpty());
+    subscriptions.add(server.url(u"/one.ics"_s).toString(), u"Again"_s, &error);
+    QVERIFY(fetched.wait());
+    QCOMPARE(autumn(subscriptions).size(), 1);
 }
 
 QTEST_MAIN(TestSubscriptions)

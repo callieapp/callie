@@ -226,7 +226,7 @@ Roughly in the order it needs to happen:
 - [x] Desktop notifications, with one click to join a video call
 - [x] Correct handling of recurring events and cross-timezone meetings
 - [x] Custom window chrome
-- [ ] A week grid that fits about 8 working hours
+- [x] A week grid that fits about 8 working hours
 
 ### Design
 

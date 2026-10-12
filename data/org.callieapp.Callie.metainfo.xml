@@ -42,6 +42,12 @@
   </categories>
 
   <releases>
+    <release version="0.3.2" date="2026-10-12">
+      <description>
+        <p>The week grid fits your working day to the window, base16 color schemes import as
+          themes, and Settings picks where places open from a menu.</p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-10-12">
       <description>
         <p>Five more built-in themes: Paper, Minimal, Minimal Dark, Tomorrow and Tomorrow

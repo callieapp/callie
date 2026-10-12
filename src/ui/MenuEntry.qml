@@ -10,17 +10,22 @@ MenuItem {
     /// the menu's rounded ones at that distance, so they never cross its border.
     readonly property real inset: menu ? menu.padding : 0
 
+    /// Marks this entry as the current choice, with a check on the right. It
+    /// is not `checked`, which a click would toggle out from under its binding.
+    property bool current: false
+    /// Keeps room for that check, so entries line up whichever is current.
+    property bool marks: false
+
     implicitHeight: 30
     leftPadding: Theme.space4
-    // A checkable entry keeps room for its check on the right.
-    rightPadding: Theme.space4 + (root.checkable ? 14 + Theme.space2 : 0)
+    rightPadding: Theme.space4 + (root.marks ? 14 + Theme.space2 : 0)
 
     contentItem: Text {
         text: root.text
         color: Theme.text
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
-        font.weight: root.checked ? Theme.weightBold : Font.Normal
+        font.weight: root.current ? Theme.weightBold : Font.Normal
         elide: Text.ElideRight
         verticalAlignment: Text.AlignVCenter
     }
@@ -28,7 +33,7 @@ MenuItem {
     indicator: Glyph {
         x: root.width - width - Theme.space4
         anchors.verticalCenter: parent.verticalCenter
-        visible: root.checkable && root.checked
+        visible: root.current
         name: "check"
         color: Theme.accent
     }

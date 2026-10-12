@@ -81,8 +81,8 @@ AbstractButton {
             MenuEntry {
                 required property var modelData
                 text: modelData[root.textRole]
-                checkable: true
-                checked: modelData[root.valueRole] === root.currentValue
+                marks: true
+                current: modelData[root.valueRole] === root.currentValue
                 onTriggered: root.activated(modelData[root.valueRole])
             }
         }

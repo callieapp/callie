@@ -69,6 +69,7 @@ private Q_SLOTS:
     void refusedChangesAreShown();
     void calendarsShowAndHide();
     void callsOpen();
+    void onlyWebCallsOpen();
 
 private:
     [[nodiscard]] QStringList summaries() const;
@@ -511,6 +512,25 @@ void TestTui::callsOpen()
     m_state->press(u"o"_s);
     QCOMPARE(opened.size(), 1);
     QCOMPARE(opened.first().first().toUrl(), m_state->current()->joinUrl());
+}
+
+void TestTui::onlyWebCallsOpen()
+{
+    Event e;
+    e.calendarId = u"work"_s;
+    e.eventId = e.uid = u"call"_s;
+    e.summary = u"Call"_s;
+    e.start = kNow.addSecs(3600);
+    e.end = e.start.addSecs(3600);
+    e.conferenceUrl = QUrl(u"file:///home/sam/run.sh"_s);
+    FixedSource source({e});
+    TuiState state(source, *m_settings, [] { return kNow; });
+    QSignalSpy opened(&state, &TuiState::openRequested);
+    QCOMPARE(state.current()->summary, u"Call"_s);
+    state.press(u"Enter"_s);
+    state.press(u"o"_s);
+    QCOMPARE(opened.size(), 0);
+    QVERIFY(state.messageIsError());
 }
 
 QTEST_GUILESS_MAIN(TestTui)

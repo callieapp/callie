@@ -85,8 +85,8 @@ public:
     /// rather than an event: shown with the day, not in it.
     bool workPlace = false;
 
-    /// The call Join opens: the provider's own, else the first call link in
-    /// the place or notes, such as a Zoom link pasted into an invitation.
+    /// The call Join opens: the provider's own web link, else the first call
+    /// link in the place or notes, such as a Zoom link pasted into an invitation.
     [[nodiscard]] QUrl joinUrl() const;
 
     /// Where an overlapping event sits, filled in by the view model: in column

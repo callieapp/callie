@@ -77,6 +77,11 @@ void TestPlaces::joinPrefersTheProvidersCall()
     QCOMPARE(e.joinUrl(), QUrl(u"https://meet.google.com/aaa-bbbb-ccc"_s));
     e.conferenceUrl = QUrl(u"https://meet.google.com/own-call"_s);
     QCOMPARE(e.joinUrl(), e.conferenceUrl);
+    // Only a web link joins, whoever set it.
+    for (const QString &url : {u"file:///home/sam/run.sh"_s, u"smb://host/share"_s}) {
+        e.conferenceUrl = QUrl(url);
+        QCOMPARE(e.joinUrl(), QUrl(u"https://meet.google.com/aaa-bbbb-ccc"_s));
+    }
 
     Event other;
     other.description = u"https://example.com/zoom"_s;

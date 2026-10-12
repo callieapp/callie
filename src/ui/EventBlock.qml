@@ -49,8 +49,10 @@ Rectangle {
     readonly property bool dragging: drag.active
     /// The view has taken over the drag to carry the event onto other days.
     property bool carried: false
+    /// How tall an hour is drawn in the grid the block sits on.
+    property real hourHeight: Theme.minHourHeight
     /// How much taller the block is drawn while being stretched.
-    readonly property real stretchHeight: lengthChange / 60 * Theme.hourHeight
+    readonly property real stretchHeight: lengthChange / 60 * root.hourHeight
 
     signal moveRequested(int deltaMinutes, int deltaDays)
     signal resizeRequested(int deltaMinutes)
@@ -67,7 +69,7 @@ Rectangle {
     }
 
     function snapped(pixels) {
-        return Math.round(pixels / Theme.hourHeight * 60 / Theme.snapMinutes) * Theme.snapMinutes
+        return Math.round(pixels / root.hourHeight * 60 / Theme.snapMinutes) * Theme.snapMinutes
     }
 
     readonly property bool compact: height < 34
@@ -95,7 +97,7 @@ Rectangle {
     border.color: pending ? shade(fill) : Theme.bg
     transform: Translate {
         x: root.dayShiftX
-        y: root.minuteShift / 60 * Theme.hourHeight
+        y: root.minuteShift / 60 * root.hourHeight
     }
 
     Behavior on scale {

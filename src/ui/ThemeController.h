@@ -100,7 +100,7 @@ class ThemeController : public QObject
     Q_PROPERTY(QColor dangerEdge READ dangerEdge NOTIFY changed)
     Q_PROPERTY(QColor dangerText READ dangerText NOTIFY changed)
 
-    Q_PROPERTY(int hourHeight READ hourHeight CONSTANT)
+    Q_PROPERTY(int minHourHeight READ minHourHeight CONSTANT)
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
     Q_PROPERTY(int allDayRowHeight READ allDayRowHeight CONSTANT)
     Q_PROPERTY(int snapMinutes READ snapMinutes CONSTANT)
@@ -237,7 +237,7 @@ public:
     QColor dangerText() const;
     QColor dayOffWash() const;
 
-    int hourHeight() const { return 62; }
+    int minHourHeight() const { return 48; }
     int gutterWidth() const { return 52; }
     int allDayRowHeight() const { return 30; }
     int snapMinutes() const { return 15; }
@@ -260,7 +260,7 @@ public:
     int cascadeIndent() const { return 14; }
     int minEventMinutes() const
     {
-        return (minEventHeight() * 60 + hourHeight() - 1) / hourHeight();
+        return (minEventHeight() * 60 + minHourHeight() - 1) / minHourHeight();
     }
     qreal fineGlyphStroke() const { return 1.6; }
     int logoLift() const { return 1; }

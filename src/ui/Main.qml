@@ -154,7 +154,7 @@ ApplicationWindow {
         use24Hour: Settings.use24Hour
         showDeclined: Settings.showDeclined
         hiddenCalendars: Settings.hiddenCalendars
-        minimumMinutes: Theme.minEventMinutes
+        minimumMinutes: (weekLoader.item as WeekView)?.shortestMinutes ?? Theme.minEventMinutes
     }
 
     TodayModel {

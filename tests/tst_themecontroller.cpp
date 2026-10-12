@@ -13,6 +13,7 @@
 #include <cmath>
 
 using namespace callie;
+using namespace Qt::StringLiterals;
 
 namespace {
 
@@ -37,7 +38,7 @@ private Q_SLOTS:
     void builtInIdIgnoresSameNamedFile();
     void stickerColorsShareTheCalendarHue();
     void unfittedInkPicksTheReadableOne();
-    void armedDangerReadsInBothThemes();
+    void everyBuiltInThemeReads();
     void bundledFontsAreAvailable();
 };
 
@@ -140,11 +141,14 @@ void TestThemeController::unfittedInkPicksTheReadableOne()
             QColor(QStringLiteral("#ffe680")).lightness());
 }
 
-void TestThemeController::armedDangerReadsInBothThemes()
+void TestThemeController::everyBuiltInThemeReads()
 {
     ThemeController *theme = ThemeController::instance();
-    for (const QString &id : {QStringLiteral("callie"), QStringLiteral("callie-light")}) {
-        QVERIFY(theme->load(id).isEmpty());
+    for (const QString &id : ThemeLoader::builtInIds()) {
+        QVERIFY2(theme->load(id).isEmpty(), qPrintable(id));
+        // Text, accents and sticker ink all meet the contrast Callie asks of any theme.
+        QVERIFY2(theme->warnings().isEmpty(),
+                 qPrintable(id + u": "_s + theme->warnings().join(u"; "_s)));
         // A filled red button's label reads as body text does.
         QVERIFY2(color::contrastRatio(theme->dangerText(), theme->danger()) >= 4.5, qPrintable(id));
         QCOMPARE(theme->dangerText() == theme->text() || theme->dangerText() == theme->bg(), true);

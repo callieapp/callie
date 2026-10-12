@@ -1,0 +1,31 @@
+# Tomorrow Night: Chris Kempson's Tomorrow palette, charcoal with a soft purple
+# accent. Anything not set here comes from callie.toml.
+
+[theme]
+name = "Tomorrow Night"
+variant = "dark"
+
+[colors]
+background = "#1d1f21"
+surface = "#282a2e"
+surface-alt = "#373b41"
+hairline = "#2c2f33"
+border = "#3e4247"
+text = "#e0e2e0"
+text-muted = "#b4b7b4"
+text-faint = "#969896"
+accent = "#b294bb"
+accent-text = "#1d1f21"
+danger = "#d06c6c"
+edge = "#141517"
+accent-edge = "#7a5f83"
+
+# Stickers sit near the palette's own lightness, so calendars read as Tomorrow's
+# blues, greens and yellows.
+[calendar]
+lightness = 0.8
+chroma = 0.075
+ink-lightness = 0.24
+ink-chroma = 0.04
+edge-lightness = 0.55
+edge-chroma = 0.07

@@ -158,6 +158,11 @@ qt_add_resources(calliecore "callie_themes"
     FILES
         "${PROJECT_SOURCE_DIR}/themes/callie.toml"
         "${PROJECT_SOURCE_DIR}/themes/callie-light.toml"
+        "${PROJECT_SOURCE_DIR}/themes/minimal.toml"
+        "${PROJECT_SOURCE_DIR}/themes/minimal-dark.toml"
+        "${PROJECT_SOURCE_DIR}/themes/paper.toml"
+        "${PROJECT_SOURCE_DIR}/themes/tomorrow.toml"
+        "${PROJECT_SOURCE_DIR}/themes/tomorrow-night.toml"
         "${PROJECT_SOURCE_DIR}/assets/logo.svg"
         "${PROJECT_SOURCE_DIR}/CHANGELOG.md"
 )

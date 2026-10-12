@@ -4,6 +4,7 @@
 #include <QTest>
 
 using namespace callie;
+using namespace Qt::StringLiterals;
 
 namespace {
 
@@ -30,6 +31,7 @@ class TestTheme : public QObject
 private Q_SLOTS:
     void defaultThemeIsCompleteAndClean();
     void builtInIdsIncludeDefault();
+    void builtInsAreNamedAndLoadCleanly();
     void lightThemeIsClean();
     void partialThemeInheritsDefault();
     void integerAcceptedForNumber();
@@ -59,6 +61,31 @@ void TestTheme::defaultThemeIsCompleteAndClean()
 void TestTheme::builtInIdsIncludeDefault()
 {
     QVERIFY(ThemeLoader::builtInIds().contains(QStringLiteral("callie")));
+}
+
+void TestTheme::builtInsAreNamedAndLoadCleanly()
+{
+    const QList<std::tuple<QString, QString, bool>> expected = {
+        {u"callie"_s, u"Callie"_s, true},
+        {u"callie-light"_s, u"Callie Light"_s, false},
+        {u"minimal"_s, u"Minimal"_s, false},
+        {u"minimal-dark"_s, u"Minimal Dark"_s, true},
+        {u"paper"_s, u"Paper"_s, false},
+        {u"tomorrow"_s, u"Tomorrow"_s, false},
+        {u"tomorrow-night"_s, u"Tomorrow Night"_s, true},
+    };
+    QStringList ids;
+    for (const auto &[id, name, dark] : expected) {
+        ids << id;
+        const ThemeLoadResult result = ThemeLoader::loadBuiltIn(id);
+        QVERIFY2(result.ok(), qPrintable(id + u": "_s + result.errors.join(u'\n')));
+        QVERIFY2(result.warnings.isEmpty(), qPrintable(id + u": "_s + result.warnings.join(u'\n')));
+        QCOMPARE(result.theme.name, name);
+        QCOMPARE(result.theme.dark, dark);
+    }
+    QStringList builtIn = ThemeLoader::builtInIds();
+    builtIn.sort();
+    QCOMPARE(builtIn, ids);
 }
 
 void TestTheme::lightThemeIsClean()

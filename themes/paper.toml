@@ -1,0 +1,43 @@
+# Paper: warm cream stock, dark ink and a fountain-pen blue, with smaller
+# corners. Anything not set here comes from callie.toml.
+
+[theme]
+name = "Paper"
+variant = "light"
+
+[colors]
+background = "#f3efe9"
+surface = "#fbf8f3"
+surface-alt = "#ebe5dc"
+hairline = "#e4ddd3"
+border = "#d5cbbd"
+text = "#2b2622"
+text-muted = "#5c534b"
+text-faint = "#82776d"
+accent = "#3b5b8c"
+accent-text = "#fbf8f3"
+danger = "#b23b3b"
+edge = "#d5cbbd"
+accent-edge = "#26406a"
+
+# Calendars as soft watercolor washes.
+[calendar]
+lightness = 0.88
+chroma = 0.055
+ink-lightness = 0.3
+ink-chroma = 0.05
+edge-lightness = 0.72
+edge-chroma = 0.06
+
+[shape]
+radius-small = 4
+radius = 6
+radius-large = 8
+radius-xlarge = 10
+sticker-edge = 2
+
+[shadow]
+color = "#5a4632"
+opacity = 0.14
+blur = 24
+offset = 8

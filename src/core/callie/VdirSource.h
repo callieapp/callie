@@ -71,6 +71,11 @@ protected:
     /// Makes the folder hold `events` and nothing else, one file per UID, as
     /// a copy of a calendar kept elsewhere.
     bool mirror(const Folder &folder, const ics::Group &events, QString *error);
+    /// Writes or removes one file as it is elsewhere, such as on a server,
+    /// without telling fileChanged.
+    bool writeFile(const Folder &folder, const QString &fileName, const QByteArray &data,
+                   QString *error);
+    bool removeFile(const Folder &folder, const QString &fileName, QString *error);
 
 private:
     /// A parsed file, kept until the file changes.

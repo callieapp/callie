@@ -89,6 +89,8 @@ add_library(calliecore STATIC
     Subscriptions.cpp
     callie/CalDavClient.h
     CalDavClient.cpp
+    callie/CalDavSource.h
+    CalDavSource.cpp
     callie/Outcome.h
     callie/Releases.h
     Releases.cpp

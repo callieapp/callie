@@ -54,6 +54,14 @@ namespace {
 QTextStream out(stdout);
 QTextStream err(stderr);
 
+/// The theme the CLI and TUI take their colors from: $CALLIE_THEME, as for the
+/// app, else the one chosen in settings.
+QString themeFor(const Settings &settings)
+{
+    const QString override = qEnvironmentVariable("CALLIE_THEME");
+    return override.isEmpty() ? settings.theme() : override;
+}
+
 /// Colors from the user's theme when stdout is a terminal.
 const cli::Paint &paint()
 {
@@ -61,7 +69,8 @@ const cli::Paint &paint()
         const cli::Paint::Depth depth = cli::Paint::detect(STDOUT_FILENO);
         if (depth == cli::Paint::Depth::None)
             return cli::Paint();
-        return cli::Paint(depth, cli::Palette::forTheme(Settings(Settings::defaultPath()).theme()));
+        return cli::Paint(depth,
+                          cli::Palette::forTheme(themeFor(Settings(Settings::defaultPath()))));
     }();
     return paint;
 }
@@ -556,15 +565,29 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     // Sample data and scripts that only read leave the user's settings alone.
     QTemporaryDir scratch;
     Settings settings(sample ? scratch.filePath(u"settings.ini"_s) : Settings::defaultPath());
+    // Sample data can be shown at a fixed time, for screenshots.
+    QDateTime fixedNow;
+    if (parser.isSet(u"now"_s)) {
+        fixedNow = QDateTime::fromString(parser.value(u"now"_s), Qt::ISODate);
+        if (!sample || !fixedNow.isValid()) {
+            err << QObject::tr("usage: --now goes with --sample, as in --now 2026-10-07T13:40")
+                << "\n";
+            return 2;
+        }
+    }
+    const auto now = [fixedNow] {
+        return fixedNow.isValid() ? fixedNow : QDateTime::currentDateTime();
+    };
     int code = 0;
     const std::unique_ptr<Backend> backend = openBackend(sample, !reading, code);
     if (!backend)
         return code;
+    if (sample)
+        static_cast<SampleSource *>(backend->source.get())->setNow(now);
     const QTimeZone zone = settings.timeZoneId().isEmpty()
                                ? QTimeZone::systemTimeZone()
                                : QTimeZone(settings.timeZoneId().toUtf8());
-    cli::Commands commands(*backend->source, settings, out, err, QDateTime::currentDateTime(),
-                           zone);
+    cli::Commands commands(*backend->source, settings, out, err, now(), zone);
     commands.setPaint(paint());
     const bool json = parser.isSet(u"json"_s);
 
@@ -579,9 +602,10 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         // Changes show at once and can be taken back while held, as in the app.
         // The queue lives only while the TUI runs, apart from the app's.
         QueuedSource queued(*backend->source, QString());
-        cli::TuiState state(queued, settings, [] { return QDateTime::currentDateTime(); });
+        queued.setNow(now);
+        cli::TuiState state(queued, settings, now);
         queued.refresh();
-        const int code = cli::runTui(state, settings, cli::Palette::forTheme(settings.theme()));
+        const int code = cli::runTui(state, settings, cli::Palette::forTheme(themeFor(settings)));
         // What is still held goes now, given a moment to arrive. A change the
         // calendar turns down is dropped, so it is reported here.
         QStringList refused;
@@ -702,6 +726,11 @@ int main(int argc, char *argv[])
     QCommandLineOption sampleOption(
         QStringLiteral("sample"), QStringLiteral("Show a made-up week instead of your calendars."));
     addOption(sampleOption);
+    QCommandLineOption nowOption(QStringLiteral("now"),
+                                 QStringLiteral("With --sample: pretend it is this local time."),
+                                 QStringLiteral("time"));
+    nowOption.setFlags(QCommandLineOption::HiddenFromHelp);
+    parser.addOption(nowOption);
     QCommandLineOption followOption({QStringLiteral("f"), QStringLiteral("follow")},
                                     QStringLiteral("With logs: keep printing new lines."));
     addOption(followOption);

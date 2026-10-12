@@ -84,6 +84,10 @@ int main(int argc, char *argv[])
                                   QStringLiteral("Window size in pixels, e.g. 1280x840."),
                                   QStringLiteral("size"));
     parser.addOption(sizeOption);
+    QCommandLineOption viewOption(QStringLiteral("view"),
+                                  QStringLiteral("Open in this view: day, week, month or agenda."),
+                                  QStringLiteral("view"));
+    parser.addOption(viewOption);
     QCommandLineOption backgroundOption(
         QString::fromLatin1(callie::Autostart::kBackgroundOption),
         QStringLiteral("Start without showing the window, as when started at login."));
@@ -128,6 +132,8 @@ int main(int argc, char *argv[])
     callie::Settings settings(parser.isSet(screenshotOption)
                                   ? scratch.filePath(QStringLiteral("settings.ini"))
                                   : callie::Settings::defaultPath());
+    if (parser.isSet(viewOption))
+        settings.setView(parser.value(viewOption));
     callie::SettingsForeign::s_instance = &settings;
     // Debug lines on request, from the developer settings.
     callie::logfile::setDebug(settings.verboseLogging());

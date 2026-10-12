@@ -92,8 +92,10 @@ private:
     using Change = std::function<std::optional<ics::Changed>(const ics::Group &, QString *)>;
     /// Writes a change found by `change`, telling `done` how it went.
     void apply(const Event &event, const Created &done, const Change &change);
-    bool save(const Folder &folder, const QString &fileName, const ics::Group &group,
-              QString *error);
+    /// Puts `group` in place of the events of `uid` in the file, removing the
+    /// file once nothing is left in it.
+    bool save(const Folder &folder, const QString &fileName, const QString &uid,
+              const ics::Group &group, QString *error);
     void watch();
 
     QList<Folder> m_folders;

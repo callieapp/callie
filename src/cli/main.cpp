@@ -429,7 +429,6 @@ int runSync(QCoreApplication &app)
     return app.exec();
 }
 
-/// One line per calendar, tab-separated: account, calendar id, name.
 /// `callie calendars new <name>` and `callie calendars remove <calendar>`, for
 /// the calendars on this computer.
 int runLocalCalendars(const QString &action, const QString &name)
@@ -470,6 +469,7 @@ int runLocalCalendars(const QString &action, const QString &name)
     return 0;
 }
 
+/// One line per calendar, tab-separated: account, calendar id, name.
 int runCalendars(QCoreApplication &app)
 {
     AccountStore store(AccountStore::defaultPath());

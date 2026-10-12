@@ -17,6 +17,7 @@ private Q_SLOTS:
     void createsNamedFolders();
     void keepsEventsAsFiles();
     void showsChangesMadeElsewhere();
+    void sharedFilesKeepTheirOtherEntries();
     void removingTrashesTheFolder();
 
 private:
@@ -141,6 +142,54 @@ void TestLocalCalendars::showsChangesMadeElsewhere()
     // And a calendar added beside it.
     QDir().mkpath(root() + u"/work"_s);
     QTRY_COMPARE(local.calendars().size(), 2);
+}
+
+void TestLocalCalendars::sharedFilesKeepTheirOtherEntries()
+{
+    // One file with two events and a to-do, as some apps export them.
+    QDir().mkpath(root() + u"/shared"_s);
+    const QString path = root() + u"/shared/all.ics"_s;
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+               "BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20261006T090000Z\r\n"
+               "DTEND:20261006T100000Z\r\nSUMMARY:Dentist\r\nEND:VEVENT\r\n"
+               "BEGIN:VEVENT\r\nUID:b\r\nDTSTART:20261007T090000Z\r\n"
+               "DTEND:20261007T100000Z\r\nSUMMARY:Haircut\r\nEND:VEVENT\r\n"
+               "BEGIN:VTODO\r\nUID:t\r\nSUMMARY:Buy stamps\r\nEND:VTODO\r\n"
+               "END:VCALENDAR\r\n");
+    file.close();
+    LocalCalendars local(root());
+    QCOMPARE(week(local).size(), 2);
+
+    const auto named = [&local](const QString &summary) {
+        for (const Event &event : week(local)) {
+            if (event.summary == summary)
+                return event;
+        }
+        return Event();
+    };
+    const auto contents = [&path] {
+        QFile in(path);
+        return in.open(QIODevice::ReadOnly) ? QString::fromUtf8(in.readAll()) : QString();
+    };
+    EventEdit edit;
+    edit.summary = u"Dentist, again"_s;
+    QVERIFY(outcome([&](auto done) {
+                local.updateEvent(named(u"Dentist"_s), edit, EditScope::ThisEvent, done);
+            }).isEmpty());
+    QVERIFY(contents().contains(u"Haircut"_s));
+    QVERIFY(contents().contains(u"Buy stamps"_s));
+    QVERIFY(named(u"Dentist, again"_s).isValid());
+
+    QVERIFY(outcome([&](auto done) {
+                local.deleteEvent(named(u"Dentist, again"_s), false, done);
+            }).isEmpty());
+    QVERIFY(
+        outcome([&](auto done) { local.deleteEvent(named(u"Haircut"_s), false, done); }).isEmpty());
+    // The to-do is still there, so the file is too.
+    QVERIFY(week(local).isEmpty());
+    QVERIFY(contents().contains(u"Buy stamps"_s));
 }
 
 void TestLocalCalendars::removingTrashesTheFolder()

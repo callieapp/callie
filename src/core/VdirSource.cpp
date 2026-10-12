@@ -226,18 +226,23 @@ bool VdirSource::find(const Event &event, const Created &done, const Folder **wh
     return false;
 }
 
-bool VdirSource::save(const Folder &folder, const QString &fileName, const ics::Group &group,
-                      QString *error)
+bool VdirSource::save(const Folder &folder, const QString &fileName, const QString &uid,
+                      const ics::Group &group, QString *error)
 {
     const QString path = folder.path + u'/' + fileName;
-    if (group.isEmpty()) {
+    // Only `uid` changes; anything else the file holds stays.
+    QByteArray data;
+    if (QFile existing(path); existing.open(QIODevice::ReadOnly))
+        data = ics::replaced(existing.readAll(), uid, group);
+    else if (!group.isEmpty())
+        data = ics::write(group);
+    if (data.isEmpty()) {
         if (QFile::exists(path) && !QFile::remove(path)) {
             *error = tr("Callie could not delete %1.").arg(path);
             return false;
         }
     } else {
         QSaveFile file(path);
-        const QByteArray data = ics::write(group);
         if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit()) {
             *error = tr("Callie could not write %1: %2").arg(path, file.errorString());
             return false;
@@ -249,7 +254,7 @@ bool VdirSource::save(const Folder &folder, const QString &fileName, const ics::
         const QMutexLocker locker(&m_lock);
         m_parsed.remove(path);
     }
-    fileChanged(folder, fileName, group.isEmpty());
+    fileChanged(folder, fileName, data.isEmpty());
     return true;
 }
 
@@ -274,9 +279,10 @@ void VdirSource::apply(const Event &event, const Created &done, const Change &ch
         return;
     }
     const Folder target = *where;
-    if (!save(target, fileName, changed->group, &error) ||
-        (!changed->split.isEmpty() &&
-         !save(target, fileNameFor(changed->split.first()->uid()), changed->split, &error))) {
+    const QString splitUid = changed->split.isEmpty() ? QString() : changed->split.first()->uid();
+    if (!save(target, fileName, event.uid, changed->group, &error) ||
+        (!splitUid.isEmpty() &&
+         !save(target, fileNameFor(splitUid), splitUid, changed->split, &error))) {
         done(error);
         return;
     }
@@ -304,7 +310,7 @@ void VdirSource::createEvent(const EventDraft &draft, Created done)
     }
     QString error;
     const Folder target = *where;
-    if (!save(target, fileNameFor(uid), {ics::fromDraft(draft, uid)}, &error)) {
+    if (!save(target, fileNameFor(uid), uid, {ics::fromDraft(draft, uid)}, &error)) {
         done(error);
         return;
     }

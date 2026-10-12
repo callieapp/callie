@@ -214,6 +214,9 @@ palette:
         writeFile(u"partial.yaml"_s, "scheme: \"Partial\"\nbase00: \"000000\"\n");
     QVERIFY(m_library->importTheme(partial).isEmpty());
     QVERIFY(m_library->error().contains(u"base01"_s));
+    const QString wrong = writeFile(u"wrong.yaml"_s, "scheme: \"Wrong\"\nbase00: \"blue\"\n");
+    QVERIFY(m_library->importTheme(wrong).isEmpty());
+    QVERIFY(m_library->error().contains(u"not a color"_s));
     QCOMPARE(m_library->themes().size(), 2);
 }
 

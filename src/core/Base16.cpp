@@ -93,12 +93,15 @@ std::optional<QByteArray> toTheme(QByteArrayView yaml, QString *error)
     QColor base[16];
     for (int i = 0; i < 16; ++i) {
         const QString key = u"base0"_s + QString::number(i, 16).toUpper();
-        QString hex = scheme.value(key, scheme.value(key.toLower()));
-        if (!hex.startsWith(u'#'))
-            hex.prepend(u'#');
-        const std::optional<QColor> parsed = color::parseHex(hex);
-        if (!parsed) {
+        const QString value = scheme.value(key, scheme.value(key.toLower()));
+        if (value.isEmpty()) {
             *error = QObject::tr("the base16 scheme has no color for %1").arg(key);
+            return std::nullopt;
+        }
+        const std::optional<QColor> parsed =
+            color::parseHex(value.startsWith(u'#') ? value : u"#"_s + value);
+        if (!parsed) {
+            *error = QObject::tr("the base16 scheme's %1, %2, is not a color").arg(key, value);
             return std::nullopt;
         }
         base[i] = *parsed;

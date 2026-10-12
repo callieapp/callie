@@ -290,7 +290,7 @@ bool TuiState::pressDetails(const QString &key)
         Q_EMIT openRequested(url);
         return true;
     }
-    if (key == u"j" || key == u"Down" || key == u"k" || key == u"Up")
+    if (key == u"j" || key == u"Down" || key == u"k" || key == u"Up" || key == u"u")
         return pressBrowsing(key);
     return false;
 }

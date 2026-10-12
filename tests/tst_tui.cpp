@@ -292,10 +292,12 @@ void TestTui::detailsAnswerAndTakeBack()
     m_state->press(u"y"_s);
     QCOMPARE(m_state->current()->responseStatus, u"accepted"_s);
     QVERIFY2(m_state->message().contains(u"u takes it back"_s), qPrintable(m_state->message()));
+    // Taken back from the details, as the message says.
+    QVERIFY(m_state->press(u"u"_s));
+    QCOMPARE(m_state->mode(), TuiState::Mode::Details);
+    QCOMPARE(m_state->current()->responseStatus, u"needsAction"_s);
     m_state->press(u"Escape"_s);
     QCOMPARE(m_state->mode(), TuiState::Mode::Browse);
-    m_state->press(u"u"_s);
-    QCOMPARE(m_state->current()->responseStatus, u"needsAction"_s);
     // Only an invitation can be answered.
     QVERIFY(select(u"Dentist"_s));
     m_state->press(u"Enter"_s);

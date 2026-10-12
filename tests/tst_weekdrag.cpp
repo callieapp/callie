@@ -415,6 +415,10 @@ void TestWeekDrag::hoursFitTheWorkingDay()
     QVERIFY(9 * hour() <= grid->height());
     QVERIFY(grid->height() < 9 * (hour() + 1));
     QCOMPARE(top(), 8 * 60 + 30);
+    // The model lays out short events for the hours drawn.
+    auto *events = window->findChild<EventModel *>();
+    QVERIFY(events);
+    QCOMPARE(events->minimumMinutes(), ThemeController::instance()->eventMinutes(hour()));
 
     // A taller window draws taller hours, still from the same time.
     const int before = hour();
@@ -422,11 +426,13 @@ void TestWeekDrag::hoursFitTheWorkingDay()
     QTRY_VERIFY(hour() > before);
     QVERIFY(9 * hour() <= grid->height());
     QCOMPARE(top(), 8 * 60 + 30);
+    QCOMPARE(events->minimumMinutes(), ThemeController::instance()->eventMinutes(hour()));
 
     // A short one stops at the shortest hour, and scrolls to the rest.
     window->resize(1280, 500);
     QTRY_COMPARE(hour(), ThemeController::instance()->minHourHeight());
     QCOMPARE(top(), 8 * 60 + 30);
+    QCOMPARE(events->minimumMinutes(), ThemeController::instance()->minEventMinutes());
 }
 
 #include "tst_weekdrag.moc"

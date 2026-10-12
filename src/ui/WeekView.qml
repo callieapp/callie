@@ -55,7 +55,7 @@ Item {
                                                                                / shownHours))
     readonly property real shownHours: Math.max(8, (Settings.workEnd - Settings.workStart) / 60) + 1
     /// The shortest an event is drawn, in minutes, at that height.
-    readonly property int shortestMinutes: Math.ceil(Theme.minEventHeight * 60 / hourHeight)
+    readonly property int shortestMinutes: Theme.eventMinutes(hourHeight)
 
     function columnX(i) {
         let x = Theme.gutterWidth

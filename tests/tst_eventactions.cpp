@@ -70,6 +70,7 @@ class TestEventActions : public QObject
 
 private Q_SLOTS:
     void answerReachesTheSource();
+    void callsOnlyWhereTheCalendarHasThem();
     void removeTakesItAway();
     void moveGivesNewTimes();
     void changesBecomeAnEdit();
@@ -319,6 +320,16 @@ void TestEventActions::editsReachTheWholeSeries()
         daily += e.summary == u"Daily";
     }
     QCOMPARE(daily, 5);
+}
+
+void TestEventActions::callsOnlyWhereTheCalendarHasThem()
+{
+    SampleSource source;
+    EventActions actions;
+    QVERIFY(!actions.canAddCall(u"work"_s));
+    actions.setProperty("source", QVariant::fromValue(&source));
+    QVERIFY(actions.canAddCall(u"work"_s));
+    QVERIFY(!actions.canAddCall(u"local:home"_s));
 }
 
 QTEST_GUILESS_MAIN(TestEventActions)

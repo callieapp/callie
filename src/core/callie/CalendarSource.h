@@ -29,6 +29,8 @@ struct CalendarInfo
     bool enabled = true;
     /// The account the calendar belongs to, for grouping; empty if there is one.
     QString account = {};
+    /// Whether its events can be given a video call, as Google's can.
+    bool videoCalls = false;
 };
 
 /// What a source holds for a range, read at one moment: its calendars and the

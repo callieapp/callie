@@ -144,8 +144,10 @@ QList<Candidate> Completion::argument(const QStringList &positional) const
         return plain(m_sources.settings());
     if (command == u"calendars") {
         if (at == 1)
-            return plain({u"hide"_s, u"show"_s, u"rename"_s, u"color"_s, u"reset"_s});
-        if (at == 2)
+            return plain(
+                {u"new"_s, u"remove"_s, u"hide"_s, u"show"_s, u"rename"_s, u"color"_s, u"reset"_s});
+        // A new calendar's name is the user's to make up.
+        if (at == 2 && positional.at(1) != u"new")
             return from(m_sources.calendars);
     }
     if (command == u"accounts") {

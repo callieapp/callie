@@ -79,6 +79,12 @@ add_library(calliecore STATIC
     LookedSource.cpp
     callie/CombinedSource.h
     CombinedSource.cpp
+    callie/Ics.h
+    Ics.cpp
+    callie/VdirSource.h
+    VdirSource.cpp
+    callie/LocalCalendars.h
+    LocalCalendars.cpp
     callie/Outcome.h
     callie/Releases.h
     Releases.cpp
@@ -196,11 +202,12 @@ target_link_libraries(calliecore
         Qt6::Gui
         Qt6::Network
         Qt6::Sql
+        # Ics.h hands out KCalendarCore events.
+        KF6::CalendarCore
     PRIVATE
         Qt6::NetworkAuth
         Qt6Keychain::Qt6Keychain
         tomlplusplus::tomlplusplus
-        KF6::CalendarCore
 )
 
 target_compile_definitions(calliecore PRIVATE

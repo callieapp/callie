@@ -10,6 +10,7 @@
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/LocalCalendars.h"
 #include "callie/LogFile.h"
 #include "callie/QueuedSource.h"
 #include "callie/SampleSource.h"
@@ -105,7 +106,7 @@ const QList<std::pair<QString, QString>> kCommands = {
     {u"duplicate"_s, u"Copy an event, to --start if given"_s},
     {u"accounts"_s, u"List, add, remove or rename calendar accounts"_s},
     {u"calendars"_s,
-     u"List the calendars in each account; hide, show, rename, color or reset one"_s},
+     u"List the calendars; make or remove one on this computer; hide, show, rename, color or reset one"_s},
     {u"settings"_s, u"List settings, or read or change one: callie settings viMode true"_s},
     {u"logs"_s, u"Show, follow (-f) or open (--open) the log files"_s},
     {u"status"_s, u"Sync state, keyring and configuration"_s},
@@ -429,6 +430,46 @@ int runSync(QCoreApplication &app)
 }
 
 /// One line per calendar, tab-separated: account, calendar id, name.
+/// `callie calendars new <name>` and `callie calendars remove <calendar>`, for
+/// the calendars on this computer.
+int runLocalCalendars(const QString &action, const QString &name)
+{
+    if (name.trimmed().isEmpty()) {
+        err << QObject::tr("usage: callie calendars %1 <name>").arg(action) << "\n";
+        return 2;
+    }
+    LocalCalendars local(LocalCalendars::defaultRoot());
+    QString error;
+    if (action == u"new") {
+        const QString id = local.create(name, {}, &error);
+        if (id.isEmpty()) {
+            err << QStringLiteral("callie: %1\n").arg(error);
+            return 1;
+        }
+        out << id << "\n";
+        return 0;
+    }
+    QStringList ids;
+    for (const CalendarInfo &calendar : local.calendars()) {
+        if (calendar.id == name || calendar.displayName.compare(name, Qt::CaseInsensitive) == 0)
+            ids << calendar.id;
+    }
+    if (ids.size() != 1) {
+        err << (ids.isEmpty()
+                    ? QObject::tr("callie: no calendar on this computer is called %1").arg(name)
+                    : QObject::tr("callie: more than one calendar is called %1; give its id: %2")
+                          .arg(name, ids.join(u", "_s)))
+            << "\n";
+        return ids.isEmpty() ? 1 : 2;
+    }
+    if (!local.remove(ids.first(), &error)) {
+        err << QStringLiteral("callie: %1\n").arg(error);
+        return 1;
+    }
+    out << QObject::tr("Moved %1 to the trash.").arg(name) << "\n";
+    return 0;
+}
+
 int runCalendars(QCoreApplication &app)
 {
     AccountStore store(AccountStore::defaultPath());
@@ -437,9 +478,16 @@ int runCalendars(QCoreApplication &app)
         err << QStringLiteral("callie: %1\n").arg(store.errorString());
         return 1;
     }
+    const LocalCalendars local(LocalCalendars::defaultRoot());
+    for (const CalendarInfo &calendar : local.calendars())
+        out << LocalCalendars::kAccount << "\t" << calendar.id << "\t" << calendar.displayName
+            << "\n";
     accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
     if (accounts.isEmpty()) {
-        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        if (local.calendars().isEmpty())
+            err << QObject::tr("No calendars. Add an account with: callie accounts add google, "
+                               "or make a calendar with: callie calendars new <name>")
+                << "\n";
         return 0;
     }
 
@@ -498,6 +546,7 @@ struct Backend
     std::unique_ptr<GoogleCalendarApi> api;
     std::unique_ptr<GoogleSync> sync;
     std::unique_ptr<GoogleSource> google;
+    std::unique_ptr<LocalCalendars> local;
     std::unique_ptr<CalendarSource> source;
 };
 
@@ -518,9 +567,19 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
         return nullptr;
     }
     backend->accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
-    if (backend->accounts.isEmpty()) {
-        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+    backend->local = std::make_unique<LocalCalendars>(LocalCalendars::defaultRoot());
+    const bool local = !backend->local->calendars().isEmpty();
+    if (backend->accounts.isEmpty() && !local) {
+        err << QObject::tr("No calendars. Add an account with: callie accounts add google, or "
+                           "make a calendar with: callie calendars new <name>")
+            << "\n";
         return nullptr;
+    }
+    auto combined = std::make_unique<CombinedSource>();
+    if (backend->accounts.isEmpty()) {
+        combined->setSources({backend->local.get()});
+        backend->source = std::move(combined);
+        return backend;
     }
     backend->cache = std::make_unique<GoogleCache>(GoogleCache::defaultPath());
     if (!backend->cache->open()) {
@@ -529,7 +588,7 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
         return nullptr;
     }
     auto google = std::make_unique<GoogleSource>(*backend->cache, backend->accounts);
-    if (google->calendars().isEmpty()) {
+    if (google->calendars().isEmpty() && !local) {
         err << QObject::tr("Nothing synced yet. Run: callie sync") << "\n";
         return nullptr;
     }
@@ -548,8 +607,7 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
         google->setSync(backend->sync.get());
     }
     backend->google = std::move(google);
-    auto combined = std::make_unique<CombinedSource>();
-    combined->setSources({backend->google.get()});
+    combined->setSources({backend->google.get(), backend->local.get()});
     backend->source = std::move(combined);
     return backend;
 }
@@ -940,6 +998,9 @@ int main(int argc, char *argv[])
         return result ? *result : app.exec();
     }
 
+    if (command == QLatin1String("calendars") &&
+        (args.value(1) == u"new" || args.value(1) == u"remove"))
+        return runLocalCalendars(args.value(1), args.mid(2).join(u' '));
     if (command == QLatin1String("calendars"))
         return args.size() == 1 ? runCalendars(app)
                                 : runEvents(app, command, args, parser, parser.isSet(sampleOption));

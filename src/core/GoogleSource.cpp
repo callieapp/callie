@@ -43,6 +43,7 @@ QList<CalendarInfo> readCalendars(GoogleCache &cache, const QList<Account> &acco
                 // Google's own "show in list" choice, which Callie starts from.
                 .enabled = calendar.selected,
                 .account = account.id,
+                .videoCalls = true,
             });
         }
     }

@@ -83,8 +83,11 @@ bool ImportController::accepts(const QUrl &url)
 bool ImportController::open(const QList<QUrl> &urls)
 {
     const auto found = std::ranges::find_if(urls, &ImportController::accepts);
-    if (found == urls.end())
+    // Nothing to open is no error, and leaves none from before.
+    if (found == urls.end()) {
+        setError({});
         return false;
+    }
     const QString path = found->toLocalFile();
     QFile file(path);
     if (file.size() > kLargestFile) {

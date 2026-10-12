@@ -169,6 +169,15 @@ void TestSubscriptions::removingForgetsTheCopy()
     QVERIFY(subscriptions.remove(id, &error));
     QVERIFY(subscriptions.calendars().isEmpty());
     QVERIFY(QDir(dir.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
+
+    // Stopped while its first fetch is under way, it does not come back.
+    subscriptions.add(server.url(u"/h.ics"_s).toString(), u"Again"_s, &error);
+    QVERIFY(subscriptions.syncing());
+    QVERIFY(subscriptions.remove(u"subscription:again"_s, &error));
+    QVERIFY(fetched.wait());
+    QVERIFY(QDir(dir.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
+    subscriptions.refresh();
+    QVERIFY(subscriptions.calendars().isEmpty());
 }
 
 QTEST_MAIN(TestSubscriptions)

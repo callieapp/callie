@@ -51,7 +51,10 @@ QVariantList SubscriptionsController::calendars() const
                             {u"color"_s, calendars.at(i).color},
                             {u"link"_s, m_subscriptions->link(calendars.at(i).id)},
                             {u"error"_s, status.value(u"error"_s)},
-                            {u"fetched"_s, status.value(u"lastSynced"_s)}};
+                            // Null until the first fetch, so QML can tell.
+                            {u"fetched"_s, status.value(u"lastSynced"_s).toDateTime().isValid()
+                                               ? status.value(u"lastSynced"_s)
+                                               : QVariant()}};
     }
     return list;
 }

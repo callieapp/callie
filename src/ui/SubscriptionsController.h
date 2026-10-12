@@ -17,7 +17,8 @@ class SubscriptionsController : public QObject
     Q_OBJECT
     QML_NAMED_ELEMENT(Subscribed)
     QML_SINGLETON
-    /// {id, name, link, error, fetched} for each subscription.
+    /// {id, name, link, error, fetched} for each subscription; fetched is null
+    /// until the first fetch.
     Q_PROPERTY(QVariantList calendars READ calendars NOTIFY calendarsChanged)
     Q_PROPERTY(bool available READ available NOTIFY calendarsChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)

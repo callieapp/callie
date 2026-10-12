@@ -87,6 +87,7 @@ qt_add_qml_module(callieui
         ZonePicker.qml
         TimePicker.qml
         Dropdown.qml
+        PickerButton.qml
         DatePicker.qml
         CustomRepeat.qml
         FormRow.qml

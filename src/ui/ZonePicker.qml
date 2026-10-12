@@ -5,56 +5,19 @@ import QtQuick.Controls
 
 /// Picks the time zone Callie shows times in: the system's, or any IANA zone,
 /// found by typing part of its name.
-AbstractButton {
+PickerButton {
     id: root
 
     /// An IANA id, or empty for the system zone.
     property string zoneId
     signal picked(string zoneId)
 
-    implicitHeight: 32
     implicitWidth: 260
-    leftPadding: Theme.space3
-    rightPadding: Theme.space3
     focusPolicy: Qt.StrongFocus
-    Accessible.name: qsTr("Time zone: %1").arg(label.text)
+    text: root.zoneId === "" ? qsTr("Same as the system") : root.zoneId.replace(/_/g, " ")
+    open: list.opened
+    Accessible.name: qsTr("Time zone: %1").arg(text)
     onClicked: list.open()
-
-    HoverHandler {
-        cursorShape: Qt.PointingHandCursor
-    }
-
-    background: Rectangle {
-        radius: Theme.radiusMd
-        color: root.hovered || list.opened ? Theme.border : Theme.surfaceAlt
-        border.width: root.visualFocus ? 2 : 0
-        border.color: Theme.text
-    }
-
-    contentItem: Item {
-        Text {
-            id: label
-            anchors.left: parent.left
-            anchors.right: chevron.left
-            anchors.rightMargin: Theme.space2
-            anchors.verticalCenter: parent.verticalCenter
-            elide: Text.ElideRight
-            text: root.zoneId === "" ? qsTr("Same as the system") : root.zoneId.replace(/_/g, " ")
-            color: Theme.text
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textMd
-            font.weight: Theme.weightBold
-        }
-        Glyph {
-            id: chevron
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            name: "chevron-down"
-            color: Theme.textMuted
-            width: 12
-            height: 12
-        }
-    }
 
     Popup {
         id: list

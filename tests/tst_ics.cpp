@@ -19,6 +19,7 @@ private Q_SLOTS:
     void movesOneOrAll();
     void seriesKeepTheirHourAcrossAClockChange();
     void allDaySeriesMoveByDays();
+    void monthlySeriesFollowTheirNewDay();
     void editsThisAndFollowingSplitTheSeries();
     void answersAsTheUser();
 };
@@ -294,6 +295,33 @@ END:VEVENT
     QVERIFY2(moved, qPrintable(error));
     QCOMPARE(days(moved->group),
              (QStringList{u"Oct 20 Bins, late"_s, u"Oct 27 Bins"_s, u"Oct 6 Bins"_s}));
+}
+
+void TestIcs::monthlySeriesFollowTheirNewDay()
+{
+    const auto movedTo = [](const QByteArray &rule, QDate from, QDate to) {
+        const ics::Group events =
+            ics::parse(calendar("BEGIN:VEVENT\r\nUID:m\r\nDTSTART;VALUE=DATE:" +
+                                from.toString(u"yyyyMMdd"_s).toLatin1() + "\r\nRRULE:" + rule +
+                                "\r\nSUMMARY:Monthly\r\nEND:VEVENT\r\n"));
+        const QDateTime start(from, QTime(0, 0), kBerlin);
+        const Event first = ics::expand(events, kHome, start, start.addDays(1), kBerlin).value(0);
+        QString error;
+        const auto moved = ics::move(events, first, QDateTime(to, QTime(0, 0), kBerlin),
+                                     QDateTime(to.addDays(1), QTime(0, 0), kBerlin), true, &error);
+        QList<QDate> days;
+        const QDateTime later(to, QTime(0, 0), kBerlin);
+        for (const Event &event :
+             ics::expand(moved->group, kHome, later, later.addMonths(3), kBerlin))
+            days << event.start.date();
+        return days;
+    };
+    // The second Monday, moved to Wednesday 16 September: the third Wednesday.
+    QCOMPARE(movedTo("FREQ=MONTHLY;BYDAY=2MO", QDate(2026, 9, 14), QDate(2026, 9, 16)),
+             (QList<QDate>{QDate(2026, 9, 16), QDate(2026, 10, 21), QDate(2026, 11, 18)}));
+    // The 28th, moved to 2 November: the 2nd.
+    QCOMPARE(movedTo("FREQ=MONTHLY;BYMONTHDAY=28", QDate(2026, 10, 28), QDate(2026, 11, 2)),
+             (QList<QDate>{QDate(2026, 11, 2), QDate(2026, 12, 2), QDate(2027, 1, 2)}));
 }
 
 void TestIcs::editsThisAndFollowingSplitTheSeries()

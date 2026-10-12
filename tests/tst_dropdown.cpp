@@ -19,6 +19,7 @@ class TestDropdown : public QObject
 private Q_SLOTS:
     void initTestCase() { QQuickStyle::setStyle(u"Basic"_s); }
     void pickingTheCurrentChoiceKeepsItMarked();
+    void aLongListFitsTheWindow();
 
 private:
     /// The menu's entries, in the overlay over the window's content.
@@ -82,6 +83,40 @@ void TestDropdown::pickingTheCurrentChoiceKeepsItMarked()
     click(window, dropdown);
     QTRY_COMPARE(entries(window).size(), 2);
     QCOMPARE(marked(), QStringList{u"Week"_s});
+}
+
+void TestDropdown::aLongListFitsTheWindow()
+{
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    component.loadFromModule("Callie.Ui", "Dropdown");
+    // As many choices as a user with a hundred calendars has.
+    QVariantList model;
+    for (int i = 0; i < 120; ++i)
+        model << QVariantMap{{u"id"_s, QString::number(i)}, {u"name"_s, u"Calendar %1"_s.arg(i)}};
+    std::unique_ptr<QObject> object(
+        component.createWithInitialProperties({{u"model"_s, model}, {u"currentValue"_s, u"0"_s}}));
+    QVERIFY2(object, qPrintable(component.errorString()));
+    auto *dropdown = qobject_cast<QQuickItem *>(object.get());
+    QQuickWindow window;
+    window.resize(400, 300);
+    dropdown->setParentItem(window.contentItem());
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    click(window, dropdown);
+    QTRY_VERIFY(!entries(window).isEmpty());
+    // The menu stays inside the window and scrolls to the rest.
+    QQuickItem *first = entries(window).first();
+    QQuickItem *list = first->parentItem();
+    while (list && !list->inherits("QQuickListView"))
+        list = list->parentItem();
+    QVERIFY(list);
+    const QRectF shown = list->mapRectToScene(QRectF(0, 0, list->width(), list->height()));
+    QVERIFY2(shown.top() >= 0 && shown.bottom() <= window.height(),
+             qPrintable(u"%1 to %2"_s.arg(shown.top()).arg(shown.bottom())));
+    QVERIFY(list->property("contentHeight").toReal() > list->height());
+    QVERIFY(list->property("interactive").toBool());
 }
 
 QTEST_MAIN(TestDropdown)

@@ -244,7 +244,9 @@ Popup {
                 spacing: Theme.space4
 
                 Text {
+                    // Centered beside the picker, below the row's top padding.
                     anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenterOffset: parent.topPadding / 2
                     text: qsTr("Time zone")
                     color: Theme.text
                     font.family: Theme.fontFamily
@@ -334,34 +336,30 @@ Popup {
             title: qsTr("New events")
             visible: root.tab === "general" && newEvents.calendars.length > 1
 
-            Text {
-                text: qsTr("Start them in")
-                color: Theme.text
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.textMd
-                font.weight: Theme.weightStrong
-            }
-            Flow {
-                width: parent.width
-                spacing: Theme.space2
-                Accessible.role: Accessible.RadioButton
+            Row {
+                spacing: Theme.space4
 
-                // Also lit when the chosen calendar is gone or hidden, since new
-                // events then go to the last one used.
-                PillButton {
-                    label: qsTr("The last one used")
-                    selected: !newEvents.calendars.some(c => c.id === Settings.defaultCalendar)
-                    onClicked: Settings.defaultCalendar = ""
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("Start them in")
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textMd
+                    font.weight: Theme.weightStrong
                 }
-                Repeater {
-                    model: newEvents.calendars
-
-                    PillButton {
-                        required property var modelData
-                        label: modelData.name
-                        selected: Settings.defaultCalendar === modelData.id
-                        onClicked: Settings.defaultCalendar = modelData.id
-                    }
+                // The last one used is also chosen when the chosen calendar is
+                // gone or hidden, since new events then go there.
+                Dropdown {
+                    model: [
+                        {
+                            "id": "",
+                            "name": qsTr("The last one used")
+                        }
+                    ].concat(newEvents.calendars)
+                    currentValue: newEvents.calendars.some(c => c.id === Settings.defaultCalendar)
+                                  ? Settings.defaultCalendar : ""
+                    Accessible.name: qsTr("Start new events in")
+                    onActivated: value => Settings.defaultCalendar = value
                 }
             }
         }

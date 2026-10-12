@@ -123,10 +123,6 @@ Popup {
                     {
                         "label": qsTr("Source code"),
                         "url": Release.source
-                    },
-                    {
-                        "label": qsTr("Support Callie"),
-                        "url": Release.support
                     }
                 ]
 

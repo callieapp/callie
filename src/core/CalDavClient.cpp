@@ -4,6 +4,7 @@
 
 #include <QCoreApplication>
 #include <QHash>
+#include <QHostAddress>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QXmlStreamReader>
@@ -196,16 +197,22 @@ void CalDavClient::send(const QByteArray &method, const QUrl &url, const QByteAr
         answered(nullptr, {0, tr("Callie is not online.")});
         return;
     }
-    if (m_host.isEmpty())
-        m_host = url.host();
+    if (m_trusted.isEmpty())
+        m_trusted.insert(url.host());
+    const bool local = url.host() == u"localhost" || QHostAddress(url.host()).isLoopback();
+    if (!m_user.isEmpty() && url.scheme() != u"https" && !local) {
+        answered(nullptr, {0, tr("Callie signs in only over https, so the password cannot be "
+                                 "read on the way.")});
+        return;
+    }
     QNetworkRequest request(url);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::ManualRedirectPolicy);
     request.setTransferTimeout(30000);
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       u"Callie/"_s + QCoreApplication::applicationVersion());
-    // Only to the host it was given for, so a redirect cannot carry it off.
-    if (!m_user.isEmpty() && url.host() == m_host)
+    // Only to hosts the account trusts, so a redirect cannot carry it off.
+    if (!m_user.isEmpty() && m_trusted.contains(url.host()))
         request.setRawHeader("Authorization",
                              "Basic " + (m_user + u':' + m_password).toUtf8().toBase64());
     for (const auto &[name, value] : headers)
@@ -243,7 +250,7 @@ void CalDavClient::send(const QByteArray &method, const QUrl &url, const QByteAr
 void CalDavClient::discover(const QUrl &server,
                             std::function<void(const DavAccount &, const DavError &)> done)
 {
-    m_host = server.host();
+    m_trusted = {server.host()};
     findPrincipal(server, false, std::move(done));
 }
 
@@ -277,6 +284,8 @@ void CalDavClient::findPrincipal(const QUrl &url, bool wellKnownTried,
                  tryWellKnown({});
                  return;
              }
+             // Hosts the server itself names, as iCloud does, take the password too.
+             m_trusted.insert(principal.host());
              static const QByteArray homeBody =
                  R"(<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop>)"
                  R"(<c:calendar-home-set/><c:calendar-user-address-set/></d:prop></d:propfind>)";
@@ -300,6 +309,7 @@ void CalDavClient::findPrincipal(const QUrl &url, bool wellKnownTried,
                                   account.addresses << address.path();
                           }
                       }
+                      m_trusted.insert(account.home.host());
                       if (!account.home.isValid()) {
                           done({}, {404, tr("The server has no calendars for this account.")});
                           return;
@@ -323,7 +333,7 @@ void CalDavClient::calendars(const QUrl &home,
         R"(<c:supported-calendar-component-set/><d:current-user-privilege-set/>)"
         R"(<cs:getctag/><d:sync-token/></d:prop></d:propfind>)";
     send("PROPFIND", home, body, {{"Depth", "1"}},
-         [done](QNetworkReply *reply, const DavError &error) {
+         [this, done](QNetworkReply *reply, const DavError &error) {
              if (error) {
                  done({}, error);
                  return;
@@ -351,6 +361,7 @@ void CalDavClient::calendars(const QUrl &home,
                                      rights.contains(key(kDav, u"all"_s));
                  calendar.ctag = response.prop(kServer, u"getctag"_s).text;
                  calendar.syncToken = response.prop(kDav, u"sync-token"_s).text;
+                 m_trusted.insert(calendar.url.host());
                  found.append(calendar);
              }
              done(found, {});
@@ -363,7 +374,8 @@ void CalDavClient::changes(const QUrl &calendar, const QString &token,
     const QByteArray body = R"(<d:sync-collection xmlns:d="DAV:"><d:sync-token>)" + escaped(token) +
                             R"(</d:sync-token><d:sync-level>1</d:sync-level>)"
                             R"(<d:prop><d:getetag/></d:prop></d:sync-collection>)";
-    send("REPORT", calendar, body, {{"Depth", "1"}},
+    // RFC 6578 asks for depth 0, the level being in the body.
+    send("REPORT", calendar, body, {{"Depth", "0"}},
          [calendar, done](QNetworkReply *reply, const DavError &error) {
              if (error) {
                  done({}, error);

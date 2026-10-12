@@ -61,6 +61,8 @@ public:
     QByteArray password = "app-password";
     /// Off for servers that only list versions.
     bool syncTokens = true;
+    /// On, every token given is one the server no longer knows.
+    bool forgetTokens = false;
     /// Paths that send requests elsewhere, as Location headers.
     QHash<QByteArray, QByteArray> redirects;
     /// Paths answered without signing in, with a multistatus body.
@@ -208,6 +210,8 @@ private:
                 QStringLiteral("<d:sync-token>([^<]*)</d:sync-token>"));
             const QString given = tokenText.match(QString::fromUtf8(body)).captured(1);
             qsizetype from = 0;
+            if (!given.isEmpty() && forgetTokens)
+                return {403, "<d:valid-sync-token/>", {}, "application/xml"};
             if (!given.isEmpty()) {
                 bool ok = false;
                 from = given.section(u'/', -1).toLongLong(&ok);

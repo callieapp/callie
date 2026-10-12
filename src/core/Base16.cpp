@@ -35,7 +35,9 @@ QHash<QString, QString> fields(QByteArrayView yaml)
             const qsizetype comment = value.indexOf(u" #"_s);
             if (comment >= 0)
                 value.truncate(comment);
-            if (value.startsWith(u'#') && !color::parseHex(value))
+            // Strictly a comment, but a bare "#1d1f21" is meant as a color, and
+            // a mistyped one should be reported as such.
+            if (value == u"#" || value.startsWith(u"# "_s))
                 value.clear();
             value = value.trimmed();
         }

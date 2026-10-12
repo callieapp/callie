@@ -299,29 +299,43 @@ END:VEVENT
 
 void TestIcs::monthlySeriesFollowTheirNewDay()
 {
-    const auto movedTo = [](const QByteArray &rule, QDate from, QDate to) {
+    // Moves every occurrence as the one on `from` moves to `to`, and gives the
+    // days the series then falls on, from its first month, or the error.
+    const auto movedTo = [](const QByteArray &rule, QDate first, QDate from, QDate to) {
         const ics::Group events =
             ics::parse(calendar("BEGIN:VEVENT\r\nUID:m\r\nDTSTART;VALUE=DATE:" +
-                                from.toString(u"yyyyMMdd"_s).toLatin1() + "\r\nRRULE:" + rule +
+                                first.toString(u"yyyyMMdd"_s).toLatin1() + "\r\nRRULE:" + rule +
                                 "\r\nSUMMARY:Monthly\r\nEND:VEVENT\r\n"));
-        const QDateTime start(from, QTime(0, 0), kBerlin);
-        const Event first = ics::expand(events, kHome, start, start.addDays(1), kBerlin).value(0);
+        const QDateTime day(from, QTime(0, 0), kBerlin);
+        const Event moving = ics::expand(events, kHome, day, day.addDays(1), kBerlin).value(0);
         QString error;
-        const auto moved = ics::move(events, first, QDateTime(to, QTime(0, 0), kBerlin),
+        const auto moved = ics::move(events, moving, QDateTime(to, QTime(0, 0), kBerlin),
                                      QDateTime(to.addDays(1), QTime(0, 0), kBerlin), true, &error);
-        QList<QDate> days;
-        const QDateTime later(to, QTime(0, 0), kBerlin);
+        QStringList days;
+        if (!moved)
+            return QStringList{error};
+        const QDateTime month(QDate(first.year(), first.month(), 1), QTime(0, 0), kBerlin);
         for (const Event &event :
-             ics::expand(moved->group, kHome, later, later.addMonths(3), kBerlin))
-            days << event.start.date();
+             ics::expand(moved->group, kHome, month, month.addMonths(3), kBerlin))
+            days << event.start.date().toString(Qt::ISODate);
         return days;
     };
-    // The second Monday, moved to Wednesday 16 September: the third Wednesday.
-    QCOMPARE(movedTo("FREQ=MONTHLY;BYDAY=2MO", QDate(2026, 9, 14), QDate(2026, 9, 16)),
-             (QList<QDate>{QDate(2026, 9, 16), QDate(2026, 10, 21), QDate(2026, 11, 18)}));
+    // The second Monday, its 12 October moved to Wednesday 14 October: the
+    // second Wednesday from then on, and before.
+    QCOMPARE(movedTo("FREQ=MONTHLY;BYDAY=2MO", QDate(2026, 9, 14), QDate(2026, 10, 12),
+                     QDate(2026, 10, 14)),
+             (QStringList{u"2026-09-09"_s, u"2026-10-14"_s, u"2026-11-11"_s}));
     // The 28th, moved to 2 November: the 2nd.
-    QCOMPARE(movedTo("FREQ=MONTHLY;BYMONTHDAY=28", QDate(2026, 10, 28), QDate(2026, 11, 2)),
-             (QList<QDate>{QDate(2026, 11, 2), QDate(2026, 12, 2), QDate(2027, 1, 2)}));
+    QCOMPARE(movedTo("FREQ=MONTHLY;BYMONTHDAY=28", QDate(2026, 10, 28), QDate(2026, 10, 28),
+                     QDate(2026, 11, 2)),
+             (QStringList{u"2026-10-02"_s, u"2026-11-02"_s, u"2026-12-02"_s}));
+    // What cannot be carried over is refused, not left to repeat elsewhere.
+    const QStringList ordinals = movedTo("FREQ=MONTHLY;BYDAY=1MO,3MO", QDate(2026, 10, 5),
+                                         QDate(2026, 10, 5), QDate(2026, 10, 6));
+    QVERIFY2(ordinals.value(0).contains(u"cannot move"_s), qPrintable(ordinals.join(u' ')));
+    const QStringList yearly = movedTo("FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=28", QDate(2026, 10, 28),
+                                       QDate(2026, 10, 28), QDate(2026, 11, 2));
+    QVERIFY2(yearly.value(0).contains(u"cannot move"_s), qPrintable(yearly.join(u' ')));
 }
 
 void TestIcs::editsThisAndFollowingSplitTheSeries()

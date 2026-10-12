@@ -86,7 +86,7 @@ Popup {
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.textXl
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
 
             StickerButton {
@@ -123,7 +123,7 @@ Popup {
                     },
                     {
                         "id": "appearance",
-                        "label": qsTr("Appearance")
+                        "label": qsTr("Theme")
                     },
                     {
                         "id": "keyboard",
@@ -156,23 +156,14 @@ Popup {
         }
 
         Section {
-            title: qsTr("Appearance")
+            title: qsTr("Theme")
             visible: root.tab === "appearance"
 
-            Flow {
-                width: parent.width
-                spacing: Theme.space2
-
-                Repeater {
-                    model: Themes.available
-
-                    PillButton {
-                        required property var modelData
-                        label: modelData.name
-                        selected: Themes.current === modelData.id
-                        onClicked: Themes.use(modelData.id)
-                    }
-                }
+            Dropdown {
+                model: Themes.available
+                currentValue: Themes.current
+                Accessible.name: qsTr("Theme")
+                onActivated: value => Themes.use(value)
             }
 
             Flow {
@@ -258,7 +249,7 @@ Popup {
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textMd
-                    font.weight: Font.DemiBold
+                    font.weight: Theme.weightStrong
                 }
                 ZonePicker {
                     zoneId: Settings.timeZoneId
@@ -288,7 +279,7 @@ Popup {
                 color: Theme.textFaint
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
-                font.weight: Font.ExtraBold
+                font.weight: Theme.weightHeavy
             }
             Flow {
                 width: parent.width
@@ -348,7 +339,7 @@ Popup {
                 color: Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textMd
-                font.weight: Font.DemiBold
+                font.weight: Theme.weightStrong
             }
             Flow {
                 width: parent.width
@@ -384,7 +375,7 @@ Popup {
                 color: Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textMd
-                font.weight: Font.DemiBold
+                font.weight: Theme.weightStrong
             }
             Flow {
                 width: parent.width
@@ -572,7 +563,7 @@ Popup {
                     color: Theme.textFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                 }
                 Repeater {
                     model: [
@@ -609,7 +600,7 @@ Popup {
                     color: Theme.textFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                 }
                 StickerButton {
                     anchors.verticalCenter: parent.verticalCenter
@@ -630,7 +621,7 @@ Popup {
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textMd
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
                 StickerButton {
                     anchors.verticalCenter: parent.verticalCenter
@@ -699,7 +690,7 @@ Popup {
                 color: Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textMd
-                font.weight: Font.DemiBold
+                font.weight: Theme.weightStrong
                 opacity: Settings.notify ? 1 : Theme.fadedOpacity
             }
             Flow {
@@ -869,7 +860,7 @@ Popup {
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textMd
-            font.weight: Font.Bold
+            font.weight: Theme.weightBold
             font.features: {
                 "tnum": 1
             }
@@ -897,7 +888,7 @@ Popup {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
             font.letterSpacing: 0.6
         }
         Column {

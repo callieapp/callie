@@ -5,6 +5,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -191,6 +192,15 @@ void Subscriptions::fetch(const Folder &folder)
     });
     connect(reply, &QNetworkReply::finished, this, [this, reply, folder, state]() mutable {
         reply->deleteLater();
+        // Unsubscribed while it was fetched: nothing to keep, and no folder
+        // to make again.
+        if (!QFileInfo::exists(folder.path)) {
+            m_fetching.remove(folder.id);
+            Q_EMIT statusChanged();
+            if (m_fetching.isEmpty())
+                Q_EMIT fetched();
+            return;
+        }
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         state.fetched = QDateTime::currentDateTimeUtc();
         state.error.clear();

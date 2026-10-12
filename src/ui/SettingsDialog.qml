@@ -276,43 +276,42 @@ Popup {
                 checked: Settings.dimPast
                 onToggled: Settings.dimPast = checked
             }
-            Text {
-                text: qsTr("Open places in")
-                color: Theme.textFaint
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.textSm
-                font.weight: Theme.weightHeavy
-            }
-            Flow {
+            Row {
                 width: parent.width
-                spacing: Theme.space2
+                spacing: Theme.space4
 
-                Repeater {
+                Text {
+                    id: openPlacesIn
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("Open places in")
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textMd
+                    font.weight: Theme.weightStrong
+                }
+                Dropdown {
                     model: [
                         {
                             "id": "system",
-                            "label": qsTr("My map app")
+                            "name": qsTr("My map app")
                         },
                         {
                             "id": "google",
-                            "label": qsTr("Google Maps")
+                            "name": qsTr("Google Maps")
                         },
                         {
                             "id": "osm",
-                            "label": qsTr("OpenStreetMap")
+                            "name": qsTr("OpenStreetMap")
                         },
                         {
                             "id": "apple",
-                            "label": qsTr("Apple Maps")
+                            "name": qsTr("Apple Maps")
                         }
                     ]
-
-                    PillButton {
-                        required property var modelData
-                        label: modelData.label
-                        selected: Settings.mapApp === modelData.id
-                        onClicked: Settings.mapApp = modelData.id
-                    }
+                    currentValue: Settings.mapApp
+                    maximumWidth: parent.width - openPlacesIn.width - parent.spacing
+                    Accessible.name: qsTr("Open places in")
+                    onActivated: value => Settings.mapApp = value
                 }
             }
             Toggle {

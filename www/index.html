@@ -7,6 +7,7 @@
 <meta name="description" content="A cozy, open source calendar for Linux that keeps up with your Google calendars: day, week, month and agenda views, quick add, invitations, reminders, themes and a command-line interface.">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <script src="theme.js"></script>
+<script src="carousel.js" defer></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,10 +36,68 @@
   <a class="sticker" href="https://ko-fi.com/sayonara_lara">Support on Ko-fi</a>
 </div>
 
-<figure class="shot">
-  <img class="dark" src="screenshots/week-dark.png" width="1280" height="800" alt="Callie's week view in its dark theme, with where Sam works under each day, and the sidebar's greeting, what is up next and a mini month">
-  <img class="light" src="screenshots/week-light.png" width="1280" height="800" alt="Callie's week view in Callie Light" loading="lazy">
-</figure>
+<section class="carousel" aria-roledescription="carousel" aria-label="Screenshots">
+<div class="slides" tabindex="0">
+  <figure class="slide" aria-roledescription="slide" aria-label="1 of 8">
+    <div class="shot">
+      <img class="dark" src="screenshots/week-dark.png" width="1280" height="800" alt="Callie's week view in its dark theme, with where Sam works under each day, and the sidebar's greeting, what is up next and a mini month">
+      <img class="light" src="screenshots/week-light.png" width="1280" height="800" alt="Callie's week view in Callie Light" loading="lazy">
+    </div>
+    <figcaption>The week, with where you work under each day</figcaption>
+  </figure>
+  <figure class="slide" aria-roledescription="slide" aria-label="2 of 8">
+    <div class="shot">
+      <img class="dark" src="screenshots/month-dark.png" width="1280" height="800" alt="Callie's month view in its dark theme, with each day's events as a list" loading="lazy">
+      <img class="light" src="screenshots/month-light.png" width="1280" height="800" alt="Callie's month view in Callie Light" loading="lazy">
+    </div>
+    <figcaption>The month at a glance</figcaption>
+  </figure>
+  <figure class="slide" aria-roledescription="slide" aria-label="3 of 8">
+    <div class="shot">
+      <img class="dark" src="screenshots/agenda-dark.png" width="1280" height="800" alt="Callie's agenda view in its dark theme, listing the coming days' events with their times and places" loading="lazy">
+      <img class="light" src="screenshots/agenda-light.png" width="1280" height="800" alt="Callie's agenda view in Callie Light" loading="lazy">
+    </div>
+    <figcaption>The agenda, day by day</figcaption>
+  </figure>
+  <figure class="slide" aria-roledescription="slide" aria-label="4 of 8">
+    <div class="shot">
+      <img class="dark" src="screenshots/terminal-dark.png" width="1280" height="800" alt="Callie's full-screen terminal calendar showing the agenda, with events in their calendars' colors" loading="lazy">
+      <img class="light" src="screenshots/terminal-light.png" width="1280" height="800" alt="Callie's terminal calendar in Callie Light" loading="lazy">
+    </div>
+    <figcaption>The same calendar in a terminal: run <code>callie</code></figcaption>
+  </figure>
+  <figure class="slide" aria-roledescription="slide" aria-label="5 of 8">
+    <div class="shot">
+      <img class="dark" src="screenshots/cli-dark.png" width="1280" height="800" alt="A terminal running callie agenda, callie invites and callie search, with each event's calendar color as a dot" loading="lazy">
+      <img class="light" src="screenshots/cli-light.png" width="1280" height="800" alt="The same commands in a light terminal" loading="lazy">
+    </div>
+    <figcaption>Scripts and quick looks with the <code>callie</code> command</figcaption>
+  </figure>
+  <figure class="slide" aria-roledescription="slide" aria-label="6 of 8">
+    <div class="shot">
+      <img src="screenshots/theme-paper.png" width="1280" height="800" alt="Callie's week view in the Paper theme: warm cream, dark ink and a blue accent" loading="lazy">
+    </div>
+    <figcaption>Paper, one of seven themes</figcaption>
+  </figure>
+  <figure class="slide" aria-roledescription="slide" aria-label="7 of 8">
+    <div class="shot">
+      <img src="screenshots/theme-minimal.png" width="1280" height="800" alt="Callie's week view in the Minimal theme: white, Google's blue and solid calendar colors" loading="lazy">
+    </div>
+    <figcaption>Minimal, after Google Calendar</figcaption>
+  </figure>
+  <figure class="slide" aria-roledescription="slide" aria-label="8 of 8">
+    <div class="shot">
+      <img src="screenshots/theme-tomorrow-night.png" width="1280" height="800" alt="Callie's week view in the Tomorrow Night theme: charcoal with a soft purple accent" loading="lazy">
+    </div>
+    <figcaption>Tomorrow Night</figcaption>
+  </figure>
+</div>
+<div class="controls">
+  <button class="sticker prev" type="button" aria-label="Previous screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <div class="dots"></div>
+  <button class="sticker next" type="button" aria-label="Next screenshot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+</section>
 
 <h2>What it does</h2>
 <ul class="features">

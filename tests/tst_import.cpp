@@ -20,6 +20,7 @@ private Q_SLOTS:
     void showsWhatIsInTheFile();
     void addsToACalendarOrANewOne();
     void turnsAwayWhatIsNotACalendar();
+    void allDayEventsShowTheirOwnDay();
 
 private:
     QString write(const QString &name, const QByteArray &data)
@@ -108,6 +109,19 @@ void TestImport::turnsAwayWhatIsNotACalendar()
     QVERIFY(!importer->open({QUrl::fromLocalFile(write(u"broken.ics"_s, "hello"))}));
     QVERIFY(!importer->error().isEmpty());
     QVERIFY(!importer->pending());
+}
+
+void TestImport::allDayEventsShowTheirOwnDay()
+{
+    // Run west of UTC too, where a UTC midnight would read as the day before.
+    ImportController *importer = ImportController::instance();
+    QVERIFY(importer->open({QUrl::fromLocalFile(write(
+        u"holiday.ics"_s, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nBEGIN:VEVENT\r\n"
+                          "UID:h\r\nDTSTART;VALUE=DATE:20261012\r\nSUMMARY:Holiday\r\n"
+                          "END:VEVENT\r\nEND:VCALENDAR\r\n"))}));
+    const QDateTime start = importer->preview().first().toMap().value(u"start"_s).toDateTime();
+    QCOMPARE(start, QDateTime(QDate(2026, 10, 12), QTime(0, 0)));
+    QCOMPARE(start.toLocalTime().date(), QDate(2026, 10, 12));
 }
 
 QTEST_GUILESS_MAIN(TestImport)

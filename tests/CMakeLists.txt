@@ -35,6 +35,10 @@ callie_add_test(tst_ics)
 callie_add_test(tst_localcalendars)
 callie_add_test(tst_import)
 target_link_libraries(tst_import PRIVATE callieui)
+# All-day previews are days, wherever they are opened.
+add_test(NAME tst_import_America_Los_Angeles COMMAND tst_import)
+set_tests_properties(tst_import_America_Los_Angeles PROPERTIES
+    ENVIRONMENT "TZ=America/Los_Angeles;QT_QPA_PLATFORM=offscreen")
 callie_add_test(tst_queuedsource)
 callie_add_test(tst_applyedit)
 callie_add_test(tst_repeat)

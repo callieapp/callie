@@ -85,7 +85,8 @@ int main(int argc, char *argv[])
                                   QStringLiteral("size"));
     parser.addOption(sizeOption);
     QCommandLineOption viewOption(QStringLiteral("view"),
-                                  QStringLiteral("Open in this view: day, week, month or agenda."),
+                                  QStringLiteral("With --screenshot: show this view, day, week, "
+                                                 "month or agenda."),
                                   QStringLiteral("view"));
     parser.addOption(viewOption);
     QCommandLineOption backgroundOption(
@@ -115,6 +116,15 @@ int main(int argc, char *argv[])
             QTextStream(stderr) << "callie-gui: --size wants a size like 1280x840\n";
             return 2;
         }
+    }
+    // Only for screenshots, whose settings are thrown away, so the view the
+    // user last chose is kept.
+    if (parser.isSet(viewOption) && (!parser.isSet(screenshotOption) ||
+                                     !QStringList{QStringLiteral("day"), QStringLiteral("week"),
+                                                  QStringLiteral("month"), QStringLiteral("agenda")}
+                                          .contains(parser.value(viewOption)))) {
+        QTextStream(stderr) << "callie-gui: --view goes with --screenshot, as in --view month\n";
+        return 2;
     }
     callie::logfile::install(QStringLiteral("callie-gui"));
 

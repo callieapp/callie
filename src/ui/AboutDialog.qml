@@ -67,7 +67,7 @@ Popup {
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.text2xl
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -75,7 +75,7 @@ Popup {
                 color: Theme.textMuted
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
         }
 

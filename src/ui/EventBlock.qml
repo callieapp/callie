@@ -148,7 +148,7 @@ Rectangle {
             color: root.ink
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
             font.strikeout: root.declined
             elide: Text.ElideRight
         }
@@ -169,7 +169,7 @@ Rectangle {
             color: root.ink
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs
-            font.weight: Font.DemiBold
+            font.weight: Theme.weightStrong
             elide: Text.ElideRight
         }
     }

@@ -38,7 +38,7 @@ AbstractButton {
         color: Theme.text
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
-        font.weight: Font.Bold
+        font.weight: Theme.weightBold
     }
 
     MonthModel {
@@ -85,7 +85,7 @@ AbstractButton {
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textMd
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                 }
                 StickerButton {
                     glyph: "chevron-right"
@@ -142,7 +142,7 @@ AbstractButton {
 
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textSm
-                            font.weight: Font.Bold
+                            font.weight: Theme.weightBold
                         }
                     }
                 }

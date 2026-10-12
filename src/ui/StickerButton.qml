@@ -85,7 +85,7 @@ AbstractButton {
                 color: root.ink
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textMd
-                font.weight: Font.ExtraBold
+                font.weight: Theme.weightHeavy
             }
         }
     }

@@ -44,7 +44,7 @@ AbstractButton {
         color: Theme.text
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
-        font.weight: Font.Bold
+        font.weight: Theme.weightBold
         font.features: {
             "tnum": 1
         }

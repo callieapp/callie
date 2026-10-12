@@ -258,7 +258,7 @@ Popup {
                         color: root.ink
                         font.family: Theme.displayFontFamily
                         font.pixelSize: Theme.textXl
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                     }
                     Text {
                         width: parent.width
@@ -267,7 +267,7 @@ Popup {
                         color: root.ink
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textMd
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                     }
                 }
 
@@ -323,7 +323,7 @@ Popup {
                     color: Theme.textMuted
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                 }
                 Repeater {
                     model: [
@@ -445,7 +445,7 @@ Popup {
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
                 Flow {
                     width: parent.width
@@ -559,7 +559,7 @@ Popup {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
         }
         Column {
             width: list.width - 64 - list.spacing
@@ -586,7 +586,7 @@ Popup {
                 color: Theme.textMuted
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
 
             Repeater {
@@ -620,7 +620,7 @@ Popup {
                         color: guestRow.answer === "declined" ? Theme.textFaint : Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textMd
-                        font.weight: Font.DemiBold
+                        font.weight: Theme.weightStrong
                         font.strikeout: guestRow.answer === "declined"
                         Accessible.name: qsTr("%1: %2").arg(text).arg(list.answerLabel(
                                                                           guestRow.answer))
@@ -634,7 +634,7 @@ Popup {
                 color: Theme.accent
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
-                font.weight: Font.ExtraBold
+                font.weight: Theme.weightHeavy
 
                 TapHandler {
                     onTapped: list.expanded = true
@@ -705,7 +705,7 @@ Popup {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
@@ -745,7 +745,7 @@ Popup {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
         }
         Text {
             width: detail.width - 64 - detail.spacing
@@ -757,7 +757,7 @@ Popup {
             color: detail.linked ? Theme.accent : Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textMd
-            font.weight: Font.DemiBold
+            font.weight: Theme.weightStrong
             font.underline: detail.linked && link.hovered
             Accessible.role: detail.linked ? Accessible.Link : Accessible.StaticText
             Accessible.name: detail.value

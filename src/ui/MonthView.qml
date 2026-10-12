@@ -121,7 +121,7 @@ Item {
                 color: Theme.textFaint
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textXs
-                font.weight: Font.ExtraBold
+                font.weight: Theme.weightHeavy
                 font.letterSpacing: 0.8
             }
         }
@@ -190,7 +190,7 @@ Item {
                     color: Theme.textFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
 
                 // The date, as an accent sticker on today.
@@ -224,7 +224,7 @@ Item {
 
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm
-                        font.weight: cell.today ? Font.ExtraBold : Font.Bold
+                        font.weight: cell.today ? Theme.weightHeavy : Theme.weightBold
                         font.features: {
                             "tnum": 1
                         }
@@ -263,7 +263,7 @@ Item {
                         color: Theme.textMuted
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                     }
                 }
             }
@@ -469,7 +469,7 @@ Item {
                        ? Theme.calendarInk(chip.event.calendarColor, Theme.calendar) : Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textXs
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
                 font.strikeout: chip.event.declined
             }
         }

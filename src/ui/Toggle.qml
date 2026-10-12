@@ -33,7 +33,7 @@ AbstractButton {
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textMd
-            font.weight: Font.DemiBold
+            font.weight: Theme.weightStrong
         }
 
         Rectangle {

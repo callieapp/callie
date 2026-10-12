@@ -58,6 +58,10 @@ class ThemeController : public QObject
     Q_PROPERTY(QString fontFamily READ fontFamily NOTIFY changed)
     Q_PROPERTY(QString displayFontFamily READ displayFontFamily NOTIFY changed)
     Q_PROPERTY(QString monoFontFamily READ monoFontFamily NOTIFY changed)
+    /// Font weights for strong, bold and heavy text.
+    Q_PROPERTY(int weightStrong READ weightStrong NOTIFY changed)
+    Q_PROPERTY(int weightBold READ weightBold NOTIFY changed)
+    Q_PROPERTY(int weightHeavy READ weightHeavy NOTIFY changed)
 
     Q_PROPERTY(int durFast READ durFast NOTIFY changed)
     Q_PROPERTY(int durMed READ durMed NOTIFY changed)
@@ -198,6 +202,9 @@ public:
     QString fontFamily() const { return m_spec.type.family; }
     QString displayFontFamily() const { return m_spec.type.displayFamily; }
     QString monoFontFamily() const { return m_spec.type.monoFamily; }
+    int weightStrong() const { return m_spec.type.weightStrong; }
+    int weightBold() const { return m_spec.type.weightBold; }
+    int weightHeavy() const { return m_spec.type.weightHeavy; }
 
     int durFast() const { return m_spec.motion.durationFast; }
     int durMed() const { return m_spec.motion.duration; }

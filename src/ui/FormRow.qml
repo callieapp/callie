@@ -20,7 +20,7 @@ Row {
         color: Theme.textFaint
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
-        font.weight: Font.ExtraBold
+        font.weight: Theme.weightHeavy
     }
     Flow {
         id: controls

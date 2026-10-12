@@ -40,7 +40,7 @@ Rectangle {
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textMd
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
         }
         Text {
             width: parent.width
@@ -50,7 +50,7 @@ Rectangle {
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.DemiBold
+            font.weight: Theme.weightStrong
         }
         Row {
             visible: root.timing !== ""
@@ -68,7 +68,7 @@ Rectangle {
                 color: Theme.accent
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
-                font.weight: Font.ExtraBold
+                font.weight: Theme.weightHeavy
             }
         }
         Text {
@@ -77,7 +77,7 @@ Rectangle {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.DemiBold
+            font.weight: Theme.weightStrong
         }
     }
 }

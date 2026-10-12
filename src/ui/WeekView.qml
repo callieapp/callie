@@ -104,7 +104,7 @@ Item {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
         }
 
         Row {
@@ -142,7 +142,7 @@ Item {
                             color: dayHeader.today ? Theme.accent : Theme.textFaint
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textXs
-                            font.weight: Font.ExtraBold
+                            font.weight: Theme.weightHeavy
                             font.letterSpacing: 0.8
                         }
 
@@ -173,7 +173,7 @@ Item {
                                 color: dayHeader.today ? Theme.accentText : Theme.text
                                 font.family: Theme.displayFontFamily
                                 font.pixelSize: Theme.textDate
-                                font.weight: Font.Bold
+                                font.weight: Theme.weightBold
                                 font.features: {
                                     "tnum": 1
                                 }
@@ -196,7 +196,7 @@ Item {
                         color: Theme.textMuted
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                     }
                 }
             }
@@ -332,7 +332,7 @@ Item {
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                         font.features: {
                             "tnum": 1
                         }
@@ -482,7 +482,7 @@ Item {
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                 }
             }
 
@@ -624,7 +624,7 @@ Item {
                     color: Theme.accentText
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                     font.features: {
                         "tnum": 1
                     }

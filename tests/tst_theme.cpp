@@ -47,6 +47,7 @@ private Q_SLOTS:
     void stickerAndShadowSettingsAreRead();
     void lowInkContrastIsAWarning();
     void shadowOpacityIsBounded();
+    void weightsAreReadAndBounded();
 };
 
 void TestTheme::defaultThemeIsCompleteAndClean()
@@ -215,6 +216,19 @@ void TestTheme::shadowOpacityIsBounded()
     const ThemeLoadResult result = parse("[shadow]\nopacity = 1.5\n");
     QVERIFY(!result.ok());
     QVERIFY(anyContains(result.errors, "shadow.opacity"));
+}
+
+void TestTheme::weightsAreReadAndBounded()
+{
+    const ThemeLoadResult light = parse("[type]\nweight-strong = 500\nweight-heavy = 600\n");
+    QVERIFY2(light.ok(), qPrintable(light.errors.join(u'\n')));
+    QCOMPARE(light.theme.type.weightStrong, 500);
+    QCOMPARE(light.theme.type.weightBold, ThemeLoader::defaultTheme().type.weightBold);
+    QCOMPARE(light.theme.type.weightHeavy, 600);
+
+    const ThemeLoadResult heavy = parse("[type]\nweight-bold = 1000\n");
+    QVERIFY(!heavy.ok());
+    QVERIFY(anyContains(heavy.errors, "type.weight-bold"));
 }
 
 QTEST_GUILESS_MAIN(TestTheme)

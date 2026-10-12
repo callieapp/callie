@@ -90,7 +90,7 @@ Popup {
                         color: Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm
-                        font.weight: row.modelData.strong ? Font.Bold : Font.Normal
+                        font.weight: row.modelData.strong ? Theme.weightBold : Font.Normal
                     }
                     Text {
                         visible: text !== ""

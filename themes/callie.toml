@@ -49,6 +49,11 @@ offset = 14
 family = "Nunito"
 display-family = "Fraunces"
 mono-family = ""
+# Weights for strong text such as event titles, bold such as buttons, and heavy
+# such as today and what is selected.
+weight-strong = 600
+weight-bold = 700
+weight-heavy = 800
 
 # Durations in milliseconds. Bounce is the overshoot when something arrives;
 # 0 turns it off.

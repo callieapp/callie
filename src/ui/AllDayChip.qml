@@ -106,7 +106,7 @@ Rectangle {
         color: chip.pending ? Theme.text : Theme.calendarInk(chip.calendarColor, Theme.calendar)
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
-        font.weight: Font.ExtraBold
+        font.weight: Theme.weightHeavy
         font.strikeout: chip.declined
     }
 

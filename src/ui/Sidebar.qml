@@ -41,7 +41,7 @@ Rectangle {
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.textDisplay
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
             Text {
                 text: root.today.dateLabel
@@ -94,7 +94,7 @@ Rectangle {
                     color: upNext.ink
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textXs
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                     font.letterSpacing: 0.6
                     elide: Text.ElideRight
                 }
@@ -105,7 +105,7 @@ Rectangle {
                     color: upNext.ink
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textLg
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                     elide: Text.ElideRight
                 }
                 Text {
@@ -115,7 +115,7 @@ Rectangle {
                     color: upNext.ink
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.DemiBold
+                    font.weight: Theme.weightStrong
                     elide: Text.ElideRight
                 }
             }
@@ -145,7 +145,7 @@ Rectangle {
                         color: Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXs
-                        font.weight: Font.ExtraBold
+                        font.weight: Theme.weightHeavy
                     }
                 }
             }
@@ -168,7 +168,7 @@ Rectangle {
                             color: Theme.textFaint
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textXs
-                            font.weight: Font.Bold
+                            font.weight: Theme.weightBold
                         }
                     }
                 }
@@ -234,8 +234,8 @@ Rectangle {
                                                            ? Theme.textMuted : Theme.textFaint
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.textSm
-                                font.weight: dayCell.isToday ? Font.ExtraBold : dayCell.inWeek
-                                                               ? Font.Bold : Font.Normal
+                                font.weight: dayCell.isToday ? Theme.weightHeavy : dayCell.inWeek
+                                                               ? Theme.weightBold : Font.Normal
                                 font.features: {
                                     "tnum": 1
                                 }
@@ -282,7 +282,7 @@ Rectangle {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
             font.letterSpacing: 0.6
         }
 
@@ -382,7 +382,7 @@ Rectangle {
                                     color: Theme.textFaint
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.textSm
-                                    font.weight: Font.Bold
+                                    font.weight: Theme.weightBold
                                 }
                             }
                         }
@@ -538,7 +538,7 @@ Rectangle {
                 color: row.shown ? Theme.textMuted : Theme.textFaint
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textBase
-                font.weight: Font.DemiBold
+                font.weight: Theme.weightStrong
             }
         }
     }

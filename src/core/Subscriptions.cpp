@@ -36,6 +36,21 @@ bool writeText(const QString &path, const QString &text)
     return file.open(QIODevice::WriteOnly) && file.write(data) == data.size() && file.commit();
 }
 
+/// What went wrong with a fetch, without the link: a private feed's link is
+/// its password, and the error is kept, logged and shown.
+QString problemWith(QNetworkReply *reply)
+{
+    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (status >= 400)
+        return Subscriptions::tr("the server answered %1").arg(status);
+    QString message = reply->errorString();
+    const QUrl url = reply->request().url();
+    for (const QString &form :
+         {url.toString(), url.toDisplayString(), QString::fromUtf8(url.toEncoded())})
+        message.replace(form, url.host());
+    return message;
+}
+
 /// The name a feed gives itself, if any.
 QString feedName(const QByteArray &feed)
 {
@@ -209,7 +224,7 @@ void Subscriptions::fetch(const Folder &folder)
             return;
         }
         if (reply->error() != QNetworkReply::NoError) {
-            state.error = reply->errorString();
+            state.error = problemWith(reply);
             finish(folder, state);
             return;
         }

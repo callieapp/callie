@@ -1,5 +1,8 @@
 #include "Completion.h"
 
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QTest>
 
 using namespace callie::cli;
@@ -11,6 +14,7 @@ class TestCompletion : public QObject
 
 private Q_SLOTS:
     void commandsFirst();
+    void importOffersCalendarFiles();
     void optionsAndTheirValues();
     void argumentsByCommand();
     void namesComeFromTheSources();
@@ -70,6 +74,21 @@ void TestCompletion::commandsFirst()
     QCOMPARE(values(completion.complete({u"--sample"_s, u"--days"_s, u"3"_s, u"ed"_s})),
              QStringList{u"edit"_s});
     QVERIFY(completion.complete({u"nothing"_s}).isEmpty());
+}
+
+void TestCompletion::importOffersCalendarFiles()
+{
+    QTemporaryDir dir;
+    QDir(dir.path()).mkdir(u"trips"_s);
+    for (const QString &name : {u"party.ics"_s, u"PARTY2.ICS"_s, u"notes.txt"_s}) {
+        QFile file(dir.filePath(name));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+    }
+    const QString typed = dir.path() + u"/"_s;
+    QCOMPARE(values(make().complete({u"import"_s, typed})),
+             (QStringList{typed + u"PARTY2.ICS"_s, typed + u"party.ics"_s, typed + u"trips/"_s}));
+    QCOMPARE(values(make().complete({u"import"_s, typed + u"p"_s})),
+             QStringList{typed + u"party.ics"_s});
 }
 
 void TestCompletion::optionsAndTheirValues()

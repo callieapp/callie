@@ -1,6 +1,7 @@
 #include "Commands.h"
 
 #include "callie/ContactBook.h"
+#include "callie/LocalCalendars.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
 
@@ -126,6 +127,7 @@ private Q_SLOTS:
     void hiddenCopiesLeaveIdsAlone();
     void settingsReadAndChange();
     void calendarsAndAccountsTakeNewLooks();
+    void importPicksItsCalendar();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -719,6 +721,49 @@ void TestCli::contactsFindGuestsAndContacts()
     // The sample's Priya from her events, and the contact.
     QCOMPARE(m_out, u"priya@example.com\tPriya\nprao@example.org\tPriya Rao\n"_s);
     QCOMPARE(m_commands->contacts(book, {}, false), 2);
+}
+
+void TestCli::importPicksItsCalendar()
+{
+    QTemporaryDir dir;
+    LocalCalendars local(dir.filePath(u"calendars"_s));
+    const QString party = dir.filePath(u"party.ics"_s);
+    QFile file(party);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nBEGIN:VEVENT\r\n"
+               "UID:p\r\nDTSTART:20261009T190000Z\r\nDTEND:20261009T230000Z\r\n"
+               "SUMMARY:Party\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
+    file.close();
+    const auto import = [&](const QString &path, const QString &calendar) {
+        m_out.clear();
+        m_err.clear();
+        const int code = Commands::importFile(local, path, calendar, *m_outStream, *m_errStream);
+        m_outStream->flush();
+        m_errStream->flush();
+        return code;
+    };
+
+    // With nowhere to put them, a calendar named after the file.
+    QCOMPARE(import(party, {}), 0);
+    QCOMPARE(m_out, u"Added 1 event to party.\n"_s);
+    // Again, into the only one there, which keeps one copy.
+    QCOMPARE(import(party, {}), 0);
+    const QDateTime day(QDate(2026, 10, 9), QTime(0, 0), QTimeZone::UTC);
+    QCOMPARE(local.eventsBetween(day, day.addDays(1), QTimeZone::UTC).size(), 1);
+
+    QString error;
+    local.create(u"Home"_s, {}, &error);
+    QCOMPARE(import(party, {}), 2);
+    QVERIFY(m_err.contains(u"--calendar"_s));
+    QCOMPARE(import(party, u"home"_s), 0);
+    QCOMPARE(import(party, u"Work"_s), 1);
+    QCOMPARE(import(dir.filePath(u"missing.ics"_s), {}), 1);
+    QCOMPARE(import({}, {}), 2);
+    QFile notes(dir.filePath(u"notes.ics"_s));
+    QVERIFY(notes.open(QIODevice::WriteOnly));
+    notes.write("not a calendar");
+    notes.close();
+    QCOMPARE(import(notes.fileName(), u"home"_s), 1);
 }
 
 QTEST_GUILESS_MAIN(TestCli)

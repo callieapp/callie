@@ -472,63 +472,6 @@ int runLocalCalendars(const QString &action, const QString &name)
     return 0;
 }
 
-/// `callie import <file.ics>`: into `calendar`, by id or name; else the only
-/// calendar on this computer, or a new one named after the file.
-int runImport(const QString &path, const QString &calendar)
-{
-    QFile file(path);
-    if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) {
-        err << (path.isEmpty() ? QObject::tr("usage: callie import <file.ics> [--calendar <name>]")
-                               : QStringLiteral("callie: %1: %2").arg(path, file.errorString()))
-            << "\n";
-        return path.isEmpty() ? 2 : 1;
-    }
-    QString error;
-    const ics::Group events = ics::parse(file.readAll(), &error);
-    if (events.isEmpty()) {
-        err << QStringLiteral("callie: %1: %2\n")
-                   .arg(path, error.isEmpty() ? QObject::tr("no events in it") : error);
-        return 1;
-    }
-    LocalCalendars local(LocalCalendars::defaultRoot());
-    const QList<CalendarInfo> calendars = local.calendars();
-    QList<CalendarInfo> found;
-    for (const CalendarInfo &each : calendars) {
-        if (calendar.isEmpty() || each.id == calendar ||
-            each.displayName.compare(calendar, Qt::CaseInsensitive) == 0)
-            found.append(each);
-    }
-    if (!calendar.isEmpty() && found.isEmpty()) {
-        err << QObject::tr("callie: no calendar on this computer is called %1").arg(calendar)
-            << "\n";
-        return 1;
-    }
-    if (found.size() > 1) {
-        QStringList names;
-        for (const CalendarInfo &each : found)
-            names << each.displayName;
-        err << QObject::tr("callie: which calendar? Give one with --calendar: %1")
-                   .arg(names.join(u", "_s))
-            << "\n";
-        return 2;
-    }
-    QString id = found.isEmpty() ? QString() : found.first().id;
-    QString name = found.isEmpty() ? QFileInfo(path).completeBaseName() : found.first().displayName;
-    if (id.isEmpty() && (id = local.create(name, {}, &error)).isEmpty()) {
-        err << QStringLiteral("callie: %1\n").arg(error);
-        return 1;
-    }
-    const int added = local.importEvents(id, events, &error);
-    if (added < 0) {
-        err << QStringLiteral("callie: %1\n").arg(error);
-        return 1;
-    }
-    out << (added == 1 ? QObject::tr("Added 1 event to %1.").arg(name)
-                       : QObject::tr("Added %1 events to %2.").arg(added).arg(name))
-        << "\n";
-    return 0;
-}
-
 /// One line per calendar, tab-separated: account, calendar id, name.
 int runCalendars(QCoreApplication &app)
 {
@@ -1063,8 +1006,11 @@ int main(int argc, char *argv[])
         err << QObject::tr("callie: import does not work with --sample") << "\n";
         return 2;
     }
-    if (command == QLatin1String("import"))
-        return runImport(args.value(1), parser.value(u"calendar"_s));
+    if (command == QLatin1String("import")) {
+        LocalCalendars local(LocalCalendars::defaultRoot());
+        return cli::Commands::importFile(local, args.value(1), parser.value(u"calendar"_s), out,
+                                         err);
+    }
     if (command == QLatin1String("calendars") &&
         (args.value(1) == u"new" || args.value(1) == u"remove"))
         return runLocalCalendars(args.value(1), args.mid(2).join(u' '));

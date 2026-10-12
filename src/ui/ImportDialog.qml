@@ -12,8 +12,10 @@ Popup {
 
     /// When a previewed event starts, with its year only when not this one.
     function when(event) {
-        const thisYear = event.start.getFullYear() === new Date().getFullYear()
-        const day = Qt.formatDate(event.start, thisYear ? "ddd d MMM" : "ddd d MMM yyyy")
+        // A timed start is put on its day in the zone Callie shows times in.
+        const start = event.allDay ? event.start : Settings.times.date(event.start)
+        const thisYear = start.getFullYear() === new Date().getFullYear()
+        const day = Qt.formatDate(start, thisYear ? "ddd d MMM" : "ddd d MMM yyyy")
         return event.allDay ? day : day + ", " + Settings.times.time(event.start)
     }
 

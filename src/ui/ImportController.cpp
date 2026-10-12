@@ -32,25 +32,10 @@ ImportController *ImportController::create(QQmlEngine *, QJSEngine *)
     return importer;
 }
 
-void ImportController::setUp(LocalCalendars *local, const QList<VdirSource *> &others)
+void ImportController::setUp(LocalCalendars *local)
 {
     m_local = local;
-    m_others.clear();
-    for (VdirSource *source : others)
-        m_others.append(source);
     Q_EMIT pendingChanged();
-}
-
-QList<VdirSource *> ImportController::sources() const
-{
-    QList<VdirSource *> all;
-    if (m_local)
-        all.append(m_local);
-    for (const QPointer<VdirSource> &source : m_others) {
-        if (source)
-            all.append(source);
-    }
-    return all;
 }
 
 int ImportController::count() const
@@ -67,7 +52,9 @@ QVariantList ImportController::preview() const
     QVariantList list;
     for (const auto &event : firsts.first(std::min<qsizetype>(kPreviewed, firsts.size())))
         list << QVariantMap{{u"summary"_s, event->summary()},
-                            {u"start"_s, event->dtStart()},
+                            {u"start"_s, event->allDay()
+                                             ? QDateTime(event->dtStart().date(), QTime(0, 0))
+                                             : event->dtStart()},
                             {u"allDay"_s, event->allDay()}};
     return list;
 }
@@ -75,11 +62,11 @@ QVariantList ImportController::preview() const
 QVariantList ImportController::calendars() const
 {
     QVariantList list;
-    for (VdirSource *source : sources()) {
-        for (const CalendarInfo &calendar : source->calendars()) {
-            if (calendar.writable)
-                list << QVariantMap{{u"id"_s, calendar.id}, {u"name"_s, calendar.displayName}};
-        }
+    if (!m_local)
+        return list;
+    for (const CalendarInfo &calendar : m_local->calendars()) {
+        if (calendar.writable)
+            list << QVariantMap{{u"id"_s, calendar.id}, {u"name"_s, calendar.displayName}};
     }
     if (m_local)
         list << QVariantMap{
@@ -139,22 +126,20 @@ bool ImportController::add(const QString &calendarId)
             return false;
         }
     }
-    for (VdirSource *source : sources()) {
-        for (const CalendarInfo &calendar : source->calendars()) {
-            if (calendar.id != id)
-                continue;
-            const int written = source->importEvents(id, m_events, &error);
-            if (written < 0) {
-                setError(error);
-                return false;
-            }
-            m_events.clear();
-            m_fileName.clear();
-            setError({});
-            Q_EMIT pendingChanged();
-            Q_EMIT added(written, calendar.displayName);
-            return true;
+    for (const CalendarInfo &calendar : m_local ? m_local->calendars() : QList<CalendarInfo>()) {
+        if (calendar.id != id)
+            continue;
+        const int written = m_local->importEvents(id, m_events, &error);
+        if (written < 0) {
+            setError(error);
+            return false;
         }
+        m_events.clear();
+        m_fileName.clear();
+        setError({});
+        Q_EMIT pendingChanged();
+        Q_EMIT added(written, calendar.displayName);
+        return true;
     }
     setError(tr("That calendar is not on this computer any more."));
     return false;

@@ -10,6 +10,7 @@
 #include "Reminders.h"
 #include "SingleInstance.h"
 #include "StartAtLogin.h"
+#include "SubscriptionsController.h"
 #include "ThemeController.h"
 #include "ThemesController.h"
 #include "TrayItem.h"
@@ -30,6 +31,7 @@
 #include "callie/QueuedSource.h"
 #include "callie/ReminderScheduler.h"
 #include "callie/SampleSource.h"
+#include "callie/Subscriptions.h"
 #include "callie/TokenStore.h"
 #include "callie/UpdateCheck.h"
 
@@ -217,10 +219,13 @@ int main(int argc, char *argv[])
     // Every account and calendar, shown together. Sample data and screenshots
     // leave the calendars on this computer alone.
     std::optional<callie::LocalCalendars> local;
-    if (!standalone)
+    std::optional<callie::Subscriptions> subscriptions;
+    if (!standalone) {
         local.emplace(callie::LocalCalendars::defaultRoot());
+        subscriptions.emplace(callie::Subscriptions::defaultRoot(), &network);
+    }
     callie::CombinedSource combined;
-    combined.setSources(local ? QList<callie::CalendarSource *>{&google, &*local}
+    combined.setSources(local ? QList<callie::CalendarSource *>{&google, &*local, &*subscriptions}
                               : QList<callie::CalendarSource *>{&google});
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
@@ -288,6 +293,14 @@ int main(int argc, char *argv[])
         if (!accounts.isEmpty())
             QTimer::singleShot(0, &google, &callie::GoogleSource::refresh);
     }
+    // Subscriptions look every quarter hour for feeds due again, which is hourly.
+    QTimer feedTimer;
+    if (subscriptions) {
+        QObject::connect(&feedTimer, &QTimer::timeout, &*subscriptions,
+                         &callie::Subscriptions::refresh);
+        feedTimer.start(std::chrono::minutes(15));
+        QTimer::singleShot(0, &*subscriptions, &callie::Subscriptions::refresh);
+    }
 
     // Screenshots and sample data stay quiet.
     callie::ReminderScheduler scheduler;
@@ -316,6 +329,7 @@ int main(int argc, char *argv[])
     callie::AccountsController::instance()->setUp(accountSetup);
     callie::LocalController::instance()->setUp(local ? &*local : nullptr);
     callie::ImportController::instance()->setUp(local ? &*local : nullptr);
+    callie::SubscriptionsController::instance()->setUp(subscriptions ? &*subscriptions : nullptr);
 
     callie::UpdateCheck updates;
     QQmlApplicationEngine engine;

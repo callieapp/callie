@@ -173,6 +173,8 @@ QList<Candidate> Completion::argument(const QStringList &positional) const
         if (at == 2 && positional.at(1) != u"new")
             return from(m_sources.calendars);
     }
+    if (command == u"unsubscribe" && at == 1)
+        return from(m_sources.calendars);
     if (command == u"accounts") {
         if (at == 1)
             return plain({u"list"_s, u"add"_s, u"remove"_s, u"rename"_s});

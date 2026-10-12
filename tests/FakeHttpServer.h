@@ -54,6 +54,17 @@ public:
     /// that arrive in no fixed order.
     std::function<Response(const Request &)> handler;
 
+    /// A response with headers of its own, such as ETag.
+    struct Reply
+    {
+        int status = 200;
+        QByteArray body;
+        QList<std::pair<QByteArray, QByteArray>> headers = {};
+        QByteArray contentType = "application/json";
+    };
+    /// Answers every request, ahead of handler.
+    std::function<Reply(const Request &)> replier;
+
     QList<Request> requests;
 
 private:
@@ -87,12 +98,22 @@ private:
             request.body = buffer->mid(headerEnd + 4, length);
             requests.append(request);
 
-            const auto [status, body] = handler             ? handler(request)
-                                        : m_queue.isEmpty() ? Response(m_status, m_body)
-                                                            : m_queue.takeFirst();
-            socket->write("HTTP/1.1 " + QByteArray::number(status) +
-                          " X\r\nContent-Type: application/json\r\nContent-Length: " +
-                          QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body);
+            Reply reply;
+            if (replier) {
+                reply = replier(request);
+            } else {
+                const auto [status, body] = handler             ? handler(request)
+                                            : m_queue.isEmpty() ? Response(m_status, m_body)
+                                                                : m_queue.takeFirst();
+                reply.status = status;
+                reply.body = body;
+            }
+            QByteArray head = "HTTP/1.1 " + QByteArray::number(reply.status) +
+                              " X\r\nContent-Type: " + reply.contentType + "\r\n";
+            for (const auto &[name, value] : std::as_const(reply.headers))
+                head += name + ": " + value + "\r\n";
+            socket->write(head + "Content-Length: " + QByteArray::number(reply.body.size()) +
+                          "\r\nConnection: close\r\n\r\n" + reply.body);
             socket->disconnectFromHost();
         });
     }

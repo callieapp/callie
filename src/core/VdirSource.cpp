@@ -258,6 +258,27 @@ bool VdirSource::save(const Folder &folder, const QString &fileName, const QStri
     return true;
 }
 
+bool VdirSource::mirror(const Folder &folder, const ics::Group &events, QString *error)
+{
+    if (!QDir().mkpath(folder.path)) {
+        *error = tr("Callie could not create %1.").arg(folder.path);
+        return false;
+    }
+    const QHash<QString, QString> before = read(folder).files;
+    QSet<QString> kept;
+    for (const ics::Group &group : ics::byUid(events)) {
+        const QString uid = group.first()->uid();
+        kept.insert(uid);
+        if (!save(folder, before.value(uid, fileNameFor(uid)), uid, group, error))
+            return false;
+    }
+    for (auto file = before.cbegin(); file != before.cend(); ++file) {
+        if (!kept.contains(file.key()) && !save(folder, file.value(), file.key(), {}, error))
+            return false;
+    }
+    return true;
+}
+
 void VdirSource::fileChanged(const Folder &folder, const QString &fileName, bool removed)
 {
     Q_UNUSED(folder)

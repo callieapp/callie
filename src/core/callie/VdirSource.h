@@ -68,6 +68,9 @@ public:
 protected:
     /// A file in `folder` was written, or removed, by a change made in Callie.
     virtual void fileChanged(const Folder &folder, const QString &fileName, bool removed);
+    /// Makes the folder hold `events` and nothing else, one file per UID, as
+    /// a copy of a calendar kept elsewhere.
+    bool mirror(const Folder &folder, const ics::Group &events, QString *error);
 
 private:
     /// A parsed file, kept until the file changes.

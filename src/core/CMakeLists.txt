@@ -85,6 +85,8 @@ add_library(calliecore STATIC
     VdirSource.cpp
     callie/LocalCalendars.h
     LocalCalendars.cpp
+    callie/Subscriptions.h
+    Subscriptions.cpp
     callie/Outcome.h
     callie/Releases.h
     Releases.cpp

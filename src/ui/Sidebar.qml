@@ -8,6 +8,16 @@ import QtQuick.Controls
 Rectangle {
     id: root
 
+    /// What a group of calendars is called: the name the user gave its
+    /// account, else the account, or what the calendars are.
+    function groupName(account) {
+        const kinds = {
+            "local": qsTr("On this computer"),
+            "subscriptions": qsTr("Subscribed")
+        }
+        return Settings.accountNames[account] || kinds[account] || account
+    }
+
     required property TodayModel today
     required property MonthModel month
     required property EventModel events
@@ -345,10 +355,7 @@ Rectangle {
                                 onClicked: root.editLook(this, true, group.modelData, "")
                             }
 
-                            readonly property string title: Settings.accountNames[group.modelData]
-                                                            || (group.modelData === "local" ? qsTr(
-                                                                                                  "On this computer") :
-                                                                                              group.modelData)
+                            readonly property string title: root.groupName(group.modelData)
 
                             background: Rectangle {
                                 radius: Theme.radiusSm

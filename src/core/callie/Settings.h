@@ -196,6 +196,8 @@ public:
 
     [[nodiscard]] QString view() const { return m_view; }
     void setView(const QString &view);
+    /// The views setView() takes: day, week, month and agenda.
+    [[nodiscard]] static QStringList views();
 
     [[nodiscard]] bool notify() const { return m_notify; }
     void setNotify(bool notify);

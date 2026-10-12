@@ -104,9 +104,17 @@ void TestPaint::calendarTextReadsOnEveryPage()
     const QStringList googleColors = {u"#d50000"_s, u"#f4511e"_s, u"#f6bf26"_s, u"#0b8043"_s,
                                       u"#33b679"_s, u"#039be5"_s, u"#3f51b5"_s, u"#7986cb"_s,
                                       u"#8e24aa"_s, u"#e67c73"_s, u"#616161"_s};
-    for (const QString &id : ThemeLoader::builtInIds()) {
-        const ThemeLoadResult theme = ThemeLoader::loadBuiltIn(id);
-        const Palette palette(theme.theme);
+    // Every built-in theme, and light and dark ones showing calendars as they are.
+    QList<std::pair<QString, ThemeSpec>> themes;
+    for (const QString &id : ThemeLoader::builtInIds())
+        themes.append({id, ThemeLoader::loadBuiltIn(id).theme});
+    for (const QString &id : {u"callie"_s, u"callie-light"_s}) {
+        ThemeSpec raw = ThemeLoader::loadBuiltIn(id).theme;
+        raw.calendar.harmonize = false;
+        themes.append({id + u" unfitted"_s, raw});
+    }
+    for (const auto &[id, theme] : themes) {
+        const Palette palette(theme);
         for (const QString &google : googleColors) {
             const double ratio =
                 color::contrastRatio(palette.onPage(QColor(google)), palette.colors().background);

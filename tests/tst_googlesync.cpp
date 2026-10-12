@@ -167,8 +167,9 @@ void TestGoogleSync::init()
 
 void TestGoogleSync::cleanup()
 {
-    // Each part goes before what it uses, so nothing left running calls into a
-    // part already gone.
+    // Torn down so that nothing left running calls into a part already gone:
+    // the app's parts before what they use, and the fake servers before the
+    // fake Google that answers through them.
     m_sync.reset();
     m_cache.reset();
     m_api.reset();

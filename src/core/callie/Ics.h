@@ -29,6 +29,10 @@ using Group = QList<KCalendarCore::Event::Ptr>;
 /// One VCALENDAR holding `events`, with the time zones they use.
 [[nodiscard]] QByteArray write(const Group &events);
 
+/// `file` with the events of `uid` swapped for `events`, keeping everything
+/// else in it, such as other events and to-dos. Empty when nothing is left.
+[[nodiscard]] QByteArray replaced(QByteArrayView file, const QString &uid, const Group &events);
+
 /// `events` split by UID, keeping their order.
 [[nodiscard]] QList<Group> byUid(const Group &events);
 

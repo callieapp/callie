@@ -175,7 +175,34 @@ bool overlaps(const Event &event, const QDateTime &from, const QDateTime &to)
 /// Puts `start` in the zone `like` is written in, so a series keeps its clock.
 QDateTime inZoneOf(const QDateTime &start, const QDateTime &like)
 {
-    return like.timeSpec() == Qt::TimeZone ? start.toTimeZone(like.timeZone()) : start;
+    switch (like.timeSpec()) {
+    case Qt::TimeZone: return start.toTimeZone(like.timeZone());
+    case Qt::UTC: return start.toUTC();
+    case Qt::LocalTime: return start.toLocalTime();
+    default: return start;
+    }
+}
+
+/// How far a move from one start to another goes on the series' own clock:
+/// days, then time of day, so it keeps its hour across a change of clocks.
+struct Shift
+{
+    int days = 0;
+    qint64 seconds = 0;
+
+    [[nodiscard]] QDateTime apply(const QDateTime &time) const
+    {
+        return time.addDays(days).addSecs(seconds);
+    }
+};
+
+Shift shiftBetween(const QDateTime &from, const QDateTime &to, const QDateTime &like, bool allDay)
+{
+    if (allDay)
+        return {int(from.date().daysTo(to.date())), 0};
+    const QDateTime a = inZoneOf(from, like);
+    const QDateTime b = inZoneOf(to, like);
+    return {int(a.date().daysTo(b.date())), a.time().secsTo(b.time())};
 }
 
 /// Gives `event` new times. All-day ends are the day after the last, as in
@@ -222,27 +249,31 @@ KEvent::Ptr ownCopy(Group &group, const Event &occurrence)
     return copy;
 }
 
-/// Moves a whole series, with what is kept about its occurrences, by `shift`
-/// seconds, giving each occurrence `length` seconds.
-void shiftSeries(Group &group, qint64 shift, std::optional<qint64> length, bool allDay)
+/// Moves a whole series, with what is kept about its occurrences, as one of
+/// them moves from `from` to `to`, giving each occurrence `length` seconds.
+void shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint64 length,
+                 bool allDay)
 {
     const KEvent::Ptr series = master(group);
-    const QDateTime start = series->dtStart().addSecs(shift);
-    const qint64 lasts = length.value_or(allDay ? days(*series) * kDaySecs : seconds(*series));
+    const Shift shift = shiftBetween(from, to, series->dtStart(), allDay);
+    const QDateTime start = shift.apply(series->dtStart());
     if (series->recurs()) {
         QList<QDateTime> excluded;
         for (const QDateTime &date : series->recurrence()->exDateTimes())
-            excluded << date.addSecs(shift);
+            excluded << shift.apply(date);
         series->recurrence()->setExDateTimes(excluded);
         KCalendarCore::DateList excludedDays;
         for (const QDate &date : series->recurrence()->exDates())
-            excludedDays << date.addDays(shift / kDaySecs);
+            excludedDays << date.addDays(shift.days);
         series->recurrence()->setExDates(excludedDays);
     }
-    setTimes(*series, start, start.addSecs(lasts), allDay);
+    // All-day lengths in whole days, which a change of clocks makes 23 or 25 hours.
+    const QDateTime end = allDay ? start.addDays(std::max<qint64>(1, qRound(length / 86400.0)))
+                                 : start.addSecs(length);
+    setTimes(*series, start, end, allDay);
     for (const KEvent::Ptr &event : std::as_const(group)) {
         if (event->hasRecurrenceId())
-            event->setRecurrenceId(event->recurrenceId().addSecs(shift));
+            event->setRecurrenceId(shift.apply(event->recurrenceId()));
     }
 }
 
@@ -341,7 +372,7 @@ bool editSeries(Group &group, const Event &occurrence, const EventEdit &edit, QS
                              : QDateTime(first.date(), times.start.time(), times.start.timeZone());
             setTimes(*series, start, start.addSecs(times.start.secsTo(times.end)), times.allDay);
         } else {
-            shiftSeries(group, occurrence.start.secsTo(times.start), times.start.secsTo(times.end),
+            shiftSeries(group, occurrence.start, times.start, times.start.secsTo(times.end),
                         times.allDay);
         }
     }
@@ -375,6 +406,23 @@ QByteArray write(const Group &events)
     for (const KEvent::Ptr &event : events)
         calendar->addEvent(KEvent::Ptr(event->clone()));
     KCalendarCore::ICalFormat format;
+    return format.toString(calendar).toUtf8();
+}
+
+QByteArray replaced(QByteArrayView file, const QString &uid, const Group &events)
+{
+    const auto calendar = KCalendarCore::MemoryCalendar::Ptr::create(QTimeZone::UTC);
+    KCalendarCore::ICalFormat format;
+    if (!file.isEmpty())
+        (void)format.fromRawString(calendar, file.toByteArray());
+    for (const KCalendarCore::Incidence::Ptr &incidence : calendar->rawIncidences()) {
+        if (incidence->uid() == uid)
+            calendar->deleteIncidence(incidence);
+    }
+    for (const KEvent::Ptr &event : events)
+        calendar->addEvent(KEvent::Ptr(event->clone()));
+    if (calendar->rawIncidences().isEmpty())
+        return {};
     return format.toString(calendar).toUtf8();
 }
 
@@ -477,7 +525,7 @@ std::optional<Changed> move(const Group &group, const Event &occurrence, const Q
     if (!series->recurs()) {
         setTimes(*series, start, end, occurrence.allDay);
     } else if (wholeSeries) {
-        shiftSeries(after, occurrence.start.secsTo(start), start.secsTo(end), occurrence.allDay);
+        shiftSeries(after, occurrence.start, start, start.secsTo(end), occurrence.allDay);
     } else {
         setTimes(*ownCopy(after, occurrence), start, end, occurrence.allDay);
     }
@@ -539,7 +587,7 @@ std::optional<Changed> update(const Group &group, const Event &occurrence, const
         if (rule->duration() > 0)
             rule->setDuration(std::max(1, rule->duration() - before));
     }
-    setTimes(*next, at, at.addSecs(series->allDay() ? days(*series) * kDaySecs : seconds(*series)),
+    setTimes(*next, at, series->allDay() ? at.addDays(days(*series)) : at.addSecs(seconds(*series)),
              series->allDay());
     next->recurrence()->setStartDateTime(next->dtStart(), next->allDay());
     // Occurrences changed on their own go with the series they now fall in.

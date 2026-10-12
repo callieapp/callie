@@ -17,6 +17,7 @@ private Q_SLOTS:
     void writesWhatItReads();
     void removesOneOrAll();
     void movesOneOrAll();
+    void seriesKeepTheirHourAcrossAClockChange();
     void editsThisAndFollowingSplitTheSeries();
     void answersAsTheUser();
 };
@@ -214,6 +215,33 @@ void TestIcs::movesOneOrAll()
     QCOMPARE(summaries(week(all->group)),
              (QStringList{u"Mon 09:30 Standup"_s, u"Tue 09:30 Standup"_s,
                           u"Thu 10:00 Standup, later"_s, u"Fri 09:30 Standup"_s}));
+}
+
+void TestIcs::seriesKeepTheirHourAcrossAClockChange()
+{
+    // Berlin leaves summer time on Sunday 25 October 2026.
+    const ics::Group events = ics::parse(calendar(R"(BEGIN:VEVENT
+UID:planning
+DTSTART;TZID=Europe/Berlin:20261019T090000
+DTEND;TZID=Europe/Berlin:20261019T093000
+RRULE:FREQ=WEEKLY
+SUMMARY:Planning
+END:VEVENT
+)"));
+    const QDateTime monday(QDate(2026, 10, 19), QTime(0, 0), kBerlin);
+    const Event first = ics::expand(events, kHome, monday, monday.addDays(7), kBerlin).value(0);
+    QCOMPARE(first.start.time(), QTime(9, 0));
+
+    // Every one a week later, still at nine on Berlin's clock.
+    QString error;
+    const QDateTime later(QDate(2026, 10, 26), QTime(9, 0), kBerlin);
+    const auto moved = ics::move(events, first, later, later.addSecs(30 * 60), true, &error);
+    QVERIFY2(moved, qPrintable(error));
+    const QList<Event> after =
+        ics::expand(moved->group, kHome, monday, monday.addDays(21), kBerlin);
+    QCOMPARE(after.size(), 2);
+    QCOMPARE(after.first().start, later);
+    QCOMPARE(after.last().start, QDateTime(QDate(2026, 11, 2), QTime(9, 0), kBerlin));
 }
 
 void TestIcs::editsThisAndFollowingSplitTheSeries()

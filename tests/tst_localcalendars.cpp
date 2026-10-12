@@ -18,6 +18,7 @@ private Q_SLOTS:
     void keepsEventsAsFiles();
     void showsChangesMadeElsewhere();
     void sharedFilesKeepTheirOtherEntries();
+    void importingAgainReplaces();
     void removingTrashesTheFolder();
 
 private:
@@ -190,6 +191,26 @@ void TestLocalCalendars::sharedFilesKeepTheirOtherEntries()
     // The to-do is still there, so the file is too.
     QVERIFY(week(local).isEmpty());
     QVERIFY(contents().contains(u"Buy stamps"_s));
+}
+
+void TestLocalCalendars::importingAgainReplaces()
+{
+    LocalCalendars local(root());
+    QString error;
+    const QString id = local.create(u"Home"_s, {}, &error);
+    const auto events = [](const QByteArray &summary) {
+        return ics::parse("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+                          "BEGIN:VEVENT\r\nUID:party\r\nDTSTART:20261006T190000Z\r\n"
+                          "DTEND:20261006T230000Z\r\nSUMMARY:" +
+                          summary + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
+    };
+    QCOMPARE(local.importEvents(id, events("Party"), &error), 1);
+    QCOMPARE(local.importEvents(id, events("Party, moved"), &error), 1);
+    QCOMPARE(week(local).size(), 1);
+    QCOMPARE(week(local).first().summary, u"Party, moved"_s);
+
+    QCOMPARE(local.importEvents(u"local:gone"_s, events("Party"), &error), -1);
+    QVERIFY(!error.isEmpty());
 }
 
 void TestLocalCalendars::removingTrashesTheFolder()

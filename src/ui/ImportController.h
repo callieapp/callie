@@ -12,7 +12,6 @@
 namespace callie {
 
 class LocalCalendars;
-class VdirSource;
 
 /// Adding the events of an .ics file to a calendar: open() reads the file and
 /// shows what is in it, and add() writes it into the calendar picked. Files
@@ -26,7 +25,8 @@ class ImportController : public QObject
     Q_PROPERTY(bool pending READ pending NOTIFY pendingChanged)
     Q_PROPERTY(QString fileName READ fileName NOTIFY pendingChanged)
     Q_PROPERTY(int count READ count NOTIFY pendingChanged)
-    /// {summary, start, allDay} of the first few events, soonest first.
+    /// {summary, start, allDay} of the first few events, soonest first. An
+    /// all-day start is its day's local midnight, as Times::date gives.
     Q_PROPERTY(QVariantList preview READ preview NOTIFY pendingChanged)
     /// {id, name} of each calendar the events can go into; "new" makes one
     /// named after the file.
@@ -37,8 +37,8 @@ public:
     static ImportController *instance();
     static ImportController *create(QQmlEngine *, QJSEngine *);
 
-    /// Where events can go: `local` can also take a calendar made for them.
-    void setUp(LocalCalendars *local, const QList<VdirSource *> &others = {});
+    /// Where events can go, which can also take a calendar made for them.
+    void setUp(LocalCalendars *local);
 
     [[nodiscard]] bool pending() const { return !m_events.isEmpty(); }
     [[nodiscard]] QString fileName() const { return m_fileName; }
@@ -65,10 +65,8 @@ Q_SIGNALS:
 private:
     explicit ImportController(QObject *parent);
     void setError(const QString &error);
-    [[nodiscard]] QList<VdirSource *> sources() const;
 
     QPointer<LocalCalendars> m_local;
-    QList<QPointer<VdirSource>> m_others;
     QString m_fileName;
     ics::Group m_events;
     QString m_error;

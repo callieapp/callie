@@ -104,10 +104,10 @@ int main(int argc, char *argv[])
                                   QStringLiteral("Load QML from the source tree and reload it on "
                                                  "save. Development builds only."));
     parser.addOption(liveOption);
+#endif
     parser.addPositionalArgument(QStringLiteral("files"),
                                  QStringLiteral("Calendar files (.ics) to add events from."),
                                  QStringLiteral("[file.ics...]"));
-#endif
     parser.process(app);
     if (parser.isSet(nowOption)) {
         const QDateTime now = QDateTime::fromString(parser.value(nowOption), Qt::ISODate);

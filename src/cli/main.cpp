@@ -1,5 +1,6 @@
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/CombinedSource.h"
 #include "callie/ContactBook.h"
 #include "callie/Diagnostics.h"
 #include "callie/EventModel.h"
@@ -496,6 +497,7 @@ struct Backend
     std::unique_ptr<QNetworkAccessManager> network;
     std::unique_ptr<GoogleCalendarApi> api;
     std::unique_ptr<GoogleSync> sync;
+    std::unique_ptr<GoogleSource> google;
     std::unique_ptr<CalendarSource> source;
 };
 
@@ -545,7 +547,10 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
             std::make_unique<GoogleSync>(*backend->provider, *backend->api, *backend->cache);
         google->setSync(backend->sync.get());
     }
-    backend->source = std::move(google);
+    backend->google = std::move(google);
+    auto combined = std::make_unique<CombinedSource>();
+    combined->setSources({backend->google.get()});
+    backend->source = std::move(combined);
     return backend;
 }
 

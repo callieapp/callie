@@ -28,6 +28,7 @@ private Q_SLOTS:
     void busyOrSignedOutServersKeepTheChange();
     void aChangeMadeWhileOneGoesUpGoesToo();
     void removingAnAccountStopsItsSync();
+    void aCalendarGoneKeepsChangesNotSent();
 
 private:
     void sync();
@@ -320,6 +321,43 @@ void TestCalDavSource::removingAnAccountStopsItsSync()
     QTest::qWait(300);
     QVERIFY(m_source->calendars().isEmpty());
     QVERIFY(QDir(m_dir->path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
+}
+
+void TestCalDavSource::aCalendarGoneKeepsChangesNotSent()
+{
+    sync();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    const auto up = m_server->server.replier;
+    // A change that cannot go yet, then the calendar is deleted on the server.
+    m_server->server.replier = [up](const FakeHttpServer::Request &request) {
+        if (request.method == "PUT")
+            return FakeHttpServer::Reply{503, "", {}, "text/plain"};
+        return up(request);
+    };
+    const Event lunch = week().first();
+    QVERIFY(outcome([&](auto done) {
+                m_source->moveEvent(lunch, lunch.start.addSecs(3600), lunch.end.addSecs(3600),
+                                    false, done);
+            }).isEmpty());
+    QVERIFY(synced.wait(5000));
+    m_server->server.replier = up;
+    m_server->calendars.remove(FakeCalDavServer::calendarPath("work"));
+    qsizetype puts = 0;
+    for (const auto &request : m_server->server.requests)
+        puts += request.method == "PUT" ? 1 : 0;
+    sync();
+
+    // Kept as made, read-only, never sent anywhere, and the user is told.
+    QCOMPARE(week().first().start.time(), QTime(13, 0));
+    QVERIFY(!m_source->calendars().isEmpty());
+    for (const CalendarInfo &calendar : m_source->calendars())
+        QVERIFY(!calendar.writable);
+    qsizetype after = 0;
+    for (const auto &request : m_server->server.requests)
+        after += request.method == "PUT" ? 1 : 0;
+    QCOMPARE(after, puts);
+    QVERIFY2(m_source->lastError().contains(u"gone from the server"_s),
+             qPrintable(m_source->lastError()));
 }
 
 QTEST_MAIN(TestCalDavSource)

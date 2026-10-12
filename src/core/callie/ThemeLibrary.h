@@ -37,7 +37,8 @@ public:
     /// was. Fails unless `path` is in the folder.
     bool setColor(const QString &path, const QString &key, const QColor &color);
 
-    /// Copies a theme file in after checking that it loads; returns its new path.
+    /// Copies a theme file in after checking that it loads, or makes one from a
+    /// base16 scheme (.yaml or .yml); returns its new path.
     QString importTheme(const QString &source);
 
     /// Writes a theme, built-in or not, to `destination`.

@@ -814,7 +814,7 @@ Popup {
     FileDialog {
         id: importDialog
         title: qsTr("Import a theme")
-        nameFilters: [qsTr("Callie themes (*.toml)")]
+        nameFilters: [qsTr("Callie and base16 themes (*.toml *.yaml *.yml)")]
         onAccepted: Themes.importFrom(selectedFile)
     }
 

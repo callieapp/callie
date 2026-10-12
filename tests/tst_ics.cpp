@@ -316,7 +316,7 @@ void TestIcs::monthlySeriesFollowTheirNewDay()
             return QStringList{error};
         const QDateTime month(QDate(first.year(), first.month(), 1), QTime(0, 0), kBerlin);
         for (const Event &event :
-             ics::expand(moved->group, kHome, month, month.addMonths(3), kBerlin))
+             ics::expand(moved->group, kHome, month, month.addMonths(4), kBerlin))
             days << event.start.date().toString(Qt::ISODate);
         return days;
     };
@@ -324,11 +324,12 @@ void TestIcs::monthlySeriesFollowTheirNewDay()
     // second Wednesday from then on, and before.
     QCOMPARE(movedTo("FREQ=MONTHLY;BYDAY=2MO", QDate(2026, 9, 14), QDate(2026, 10, 12),
                      QDate(2026, 10, 14)),
-             (QStringList{u"2026-09-09"_s, u"2026-10-14"_s, u"2026-11-11"_s}));
-    // The 28th, moved to 2 November: the 2nd.
-    QCOMPARE(movedTo("FREQ=MONTHLY;BYMONTHDAY=28", QDate(2026, 10, 28), QDate(2026, 10, 28),
-                     QDate(2026, 11, 2)),
-             (QStringList{u"2026-10-02"_s, u"2026-11-02"_s, u"2026-12-02"_s}));
+             (QStringList{u"2026-09-09"_s, u"2026-10-14"_s, u"2026-11-11"_s, u"2026-12-09"_s}));
+    // The 28th, its first moved to 2 November: the 2nd, from November, with
+    // the month it skipped skipped still.
+    QCOMPARE(movedTo("FREQ=MONTHLY;BYMONTHDAY=28\r\nEXDATE;VALUE=DATE:20261128",
+                     QDate(2026, 10, 28), QDate(2026, 10, 28), QDate(2026, 11, 2)),
+             (QStringList{u"2026-11-02"_s, u"2027-01-02"_s}));
     // What cannot be carried over is refused, not left to repeat elsewhere.
     const QStringList ordinals = movedTo("FREQ=MONTHLY;BYDAY=1MO,3MO", QDate(2026, 10, 5),
                                          QDate(2026, 10, 5), QDate(2026, 10, 6));
@@ -336,6 +337,21 @@ void TestIcs::monthlySeriesFollowTheirNewDay()
     const QStringList yearly = movedTo("FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=28", QDate(2026, 10, 28),
                                        QDate(2026, 10, 28), QDate(2026, 11, 2));
     QVERIFY2(yearly.value(0).contains(u"cannot move"_s), qPrintable(yearly.join(u' ')));
+
+    // Given a repeat of its own at the same time, the old rule is no matter.
+    const ics::Group twice =
+        ics::parse(calendar("BEGIN:VEVENT\r\nUID:t\r\nDTSTART;VALUE=DATE:20261005\r\n"
+                            "RRULE:FREQ=MONTHLY;BYDAY=1MO,3MO\r\nSUMMARY:Twice\r\nEND:VEVENT\r\n"));
+    const QDateTime monday(QDate(2026, 10, 5), QTime(0, 0), kBerlin);
+    const Event first = ics::expand(twice, kHome, monday, monday.addDays(1), kBerlin).value(0);
+    EventEdit edit;
+    edit.start = monday.addDays(1);
+    edit.end = monday.addDays(2);
+    edit.recurrence = QStringList{u"RRULE:FREQ=WEEKLY;BYDAY=TU"_s};
+    QString error;
+    const auto weekly = ics::update(twice, first, edit, EditScope::AllEvents, {}, &error);
+    QVERIFY2(weekly, qPrintable(error));
+    QCOMPARE(ics::expand(weekly->group, kHome, monday, monday.addDays(14), kBerlin).size(), 2);
 }
 
 void TestIcs::editsThisAndFollowingSplitTheSeries()

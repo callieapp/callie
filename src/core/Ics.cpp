@@ -267,16 +267,29 @@ void shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint6
             excludedDays << date.addDays(shift.days);
         series->recurrence()->setExDates(excludedDays);
         // A rule's own days move too, or a series moved to Wednesday would
-        // carry on on Mondays.
+        // carry on on Mondays. An ordinal or a single day of the month is read
+        // again from the new start, which may be in another week or month.
+        const QDate day = start.date();
         for (KCalendarCore::RecurrenceRule *rule : series->recurrence()->rRules()) {
             QList<KCalendarCore::RecurrenceRule::WDayPos> weekdays = rule->byDays();
-            for (KCalendarCore::RecurrenceRule::WDayPos &weekday : weekdays)
-                weekday.setDay(short(((weekday.day() - 1 + shift.days) % 7 + 7) % 7 + 1));
+            for (KCalendarCore::RecurrenceRule::WDayPos &weekday : weekdays) {
+                if (weekday.pos() == 0) {
+                    weekday.setDay(short(((weekday.day() - 1 + shift.days) % 7 + 7) % 7 + 1));
+                    continue;
+                }
+                weekday.setDay(short(day.dayOfWeek()));
+                weekday.setPos(weekday.pos() > 0 ? (day.day() - 1) / 7 + 1
+                                                 : -((day.daysInMonth() - day.day()) / 7 + 1));
+            }
             rule->setByDays(weekdays);
             QList<int> monthDays = rule->byMonthDays();
-            for (int &day : monthDays) {
-                if (day > 0 && day + shift.days >= 1 && day + shift.days <= 31)
-                    day += shift.days;
+            if (monthDays.size() == 1) {
+                monthDays = {monthDays.first() > 0 ? day.day() : day.day() - day.daysInMonth() - 1};
+            } else {
+                for (int &each : monthDays) {
+                    if (each > 0 && each + shift.days >= 1 && each + shift.days <= 31)
+                        each += shift.days;
+                }
             }
             rule->setByMonthDays(monthDays);
         }

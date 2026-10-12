@@ -17,15 +17,17 @@ public:
     SingleInstance(const QString &service, const QDBusConnection &bus, QObject *parent = nullptr);
 
     /// Takes the bus name. When another instance holds it, asks that one to
-    /// activate and returns false. Without a session bus there is nobody to
-    /// ask, so this instance runs.
-    bool claim();
+    /// activate, or to open `uris` when there are any, and returns false.
+    /// Without a session bus there is nobody to ask, so this instance runs.
+    bool claim(const QStringList &uris = {});
 
 public Q_SLOTS:
     Q_SCRIPTABLE void Activate();
+    Q_SCRIPTABLE void Open(const QStringList &uris);
 
 Q_SIGNALS:
     void activated();
+    void opened(const QStringList &uris);
 
 private:
     QString m_service;

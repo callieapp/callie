@@ -292,6 +292,31 @@ void VdirSource::apply(const Event &event, const Created &done, const Change &ch
     done({});
 }
 
+int VdirSource::importEvents(const QString &calendarId, const ics::Group &events, QString *error)
+{
+    const Folder *where = folder(calendarId);
+    if (!where || !where->writable) {
+        *error = tr("That calendar cannot take new events.");
+        return -1;
+    }
+    if (!QDir().mkpath(where->path)) {
+        *error = tr("Callie could not create %1.").arg(where->path);
+        return -1;
+    }
+    const Folder target = *where;
+    const QHash<QString, QString> files = read(target).files;
+    int written = 0;
+    for (const ics::Group &group : ics::byUid(events)) {
+        const QString uid = group.first()->uid();
+        if (!save(target, files.value(uid, fileNameFor(uid)), uid, group, error))
+            return -1;
+        ++written;
+    }
+    if (written > 0)
+        Q_EMIT changed();
+    return written;
+}
+
 void VdirSource::createEvent(const EventDraft &draft, Created done)
 {
     const Folder *where = folder(draft.calendarId);

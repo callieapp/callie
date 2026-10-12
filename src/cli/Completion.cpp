@@ -2,6 +2,9 @@
 
 #include "callie/Repeat.h"
 
+#include <QDir>
+#include <QFileInfo>
+
 using namespace Qt::StringLiterals;
 
 namespace callie::cli {
@@ -106,12 +109,32 @@ QList<Candidate> Completion::complete(const QStringList &words) const
             if (named && named->takesValue)
                 ++i;
         }
-        found = positional.isEmpty() ? m_commands : argument(positional);
+        found = positional.isEmpty()                     ? m_commands
+                : positional == QStringList{u"import"_s} ? calendarFiles(typed)
+                                                         : argument(positional);
     }
 
     found.removeIf([&typed](const Candidate &c) { return !c.value.startsWith(typed); });
     for (Candidate &candidate : found)
         candidate.value.prepend(prefix);
+    return found;
+}
+
+QList<Candidate> Completion::calendarFiles(const QString &typed)
+{
+    // The folder as typed, so the candidates start with what is there.
+    const QString folder = typed.left(typed.lastIndexOf(u'/') + 1);
+    QString path = folder.isEmpty() ? u"."_s : folder;
+    if (path == u"~/" || path.startsWith(u"~/"_s))
+        path.replace(0, 1, QDir::homePath());
+    QList<Candidate> found;
+    for (const QFileInfo &entry :
+         QDir(path).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Name)) {
+        if (entry.isDir())
+            found.append({folder + entry.fileName() + u'/', {}});
+        else if (entry.suffix().compare(u"ics"_s, Qt::CaseInsensitive) == 0)
+            found.append({folder + entry.fileName(), {}});
+    }
     return found;
 }
 

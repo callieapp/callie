@@ -61,6 +61,10 @@ Calendars can also live on this computer alone: add one in Settings, under Accou
 other apps can read them and a folder put there by hand shows up as a calendar. Removing one moves
 its folder to the trash.
 
+Open an `.ics` file with Callie, or drop one on its window, to add its events to one of these
+calendars or to a new one named after the file. Adding the same file again updates its events
+rather than repeating them.
+
 Pick a theme in Settings, under Theme: Callie, Callie Light, Paper, Minimal, Minimal Dark,
 Tomorrow or Tomorrow Night. Customize colors copies the theme into
 `$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
@@ -92,6 +96,7 @@ callie accounts add google               # sign in with Google in your browser
 callie accounts remove google you@example.com
 callie calendars                         # calendars in each account, tab-separated
 callie calendars new "Book club"         # a calendar on this computer; remove takes it away
+callie import party.ics                  # its events into a calendar here; --calendar picks one
 callie calendars rename Focus "Deep work" # also hide, show, color <calendar> <#rrggbb>, reset
 callie accounts rename you@example.com Work
 callie settings                          # every setting; callie settings viMode true changes one

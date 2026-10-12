@@ -975,6 +975,44 @@ ApplicationWindow {
         source: window.source
     }
 
+    // ---- Opening .ics files -------------------------------------------------------
+    LazyPopup {
+        id: importDialog
+        sourceComponent: ImportDialog {}
+    }
+
+    Connections {
+        target: Importer
+        function onPendingChanged() {
+            if (Importer.pending)
+                importDialog.open()
+            else
+                importDialog.close()
+        }
+        function onAdded(count, calendarName) {
+            undoToast.show("", count === 1 ? qsTr("Added 1 event to %1").arg(calendarName) : qsTr(
+                                                 "Added %1 events to %2").arg(count).arg(
+                                                 calendarName))
+        }
+    }
+
+    /// Opens the .ics files among `urls`, from a drop or the file manager.
+    function openFiles(urls) {
+        if (!Importer.open(urls) && Importer.error !== "")
+            undoToast.show("", Importer.error)
+    }
+
+    DropArea {
+        anchors.fill: parent
+        onEntered: drag => drag.accepted = drag.hasUrls && drag.urls.some(url => Importer.accepts(
+                                                                                     url))
+
+        onDropped: drop => {
+            window.openFiles(drop.urls)
+            drop.accept()
+        }
+    }
+
     Connections {
         target: window.source
         function onChangeMade(id, what) {

@@ -14,6 +14,8 @@ qt_add_qml_module(callieui
         AccountsController.cpp
         LocalController.h
         LocalController.cpp
+        ImportController.h
+        ImportController.cpp
         Clock.h
         Clock.cpp
         Composer.h
@@ -91,6 +93,7 @@ qt_add_qml_module(callieui
         Dropdown.qml
         PickerButton.qml
         LocalSection.qml
+        ImportDialog.qml
         DatePicker.qml
         CustomRepeat.qml
         FormRow.qml

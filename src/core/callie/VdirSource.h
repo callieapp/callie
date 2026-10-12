@@ -55,6 +55,11 @@ public:
     void updateEvent(const Event &event, const EventEdit &edit, EditScope scope,
                      Created done) override;
 
+    /// Writes `events` into the calendar, one file per UID. An event already
+    /// there, as from importing the same file twice, is replaced. Returns how
+    /// many events it wrote, or -1 with `error` set.
+    int importEvents(const QString &calendarId, const ics::Group &events, QString *error);
+
     /// The colors calendars without a "color" file are given.
     [[nodiscard]] static QList<QColor> palette();
     /// The color a calendar without a "color" file is shown in.

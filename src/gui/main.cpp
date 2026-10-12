@@ -1,6 +1,7 @@
 #include "AccountsController.h"
 #include "Clock.h"
 #include "EventModelForeign.h"
+#include "ImportController.h"
 #include "LiveQml.h"
 #include "LocalController.h"
 #include "NotificationServer.h"
@@ -33,6 +34,7 @@
 #include "callie/UpdateCheck.h"
 
 #include <QCommandLineParser>
+#include <QDir>
 #include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QIcon>
@@ -43,6 +45,7 @@
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QTimer>
+#include <QUrl>
 
 #include <chrono>
 #include <optional>
@@ -101,6 +104,9 @@ int main(int argc, char *argv[])
                                   QStringLiteral("Load QML from the source tree and reload it on "
                                                  "save. Development builds only."));
     parser.addOption(liveOption);
+    parser.addPositionalArgument(QStringLiteral("files"),
+                                 QStringLiteral("Calendar files (.ics) to add events from."),
+                                 QStringLiteral("[file.ics...]"));
 #endif
     parser.process(app);
     if (parser.isSet(nowOption)) {
@@ -141,7 +147,12 @@ int main(int argc, char *argv[])
     const QString screenshot = parser.value(screenshotOption);
     const bool standalone = useSample || !screenshot.isEmpty();
     callie::SingleInstance single(callie::identity::appId(), QDBusConnection::sessionBus());
-    if (!standalone && !single.claim())
+    // As a file manager passes them: paths, or file:// URLs.
+    QStringList opened;
+    for (const QString &argument : parser.positionalArguments())
+        opened
+            << QUrl::fromUserInput(argument, QDir::currentPath(), QUrl::AssumeLocalFile).toString();
+    if (!standalone && !single.claim(opened))
         return 0;
 
     // Screenshots show the defaults, whatever this user has chosen.
@@ -304,6 +315,7 @@ int main(int argc, char *argv[])
     }
     callie::AccountsController::instance()->setUp(accountSetup);
     callie::LocalController::instance()->setUp(local ? &*local : nullptr);
+    callie::ImportController::instance()->setUp(local ? &*local : nullptr);
 
     callie::UpdateCheck updates;
     QQmlApplicationEngine engine;
@@ -367,6 +379,18 @@ int main(int argc, char *argv[])
         }
     };
     QObject::connect(&single, &callie::SingleInstance::activated, &engine, showWindow);
+    // Files opened from the file manager, now or by a later launch.
+    const auto openFiles = [&engine](const QStringList &uris) {
+        if (engine.rootObjects().isEmpty() || uris.isEmpty())
+            return;
+        QVariantList urls;
+        for (const QString &uri : uris)
+            urls << QUrl(uri);
+        QMetaObject::invokeMethod(engine.rootObjects().first(), "openFiles",
+                                  Q_ARG(QVariant, QVariant(urls)));
+    };
+    QObject::connect(&single, &callie::SingleInstance::opened, &engine, openFiles);
+    QTimer::singleShot(0, &engine, [openFiles, opened] { openFiles(opened); });
 
     // While Callie keeps running without its window, the tray shows it is there.
     callie::TrayItem tray(QDBusConnection::sessionBus());

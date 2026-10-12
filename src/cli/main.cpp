@@ -10,6 +10,7 @@
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/Ics.h"
 #include "callie/LocalCalendars.h"
 #include "callie/LogFile.h"
 #include "callie/QueuedSource.h"
@@ -34,6 +35,7 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QFileInfo>
 #include <QLocale>
 #include <QNetworkAccessManager>
 #include <QProcess>
@@ -100,6 +102,7 @@ const QList<std::pair<QString, QString>> kCommands = {
     {u"invites"_s, u"Invitations waiting for an answer"_s},
     {u"contacts"_s, u"People to invite whose name or address matches"_s},
     {u"add"_s, u"Create an event: callie add \"Lunch tomorrow 12-1pm\""_s},
+    {u"import"_s, u"Add the events of an .ics file to a calendar on this computer"_s},
     {u"edit"_s, u"Change an event: callie edit <id> --start \"friday 3pm\""_s},
     {u"delete"_s, u"Delete an event"_s},
     {u"respond"_s, u"Answer an invitation: callie respond <id> yes|maybe|no"_s},
@@ -469,6 +472,63 @@ int runLocalCalendars(const QString &action, const QString &name)
     return 0;
 }
 
+/// `callie import <file.ics>`: into `calendar`, by id or name; else the only
+/// calendar on this computer, or a new one named after the file.
+int runImport(const QString &path, const QString &calendar)
+{
+    QFile file(path);
+    if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) {
+        err << (path.isEmpty() ? QObject::tr("usage: callie import <file.ics> [--calendar <name>]")
+                               : QStringLiteral("callie: %1: %2").arg(path, file.errorString()))
+            << "\n";
+        return path.isEmpty() ? 2 : 1;
+    }
+    QString error;
+    const ics::Group events = ics::parse(file.readAll(), &error);
+    if (events.isEmpty()) {
+        err << QStringLiteral("callie: %1: %2\n")
+                   .arg(path, error.isEmpty() ? QObject::tr("no events in it") : error);
+        return 1;
+    }
+    LocalCalendars local(LocalCalendars::defaultRoot());
+    const QList<CalendarInfo> calendars = local.calendars();
+    QList<CalendarInfo> found;
+    for (const CalendarInfo &each : calendars) {
+        if (calendar.isEmpty() || each.id == calendar ||
+            each.displayName.compare(calendar, Qt::CaseInsensitive) == 0)
+            found.append(each);
+    }
+    if (!calendar.isEmpty() && found.isEmpty()) {
+        err << QObject::tr("callie: no calendar on this computer is called %1").arg(calendar)
+            << "\n";
+        return 1;
+    }
+    if (found.size() > 1) {
+        QStringList names;
+        for (const CalendarInfo &each : found)
+            names << each.displayName;
+        err << QObject::tr("callie: which calendar? Give one with --calendar: %1")
+                   .arg(names.join(u", "_s))
+            << "\n";
+        return 2;
+    }
+    QString id = found.isEmpty() ? QString() : found.first().id;
+    QString name = found.isEmpty() ? QFileInfo(path).completeBaseName() : found.first().displayName;
+    if (id.isEmpty() && (id = local.create(name, {}, &error)).isEmpty()) {
+        err << QStringLiteral("callie: %1\n").arg(error);
+        return 1;
+    }
+    const int added = local.importEvents(id, events, &error);
+    if (added < 0) {
+        err << QStringLiteral("callie: %1\n").arg(error);
+        return 1;
+    }
+    out << (added == 1 ? QObject::tr("Added 1 event to %1.").arg(name)
+                       : QObject::tr("Added %1 events to %2.").arg(added).arg(name))
+        << "\n";
+    return 0;
+}
+
 /// One line per calendar, tab-separated: account, calendar id, name.
 int runCalendars(QCoreApplication &app)
 {
@@ -820,7 +880,7 @@ int main(int argc, char *argv[])
             {{u"json"_s},
              u"With agenda, search, invites and contacts: print JSON, with ids for other commands."_s,
              {}},
-            {{u"calendar"_s}, u"With add: the calendar, by name or id."_s, u"name"_s},
+            {{u"calendar"_s}, u"With add or import: the calendar, by name or id."_s, u"name"_s},
             {{u"scope"_s},
              u"With edit, delete and respond on a repeating event: this, following or all."_s,
              u"which"_s},
@@ -998,6 +1058,13 @@ int main(int argc, char *argv[])
         return result ? *result : app.exec();
     }
 
+    // Made-up data has nowhere to put real events.
+    if (command == QLatin1String("import") && parser.isSet(sampleOption)) {
+        err << QObject::tr("callie: import does not work with --sample") << "\n";
+        return 2;
+    }
+    if (command == QLatin1String("import"))
+        return runImport(args.value(1), parser.value(u"calendar"_s));
     if (command == QLatin1String("calendars") &&
         (args.value(1) == u"new" || args.value(1) == u"remove"))
         return runLocalCalendars(args.value(1), args.mid(2).join(u' '));

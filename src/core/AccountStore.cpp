@@ -70,8 +70,13 @@ bool AccountStore::add(const Account &account)
     if (!loaded)
         return false;
     QList<Account> &list = *loaded;
-    if (list.contains(account))
-        return true;
+    // Listed already: where it is and who signs in may have changed.
+    if (const qsizetype at = list.indexOf(account); at >= 0) {
+        if (list.at(at).server == account.server && list.at(at).user == account.user)
+            return true;
+        list[at] = account;
+        return save(list);
+    }
     list.append(account);
     return save(list);
 }

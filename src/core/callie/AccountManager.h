@@ -45,8 +45,9 @@ public:
     /// The id a CalDAV account has: the user name, with the host when it has no @.
     [[nodiscard]] static QString calDavId(const QUrl &server, const QString &user);
 
-    /// Forgets the token, then cached events, then the account, so a failed
-    /// step leaves the account listed for another try. Emits removed or failed once.
+    /// Forgets the token, then cached events or a CalDAV account's copies,
+    /// then the account, so a failed step leaves the account listed for
+    /// another try. Emits removed or failed once.
     void remove(const Account &account);
 
 Q_SIGNALS:

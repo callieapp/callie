@@ -107,6 +107,9 @@ private Q_SLOTS:
     void calDavChecksThePasswordFirst();
     void calDavSignInAgainKeepsTheListing();
     void removingCalDavForgetsItsCalendars();
+    void calDavFailuresStoreNothing();
+    void calDavSignInToAnotherServerMovesIt();
+    void calDavCopiesThatStayKeepTheAccount();
 
 private:
     void corruptAccountList();
@@ -406,6 +409,85 @@ void TestAccountManager::removingCalDavForgetsItsCalendars()
     m_manager->remove(account);
     QVERIFY(removed.wait());
     QVERIFY(!QDir(m_dir->filePath(u"caldav/me@example.com"_s)).exists());
+}
+
+void TestAccountManager::calDavFailuresStoreNothing()
+{
+    QNetworkAccessManager network;
+    CalDavClient client(&network);
+    QSignalSpy failed(m_manager.get(), &AccountManager::failed);
+    QList<Account> accounts;
+
+    // A server with no calendars for the account.
+    FakeCalDavServer empty;
+    m_manager->connectCalDav(client, empty.url(), u"me"_s, u"app-password"_s);
+    QVERIFY(failed.wait());
+    QVERIFY(failed.last().first().toString().contains(u"no calendars"_s));
+
+    FakeCalDavServer server;
+    server.addCalendar("work", "Work");
+    // A keyring that will not take the password.
+    m_tokens->failWith = u"locked"_s;
+    m_manager->connectCalDav(client, server.url(), u"me"_s, u"app-password"_s);
+    QVERIFY(failed.wait());
+    QVERIFY(failed.last().first().toString().contains(u"locked"_s));
+    QVERIFY(m_store->load(accounts));
+    QVERIFY(accounts.isEmpty());
+    m_tokens->failWith.clear();
+
+    // A list that cannot be written: the password stored goes again.
+    const QString blocker = m_dir->filePath(u"blocker"_s);
+    QFile file(blocker);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.close();
+    m_store = std::make_unique<AccountStore>(blocker + u"/accounts.json"_s);
+    m_tokens = std::make_unique<FakeTokenStore>(*m_store);
+    m_manager = std::make_unique<AccountManager>(*m_tokens, *m_store);
+    QSignalSpy listFailed(m_manager.get(), &AccountManager::failed);
+    m_manager->connectCalDav(client, server.url(), u"me"_s, u"app-password"_s);
+    QVERIFY(listFailed.wait());
+    QTRY_VERIFY(m_tokens->secrets.isEmpty());
+}
+
+void TestAccountManager::calDavSignInToAnotherServerMovesIt()
+{
+    FakeCalDavServer first;
+    first.addCalendar("work", "Work");
+    FakeCalDavServer second;
+    second.addCalendar("home", "Home");
+    QNetworkAccessManager network;
+    CalDavClient client(&network);
+    QSignalSpy connected(m_manager.get(), &AccountManager::connected);
+    m_manager->connectCalDav(client, first.url(), u"me"_s, u"app-password"_s);
+    QVERIFY(connected.wait());
+    // Same user and host, another server: the account follows it.
+    m_manager->connectCalDav(client, second.url(), u"me"_s, u"app-password"_s);
+    QVERIFY(connected.wait());
+    QList<Account> accounts;
+    QVERIFY(m_store->load(accounts));
+    QCOMPARE(accounts.size(), 1);
+    QCOMPARE(accounts.first().server, second.url().toString());
+}
+
+void TestAccountManager::calDavCopiesThatStayKeepTheAccount()
+{
+    const Account account{u"caldav"_s, u"me@example.com"_s, u"https://dav.example.com/"_s, u"me"_s};
+    QVERIFY(m_store->add(account));
+    m_tokens->secrets.insert(account.id, u"app-password"_s);
+    const QString root = m_dir->filePath(u"caldav"_s);
+    QVERIFY(QDir().mkpath(root + u"/me@example.com/work"_s));
+    // Copies that cannot be deleted, as in a folder made read-only.
+    QFile::setPermissions(root, QFileDevice::ReadOwner | QFileDevice::ExeOwner);
+    CalDavSource caldav(root, nullptr, nullptr);
+    m_manager->setCalDav(&caldav);
+    QSignalSpy failed(m_manager.get(), &AccountManager::failed);
+    m_manager->remove(account);
+    QVERIFY(failed.wait());
+    QFile::setPermissions(root,
+                          QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+    QList<Account> accounts;
+    QVERIFY(m_store->load(accounts));
+    QCOMPARE(accounts.size(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestAccountManager)

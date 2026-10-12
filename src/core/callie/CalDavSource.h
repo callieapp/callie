@@ -91,6 +91,8 @@ private:
     /// What is kept about an account beside its calendars.
     struct AccountState
     {
+        /// The server the copies came from.
+        QString server;
         QUrl home;
         QStringList addresses;
         QDateTime synced;

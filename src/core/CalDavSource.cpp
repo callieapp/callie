@@ -209,6 +209,12 @@ void CalDavSource::sync(const Account &account)
         client->setCredentials(account.user, password);
         const QString path = self->accountPath(account.id);
         AccountState state = readAccount(path);
+        // Signed in again to another server: the copies are of the old one.
+        if (!state.server.isEmpty() && state.server != account.server.toString()) {
+            QDir(path).removeRecursively();
+            self->scan();
+            state = {};
+        }
         const auto listed = [self, account](const QList<DavCalendar> &calendars,
                                             const DavError &error) {
             if (!self)
@@ -238,6 +244,7 @@ void CalDavSource::sync(const Account &account)
                 return;
             }
             AccountState state = readAccount(path);
+            state.server = account.server.toString();
             state.home = found.home;
             state.addresses = found.addresses;
             QDir().mkpath(path);
@@ -701,6 +708,7 @@ CalDavSource::AccountState CalDavSource::readAccount(const QString &path)
 {
     const QJsonObject json = readJson(path + u'/' + kAccountFile);
     AccountState state;
+    state.server = json[u"server"].toString();
     state.home = QUrl(json[u"home"].toString());
     for (const QJsonValue &address : json[u"addresses"].toArray())
         state.addresses << address.toString();
@@ -712,7 +720,8 @@ CalDavSource::AccountState CalDavSource::readAccount(const QString &path)
 void CalDavSource::writeAccount(const QString &path, const AccountState &state)
 {
     writeJson(path + u'/' + kAccountFile,
-              {{u"home"_s, state.home.toString()},
+              {{u"server"_s, state.server},
+               {u"home"_s, state.home.toString()},
                {u"addresses"_s, QJsonArray::fromStringList(state.addresses)},
                {u"synced"_s, state.synced.toString(Qt::ISODate)},
                {u"error"_s, state.error}});

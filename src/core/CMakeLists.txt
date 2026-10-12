@@ -77,6 +77,8 @@ add_library(calliecore STATIC
     Autostart.cpp
     callie/LookedSource.h
     LookedSource.cpp
+    callie/CombinedSource.h
+    CombinedSource.cpp
     callie/Outcome.h
     callie/Releases.h
     Releases.cpp

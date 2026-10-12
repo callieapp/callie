@@ -14,6 +14,7 @@
 
 #include "callie/AccountStore.h"
 #include "callie/Autostart.h"
+#include "callie/CombinedSource.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSource.h"
@@ -200,6 +201,9 @@ int main(int argc, char *argv[])
                      [&settings](const callie::Account &, const QHash<QString, QString> &google) {
                          settings.seedFromGoogle(google);
                      });
+    // Every account and calendar, shown together.
+    callie::CombinedSource combined;
+    combined.setSources({&google});
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
 
@@ -210,9 +214,9 @@ int main(int argc, char *argv[])
     if (useSample)
         queued.emplace(sample, QString());
     else if (!standalone)
-        queued.emplace(google, callie::QueuedSource::defaultPath());
+        queued.emplace(combined, callie::QueuedSource::defaultPath());
     callie::CalendarSource *backend =
-        queued ? static_cast<callie::CalendarSource *>(&*queued) : &google;
+        queued ? static_cast<callie::CalendarSource *>(&*queued) : &combined;
     // Everything reads through the user's own names and colors for calendars.
     callie::LookedSource looked(*backend, settings);
     callie::CalendarSource *source = &looked;

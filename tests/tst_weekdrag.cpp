@@ -27,6 +27,7 @@ private Q_SLOTS:
     void dragMovesStretchesAndClickStillOpens();
     void allDayAndMonthDragsMoveByDays();
     void heldAtAnEdgeCarriesToOtherDays();
+    void hoursFitTheWorkingDay();
 };
 
 /// The visible event block showing `summary`.
@@ -52,6 +53,19 @@ static QQuickItem *findItem(QQuickItem *item, QLatin1StringView type,
         if (QQuickItem *found = findItem(child, type, match))
             return found;
     return nullptr;
+}
+
+/// Scrolls the week to the end of the day, where the evening's events are,
+/// and gives how tall an hour is drawn.
+static int showEvening(QQuickWindow *window)
+{
+    QQuickItem *week =
+        findItem(window->contentItem(), "WeekView"_L1, [](QQuickItem *) { return true; });
+    if (!week)
+        return 0;
+    QMetaObject::invokeMethod(week, "scroll", Q_ARG(QVariant, u"bottom"_s));
+    QTest::qWait(100);
+    return week->property("hourHeight").toInt();
 }
 
 static Event named(SampleSource &source, const QString &summary)
@@ -104,10 +118,11 @@ void TestWeekDrag::dragMovesStretchesAndClickStillOpens()
     engine.loadFromModule("Callie.Ui", "Main");
     QVERIFY(!engine.rootObjects().isEmpty());
     auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
-    // Tall enough that the evening's events and their bottom edges are on screen.
     window->resize(1280, 1300);
     QVERIFY(QTest::qWaitForWindowExposed(window));
     QTest::qWait(500);
+    const int hour = showEvening(window);
+    QVERIFY(hour > 0);
 
     const Event before = climbing(source);
     QQuickItem *block = nullptr;
@@ -115,7 +130,6 @@ void TestWeekDrag::dragMovesStretchesAndClickStillOpens()
     const QPoint center = block->mapToScene(QPointF(block->width() / 2, 10)).toPoint();
 
     // One hour later and one day earlier.
-    const int hour = ThemeController::instance()->hourHeight();
     drag(window, center, center + QPoint(-int(block->width()) - 10, hour));
     const Event moved = climbing(source);
     QCOMPARE(moved.start, before.start.addDays(-1).addSecs(3600));
@@ -253,6 +267,8 @@ void TestWeekDrag::heldAtAnEdgeCarriesToOtherDays()
         return findItem(window->contentItem(), "WeekView"_L1, [](QQuickItem *) { return true; });
     };
     QVERIFY(week());
+    const int hour = showEvening(window);
+    QVERIFY(hour > 0);
     const auto byId = [&source](const QString &id) {
         const QDateTime from(QDate(2026, 9, 28), QTime(0, 0));
         for (const Event &e :
@@ -270,7 +286,6 @@ void TestWeekDrag::heldAtAnEdgeCarriesToOtherDays()
     QVERIFY(!before.eventId.isEmpty());
     const QPoint grip = block->mapToScene(QPointF(block->width() / 2, 10)).toPoint();
     const QPoint right(window->width() - 4, grip.y());
-    const int hour = ThemeController::instance()->hourHeight();
     QTest::mousePress(window, Qt::LeftButton, {}, grip);
     move(window, grip, right);
     QTRY_VERIFY(focus() >= QDate(2026, 10, 12));
@@ -366,4 +381,52 @@ void TestWeekDrag::heldAtAnEdgeCarriesToOtherDays()
 }
 
 QTEST_MAIN(TestWeekDrag)
+void TestWeekDrag::hoursFitTheWorkingDay()
+{
+    QQuickStyle::setStyle(u"Basic"_s);
+    QTemporaryDir dir;
+    Settings settings(dir.filePath(u"s.ini"_s));
+    SettingsForeign::s_instance = &settings;
+    Clock::instance()->freeze(QDateTime(QDate(2026, 10, 7), QTime(13, 40)));
+    SampleSource source;
+    QQmlApplicationEngine engine;
+    engine.setInitialProperties({{u"source"_s, QVariant::fromValue<CalendarSource *>(&source)}});
+    engine.loadFromModule("Callie.Ui", "Main");
+    QVERIFY(!engine.rootObjects().isEmpty());
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    window->resize(1280, 800);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    QTest::qWait(500);
+
+    QQuickItem *week =
+        findItem(window->contentItem(), "WeekView"_L1, [](QQuickItem *) { return true; });
+    QVERIFY(week);
+    const auto hour = [week] { return week->property("hourHeight").toInt(); };
+    QQuickItem *grid = findItem(week, "QQuickFlickable"_L1, [&hour](QQuickItem *item) {
+        return item->property("contentHeight").toInt() == 24 * hour();
+    });
+    QVERIFY(grid);
+    // Minutes into the day at the top of the grid.
+    const auto top = [grid, &hour] {
+        return qRound(grid->property("contentY").toReal() * 60 / hour());
+    };
+
+    // Nine to five, with half an hour either side, fills the grid.
+    QVERIFY(9 * hour() <= grid->height());
+    QVERIFY(grid->height() < 9 * (hour() + 1));
+    QCOMPARE(top(), 8 * 60 + 30);
+
+    // A taller window draws taller hours, still from the same time.
+    const int before = hour();
+    window->resize(1280, 1100);
+    QTRY_VERIFY(hour() > before);
+    QVERIFY(9 * hour() <= grid->height());
+    QCOMPARE(top(), 8 * 60 + 30);
+
+    // A short one stops at the shortest hour, and scrolls to the rest.
+    window->resize(1280, 500);
+    QTRY_COMPARE(hour(), ThemeController::instance()->minHourHeight());
+    QCOMPARE(top(), 8 * 60 + 30);
+}
+
 #include "tst_weekdrag.moc"

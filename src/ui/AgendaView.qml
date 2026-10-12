@@ -44,7 +44,7 @@ Item {
         } else if (how === "bottom") {
             list.positionViewAtEnd()
         } else {
-            const step = (how === "scrollUp" ? -1 : 1) * Theme.hourHeight
+            const step = (how === "scrollUp" ? -1 : 1) * 2 * Theme.listRowHeight
             const top = list.originY - list.topMargin
             const end = Math.max(top, list.originY + list.contentHeight + list.bottomMargin
                                  - list.height)

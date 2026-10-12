@@ -4,7 +4,6 @@
 #include "FakeHttpServer.h"
 #include "PlaceSearch.h"
 #include "ReleaseInfo.h"
-#include "ThemeController.h"
 
 #include "callie/ContactBook.h"
 #include "callie/SampleSource.h"
@@ -170,6 +169,10 @@ void TestEventEdit::init()
     m_dir = std::make_unique<QTemporaryDir>();
     m_settings = std::make_unique<Settings>(m_dir->filePath(u"s.ini"_s));
     SettingsForeign::s_instance = m_settings.get();
+    // A working day of almost the whole day keeps the hours short, so every
+    // event the tests click is on screen.
+    m_settings->setWorkStart(0);
+    m_settings->setWorkEnd(23 * 60);
     Clock::instance()->freeze(QDateTime(QDate(2026, 10, 7), QTime(13, 40)));
     m_source = std::make_unique<RecordingSource>();
     m_contacts = std::make_unique<ContactBook>(QString());
@@ -296,11 +299,14 @@ void TestEventEdit::overnightKeepsItsLength()
 
 void TestEventEdit::copyPastesUnderThePointer()
 {
+    QQuickItem *week = find(m_window->contentItem(), "WeekView", "visible", u"true"_s);
+    QVERIFY(week);
+    const int hour = week->property("hourHeight").toInt();
+    QVERIFY(hour > 0);
     QQuickItem *block = nullptr;
     QTRY_VERIFY((block = find(m_window->contentItem(), "EventBlock", "summary", u"Climbing"_s)));
     QTest::qWait(300);
     const Event original = named(*m_source, u"Climbing"_s);
-    const int hour = ThemeController::instance()->hourHeight();
     // The day before, two hours later: over the grid at the block's top edge.
     const QPoint target = block->mapToScene(QPointF(-block->width() / 2, 1 + 2 * hour)).toPoint();
 

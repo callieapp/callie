@@ -49,6 +49,14 @@ Item {
     readonly property real dayWidth: (width - Theme.gutterWidth) / Math.max(1, shownCount - 1
                                                                             + todayShare)
 
+    /// How tall an hour is drawn: the working day and half an hour either side
+    /// fill the grid, down to a minimum.
+    readonly property int hourHeight: Math.max(Theme.minHourHeight, Math.floor(grid.height
+                                                                               / shownHours))
+    readonly property real shownHours: Math.max(8, (Settings.workEnd - Settings.workStart) / 60) + 1
+    /// The shortest an event is drawn, in minutes, at that height.
+    readonly property int shortestMinutes: Math.ceil(Theme.minEventHeight * 60 / hourHeight)
+
     function columnX(i) {
         let x = Theme.gutterWidth
         for (let j = 0; j < i; ++j)
@@ -281,13 +289,35 @@ Item {
             right: parent.right
             bottom: parent.bottom
         }
-        contentHeight: 24 * Theme.hourHeight
+        contentHeight: 24 * root.hourHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        /// The hour height contentY was last placed for.
+        property int drawnHour: 0
+        /// Minutes into the day at the top, kept while the hours grow or shrink.
+        property real topMinute: 0
+
+        function place() {
+            drawnHour = root.hourHeight
+            contentY = Math.min(topMinute / 60 * drawnHour, Math.max(0, contentHeight - height))
+        }
+
         // Open on the working day, a little above its start so that hour's label shows.
-        Component.onCompleted: contentY = Math.max(0, Settings.workStart / 60 * Theme.hourHeight
-                                                   - Theme.hourHeight / 2)
+        Component.onCompleted: {
+            topMinute = Math.max(0, Settings.workStart - 30)
+            place()
+        }
+        // Flickable clamps contentY to a shrunken height first, so the top
+        // comes from topMinute rather than from where contentY was left.
+        onContentHeightChanged: {
+            if (drawnHour > 0)
+                place()
+        }
+        onContentYChanged: {
+            if (drawnHour === root.hourHeight)
+                topMinute = contentY * 60 / drawnHour
+        }
 
         // Inset so the window's resize strip does not cover the handle.
         ScrollBar.vertical: ScrollBar {
@@ -305,9 +335,9 @@ Item {
                 Item {
                     id: hourRow
                     required property int index
-                    y: index * Theme.hourHeight
+                    y: index * root.hourHeight
                     width: grid.width
-                    height: Theme.hourHeight
+                    height: root.hourHeight
 
                     Rectangle {
                         anchors {
@@ -361,12 +391,12 @@ Item {
                     Rectangle {
                         visible: Settings.showWorkHours && !column.dayOff
                         width: parent.width
-                        height: Settings.workStart / 60 * Theme.hourHeight
+                        height: Settings.workStart / 60 * root.hourHeight
                         color: Theme.dayOffWash
                     }
                     Rectangle {
                         visible: Settings.showWorkHours && !column.dayOff
-                        y: Settings.workEnd / 60 * Theme.hourHeight
+                        y: Settings.workEnd / 60 * root.hourHeight
                         width: parent.width
                         height: parent.height - y
                         color: Theme.dayOffWash
@@ -395,7 +425,7 @@ Item {
                 readonly property int lastMinute: Math.max(fromMinutes, toMinutes)
 
                 function minutesAt(y) {
-                    const snapped = Math.round(y / Theme.hourHeight * 60 / Theme.snapMinutes)
+                    const snapped = Math.round(y / root.hourHeight * 60 / Theme.snapMinutes)
                           * Theme.snapMinutes
                     return Math.max(0, Math.min(24 * 60, snapped))
                 }
@@ -417,7 +447,7 @@ Item {
 
                 onPressed: mouse => {
                     dragged = false
-                    pressedMinute = Math.floor(mouse.y / Theme.hourHeight * 60 / Theme.snapMinutes)
+                    pressedMinute = Math.floor(mouse.y / root.hourHeight * 60 / Theme.snapMinutes)
                             * Theme.snapMinutes
                     fromMinutes = pressedMinute
                     toMinutes = pressedMinute + Theme.snapMinutes
@@ -426,7 +456,7 @@ Item {
                     pressY = mouse.y
                 }
                 onPositionChanged: mouse => {
-                    if (!dragged && Math.abs(mouse.y - pressY) < Theme.hourHeight / 8)
+                    if (!dragged && Math.abs(mouse.y - pressY) < root.hourHeight / 8)
                         return
                     dragged = true
                     column = pressColumn
@@ -460,9 +490,9 @@ Item {
                 visible: drawer.column >= 0
                 z: 60
                 x: root.columnX(Math.max(0, drawer.column)) + 3
-                y: drawer.firstMinute / 60 * Theme.hourHeight
+                y: drawer.firstMinute / 60 * root.hourHeight
                 width: root.columnWidth(Math.max(0, drawer.column)) - 6
-                height: (drawer.lastMinute - drawer.firstMinute) / 60 * Theme.hourHeight - 2
+                height: (drawer.lastMinute - drawer.firstMinute) / 60 * root.hourHeight - 2
                 radius: Theme.radiusMd
                 color: Theme.tint(Theme.accent, 0.35)
                 border.width: 2
@@ -492,6 +522,7 @@ Item {
 
                 EventBlock {
                     id: block
+                    hourHeight: root.hourHeight
 
                     required property int index
                     required property string uid
@@ -515,9 +546,9 @@ Item {
 
                     x: root.columnX(dayIndex) + 3 + lane * laneWidth + indent
                     width: laneWidth - indent - (laneCount > 1 ? 3 : 0)
-                    y: startMinutes / 60 * Theme.hourHeight
+                    y: startMinutes / 60 * root.hourHeight
                     // A clear gap under each, so back-to-back events read as two.
-                    height: Math.max(Theme.minEventHeight, durationMinutes / 60 * Theme.hourHeight
+                    height: Math.max(Theme.minEventHeight, durationMinutes / 60 * root.hourHeight
                                      - Theme.space2 - Theme.stickerEdge + stretchHeight)
 
                     onActivated: root.showDetails(block)
@@ -537,6 +568,8 @@ Item {
             EventBlock {
                 id: ghost
 
+                hourHeight: root.hourHeight
+
                 readonly property var event: pager.carry && pager.carry.timed ? pager.carry.event :
                                                                                 null
 
@@ -545,10 +578,10 @@ Item {
                 z: 100
                 opacity: 0.85
                 x: root.carried ? root.columnX(root.carried.column) + 3 : 0
-                y: root.carried ? root.carried.minutes / 60 * Theme.hourHeight : 0
+                y: root.carried ? root.carried.minutes / 60 * root.hourHeight : 0
                 width: root.carried ? root.columnWidth(root.carried.column) - 6 : 0
                 height: Math.max(Theme.minEventHeight, (event !== null ? pager.carry.length : 0) / 60
-                                 * Theme.hourHeight - Theme.space2 - Theme.stickerEdge)
+                                 * root.hourHeight - Theme.space2 - Theme.stickerEdge)
                 summary: event ? event.summary : ""
                 location: event ? event.location : ""
                 joinUrl: event ? event.joinUrl : ""
@@ -581,7 +614,7 @@ Item {
                 readonly property int columnIndex: root.todayColumn
 
                 visible: columnIndex >= 0
-                y: Settings.times.minutesIntoDay(current) / 60 * Theme.hourHeight
+                y: Settings.times.minutesIntoDay(current) / 60 * root.hourHeight
                 x: root.columnX(columnIndex) + 2
                 width: root.columnWidth(columnIndex) - 4
                 height: 3
@@ -676,7 +709,7 @@ Item {
             "bottom": Infinity
         }
         const end = Math.max(0, grid.contentHeight - grid.height)
-        grid.contentY = Math.max(0, Math.min(end, grid.contentY + hours[how] * Theme.hourHeight))
+        grid.contentY = Math.max(0, Math.min(end, grid.contentY + hours[how] * root.hourHeight))
     }
 
     /// Where a copy of `event` pasted now would start: the slot under the
@@ -795,7 +828,7 @@ Item {
         let top = 0
         if (carry.timed) {
             const latest = 24 * 60 - Theme.snapMinutes
-            top = Math.max(0, Math.min(latest, Math.round((at.y - carry.grab) / Theme.hourHeight * 60
+            top = Math.max(0, Math.min(latest, Math.round((at.y - carry.grab) / root.hourHeight * 60
                                                           / Theme.snapMinutes) * Theme.snapMinutes))
             minutes = top - Settings.times.minutesIntoDay(carry.event.start)
         }

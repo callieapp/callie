@@ -1,4 +1,5 @@
-# Minimal: plain greys, light calendar tints, the system font, flat buttons and
+# Minimal: in the manner of Google Calendar, with white pages, solid calendar
+# colors under white text, the system font at lighter weights, flat buttons and
 # no bounce. Anything not set here comes from callie.toml.
 
 [theme]
@@ -6,44 +7,47 @@ name = "Minimal"
 variant = "light"
 
 [colors]
-background = "#f6f6f7"
-surface = "#ffffff"
-surface-alt = "#eeeef0"
-hairline = "#e7e7ea"
-border = "#d4d4d8"
-text = "#18181b"
-text-muted = "#52525b"
-text-faint = "#71717a"
-accent = "#2563eb"
+background = "#ffffff"
+surface = "#f8fafd"
+surface-alt = "#edf1f7"
+hairline = "#e3e5e8"
+border = "#d3d6da"
+text = "#1f1f1f"
+text-muted = "#444746"
+text-faint = "#747775"
+accent = "#0b57d0"
 accent-text = "#ffffff"
-danger = "#c81e1e"
-edge = "#d4d4d8"
-accent-edge = "#1d4ed8"
+danger = "#b3261e"
+edge = "#d3d6da"
+accent-edge = "#0842a0"
 
 [calendar]
-lightness = 0.9
-chroma = 0.06
-ink-lightness = 0.3
-ink-chroma = 0.06
-edge-lightness = 0.75
-edge-chroma = 0.07
+lightness = 0.55
+chroma = 0.13
+ink-lightness = 0.995
+ink-chroma = 0
+edge-lightness = 0.45
+edge-chroma = 0.12
 
 [shape]
 radius-small = 4
 radius = 6
 radius-large = 8
-radius-xlarge = 10
+radius-xlarge = 12
 sticker-edge = 0
 
 [shadow]
 color = "#000000"
-opacity = 0.1
-blur = 24
-offset = 8
+opacity = 0.16
+blur = 16
+offset = 4
 
 [type]
 family = ""
 display-family = ""
+weight-strong = 500
+weight-bold = 500
+weight-heavy = 600
 
 [motion]
 bounce = 0

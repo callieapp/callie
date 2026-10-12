@@ -1,50 +1,52 @@
-# Minimal Dark: Minimal's plain look on near-black, with calendars as deep fills
-# under light text. Anything not set here comes
-# from callie.toml.
+# Minimal Dark: Minimal after Google Calendar's dark look, with calendars as
+# soft fills under dark text. Anything not set here comes from callie.toml.
 
 [theme]
 name = "Minimal Dark"
 variant = "dark"
 
 [colors]
-background = "#18181b"
-surface = "#1f1f23"
-surface-alt = "#27272a"
-hairline = "#232327"
-border = "#3f3f46"
-text = "#f4f4f5"
-text-muted = "#a1a1aa"
-text-faint = "#8b8b94"
-accent = "#60a5fa"
-accent-text = "#0b1220"
-danger = "#f87171"
-edge = "#0f0f11"
-accent-edge = "#2563eb"
+background = "#131314"
+surface = "#1e1f20"
+surface-alt = "#282a2c"
+hairline = "#2d2f31"
+border = "#444746"
+text = "#e3e3e3"
+text-muted = "#c4c7c5"
+text-faint = "#8e918f"
+accent = "#a8c7fa"
+accent-text = "#062e6f"
+danger = "#f2b8b5"
+edge = "#0e0e0f"
+accent-edge = "#7cacf8"
 
 [calendar]
-lightness = 0.42
-chroma = 0.08
-ink-lightness = 0.95
-ink-chroma = 0.02
-edge-lightness = 0.32
-edge-chroma = 0.07
+lightness = 0.76
+chroma = 0.1
+ink-lightness = 0.2
+ink-chroma = 0.03
+edge-lightness = 0.6
+edge-chroma = 0.09
 
 [shape]
 radius-small = 4
 radius = 6
 radius-large = 8
-radius-xlarge = 10
+radius-xlarge = 12
 sticker-edge = 0
 
 [shadow]
 color = "#000000"
-opacity = 0.4
-blur = 24
-offset = 8
+opacity = 0.5
+blur = 16
+offset = 4
 
 [type]
 family = ""
 display-family = ""
+weight-strong = 500
+weight-bold = 500
+weight-heavy = 600
 
 [motion]
 bounce = 0

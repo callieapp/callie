@@ -117,6 +117,8 @@ private:
     [[nodiscard]] static QList<Response> multistatus(const QByteArray &xml, const QUrl &base,
                                                      QString *syncToken = nullptr);
     [[nodiscard]] DavError failure(QNetworkReply *reply) const;
+    /// Trusts the host of `named`, when the answer naming it came from a trusted host.
+    void learnHost(QNetworkReply *reply, const QUrl &named);
 
     QPointer<QNetworkAccessManager> m_network;
     QString m_user;

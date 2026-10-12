@@ -216,6 +216,18 @@ void TestCalDavClient::thePasswordGoesOnlyWhereItShould()
     m_server->redirects.insert("/hop", elsewhere.toEncoded());
     QVERIFY(discover(m_server->url(u"/hop"_s)).second.isAuth());
 
+    // Nor does a host named by an answer from somewhere a redirect led.
+    const QByteArray other = "http://localhost:" + QByteArray::number(m_server->url().port());
+    m_server->redirects.insert("/hop2", other + "/open/");
+    m_server->anonymous.insert("/open/",
+                               "<d:response><d:href>/open/</d:href><d:propstat><d:prop>"
+                               "<d:current-user-principal><d:href>" +
+                                   other +
+                                   "/dav/principals/me/</d:href>"
+                                   "</d:current-user-principal></d:prop><d:status>"
+                                   "HTTP/1.1 200 OK</d:status></d:propstat></d:response>");
+    QVERIFY(discover(m_server->url(u"/hop2"_s)).second.isAuth());
+
     // A host the server names itself, as iCloud names each account's, does.
     m_server->homeHref =
         u"http://localhost:%1/dav/calendars/me/"_s.arg(m_server->url().port()).toUtf8();

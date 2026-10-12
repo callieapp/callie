@@ -230,9 +230,13 @@ void CalDavClient::send(const QByteArray &method, const QUrl &url, const QByteAr
             if ((status == 301 || status == 302 || status == 307 || status == 308) &&
                 location.isValid()) {
                 const QUrl next = url.resolved(location);
-                // Never from https down to http.
-                if (redirects >= kMostRedirects ||
-                    (url.scheme() == u"https" && next.scheme() != u"https")) {
+                // Never from https down to http, nor round and round.
+                if (url.scheme() == u"https" && next.scheme() != u"https") {
+                    answered(reply, {status, tr("The server sent Callie from https to plain "
+                                                "http, which Callie does not follow.")});
+                    return;
+                }
+                if (redirects >= kMostRedirects) {
                     answered(reply, {status, tr("The server sent Callie elsewhere too often.")});
                     return;
                 }
@@ -245,6 +249,13 @@ void CalDavClient::send(const QByteArray &method, const QUrl &url, const QByteAr
             }
             answered(reply, {});
         });
+}
+
+void CalDavClient::learnHost(QNetworkReply *reply, const QUrl &named)
+{
+    // Only from a host already trusted, or a redirect target could name its own.
+    if (m_trusted.contains(reply->url().host()))
+        m_trusted.insert(named.host());
 }
 
 void CalDavClient::discover(const QUrl &server,
@@ -284,8 +295,8 @@ void CalDavClient::findPrincipal(const QUrl &url, bool wellKnownTried,
                  tryWellKnown({});
                  return;
              }
-             // Hosts the server itself names, as iCloud does, take the password too.
-             m_trusted.insert(principal.host());
+             // Hosts a trusted server names, as iCloud does, take the password too.
+             learnHost(reply, principal);
              static const QByteArray homeBody =
                  R"(<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop>)"
                  R"(<c:calendar-home-set/><c:calendar-user-address-set/></d:prop></d:propfind>)";
@@ -309,7 +320,7 @@ void CalDavClient::findPrincipal(const QUrl &url, bool wellKnownTried,
                                   account.addresses << address.path();
                           }
                       }
-                      m_trusted.insert(account.home.host());
+                      learnHost(homeReply, account.home);
                       if (!account.home.isValid()) {
                           done({}, {404, tr("The server has no calendars for this account.")});
                           return;
@@ -361,7 +372,7 @@ void CalDavClient::calendars(const QUrl &home,
                                      rights.contains(key(kDav, u"all"_s));
                  calendar.ctag = response.prop(kServer, u"getctag"_s).text;
                  calendar.syncToken = response.prop(kDav, u"sync-token"_s).text;
-                 m_trusted.insert(calendar.url.host());
+                 learnHost(reply, calendar.url);
                  found.append(calendar);
              }
              done(found, {});

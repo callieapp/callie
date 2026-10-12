@@ -3,6 +3,17 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.3.2 - 2026-10-12
+
+### New
+
+- The week and day views fit your working day in the window, with half an hour either side, and
+  their hours grow and shrink as the window does. The time at the top stays put while you resize.
+- Settings' Import button takes base16 color schemes (`.yaml`) as well as Callie themes, so a
+  terminal or editor palette carries over. Colors are adjusted only where text would be hard to
+  read.
+- Settings picks where places open from a menu, and the time zone picker shows that it opens a list.
+
 ## 0.3.1 - 2026-10-12
 
 ### New

@@ -65,9 +65,14 @@ public:
 
 private:
     // The real keyring never answers synchronously, so neither does the fake.
-    static void complete(std::function<void()> callback) { QTimer::singleShot(0, callback); }
+    // The answers belong to m_context, so a store deleted first never gives them.
+    void complete(std::function<void()> callback)
+    {
+        QTimer::singleShot(0, &m_context, std::move(callback));
+    }
 
     AccountStore &m_store;
+    QObject m_context;
 };
 
 } // namespace

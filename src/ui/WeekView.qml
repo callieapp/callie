@@ -49,11 +49,13 @@ Item {
     readonly property real dayWidth: (width - Theme.gutterWidth) / Math.max(1, shownCount - 1
                                                                             + todayShare)
 
-    /// How tall an hour is drawn: the working day and half an hour either side
+    /// How tall an hour is drawn: the working day and a margin either side
     /// fill the grid, down to a minimum.
     readonly property int hourHeight: Math.max(Theme.minHourHeight, Math.floor(grid.height
                                                                                / shownHours))
-    readonly property real shownHours: Math.max(8, (Settings.workEnd - Settings.workStart) / 60) + 1
+    readonly property real workHours: (Settings.workEnd - Settings.workStart) / 60
+    readonly property real shownHours: Math.max(Theme.fitHours, workHours) + 2 * Theme.fitMargin
+                                       / 60
     /// The shortest an event is drawn, in minutes, at that height.
     readonly property int shortestMinutes: Theme.eventMinutes(hourHeight)
 
@@ -305,7 +307,7 @@ Item {
 
         // Open on the working day, a little above its start so that hour's label shows.
         Component.onCompleted: {
-            topMinute = Math.max(0, Settings.workStart - 30)
+            topMinute = Math.max(0, Settings.workStart - Theme.fitMargin)
             place()
         }
         // Flickable clamps contentY to a shrunken height first, so the top

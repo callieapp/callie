@@ -125,7 +125,7 @@ class ThemeController : public QObject
     /// How many ordinary columns' width today takes when it is given more room.
     Q_PROPERTY(qreal todayShare READ todayShare CONSTANT)
     /// The shortest an event block is drawn, so its title stays readable, and
-    /// how many minutes of the grid that covers.
+    /// how many minutes of the grid that covers at the shortest hour.
     Q_PROPERTY(int minEventHeight READ minEventHeight CONSTANT)
     Q_PROPERTY(int minEventMinutes READ minEventMinutes CONSTANT)
     /// How far an event steps in over the earlier events it overlaps.
@@ -159,6 +159,12 @@ public:
     [[nodiscard]] const ThemeSpec &spec() const { return m_spec; }
 
     Q_INVOKABLE QColor tint(const QColor &color, qreal alpha) const;
+    /// How many minutes the shortest event block covers where an hour is
+    /// `hourHeight` tall.
+    Q_INVOKABLE int eventMinutes(int hourHeight) const
+    {
+        return (minEventHeight() * 60 + hourHeight - 1) / hourHeight;
+    }
     /// A calendar's own color fitted to a theme. Call it as
     /// `Theme.calendarColor(color, Theme.calendar)`: QML cannot see what a C++
     /// call reads, so passing the settings is what makes the binding update.
@@ -258,10 +264,7 @@ public:
     qreal fadedOpacity() const { return 0.5; }
     int minEventHeight() const { return 20; }
     int cascadeIndent() const { return 14; }
-    int minEventMinutes() const
-    {
-        return (minEventHeight() * 60 + minHourHeight() - 1) / minHourHeight();
-    }
+    int minEventMinutes() const { return eventMinutes(minHourHeight()); }
     qreal fineGlyphStroke() const { return 1.6; }
     int logoLift() const { return 1; }
     qreal todayShare() const { return 1.6; }

@@ -58,7 +58,8 @@ removes an account. `callie accounts add google` does the same from a terminal.
 Pick a theme in Settings, under Theme: Callie, Callie Light, Paper, Minimal, Minimal Dark,
 Tomorrow or Tomorrow Night. Customize colors copies the theme into
 `$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
-can be imported and exported there too, and Callie remembers the choice.
+can be imported and exported there too, and Callie remembers the choice. Importing a base16 scheme,
+a `.yaml` file, makes a Callie theme from its colors.
 
 `--theme`, given a built-in theme's name or the path to a theme file, overrides that choice for
 one run, as does the `CALLIE_THEME` environment variable. A theme loaded from a file updates the
@@ -234,7 +235,7 @@ Roughly in the order it needs to happen:
 - [x] Themes as TOML files, with live reload
 - [x] A theme picker, and the built-in themes: Callie, Callie Light, Paper, Minimal, Minimal Dark,
       Tomorrow and Tomorrow Night
-- [ ] base16 import
+- [x] base16 import
 - [ ] Keep close calendar colours apart, and vary their lightness by hue
 - [ ] Settle the typefaces and the rest of the open questions in `DESIGN.md`
 - [ ] Hand-tuned 16px and 32px icons

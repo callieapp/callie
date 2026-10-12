@@ -1,4 +1,5 @@
 #include "callie/ThemeLibrary.h"
+#include "callie/Base16.h"
 #include "callie/Identity.h"
 
 #include "callie/ThemeLoader.h"
@@ -176,15 +177,23 @@ bool ThemeLibrary::setColor(const QString &path, const QString &key, const QColo
 
 QString ThemeLibrary::importTheme(const QString &source)
 {
-    const ThemeLoadResult result = ThemeLoader::loadFile(source, ThemeLoader::defaultTheme());
-    if (!result.ok()) {
-        fail(result.errors.join(u"; "_s));
-        return {};
-    }
     QString problem;
-    const QByteArray data = read(source, &problem);
+    QByteArray data = read(source, &problem);
     if (!problem.isEmpty()) {
         fail(problem);
+        return {};
+    }
+    if (base16::isScheme(source)) {
+        const std::optional<QByteArray> theme = base16::toTheme(data, &problem);
+        if (!theme) {
+            fail(problem);
+            return {};
+        }
+        data = *theme;
+    }
+    const ThemeLoadResult result = ThemeLoader::parse(data, ThemeLoader::defaultTheme());
+    if (!result.ok()) {
+        fail(result.errors.join(u"; "_s));
         return {};
     }
     if (!QDir().mkpath(m_folder)) {

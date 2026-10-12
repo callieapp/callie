@@ -129,6 +129,8 @@ add_library(calliecore STATIC
     GoogleSource.cpp
     callie/Color.h
     Color.cpp
+    callie/Base16.h
+    Base16.cpp
     callie/ThemeSpec.h
     callie/ThemeLoader.h
     ThemeLoader.cpp

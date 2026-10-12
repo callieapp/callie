@@ -87,6 +87,8 @@ add_library(calliecore STATIC
     LocalCalendars.cpp
     callie/Subscriptions.h
     Subscriptions.cpp
+    callie/CalDavClient.h
+    CalDavClient.cpp
     callie/Outcome.h
     callie/Releases.h
     Releases.cpp

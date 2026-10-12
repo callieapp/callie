@@ -64,7 +64,7 @@ Element sticker(const Event &event, const QString &text, const Look &look)
     const QColor fill = look.palette.fill(event.color);
     Element body = label(u' ' + text + u' ');
     if (event.responseStatus == u"needsAction")
-        body = body | color(rgb(fill)) | bold;
+        body = body | color(rgb(look.palette.onPage(event.color))) | bold;
     else
         body = body | color(rgb(look.palette.ink(event.color))) | bgcolor(rgb(fill));
     if (event.declined)
@@ -267,7 +267,7 @@ Element detailsView(const TuiState &state, const Look &look)
     for (const CalendarInfo &calendar : state.calendars()) {
         if (calendar.id == event.calendarId) {
             rows.push_back(row(QObject::tr("Calendar"),
-                               hbox({text("● ") | color(rgb(look.palette.fill(event.color))),
+                               hbox({text("● ") | color(rgb(look.palette.onPage(event.color))),
                                      label(calendar.displayName)})));
         }
     }
@@ -328,7 +328,7 @@ Element calendarsWindow(const TuiState &state, const Look &look)
         const bool shown = state.calendarShown(calendar);
         rows.push_back(
             hbox({marker(i == state.calendarSelected(), look),
-                  text(shown ? "● " : "○ ") | color(rgb(look.palette.fill(calendar.color))),
+                  text(shown ? "● " : "○ ") | color(rgb(look.palette.onPage(calendar.color))),
                   label(calendar.displayName) | color(rgb(shown ? look.c.text : look.c.textFaint)),
                   text(" ")}));
     }

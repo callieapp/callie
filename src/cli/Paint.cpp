@@ -111,7 +111,7 @@ QString Paint::danger(const QString &text) const
 
 QString Paint::calendar(const QColor &color, const QString &text) const
 {
-    return enabled() && color.isValid() ? colored(m_palette->fill(color), text) : text;
+    return enabled() && color.isValid() ? colored(m_palette->onPage(color), text) : text;
 }
 
 } // namespace callie::cli

@@ -20,6 +20,7 @@ private Q_SLOTS:
     void pipesGetNoColor();
     void terminalsSayHowManyColors();
     void calendarsLookAsInTheApp();
+    void calendarTextReadsOnEveryPage();
 };
 
 void TestPaint::eachDepthHasItsOwnCodes()
@@ -95,6 +96,23 @@ void TestPaint::calendarsLookAsInTheApp()
     QCOMPARE(raw.fill(red), red);
     QCOMPARE(raw.ink(QColor(250, 240, 120)), QColor(0, 0, 0));
     QCOMPARE(raw.ink(QColor(30, 30, 90)), QColor(255, 255, 255));
+}
+
+void TestPaint::calendarTextReadsOnEveryPage()
+{
+    // Google's calendar colors, from tomato to graphite.
+    const QStringList googleColors = {u"#d50000"_s, u"#f4511e"_s, u"#f6bf26"_s, u"#0b8043"_s,
+                                      u"#33b679"_s, u"#039be5"_s, u"#3f51b5"_s, u"#7986cb"_s,
+                                      u"#8e24aa"_s, u"#e67c73"_s, u"#616161"_s};
+    for (const QString &id : ThemeLoader::builtInIds()) {
+        const ThemeLoadResult theme = ThemeLoader::loadBuiltIn(id);
+        const Palette palette(theme.theme);
+        for (const QString &google : googleColors) {
+            const double ratio =
+                color::contrastRatio(palette.onPage(QColor(google)), palette.colors().background);
+            QVERIFY2(ratio >= 4.5, qPrintable(u"%1 %2: %3"_s.arg(id, google).arg(ratio)));
+        }
+    }
 }
 
 QTEST_GUILESS_MAIN(TestPaint)

@@ -8,11 +8,9 @@
 
 namespace callie::base16 {
 
-/// A Callie theme, as TOML, made from a base16 or base24 scheme in either the
-/// classic YAML layout (`scheme:` and top-level `base00:`) or tinted-theming's
-/// (`name:`, `variant:` and a `palette:`). Colors are nudged where needed so
-/// text reads on the backgrounds. Empty, with `error` set, when the scheme
-/// lacks a name or any of base00 to base0F.
+/// A Callie theme, as TOML, from a base16 or base24 scheme in the classic
+/// layout or tinted-theming's, with colors nudged where text would not read.
+/// Empty, with `error` set, when the scheme lacks a name or a color.
 [[nodiscard]] std::optional<QByteArray> toTheme(QByteArrayView yaml, QString *error);
 
 /// Whether a file is a base16 scheme rather than a Callie theme, by its name.

@@ -62,7 +62,7 @@ Popup {
         id: dateWidth
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
-        font.weight: Font.Bold
+        font.weight: Theme.weightBold
         text: qsTr("%1, %2").arg(Qt.formatDate(new Date(2026, 8, 30), "ddd, MMM d, yyyy")).arg(
                   Settings.times.time(new Date(2026, 8, 30, 12, 30)))
     }
@@ -113,7 +113,7 @@ Popup {
                 color: Theme.textFaint
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textXs
-                font.weight: Font.ExtraBold
+                font.weight: Theme.weightHeavy
                 font.letterSpacing: 0.6
             }
 
@@ -162,7 +162,7 @@ Popup {
                         color: result.upcoming ? Theme.textMuted : Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                         font.features: {
                             "tnum": 1
                         }
@@ -184,7 +184,7 @@ Popup {
                         color: result.upcoming ? Theme.text : Theme.textMuted
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textMd
-                        font.weight: Font.DemiBold
+                        font.weight: Theme.weightStrong
                     }
                 }
             }

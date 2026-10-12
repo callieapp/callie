@@ -46,7 +46,7 @@ Popup {
             color: Theme.text
             font.family: Theme.displayFontFamily
             font.pixelSize: Theme.textLg
-            font.weight: Font.Bold
+            font.weight: Theme.weightBold
         }
 
         Text {
@@ -147,7 +147,7 @@ Popup {
                             color: Theme.text
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textMd
-                            font.weight: Font.ExtraBold
+                            font.weight: Theme.weightHeavy
                         }
                     }
                     Text {
@@ -163,7 +163,7 @@ Popup {
                         color: Theme.textMuted
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                     }
                     Row {
                         visible: invite.pending === ""

@@ -104,7 +104,7 @@ Popup {
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textBase
-            font.weight: Font.DemiBold
+            font.weight: Theme.weightStrong
             leftPadding: Theme.space4
             rightPadding: Theme.space4
             topPadding: Theme.space3
@@ -159,7 +159,7 @@ Popup {
                     opacity: composer.summary !== "" ? 1 : Theme.fadedOpacity
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textBase
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                 }
                 Text {
                     width: parent.width
@@ -167,7 +167,7 @@ Popup {
                     color: Theme.calendarInk(root.tone, Theme.calendar)
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.DemiBold
+                    font.weight: Theme.weightStrong
                 }
                 Text {
                     visible: composer.location !== ""
@@ -178,7 +178,7 @@ Popup {
                     color: Theme.calendarInk(root.tone, Theme.calendar)
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.DemiBold
+                    font.weight: Theme.weightStrong
                 }
             }
         }

@@ -61,14 +61,14 @@ Popup {
                     color: Theme.text
                     font.family: Theme.displayFontFamily
                     font.pixelSize: Theme.textXl
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
                 Text {
                     text: qsTr("Released %1").arg(Qt.formatDate(Release.notesDate, "MMMM d, yyyy"))
                     color: Theme.textMuted
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
             }
             StickerButton {

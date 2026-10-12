@@ -22,6 +22,6 @@ Rectangle {
         color: Theme.text
         font.family: Theme.monoFontFamily
         font.pixelSize: Theme.textSm
-        font.weight: Font.Bold
+        font.weight: Theme.weightBold
     }
 }

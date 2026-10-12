@@ -54,6 +54,10 @@ struct ThemeSpec
         QString family; // empty means the system font
         QString displayFamily;
         QString monoFamily;
+        // CSS weights for the three levels of emphasis, from titles to today.
+        int weightStrong = 600;
+        int weightBold = 700;
+        int weightHeavy = 800;
     };
 
     struct Motion

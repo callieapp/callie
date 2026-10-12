@@ -47,7 +47,7 @@ Popup {
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.textXl
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
 
             Table {
@@ -109,7 +109,7 @@ Popup {
                     color: Theme.textFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.ExtraBold
+                    font.weight: Theme.weightHeavy
                 }
                 Grid {
                     columns: 2

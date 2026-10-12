@@ -63,7 +63,7 @@ AbstractButton {
         color: root.selected ? Theme.accentText : root.hovered ? Theme.text : Theme.textMuted
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
-        font.weight: root.selected ? Font.ExtraBold : Font.Bold
+        font.weight: root.selected ? Theme.weightHeavy : Theme.weightBold
     }
 
     // What the button does, and its shortcut, after resting on it a moment.

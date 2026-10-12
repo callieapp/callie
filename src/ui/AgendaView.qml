@@ -59,7 +59,7 @@ Item {
         color: Theme.textMuted
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
-        font.weight: Font.DemiBold
+        font.weight: Theme.weightStrong
     }
 
     ListView {
@@ -90,7 +90,7 @@ Item {
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.textLg
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
 
             Repeater {
@@ -132,7 +132,7 @@ Item {
                             color: Theme.textMuted
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textSm
-                            font.weight: Font.Bold
+                            font.weight: Theme.weightBold
                             font.features: {
                                 "tnum": 1
                             }
@@ -156,7 +156,7 @@ Item {
                             color: Theme.text
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textMd
-                            font.weight: Font.Bold
+                            font.weight: Theme.weightBold
                             font.strikeout: row.event.declined
                         }
                         Text {
@@ -169,7 +169,7 @@ Item {
                             color: Theme.textMuted
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textSm
-                            font.weight: Font.DemiBold
+                            font.weight: Theme.weightStrong
                         }
                     }
                 }

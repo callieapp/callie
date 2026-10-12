@@ -311,7 +311,7 @@ ApplicationWindow {
                         color: Theme.text
                         font.family: Theme.displayFontFamily
                         font.pixelSize: Theme.textDisplay
-                        font.weight: Font.Bold
+                        font.weight: Theme.weightBold
                     }
                     Text {
                         id: year
@@ -326,7 +326,7 @@ ApplicationWindow {
                         color: Theme.textMuted
                         font.family: Theme.displayFontFamily
                         font.pixelSize: Theme.textDisplay
-                        font.weight: Font.DemiBold
+                        font.weight: Theme.weightStrong
                     }
                 }
 
@@ -458,7 +458,7 @@ ApplicationWindow {
                                 color: Theme.accentText
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.textXs
-                                font.weight: Font.ExtraBold
+                                font.weight: Theme.weightHeavy
                             }
                         }
                     }
@@ -627,7 +627,7 @@ ApplicationWindow {
                             color: syncStatus.ink
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.textSm
-                            font.weight: Font.ExtraBold
+                            font.weight: Theme.weightHeavy
                         }
                     }
 

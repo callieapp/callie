@@ -227,7 +227,7 @@ Column {
         text: root.title
         placeholderText: qsTr("Title")
         font.pixelSize: Theme.textLg
-        font.weight: Font.Bold
+        font.weight: Theme.weightBold
         Accessible.name: qsTr("Title")
         onTextEdited: root.title = text
         onAccepted: root.save()
@@ -439,7 +439,7 @@ Column {
                         color: Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm
-                        font.weight: Font.DemiBold
+                        font.weight: Theme.weightStrong
                     }
                     AbstractButton {
                         anchors.verticalCenter: parent.verticalCenter
@@ -556,7 +556,7 @@ Column {
         color: Theme.accent
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
-        font.weight: Font.ExtraBold
+        font.weight: Theme.weightHeavy
 
         TapHandler {
             onTapped: root.moreOptions = !root.moreOptions
@@ -575,7 +575,7 @@ Column {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
         }
         ZonePicker {
             zoneId: root.zone
@@ -606,7 +606,7 @@ Column {
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textSm
-            font.weight: Font.Bold
+            font.weight: Theme.weightBold
         }
         Flow {
             width: parent.width
@@ -669,6 +669,6 @@ Column {
     component LabelMetrics: TextMetrics {
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
-        font.weight: Font.ExtraBold
+        font.weight: Theme.weightHeavy
     }
 }

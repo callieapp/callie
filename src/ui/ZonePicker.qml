@@ -40,7 +40,7 @@ AbstractButton {
         color: Theme.text
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
-        font.weight: Font.DemiBold
+        font.weight: Theme.weightStrong
     }
 
     Popup {
@@ -139,7 +139,7 @@ AbstractButton {
                         color: row.modelData === root.zoneId ? Theme.accent : Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm
-                        font.weight: row.modelData === root.zoneId ? Font.ExtraBold : Font.Normal
+                        font.weight: row.modelData === root.zoneId ? Theme.weightHeavy : Font.Normal
                     }
                 }
             }

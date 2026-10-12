@@ -63,14 +63,14 @@ Popup {
                     color: Theme.text
                     font.family: Theme.displayFontFamily
                     font.pixelSize: Theme.textXl
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
                 Text {
                     text: qsTr("You have %1.").arg(Release.version)
                     color: Theme.textMuted
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textSm
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
             }
             StickerButton {

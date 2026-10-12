@@ -214,7 +214,7 @@ Column {
                 color: Theme.textMuted
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textSm
-                font.weight: Font.Bold
+                font.weight: Theme.weightBold
             }
         }
     }
@@ -272,7 +272,7 @@ Column {
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textMd
-            font.weight: Font.Bold
+            font.weight: Theme.weightBold
             font.features: {
                 "tnum": 1
             }

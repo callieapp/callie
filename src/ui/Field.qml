@@ -12,7 +12,7 @@ TextField {
     selectedTextColor: Theme.text
     font.family: Theme.fontFamily
     font.pixelSize: Theme.textBase
-    font.weight: Font.DemiBold
+    font.weight: Theme.weightStrong
     leftPadding: Theme.space4
     rightPadding: Theme.space4
     topPadding: Theme.space3

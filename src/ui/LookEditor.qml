@@ -75,7 +75,7 @@ Popup {
             color: Theme.textFaint
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textXs
-            font.weight: Font.ExtraBold
+            font.weight: Theme.weightHeavy
             font.letterSpacing: 0.6
         }
         Field {

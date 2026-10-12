@@ -68,7 +68,7 @@ Popup {
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.textMd
-            font.weight: Font.DemiBold
+            font.weight: Theme.weightStrong
         }
         PillButton {
             anchors.verticalCenter: parent.verticalCenter

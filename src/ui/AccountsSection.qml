@@ -94,7 +94,7 @@ Column {
                     color: Theme.accent
                     font.family: Theme.displayFontFamily
                     font.pixelSize: Theme.textLg
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
             }
 
@@ -117,7 +117,7 @@ Column {
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.textMd
-                    font.weight: Font.Bold
+                    font.weight: Theme.weightBold
                 }
                 Text {
                     width: parent.width

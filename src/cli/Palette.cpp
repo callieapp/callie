@@ -9,8 +9,10 @@ namespace callie::cli {
 
 namespace {
 
-/// Lightness, in OKLCH, that reads at 4.5:1 on a near-white page at every hue.
+/// Lightnesses, in OKLCH, that read at 4.5:1 on a near-white or a near-black
+/// page at every hue.
 constexpr double kOnLightPage = 0.5;
+constexpr double kOnDarkPage = 0.8;
 
 } // namespace
 
@@ -44,7 +46,14 @@ QColor Palette::ink(const QColor &calendar) const
 QColor Palette::onPage(const QColor &calendar) const
 {
     const ThemeSpec::Calendar &c = m_theme.calendar;
-    if (m_theme.dark || !c.harmonize)
+    if (!c.harmonize) {
+        // The calendar's own color when it reads, else a shade of it that does.
+        if (color::contrastRatio(calendar, m_theme.colors.background) >= 4.5)
+            return calendar;
+        return color::harmonize(calendar, m_theme.dark ? kOnDarkPage : kOnLightPage,
+                                std::min(color::toOklch(calendar).chroma, 0.15));
+    }
+    if (m_theme.dark)
         return fill(calendar);
     return color::harmonize(calendar, kOnLightPage, std::max(c.chroma, c.edgeChroma));
 }

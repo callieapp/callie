@@ -61,6 +61,11 @@ Settings::Settings(const QString &path, QObject *parent)
     rebuildTimes();
 }
 
+QStringList Settings::views()
+{
+    return kViews;
+}
+
 QString Settings::defaultPath()
 {
     return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + u'/' +

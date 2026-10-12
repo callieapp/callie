@@ -118,10 +118,14 @@ void AccountManager::connectCalDav(CalDavClient &client, const QUrl &server, con
         m_tokens.write(account, password, [this, account, listed](const QString &keyring) {
             if (!keyring.isEmpty()) {
                 Q_EMIT failed(tr("could not store the password: %1").arg(keyring));
-            } else if (!listed && !m_store.add(account)) {
+            } else if (!m_store.add(account)) {
                 const QString listError = m_store.errorString();
-                m_tokens.remove(account,
-                                [this, listError](const QString &) { Q_EMIT failed(listError); });
+                // A new account's password goes again; one listed keeps its new one.
+                if (listed)
+                    Q_EMIT failed(listError);
+                else
+                    m_tokens.remove(
+                        account, [this, listError](const QString &) { Q_EMIT failed(listError); });
             } else {
                 qCInfo(lcAccounts) << "connected" << account.provider << account.id;
                 Q_EMIT connected(account);
@@ -149,16 +153,15 @@ void AccountManager::remove(const Account &account)
             Q_EMIT failed(tr("could not remove the token: %1").arg(keyring));
         else if (m_cache && !m_cache->removeAccount(account))
             Q_EMIT failed(tr("could not clear cached events: %1").arg(m_cache->errorString()));
+        else if (QString copies; m_caldav && account.provider == u"caldav" &&
+                                 !m_caldav->forget(account.id, &copies))
+            Q_EMIT failed(tr("could not delete the calendars' copies: %1").arg(copies));
         else if (!m_store.remove(account))
             Q_EMIT failed(m_store.errorString());
         else {
             qCInfo(lcAccounts) << "removed" << account.provider << account.id;
             if (m_contacts)
                 m_contacts->forget(account.id);
-            // Its calendars are a copy of the server's, so they go too.
-            QString copies;
-            if (m_caldav && account.provider == u"caldav" && !m_caldav->forget(account.id, &copies))
-                qCWarning(lcAccounts) << "could not delete the copies of" << account.id << copies;
             Q_EMIT removed(account);
         }
     });

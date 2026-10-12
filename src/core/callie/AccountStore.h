@@ -23,7 +23,8 @@ public:
     /// the file exists but cannot be read or parsed.
     bool load(QList<Account> &out);
 
-    /// Both return false on an I/O error, described by errorString().
+    /// Both return false on an I/O error, described by errorString(). Adding an
+    /// account already listed takes its server and user name.
     bool add(const Account &account);
     bool remove(const Account &account);
 

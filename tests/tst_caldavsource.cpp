@@ -29,6 +29,7 @@ private Q_SLOTS:
     void aChangeMadeWhileOneGoesUpGoesToo();
     void removingAnAccountStopsItsSync();
     void aCalendarGoneKeepsChangesNotSent();
+    void anotherServerStartsAfresh();
 
 private:
     void sync();
@@ -358,6 +359,21 @@ void TestCalDavSource::aCalendarGoneKeepsChangesNotSent()
     QCOMPARE(after, puts);
     QVERIFY2(m_source->lastError().contains(u"gone from the server"_s),
              qPrintable(m_source->lastError()));
+}
+
+void TestCalDavSource::anotherServerStartsAfresh()
+{
+    sync();
+    QCOMPARE(m_source->calendars().size(), 2);
+    // Signed in again to another server: its calendars, and none of the old.
+    FakeCalDavServer other;
+    other.addCalendar("home", "Home");
+    m_source->setAccounts({{u"me@example.com"_s, other.url(), u"me"_s}});
+    sync();
+    QVERIFY2(m_source->lastError().isEmpty(), qPrintable(m_source->lastError()));
+    QCOMPARE(m_source->calendars().size(), 1);
+    QCOMPARE(m_source->calendars().first().displayName, u"Home"_s);
+    QVERIFY(week().isEmpty());
 }
 
 QTEST_MAIN(TestCalDavSource)

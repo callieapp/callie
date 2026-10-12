@@ -1,5 +1,7 @@
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/CalDavClient.h"
+#include "callie/CalDavSource.h"
 #include "callie/CombinedSource.h"
 #include "callie/ContactBook.h"
 #include "callie/Diagnostics.h"
@@ -44,6 +46,9 @@
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QTimer>
+
+#include <termios.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <memory>
@@ -179,12 +184,68 @@ int runAccountsList()
         return 1;
     }
     if (accounts.isEmpty()) {
-        err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
+        err << QObject::tr("No accounts. Add one with: callie accounts add google, or callie "
+                           "accounts add caldav <server> <user>")
+            << "\n";
         return 0;
     }
-    for (const Account &account : accounts)
-        out << account.provider << "\t" << account.id << "\n";
+    for (const Account &account : accounts) {
+        out << account.provider << "\t" << account.id;
+        if (!account.server.isEmpty())
+            out << "\t" << account.server;
+        out << "\n";
+    }
     return 0;
+}
+
+/// The password, asked for without showing it when a person is typing, or read
+/// as the first line of what is piped in.
+QString readPassword(const QString &prompt)
+{
+    const bool typing = isatty(STDIN_FILENO);
+    termios before{};
+    if (typing) {
+        err << prompt;
+        err.flush();
+        tcgetattr(STDIN_FILENO, &before);
+        termios quiet = before;
+        quiet.c_lflag &= ~tcflag_t(ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &quiet);
+    }
+    QTextStream in(stdin);
+    const QString password = in.readLine();
+    if (typing) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &before);
+        err << "\n";
+        err.flush();
+    }
+    return password;
+}
+
+int runAccountsAddCalDav(QCoreApplication &app, const QString &server, const QString &user)
+{
+    const QUrl url(server.contains(u"://"_s) ? server : u"https://"_s + server);
+    const QString password = readPassword(QObject::tr("App password for %1: ").arg(user));
+    if (password.isEmpty()) {
+        err << QObject::tr("callie: no password given") << "\n";
+        return 2;
+    }
+    QNetworkAccessManager network;
+    CalDavClient client(&network);
+    KeychainTokenStore tokens;
+    AccountStore store(AccountStore::defaultPath());
+    AccountManager manager(tokens, store);
+    QObject::connect(&manager, &AccountManager::connected, [](const Account &account) {
+        out << account.id << "\n";
+        err << QObject::tr("Bring its calendars down with: callie sync") << "\n";
+        finish(0);
+    });
+    QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
+        err << QStringLiteral("callie: %1\n").arg(message);
+        finish(1);
+    });
+    QTimer::singleShot(0, &manager, [&] { manager.connectCalDav(client, url, user, password); });
+    return app.exec();
 }
 
 /// The OAuth client, or nothing after telling the user how to configure one.
@@ -247,6 +308,8 @@ int runAccountsRemove(QCoreApplication &app, const Account &account)
     AccountManager manager(tokens, store, cacheOpen ? &cache : nullptr);
     ContactBook contacts(ContactBook::defaultPath());
     manager.setContacts(&contacts);
+    CalDavSource caldav(CalDavSource::defaultRoot(), nullptr, nullptr);
+    manager.setCalDav(&caldav);
 
     QObject::connect(&manager, &AccountManager::removed, [] { finish(0); });
     QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
@@ -420,9 +483,34 @@ int runSync(QCoreApplication &app)
         err << QStringLiteral("callie: %1\n").arg(store.errorString());
         return 1;
     }
+    // Then CalDAV accounts, sending what waits and bringing down what changed.
+    KeychainTokenStore tokens;
+    CalDavSource caldav(CalDavSource::defaultRoot(), &network, &tokens);
+    QList<CalDavSource::Account> calDavAccounts;
+    for (const Account &account : std::as_const(accounts)) {
+        if (account.provider == u"caldav")
+            calDavAccounts << CalDavSource::Account{account.id, QUrl(account.server), account.user};
+    }
+    if (!calDavAccounts.isEmpty()) {
+        caldav.setAccounts(calDavAccounts);
+        QEventLoop syncing;
+        QObject::connect(&caldav, &CalDavSource::synced, &syncing, &QEventLoop::quit);
+        caldav.refresh();
+        if (caldav.syncing())
+            syncing.exec();
+        for (const QVariant &entry : caldav.syncReport()) {
+            const QVariantMap account = entry.toMap();
+            if (const QString error = account.value(u"error"_s).toString(); !error.isEmpty()) {
+                err << QStringLiteral("callie: %1: %2\n")
+                           .arg(account.value(u"account"_s).toString(), error);
+                failed = true;
+            }
+        }
+    }
+
     accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
     if (accounts.isEmpty()) {
-        if (subscriptions.calendars().isEmpty())
+        if (subscriptions.calendars().isEmpty() && calDavAccounts.isEmpty())
             err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
         return failed ? 1 : 0;
     }
@@ -435,7 +523,6 @@ int runSync(QCoreApplication &app)
     const std::optional<GoogleClientConfig> client = googleClient();
     if (!client)
         return 1;
-    KeychainTokenStore tokens;
     GoogleTokenProvider provider(*client, tokens);
     GoogleCalendarApi api(&network);
     GoogleSync sync(provider, api, cache);
@@ -638,6 +725,7 @@ struct Backend
     std::unique_ptr<GoogleSource> google;
     std::unique_ptr<LocalCalendars> local;
     std::unique_ptr<Subscriptions> subscriptions;
+    std::unique_ptr<CalDavSource> caldav;
     std::unique_ptr<CalendarSource> source;
 };
 
@@ -657,54 +745,75 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
         code = 1;
         return nullptr;
     }
+    QList<CalDavSource::Account> calDavAccounts;
+    for (const Account &account : std::as_const(backend->accounts)) {
+        if (account.provider == u"caldav")
+            calDavAccounts << CalDavSource::Account{account.id, QUrl(account.server), account.user};
+    }
     backend->accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
+    // Changes need the network and the keyring; reading needs neither.
+    if (writing) {
+        backend->tokens = std::make_unique<KeychainTokenStore>();
+        backend->network = std::make_unique<QNetworkAccessManager>();
+    }
     backend->local = std::make_unique<LocalCalendars>(LocalCalendars::defaultRoot());
     // Read as last fetched; `callie sync` fetches them.
     backend->subscriptions = std::make_unique<Subscriptions>(Subscriptions::defaultRoot(), nullptr);
-    const bool local =
-        !backend->local->calendars().isEmpty() || !backend->subscriptions->calendars().isEmpty();
-    if (backend->accounts.isEmpty() && !local) {
-        err << QObject::tr("No calendars. Add an account with: callie accounts add google, or "
-                           "make a calendar with: callie calendars new <name>")
-            << "\n";
-        return nullptr;
-    }
-    auto combined = std::make_unique<CombinedSource>();
-    if (backend->accounts.isEmpty()) {
-        combined->setSources({backend->local.get(), backend->subscriptions.get()});
-        backend->source = std::move(combined);
-        return backend;
-    }
-    backend->cache = std::make_unique<GoogleCache>(GoogleCache::defaultPath());
-    if (!backend->cache->open()) {
-        err << QStringLiteral("callie: %1\n").arg(backend->cache->errorString());
-        code = 1;
-        return nullptr;
-    }
-    auto google = std::make_unique<GoogleSource>(*backend->cache, backend->accounts);
-    if (google->calendars().isEmpty() && !local) {
-        err << QObject::tr("Nothing synced yet. Run: callie sync") << "\n";
-        return nullptr;
-    }
-    if (writing) {
-        const std::optional<GoogleClientConfig> client = googleClient();
-        if (!client) {
+    backend->caldav = std::make_unique<CalDavSource>(CalDavSource::defaultRoot(),
+                                                     backend->network.get(), backend->tokens.get());
+    backend->caldav->setAccounts(calDavAccounts);
+    const bool others = !backend->local->calendars().isEmpty() ||
+                        !backend->subscriptions->calendars().isEmpty() ||
+                        !backend->caldav->calendars().isEmpty();
+    QList<CalendarSource *> sources;
+    if (!backend->accounts.isEmpty()) {
+        backend->cache = std::make_unique<GoogleCache>(GoogleCache::defaultPath());
+        if (!backend->cache->open()) {
+            err << QStringLiteral("callie: %1\n").arg(backend->cache->errorString());
             code = 1;
             return nullptr;
         }
-        backend->tokens = std::make_unique<KeychainTokenStore>();
-        backend->provider = std::make_unique<GoogleTokenProvider>(*client, *backend->tokens);
-        backend->network = std::make_unique<QNetworkAccessManager>();
-        backend->api = std::make_unique<GoogleCalendarApi>(backend->network.get());
-        backend->sync =
-            std::make_unique<GoogleSync>(*backend->provider, *backend->api, *backend->cache);
-        google->setSync(backend->sync.get());
+        backend->google = std::make_unique<GoogleSource>(*backend->cache, backend->accounts);
+        // Without a Google client, changes to Google calendars say so when made.
+        const GoogleClientConfig client = GoogleClientConfig::resolve();
+        if (writing && client.isValid()) {
+            backend->provider = std::make_unique<GoogleTokenProvider>(client, *backend->tokens);
+            backend->api = std::make_unique<GoogleCalendarApi>(backend->network.get());
+            backend->sync =
+                std::make_unique<GoogleSync>(*backend->provider, *backend->api, *backend->cache);
+            backend->google->setSync(backend->sync.get());
+        }
+        sources << backend->google.get();
     }
-    backend->google = std::move(google);
-    combined->setSources(
-        {backend->google.get(), backend->local.get(), backend->subscriptions.get()});
+    if ((!backend->google || backend->google->calendars().isEmpty()) && !others) {
+        err << (backend->accounts.isEmpty() && calDavAccounts.isEmpty()
+                    ? QObject::tr("No calendars. Add an account with: callie accounts add google, "
+                                  "or make a calendar with: callie calendars new <name>")
+                    : QObject::tr("Nothing synced yet. Run: callie sync"))
+            << "\n";
+        return nullptr;
+    }
+    sources << backend->caldav.get() << backend->local.get() << backend->subscriptions.get();
+    auto combined = std::make_unique<CombinedSource>();
+    combined->setSources(sources);
     backend->source = std::move(combined);
     return backend;
+}
+
+/// Sends the changes made to CalDAV calendars before the command ends, giving
+/// up after a while; what is left goes with the next sync.
+void sendCalDavChanges(const Backend &backend)
+{
+    if (!backend.caldav || backend.caldav->waitingChanges().isEmpty())
+        return;
+    QEventLoop sending;
+    QObject::connect(backend.caldav.get(), &CalDavSource::synced, &sending, &QEventLoop::quit);
+    QTimer::singleShot(std::chrono::seconds(15), &sending, &QEventLoop::quit);
+    backend.caldav->refresh();
+    if (backend.caldav->syncing())
+        sending.exec();
+    for (const QString &waiting : backend.caldav->waitingChanges())
+        err << QObject::tr("callie: %1; they go with the next sync").arg(waiting) << "\n";
 }
 
 /// The event commands: agenda, search, invites, add, edit, delete, respond and duplicate.
@@ -717,9 +826,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     };
     const bool reading = command == u"agenda" || command == u"search" || command == u"invites" ||
                          command == u"contacts" || command == u"calendars" ||
-                         command == u"accounts" ||
-                         // The TUI syncs when it can, and shows the cache when it cannot.
-                         (command == u"tui" && !GoogleClientConfig::resolve().isValid());
+                         command == u"accounts";
     // Sample data and scripts that only read leave the user's settings alone.
     QTemporaryDir scratch;
     Settings settings(sample ? scratch.filePath(u"settings.ini"_s) : Settings::defaultPath());
@@ -778,6 +885,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
             err << QObject::tr("callie: not made: %1").arg(message) << "\n";
         for (const PendingChange &change : queued.changes())
             err << QObject::tr("callie: not sent: %1").arg(change.describe()) << "\n";
+        sendCalDavChanges(*backend);
         return queued.changes().isEmpty() && refused.isEmpty() ? code : 1;
 #else
         err << QObject::tr("callie: this build has no TUI; try: callie agenda") << "\n";
@@ -833,7 +941,9 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         return 2;
     }
     // Sample data answers at once; Google answers over the network.
-    return result ? *result : app.exec();
+    const int ended = result ? *result : app.exec();
+    sendCalDavChanges(*backend);
+    return ended;
 }
 
 int runAccounts(QCoreApplication &app, const QStringList &args)
@@ -845,11 +955,14 @@ int runAccounts(QCoreApplication &app, const QStringList &args)
         return runAccountsList();
     if (action == QLatin1String("add") && provider == kGoogle && args.size() == 3)
         return runAccountsAddGoogle(app);
-    if (action == QLatin1String("remove") && provider == kGoogle && args.size() == 4)
-        return runAccountsRemove(app, Account{kGoogle, args.at(3)});
+    if (action == QLatin1String("add") && provider == u"caldav" && args.size() == 5)
+        return runAccountsAddCalDav(app, args.at(3), args.at(4));
+    if (action == QLatin1String("remove") && (provider == kGoogle || provider == u"caldav") &&
+        args.size() == 4)
+        return runAccountsRemove(app, Account{provider, args.at(3)});
 
-    err << QObject::tr("usage: callie accounts [list | add google | remove google <id> | rename "
-                       "<id> <name>]")
+    err << QObject::tr("usage: callie accounts [list | add google | add caldav <server> <user> | "
+                       "remove google|caldav <id> | rename <id> <name>]")
         << "\n";
     return 2;
 }

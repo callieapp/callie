@@ -55,6 +55,13 @@ Connect Google accounts in Settings, under Accounts: Callie opens your browser t
 account's calendars appear once you have. The same tab shows how each account's sync is going and
 removes an account. `callie accounts add google` does the same from a terminal.
 
+CalDAV accounts connect there too: pick Fastmail, iCloud or Nextcloud, or give any server's
+address, then the user name and an app password, which goes in the system keyring. Callie keeps a
+copy of each calendar under `$XDG_DATA_HOME/callie/caldav`, laid out like the calendars on this
+computer, sends changes in the background, holds them while the server cannot be reached, and keeps
+the server's version when an event changed in both places. `callie accounts add caldav <server>
+<user>` does the same from a terminal, asking for the password.
+
 Calendars can also live on this computer alone: add one in Settings, under Accounts, or with
 `callie calendars new "Book club"`. Each is a folder of `.ics` files under
 `$XDG_DATA_HOME/callie/calendars`, one file per event, the same layout khal and vdirsyncer use, so
@@ -98,7 +105,8 @@ callie delete <id>                       # --scope all deletes a whole series
 callie duplicate <id> --start 2026-10-12 # a copy, at the same time unless moved
 callie accounts                          # connected calendar accounts
 callie accounts add google               # sign in with Google in your browser
-callie accounts remove google you@example.com
+callie accounts add caldav caldav.fastmail.com me@fastmail.com # asks for an app password
+callie accounts remove google you@example.com # or caldav <id>
 callie calendars                         # calendars in each account, tab-separated
 callie calendars new "Book club"         # a calendar on this computer; remove takes it away
 callie import party.ics                  # its events into a calendar here; --calendar picks one
@@ -232,7 +240,7 @@ Roughly in the order it needs to happen:
 - [x] Google Calendar API v3 sync, using sync tokens for incremental updates
 - [ ] Submit the OAuth consent screen for verification (unverified apps are capped at
       100 users, and review takes weeks, so this wants starting early)
-- [ ] CalDAV accounts, credentials stored in the system keyring
+- [x] CalDAV accounts, credentials stored in the system keyring
 - [x] Calendars on this computer, as vdir folders of .ics files
 - [x] Subscriptions to calendar links, refreshed hourly
 - [x] SQLite cache so the app works offline

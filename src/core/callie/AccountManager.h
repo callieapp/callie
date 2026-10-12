@@ -3,12 +3,15 @@
 #include "Account.h"
 
 #include <QObject>
+#include <QUrl>
 
 namespace callie {
 
 class ContactBook;
 
 class AccountStore;
+class CalDavClient;
+class CalDavSource;
 class GoogleCache;
 class GoogleAuth;
 class GoogleCalendarApi;
@@ -26,11 +29,21 @@ public:
                    QObject *parent = nullptr);
     /// `contacts`, when given, loses an account's contacts when the account is removed.
     void setContacts(ContactBook *contacts) { m_contacts = contacts; }
+    /// `caldav`, when given, loses a CalDAV account's calendars when it is removed.
+    void setCalDav(CalDavSource *caldav) { m_caldav = caldav; }
 
     /// Signs in with Google and records the account. The token is stored before
     /// the account is listed, so a keyring failure never leaves an account
     /// without a token. Emits connected or failed once.
     void connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api);
+
+    /// Checks that the server takes the password and has calendars, then stores
+    /// the password and lists the account, as connectGoogle does. For an account
+    /// already listed, only the password changes. Emits connected or failed once.
+    void connectCalDav(CalDavClient &client, const QUrl &server, const QString &user,
+                       const QString &password);
+    /// The id a CalDAV account has: the user name, with the host when it has no @.
+    [[nodiscard]] static QString calDavId(const QUrl &server, const QString &user);
 
     /// Forgets the token, then cached events, then the account, so a failed
     /// step leaves the account listed for another try. Emits removed or failed once.
@@ -46,6 +59,7 @@ private:
     AccountStore &m_store;
     GoogleCache *m_cache;
     ContactBook *m_contacts = nullptr;
+    CalDavSource *m_caldav = nullptr;
 };
 
 } // namespace callie

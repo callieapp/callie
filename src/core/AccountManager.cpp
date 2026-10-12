@@ -3,6 +3,8 @@
 #include "callie/ContactBook.h"
 
 #include "callie/AccountStore.h"
+#include "callie/CalDavClient.h"
+#include "callie/CalDavSource.h"
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
@@ -85,6 +87,49 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
     auth.authorize();
 }
 
+QString AccountManager::calDavId(const QUrl &server, const QString &user)
+{
+    const QString name = user.trimmed();
+    return name.contains(u'@') ? name : name + u'@' + server.host();
+}
+
+void AccountManager::connectCalDav(CalDavClient &client, const QUrl &server, const QString &user,
+                                   const QString &password)
+{
+    QList<Account> existing;
+    if (!m_store.load(existing)) {
+        QTimer::singleShot(0, this,
+                           [this, message = m_store.errorString()] { Q_EMIT failed(message); });
+        return;
+    }
+    const Account account{QStringLiteral("caldav"), calDavId(server, user), server.toString(),
+                          user.trimmed()};
+    client.setCredentials(account.user, password);
+    client.discover(server, [this, account, password, listed = existing.contains(account)](
+                                const DavAccount &found, const DavError &error) {
+        if (error) {
+            Q_EMIT failed(error.message);
+            return;
+        }
+        if (found.calendars.isEmpty()) {
+            Q_EMIT failed(tr("The server has no calendars for %1.").arg(account.user));
+            return;
+        }
+        m_tokens.write(account, password, [this, account, listed](const QString &keyring) {
+            if (!keyring.isEmpty()) {
+                Q_EMIT failed(tr("could not store the password: %1").arg(keyring));
+            } else if (!listed && !m_store.add(account)) {
+                const QString listError = m_store.errorString();
+                m_tokens.remove(account,
+                                [this, listError](const QString &) { Q_EMIT failed(listError); });
+            } else {
+                qCInfo(lcAccounts) << "connected" << account.provider << account.id;
+                Q_EMIT connected(account);
+            }
+        });
+    });
+}
+
 void AccountManager::remove(const Account &account)
 {
     QList<Account> accounts;
@@ -110,6 +155,10 @@ void AccountManager::remove(const Account &account)
             qCInfo(lcAccounts) << "removed" << account.provider << account.id;
             if (m_contacts)
                 m_contacts->forget(account.id);
+            // Its calendars are a copy of the server's, so they go too.
+            QString copies;
+            if (m_caldav && account.provider == u"caldav" && !m_caldav->forget(account.id, &copies))
+                qCWarning(lcAccounts) << "could not delete the copies of" << account.id << copies;
             Q_EMIT removed(account);
         }
     });

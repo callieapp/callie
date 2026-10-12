@@ -217,6 +217,9 @@ palette:
     const QString wrong = writeFile(u"wrong.yaml"_s, "scheme: \"Wrong\"\nbase00: \"blue\"\n");
     QVERIFY(m_library->importTheme(wrong).isEmpty());
     QVERIFY(m_library->error().contains(u"not a color"_s));
+    const QString bare = writeFile(u"bare.yaml"_s, "scheme: \"Bare\"\nbase00: #c5c8c\n");
+    QVERIFY(m_library->importTheme(bare).isEmpty());
+    QVERIFY(m_library->error().contains(u"#c5c8c"_s));
     QCOMPARE(m_library->themes().size(), 2);
 }
 

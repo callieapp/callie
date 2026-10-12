@@ -260,8 +260,9 @@ bool VdirSource::save(const Folder &folder, const QString &fileName, const QStri
 
 bool VdirSource::mirror(const Folder &folder, const ics::Group &events, QString *error)
 {
-    if (!QDir().mkpath(folder.path)) {
-        *error = tr("Callie could not create %1.").arg(folder.path);
+    // Gone, as when another process stopped it: not made again.
+    if (!QDir(folder.path).exists()) {
+        *error = tr("%1 is gone.").arg(folder.path);
         return false;
     }
     const QHash<QString, QString> before = read(folder).files;

@@ -186,6 +186,13 @@ void TestSubscriptions::removingForgetsTheCopy()
     subscriptions.add(server.url(u"/one.ics"_s).toString(), u"Again"_s, &error);
     QVERIFY(fetched.wait());
     QCOMPARE(autumn(subscriptions).size(), 1);
+
+    // Stopped by another process, as `callie unsubscribe` would, while its
+    // fetch is under way here: its folder is not made again.
+    subscriptions.add(server.url(u"/h.ics"_s).toString(), u"Other"_s, &error);
+    QVERIFY(QDir(dir.filePath(u"other"_s)).removeRecursively());
+    QVERIFY(fetched.wait());
+    QVERIFY(!QDir(dir.filePath(u"other"_s)).exists());
 }
 
 QTEST_MAIN(TestSubscriptions)

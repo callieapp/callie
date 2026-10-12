@@ -279,10 +279,12 @@ void VdirSource::apply(const Event &event, const Created &done, const Change &ch
         return;
     }
     const Folder target = *where;
+    // A series split off is written before the old one is cut short, so a
+    // failure part way loses nothing.
     const QString splitUid = changed->split.isEmpty() ? QString() : changed->split.first()->uid();
-    if (!save(target, fileName, event.uid, changed->group, &error) ||
-        (!splitUid.isEmpty() &&
-         !save(target, fileNameFor(splitUid), splitUid, changed->split, &error))) {
+    if ((!splitUid.isEmpty() &&
+         !save(target, fileNameFor(splitUid), splitUid, changed->split, &error)) ||
+        !save(target, fileName, event.uid, changed->group, &error)) {
         done(error);
         return;
     }

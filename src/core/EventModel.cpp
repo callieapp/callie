@@ -211,7 +211,12 @@ void EventModel::setMinimumMinutes(int minutes)
         return;
     m_minimumMinutes = minutes;
     Q_EMIT minimumMinutesChanged();
-    reload();
+    // Only the layout depends on it, and it follows the window's height, so
+    // the events already loaded are laid out again rather than read again.
+    assignLanes(m_events);
+    if (!m_events.isEmpty())
+        Q_EMIT dataChanged(index(0), index(int(m_events.size()) - 1),
+                           {LaneRole, LaneCountRole, DepthRole});
 }
 
 void EventModel::assignLanes(QList<Event> &events) const

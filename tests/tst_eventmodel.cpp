@@ -113,6 +113,7 @@ private Q_SLOTS:
     void stepsAndSidesMix();
     void laterEventsStackOnOneColumn();
     void shortEventsTakeTheirOwnColumn();
+    void shortestMinutesLayOutWithoutLoading();
     void workPlacesLabelTheirDays();
     void clustersAreCountedIndependently();
     void differentDaysDoNotShareLanes();
@@ -284,6 +285,25 @@ void TestEventModel::shortEventsTakeTheirOwnColumn()
     QCOMPARE(intRole(*model, 1, EventModel::LaneRole), 1);
     for (int row = 0; row < 3; ++row)
         QCOMPARE(intRole(*model, row, EventModel::DepthRole), 0);
+}
+
+void TestEventModel::shortestMinutesLayOutWithoutLoading()
+{
+    SlowSource source;
+    EventModel model;
+    model.setRangeStart(kMonday);
+    model.setSource(&source);
+    source.answer(0, {timed("water", kMonday, 9, 0, 5), timed("make", kMonday, 9, 5, 5)});
+    QTRY_COMPARE(model.rowCount(), 2);
+    QCOMPARE(intRole(model, 1, EventModel::LaneCountRole), 1);
+
+    // The window's height sets it, so a resize must not read the source again.
+    QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
+    model.setMinimumMinutes(20);
+    QCOMPARE(source.loads.size(), 1);
+    QCOMPARE(changed.size(), 1);
+    QCOMPARE(intRole(model, 0, EventModel::LaneCountRole), 2);
+    QCOMPARE(intRole(model, 1, EventModel::LaneRole), 1);
 }
 
 void TestEventModel::workPlacesLabelTheirDays()

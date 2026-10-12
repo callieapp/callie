@@ -156,6 +156,15 @@ Popup {
         }
 
         Section {
+            title: qsTr("On this computer")
+            visible: root.tab === "accounts"
+
+            LocalSection {
+                width: parent.width
+            }
+        }
+
+        Section {
             title: qsTr("Theme")
             visible: root.tab === "appearance"
 

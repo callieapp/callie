@@ -647,8 +647,8 @@ int Commands::calendarLook(const QString &action, const QString &calendar, const
     static const QStringList kActions = {u"hide"_s, u"show"_s, u"rename"_s, u"color"_s, u"reset"_s};
     const QColor color = QColor::fromString(value);
     if (!kActions.contains(action) || calendar.isEmpty()) {
-        m_err << tr("usage: callie calendars [hide | show | reset <calendar> | rename <calendar> "
-                    "<name> | color <calendar> <color>]")
+        m_err << tr("usage: callie calendars [new <name> | remove <calendar> | hide | show | "
+                    "reset <calendar> | rename <calendar> <name> | color <calendar> <color>]")
               << "\n";
         return 2;
     }

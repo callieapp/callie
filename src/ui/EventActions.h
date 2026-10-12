@@ -89,6 +89,8 @@ public:
     /// A mailto: link to every other guest, with the event's title as subject.
     Q_INVOKABLE static QUrl mailGuests(const QVariantMap &event);
     Q_INVOKABLE void clearError();
+    /// Whether events in the calendar can be given a video call.
+    Q_INVOKABLE bool canAddCall(const QString &calendarId) const;
 
 Q_SIGNALS:
     void sourceChanged();

@@ -404,6 +404,7 @@ Column {
     }
 
     Toggle {
+        visible: root.actions.canAddCall(root.event.calendarId || "")
         width: parent.width
         text: qsTr("Video call")
         checked: root.videoCall

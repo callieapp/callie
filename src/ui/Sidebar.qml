@@ -346,7 +346,9 @@ Rectangle {
                             }
 
                             readonly property string title: Settings.accountNames[group.modelData]
-                                                            || group.modelData
+                                                            || (group.modelData === "local" ? qsTr(
+                                                                                                  "On this computer") :
+                                                                                              group.modelData)
 
                             background: Rectangle {
                                 radius: Theme.radiusSm

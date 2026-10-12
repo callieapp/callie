@@ -55,6 +55,12 @@ Connect Google accounts in Settings, under Accounts: Callie opens your browser t
 account's calendars appear once you have. The same tab shows how each account's sync is going and
 removes an account. `callie accounts add google` does the same from a terminal.
 
+Calendars can also live on this computer alone: add one in Settings, under Accounts, or with
+`callie calendars new "Book club"`. Each is a folder of `.ics` files under
+`$XDG_DATA_HOME/callie/calendars`, one file per event, the same layout khal and vdirsyncer use, so
+other apps can read them and a folder put there by hand shows up as a calendar. Removing one moves
+its folder to the trash.
+
 Pick a theme in Settings, under Theme: Callie, Callie Light, Paper, Minimal, Minimal Dark,
 Tomorrow or Tomorrow Night. Customize colors copies the theme into
 `$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
@@ -85,6 +91,7 @@ callie accounts                          # connected calendar accounts
 callie accounts add google               # sign in with Google in your browser
 callie accounts remove google you@example.com
 callie calendars                         # calendars in each account, tab-separated
+callie calendars new "Book club"         # a calendar on this computer; remove takes it away
 callie calendars rename Focus "Deep work" # also hide, show, color <calendar> <#rrggbb>, reset
 callie accounts rename you@example.com Work
 callie settings                          # every setting; callie settings viMode true changes one
@@ -215,6 +222,7 @@ Roughly in the order it needs to happen:
 - [ ] Submit the OAuth consent screen for verification (unverified apps are capped at
       100 users, and review takes weeks, so this wants starting early)
 - [ ] CalDAV accounts, credentials stored in the system keyring
+- [x] Calendars on this computer, as vdir folders of .ics files
 - [x] SQLite cache so the app works offline
 - [x] Replace the placeholder sample data
 

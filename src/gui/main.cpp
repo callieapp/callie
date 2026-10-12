@@ -2,6 +2,7 @@
 #include "Clock.h"
 #include "EventModelForeign.h"
 #include "LiveQml.h"
+#include "LocalController.h"
 #include "NotificationServer.h"
 #include "PlaceSearch.h"
 #include "ReleaseInfo.h"
@@ -21,6 +22,7 @@
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
 #include "callie/Identity.h"
+#include "callie/LocalCalendars.h"
 #include "callie/LogFile.h"
 #include "callie/Logging.h"
 #include "callie/LookedSource.h"
@@ -201,9 +203,14 @@ int main(int argc, char *argv[])
                      [&settings](const callie::Account &, const QHash<QString, QString> &google) {
                          settings.seedFromGoogle(google);
                      });
-    // Every account and calendar, shown together.
+    // Every account and calendar, shown together. Sample data and screenshots
+    // leave the calendars on this computer alone.
+    std::optional<callie::LocalCalendars> local;
+    if (!standalone)
+        local.emplace(callie::LocalCalendars::defaultRoot());
     callie::CombinedSource combined;
-    combined.setSources({&google});
+    combined.setSources(local ? QList<callie::CalendarSource *>{&google, &*local}
+                              : QList<callie::CalendarSource *>{&google});
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
 
@@ -296,6 +303,7 @@ int main(int argc, char *argv[])
             QObject::tr("Showing sample data, so accounts cannot be changed here.");
     }
     callie::AccountsController::instance()->setUp(accountSetup);
+    callie::LocalController::instance()->setUp(local ? &*local : nullptr);
 
     callie::UpdateCheck updates;
     QQmlApplicationEngine engine;

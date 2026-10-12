@@ -53,13 +53,14 @@ SampleSource::SampleSource(QObject *parent)
     : CalendarSource(parent), m_now([] { return QDateTime::currentDateTimeUtc(); })
 {
     m_synced = m_now();
+    // Made-up Google accounts, video calls and all.
     m_calendars = {
         {QStringLiteral("work"), QStringLiteral("Work"), QColor(QStringLiteral("#5B8DEF")), true,
-         true, QStringLiteral("sam@work.example")},
+         true, QStringLiteral("sam@work.example"), true},
         {QStringLiteral("focus"), QStringLiteral("Focus"), QColor(QStringLiteral("#7C6BD6")), true,
-         true, QStringLiteral("sam@work.example")},
+         true, QStringLiteral("sam@work.example"), true},
         {QStringLiteral("personal"), QStringLiteral("Personal"), QColor(QStringLiteral("#2FA98C")),
-         true, true, QStringLiteral("sam@home.example")},
+         true, true, QStringLiteral("sam@home.example"), true},
     };
 }
 

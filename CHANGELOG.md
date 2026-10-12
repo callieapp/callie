@@ -3,6 +3,36 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.3.0 - 2026-10-11
+
+### New
+
+- `callie` on its own in a terminal opens your calendar full screen, in your theme: a day, a week
+  or the next two weeks, with the app's vi keys. Open an event with Enter to see its details,
+  answer it with y, m or n, join its call with o or delete it with x, and take a change back with
+  u. n adds an event the way `callie add` reads it, / searches, i lists invitations and c shows or
+  hides calendars. Press ? for every key. Piped, or with `--json` or `--days`, `callie` lists the
+  agenda as before.
+- The agenda in a terminal takes its colors from your theme: today in the accent, a dot in each
+  event's calendar color, and declined events struck through. Set `NO_COLOR` to turn colors off.
+- `callie upgrade` installs the newest release, and `callie downgrade` goes back to an earlier
+  one, with dnf or apt after checking the download.
+- Callie says when a newer release is out: once a day after a command in a terminal, and as
+  "Update to Callie X" in the ? menu. Turn it off in Settings, with
+  `callie settings checkForUpdates false`, or with `CALLIE_NO_UPDATE_CHECK`.
+- Tab completion for bash, zsh and fish, for commands, options, settings, calendar names and
+  events. Packages install it; `callie completions bash|zsh|fish` prints it.
+- The installer says when Callie is already up to date, reinstalls with `--force`, and installs an
+  earlier release with `--version`.
+
+### Fixed
+
+- Callie opens much faster: the window shows in under half the time, and your events right after
+  it, without the stalls that made the first moments and the "What's new" window choppy. The
+  first start after updating upgrades the cache in place, without syncing again.
+- Join opens a call only by a web link. A call link from an invitation that pointed at a file or
+  a network share is ignored, and the link in the notes is used instead, if there is one.
+
 ## 0.2.3 - 2026-10-11
 
 ### New

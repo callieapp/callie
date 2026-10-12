@@ -63,6 +63,8 @@ public:
     bool syncTokens = true;
     /// Paths that send requests elsewhere, as Location headers.
     QHash<QByteArray, QByteArray> redirects;
+    /// Paths answered without signing in, with a multistatus body.
+    QHash<QByteArray, QByteArray> anonymous;
     /// The calendar home as the principal names it, when not the usual path.
     QByteArray homeHref = "/dav/calendars/me/";
     QMap<QByteArray, Calendar> calendars;
@@ -105,6 +107,8 @@ private:
     {
         if (redirects.contains(request.target))
             return {301, "", {{"Location", redirects.value(request.target)}}, "text/plain"};
+        if (anonymous.contains(request.target))
+            return xml(anonymous.value(request.target));
         if (request.headers.value("authorization") != "Basic " + (user + ':' + password).toBase64())
             return {401, "no", {{"WWW-Authenticate", "Basic realm=\"test\""}}, "text/plain"};
         const QByteArray path = request.target;

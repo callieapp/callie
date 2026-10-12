@@ -220,29 +220,40 @@ void TestIcs::movesOneOrAll()
 
 void TestIcs::seriesKeepTheirHourAcrossAClockChange()
 {
-    // Berlin leaves summer time on Sunday 25 October 2026.
+    // Berlin leaves summer time on Sunday 25 October 2026, between the
+    // series' start and the occurrence moved.
     const ics::Group events = ics::parse(calendar(R"(BEGIN:VEVENT
 UID:planning
 DTSTART;TZID=Europe/Berlin:20261019T090000
 DTEND;TZID=Europe/Berlin:20261019T093000
-RRULE:FREQ=WEEKLY
+RRULE:FREQ=WEEKLY;BYDAY=MO
 SUMMARY:Planning
 END:VEVENT
 )"));
-    const QDateTime monday(QDate(2026, 10, 19), QTime(0, 0), kBerlin);
-    const Event first = ics::expand(events, kHome, monday, monday.addDays(7), kBerlin).value(0);
-    QCOMPARE(first.start.time(), QTime(9, 0));
+    const QDateTime november(QDate(2026, 11, 2), QTime(0, 0), kBerlin);
+    const Event moving =
+        ics::expand(events, kHome, november, november.addDays(1), kBerlin).value(0);
+    QCOMPARE(moving.start.time(), QTime(9, 0));
 
-    // Every one a week later, still at nine on Berlin's clock.
+    // A week later, every one: still at nine on Berlin's clock, the first in
+    // winter time and the rest too.
     QString error;
-    const QDateTime later(QDate(2026, 10, 26), QTime(9, 0), kBerlin);
-    const auto moved = ics::move(events, first, later, later.addSecs(30 * 60), true, &error);
+    const auto moved =
+        ics::move(events, moving, moving.start.addDays(7), moving.end.addDays(7), true, &error);
     QVERIFY2(moved, qPrintable(error));
-    const QList<Event> after =
-        ics::expand(moved->group, kHome, monday, monday.addDays(21), kBerlin);
+    const QDateTime from(QDate(2026, 10, 19), QTime(0, 0), kBerlin);
+    const QList<Event> after = ics::expand(moved->group, kHome, from, from.addDays(21), kBerlin);
     QCOMPARE(after.size(), 2);
-    QCOMPARE(after.first().start, later);
+    QCOMPARE(after.first().start, QDateTime(QDate(2026, 10, 26), QTime(9, 0), kBerlin));
     QCOMPARE(after.last().start, QDateTime(QDate(2026, 11, 2), QTime(9, 0), kBerlin));
+
+    // Two days on, to Wednesdays, and the rule's day goes with it.
+    const Event first = after.first();
+    const auto wednesdays =
+        ics::move(moved->group, first, first.start.addDays(2), first.end.addDays(2), true, &error);
+    for (const Event &event :
+         ics::expand(wednesdays->group, kHome, from, from.addDays(28), kBerlin))
+        QCOMPARE(event.start.date().dayOfWeek(), int(Qt::Wednesday));
 }
 
 void TestIcs::allDaySeriesMoveByDays()

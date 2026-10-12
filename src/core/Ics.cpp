@@ -266,6 +266,20 @@ void shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint6
         for (const QDate &date : series->recurrence()->exDates())
             excludedDays << date.addDays(shift.days);
         series->recurrence()->setExDates(excludedDays);
+        // A rule's own days move too, or a series moved to Wednesday would
+        // carry on on Mondays.
+        for (KCalendarCore::RecurrenceRule *rule : series->recurrence()->rRules()) {
+            QList<KCalendarCore::RecurrenceRule::WDayPos> weekdays = rule->byDays();
+            for (KCalendarCore::RecurrenceRule::WDayPos &weekday : weekdays)
+                weekday.setDay(short(((weekday.day() - 1 + shift.days) % 7 + 7) % 7 + 1));
+            rule->setByDays(weekdays);
+            QList<int> monthDays = rule->byMonthDays();
+            for (int &day : monthDays) {
+                if (day > 0 && day + shift.days >= 1 && day + shift.days <= 31)
+                    day += shift.days;
+            }
+            rule->setByMonthDays(monthDays);
+        }
     }
     // All-day lengths in whole days, which a change of clocks makes 23 or 25 hours.
     const QDateTime end = allDay ? start.addDays(std::max<qint64>(1, qRound(length / 86400.0)))

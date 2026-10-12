@@ -205,7 +205,7 @@ before merging, and pull requests are merged by rebase.
 
 ## Roadmap
 
-Nothing here is released yet. Roughly in the order it needs to happen:
+Roughly in the order it needs to happen:
 
 ### Calendar backends
 
@@ -224,7 +224,8 @@ Nothing here is released yet. Roughly in the order it needs to happen:
 - [x] Natural language quick add
 - [x] Desktop notifications, with one click to join a video call
 - [x] Correct handling of recurring events and cross-timezone meetings
-- [ ] Custom window chrome, and a week grid that fits about 8 working hours
+- [x] Custom window chrome
+- [ ] A week grid that fits about 8 working hours
 
 ### Design
 

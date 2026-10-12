@@ -167,8 +167,17 @@ void TestGoogleSync::init()
 
 void TestGoogleSync::cleanup()
 {
+    // Each part goes before what it uses, so nothing left running calls into a
+    // part already gone.
     m_sync.reset();
     m_cache.reset();
+    m_api.reset();
+    m_tokens.reset();
+    m_network.reset();
+    m_store.reset();
+    m_apiServer.reset();
+    m_tokenServer.reset();
+    m_google.reset();
 }
 
 QStringList TestGoogleSync::runSync()

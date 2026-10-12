@@ -11,7 +11,7 @@ class FakeTokenStore : public callie::TokenStore
 public:
     void write(const callie::Account &account, const QString &secret, Done done) override
     {
-        QTimer::singleShot(0, [=, this] {
+        QTimer::singleShot(0, &m_context, [=, this] {
             secrets.insert(account.id, secret);
             done({});
         });
@@ -20,12 +20,13 @@ public:
     void read(const callie::Account &account, Loaded loaded) override
     {
         ++reads;
-        QTimer::singleShot(0, [=, this] { loaded(secrets.value(account.id), failWith); });
+        QTimer::singleShot(0, &m_context,
+                           [=, this] { loaded(secrets.value(account.id), failWith); });
     }
 
     void remove(const callie::Account &account, Done done) override
     {
-        QTimer::singleShot(0, [=, this] {
+        QTimer::singleShot(0, &m_context, [=, this] {
             secrets.remove(account.id);
             done({});
         });
@@ -34,4 +35,9 @@ public:
     QHash<QString, QString> secrets;
     QString failWith;
     int reads = 0;
+
+private:
+    /// Owns the pending answers, so a store deleted before they come never
+    /// gives them.
+    QObject m_context;
 };

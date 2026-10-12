@@ -3,6 +3,25 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.3.1 - 2026-10-12
+
+### New
+
+- Five more built-in themes, in Settings and in the terminal too:
+  - Paper: warm cream paper, dark ink and a fountain-pen blue.
+  - Minimal and Minimal Dark: in the manner of Google Calendar, with your desktop's font at lighter
+    weights, flat buttons and no bounce.
+  - Tomorrow and Tomorrow Night: the Tomorrow palette with its soft purple accent.
+- Themes can set how heavy text is, with `weight-strong`, `weight-bold` and `weight-heavy` under
+  `[type]`.
+- Settings picks the theme, and the calendar new events start in, from a menu, so the list no
+  longer grows with every calendar. Its Appearance tab is now called Theme.
+- `CALLIE_THEME` picks the theme for the `callie` command and the terminal calendar too.
+
+### Fixed
+
+- In a light terminal, unanswered invitations and calendar dots are drawn dark enough to read.
+
 ## 0.3.0 - 2026-10-11
 
 ### New

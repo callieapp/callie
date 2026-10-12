@@ -133,8 +133,9 @@ Sizes run from 11 to 28, each a `Theme` value. Intent:
 An 8px rhythm with 2, 4 and 12 available for tight cases. `space5` (16) is the default
 gap between unrelated things, `space3` (8) between related ones.
 
-The week view shows the working day and half an hour either side without scrolling, at least 8 hours
-in all, with the hour height scaling to the window down to `minHourHeight`, 48. The hour gutter is 52.
+The week view shows the working day, counted as at least 8 hours, and half an hour either side
+without scrolling, with the hour height scaling to the window down to `minHourHeight`, 48. The hour
+gutter is 52.
 Grid metrics set the feel of the whole product, so treat them as product decisions, not tweaks.
 Spacing and grid metrics are not themeable.
 

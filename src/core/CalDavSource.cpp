@@ -95,15 +95,10 @@ QString CalDavSource::accountPath(const QString &accountId) const
 void CalDavSource::setAccounts(const QList<Account> &accounts)
 {
     m_accounts = accounts;
-    for (auto it = m_clients.begin(); it != m_clients.end();) {
-        const bool kept = std::ranges::any_of(
-            m_accounts, [&it](const Account &account) { return account.id == it.key(); });
-        if (!kept) {
-            it.value()->deleteLater();
-            it = m_clients.erase(it);
-        } else {
-            ++it;
-        }
+    const QStringList had = m_clients.keys();
+    for (const QString &id : had) {
+        if (!hasAccount(id))
+            stop(id);
     }
     scan();
 }
@@ -140,11 +135,27 @@ bool CalDavSource::forget(const QString &accountId, QString *error)
         return false;
     }
     m_accounts.removeIf([&accountId](const Account &account) { return account.id == accountId; });
-    if (CalDavClient *client = m_clients.take(accountId))
-        client->deleteLater();
+    stop(accountId);
     scan();
-    Q_EMIT statusChanged();
     return true;
+}
+
+bool CalDavSource::hasAccount(const QString &accountId) const
+{
+    return std::ranges::any_of(m_accounts,
+                               [&accountId](const Account &each) { return each.id == accountId; });
+}
+
+void CalDavSource::stop(const QString &accountId)
+{
+    // Deleted now, so no answer to it can arrive and write for an account gone.
+    delete m_clients.take(accountId);
+    m_again.remove(accountId);
+    if (m_running.remove(accountId)) {
+        Q_EMIT statusChanged();
+        if (m_running.isEmpty())
+            Q_EMIT synced();
+    }
 }
 
 void CalDavSource::refresh()
@@ -158,7 +169,7 @@ void CalDavSource::refresh()
 void CalDavSource::fileChanged(const Folder &folder, const QString &fileName, bool removed)
 {
     State state = readState(folder.path);
-    state.pending.insert(fileName, removed);
+    state.pending.insert(fileName, {removed, ++state.seq});
     writeState(folder.path, state);
     m_soon.start();
     Q_EMIT statusChanged();
@@ -177,7 +188,8 @@ void CalDavSource::sync(const Account &account)
     const QPointer<CalDavSource> self(this);
     m_tokens->read({u"caldav"_s, account.id}, [self, account](const QString &password,
                                                               const QString &keyring) {
-        if (!self)
+        // Stopped meanwhile, as when the account was removed.
+        if (!self || !self->m_running.contains(account.id))
             return;
         if (!keyring.isEmpty() || password.isEmpty()) {
             self->finish(account, keyring.isEmpty()
@@ -231,14 +243,21 @@ void CalDavSource::sync(const Account &account)
 
 void CalDavSource::updateCalendars(const Account &account, const QList<DavCalendar> &calendars)
 {
+    // Compared by path, since servers write the same address more than one way.
+    const auto same = [](const QUrl &url) {
+        QString path = url.path(QUrl::FullyDecoded);
+        while (path.endsWith(u'/'))
+            path.chop(1);
+        return url.host() + path;
+    };
     const QString path = accountPath(account.id);
     const QDir dir(path);
     QHash<QString, QString> byUrl;
     for (const QString &name : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
-        byUrl.insert(readState(dir.filePath(name)).url.toString(), dir.filePath(name));
+        byUrl.insert(same(readState(dir.filePath(name)).url), dir.filePath(name));
     QSet<QString> seen;
     for (const DavCalendar &calendar : calendars) {
-        QString folder = byUrl.value(calendar.url.toString());
+        QString folder = byUrl.value(same(calendar.url));
         if (folder.isEmpty()) {
             const QString base = slug(calendar.url.path(QUrl::FullyDecoded).section(u'/', -2, -2));
             QString name = base;
@@ -257,10 +276,17 @@ void CalDavSource::updateCalendars(const Account &account, const QList<DavCalend
         if (calendar.color.isValid())
             writeMeta(folder + u"/color"_s, calendar.color.name());
     }
-    // Calendars gone from the server go from here too.
+    // Calendars gone from the server go from here too, unless changes made
+    // here wait in them, which stay until the user sees to them.
     for (const QString &folder : std::as_const(byUrl)) {
-        if (!seen.contains(folder))
-            QDir(folder).removeRecursively();
+        if (seen.contains(folder))
+            continue;
+        if (!readState(folder).pending.isEmpty()) {
+            qCWarning(lcSync) << "CalDAV calendar gone from" << account.id
+                              << "with changes not sent, kept in" << folder;
+            continue;
+        }
+        QDir(folder).removeRecursively();
     }
     scan();
 }
@@ -298,15 +324,18 @@ void CalDavSource::push(CalDavClient *client, const Folder &folder, Done done)
         return;
     }
     const QString fileName = state.pending.keys().first();
-    const bool removed = state.pending.value(fileName);
+    const Waiting waiting = state.pending.value(fileName);
     const Remote remote = state.files.value(fileName);
     const QPointer<CalDavSource> self(this);
-    // Sent, or settled another way: on to the next.
-    const auto next = [self, client, folder, fileName, done](const Remote &now, bool gone) {
+    // Sent, or settled another way: on to the next. A change made meanwhile
+    // stays waiting, to go over the version just sent.
+    const auto next = [self, client, folder, fileName, waiting, done](const Remote &now,
+                                                                      bool gone) {
         if (!self)
             return;
         State state = readState(folder.path);
-        state.pending.remove(fileName);
+        if (state.pending.value(fileName).seq == waiting.seq)
+            state.pending.remove(fileName);
         if (gone)
             state.files.remove(fileName);
         else
@@ -314,11 +343,17 @@ void CalDavSource::push(CalDavClient *client, const Folder &folder, Done done)
         writeState(folder.path, state);
         self->push(client, folder, done);
     };
-    // Turned down by the server: its copy stands, and the user hears why.
-    const auto refused = [self, client, folder, fileName, remote, done](const DavError &error) {
+    // Turned down by the server: its copy stands, and the user hears why,
+    // unless a newer change has been made since, which goes next.
+    const auto refused = [self, client, folder, fileName, waiting, remote,
+                          done](const DavError &error) {
         if (!self)
             return;
         State state = readState(folder.path);
+        if (state.pending.value(fileName).seq != waiting.seq) {
+            self->push(client, folder, done);
+            return;
+        }
         state.pending.remove(fileName);
         writeState(folder.path, state);
         Q_EMIT self->errorOccurred(error.isConflict()
@@ -331,19 +366,25 @@ void CalDavSource::push(CalDavClient *client, const Folder &folder, Done done)
                               self->push(client, folder, done);
                       });
     };
-    if (removed) {
+    // Offline, signed out, busy or failing: kept for the next sync.
+    const auto later = [](const DavError &error) {
+        return error.status == 0 || error.isAuth() || error.status == 408 || error.status == 429 ||
+               error.status >= 500;
+    };
+    if (waiting.removed) {
         if (!remote.href.isValid()) {
             next({}, true);
             return;
         }
-        client->remove(remote.href, remote.etag, [next, refused, done](const DavError &error) {
-            if (!error)
-                next({}, true);
-            else if (error.status == 0 || error.status >= 500)
-                done(error.message); // Kept for next time.
-            else
-                refused(error);
-        });
+        client->remove(remote.href, remote.etag,
+                       [next, refused, later, done](const DavError &error) {
+                           if (!error)
+                               next({}, true);
+                           else if (later(error))
+                               done(error.message);
+                           else
+                               refused(error);
+                       });
         return;
     }
     QFile file(folder.path + u'/' + fileName);
@@ -359,10 +400,10 @@ void CalDavSource::push(CalDavClient *client, const Folder &folder, Done done)
                                             : calendar.resolved(QUrl(QString::fromLatin1(
                                                   QUrl::toPercentEncoding(fileName, "@._-"))));
     client->put(href, file.readAll(), remote.etag,
-                [next, refused, done, href](const QString &etag, const DavError &error) {
+                [next, refused, later, done, href](const QString &etag, const DavError &error) {
                     if (!error)
                         next({href, etag}, false);
-                    else if (error.status == 0 || error.status >= 500)
+                    else if (later(error))
                         done(error.message);
                     else
                         refused(error);
@@ -442,7 +483,7 @@ void CalDavSource::pull(CalDavClient *client, const Folder &folder, Done done)
                 if (!there.contains(remote.href.toString()))
                     removed << remote.href;
             }
-            self->apply(client, folder, changed, removed, {}, done);
+            self->apply(client, folder, changed, removed, {}, false, done);
         });
     };
     client->changes(state.url, state.syncToken,
@@ -451,8 +492,9 @@ void CalDavSource::pull(CalDavClient *client, const Folder &folder, Done done)
                         if (!self)
                             return;
                         if (!error) {
+                            // From no token, the answer is everything there is.
                             self->apply(client, folder, changes.changed, changes.removed,
-                                        changes.token, done);
+                                        changes.token, token.isEmpty(), done);
                             return;
                         }
                         if (error.status == 0 || error.isAuth()) {
@@ -473,12 +515,21 @@ void CalDavSource::pull(CalDavClient *client, const Folder &folder, Done done)
 }
 
 void CalDavSource::apply(CalDavClient *client, const Folder &folder, const QList<DavItem> &changed,
-                         const QList<QUrl> &removed, const QString &token, Done done)
+                         QList<QUrl> removed, const QString &token, bool whole, Done done)
 {
     const State state = readState(folder.path);
     QHash<QString, QString> fileOf;
     for (auto it = state.files.cbegin(); it != state.files.cend(); ++it)
         fileOf.insert(it->href.toString(), it.key());
+    if (whole) {
+        QSet<QString> there;
+        for (const DavItem &item : changed)
+            there.insert(item.href.toString());
+        for (const Remote &remote : state.files) {
+            if (!there.contains(remote.href.toString()))
+                removed << remote.href;
+        }
+    }
     // Changes not sent yet stay as they are until they go.
     const auto waiting = [&state, &fileOf](const QUrl &href) {
         return state.pending.contains(fileOf.value(href.toString(), fileNameOf(href)));
@@ -607,7 +658,9 @@ CalDavSource::State CalDavSource::readState(const QString &folder)
                                       it->toObject()[u"etag"].toString()});
     const QJsonObject pending = json[u"pending"].toObject();
     for (auto it = pending.begin(); it != pending.end(); ++it)
-        state.pending.insert(it.key(), it->toBool());
+        state.pending.insert(
+            it.key(), {it->toObject()[u"removed"].toBool(), it->toObject()[u"seq"].toInteger()});
+    state.seq = json[u"seq"].toInteger();
     return state;
 }
 
@@ -619,12 +672,13 @@ void CalDavSource::writeState(const QString &folder, const State &state)
                      QJsonObject{{u"href"_s, it->href.toString()}, {u"etag"_s, it->etag}});
     QJsonObject pending;
     for (auto it = state.pending.cbegin(); it != state.pending.cend(); ++it)
-        pending.insert(it.key(), it.value());
+        pending.insert(it.key(), QJsonObject{{u"removed"_s, it->removed}, {u"seq"_s, it->seq}});
     writeJson(folder + u'/' + kStateFile, {{u"url"_s, state.url.toString()},
                                            {u"writable"_s, state.writable},
                                            {u"syncToken"_s, state.syncToken},
                                            {u"files"_s, files},
-                                           {u"pending"_s, pending}});
+                                           {u"pending"_s, pending},
+                                           {u"seq"_s, state.seq}});
 }
 
 CalDavSource::AccountState CalDavSource::readAccount(const QString &path)

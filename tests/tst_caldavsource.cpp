@@ -3,6 +3,7 @@
 
 #include "callie/CalDavSource.h"
 
+#include <QDir>
 #include <QNetworkAccessManager>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -23,6 +24,10 @@ private Q_SLOTS:
     void theServersVersionWinsAConflict();
     void changesWaitWhileTheServerIsDown();
     void wrongPasswordsSaySo();
+    void aForgottenTokenStartsOver();
+    void busyOrSignedOutServersKeepTheChange();
+    void aChangeMadeWhileOneGoesUpGoesToo();
+    void removingAnAccountStopsItsSync();
 
 private:
     void sync();
@@ -231,6 +236,90 @@ void TestCalDavSource::wrongPasswordsSaySo()
     m_tokens->secrets.clear();
     sync();
     QVERIFY(m_source->lastError().contains(u"sign in again"_s));
+}
+
+void TestCalDavSource::aForgottenTokenStartsOver()
+{
+    sync();
+    QCOMPARE(week().size(), 1);
+    // Deleted elsewhere while the server forgot where Callie was.
+    m_server->removeElsewhere("work", "lunch.ics");
+    m_server->forgetTokens = true;
+    sync();
+    QVERIFY2(m_source->lastError().isEmpty(), qPrintable(m_source->lastError()));
+    QVERIFY(week().isEmpty());
+}
+
+void TestCalDavSource::busyOrSignedOutServersKeepTheChange()
+{
+    sync();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    const auto up = m_server->server.replier;
+    for (const int status : {429, 401}) {
+        m_server->server.replier = [up, status](const FakeHttpServer::Request &request) {
+            if (request.method == "PUT")
+                return FakeHttpServer::Reply{status, "", {}, "text/plain"};
+            return up(request);
+        };
+        const Event lunch = week().first();
+        QVERIFY(outcome([&](auto done) {
+                    m_source->moveEvent(lunch, lunch.start.addSecs(3600), lunch.end.addSecs(3600),
+                                        false, done);
+                }).isEmpty());
+        QVERIFY(synced.wait(5000));
+        // Kept as made, and still to go.
+        QCOMPARE(week().first().start, lunch.start.addSecs(3600));
+        QVERIFY(!m_source->waitingChanges().isEmpty());
+    }
+    m_server->server.replier = up;
+    sync();
+    QVERIFY(m_source->waitingChanges().isEmpty());
+    QVERIFY(m_server->calendars[FakeCalDavServer::calendarPath("work")]
+                .items.value("/dav/calendars/me/work/lunch.ics")
+                .data.contains("T140000Z"));
+}
+
+void TestCalDavSource::aChangeMadeWhileOneGoesUpGoesToo()
+{
+    sync();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    const auto up = m_server->server.replier;
+    bool again = true;
+    // While the first move is on its way, the event is moved once more.
+    m_server->server.replier = [this, up, &again](const FakeHttpServer::Request &request) {
+        if (request.method == "PUT" && std::exchange(again, false)) {
+            const Event lunch = week().first();
+            m_source->moveEvent(lunch, lunch.start.addSecs(3600), lunch.end.addSecs(3600), false,
+                                [](const Outcome &) {});
+        }
+        return up(request);
+    };
+    const Event lunch = week().first();
+    QVERIFY(outcome([&](auto done) {
+                m_source->moveEvent(lunch, lunch.start.addSecs(3600), lunch.end.addSecs(3600),
+                                    false, done);
+            }).isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(!again && m_source->waitingChanges().isEmpty() && !m_source->syncing(),
+                             5000);
+    QCOMPARE(week().first().start.time(), QTime(14, 0));
+    QVERIFY(m_server->calendars[FakeCalDavServer::calendarPath("work")]
+                .items.value("/dav/calendars/me/work/lunch.ics")
+                .data.contains("T140000Z"));
+}
+
+void TestCalDavSource::removingAnAccountStopsItsSync()
+{
+    sync();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    m_source->refresh();
+    QVERIFY(m_source->syncing());
+    QString error;
+    QVERIFY(m_source->forget(u"me@example.com"_s, &error));
+    QVERIFY(!m_source->syncing());
+    QCOMPARE(synced.size(), 1);
+    QTest::qWait(300);
+    QVERIFY(m_source->calendars().isEmpty());
+    QVERIFY(QDir(m_dir->path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
 }
 
 QTEST_MAIN(TestCalDavSource)

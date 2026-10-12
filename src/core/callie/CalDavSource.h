@@ -68,6 +68,13 @@ private:
         QUrl href;
         QString etag;
     };
+    /// A change made in Callie and not sent yet. `seq` tells a change made
+    /// while the last one was on its way from that one.
+    struct Waiting
+    {
+        bool removed = false;
+        qint64 seq = 0;
+    };
     /// What is kept about a calendar beside its folder.
     struct State
     {
@@ -75,8 +82,8 @@ private:
         bool writable = true;
         QString syncToken;
         QHash<QString, Remote> files;
-        /// Files changed in Callie and not sent yet: true for a removal.
-        QHash<QString, bool> pending;
+        QHash<QString, Waiting> pending;
+        qint64 seq = 0;
     };
     /// What is kept about an account beside its calendars.
     struct AccountState
@@ -96,8 +103,13 @@ private:
     void syncFolders(const Account &account, QList<Folder> folders, QStringList errors);
     void push(CalDavClient *client, const Folder &folder, Done done);
     void pull(CalDavClient *client, const Folder &folder, Done done);
+    /// Brings down `changed` and takes away `removed`. A `whole` listing also
+    /// takes away whatever it leaves out.
     void apply(CalDavClient *client, const Folder &folder, const QList<DavItem> &changed,
-               const QList<QUrl> &removed, const QString &token, Done done);
+               QList<QUrl> removed, const QString &token, bool whole, Done done);
+    [[nodiscard]] bool hasAccount(const QString &accountId) const;
+    /// Stops what an account is doing, as when it goes.
+    void stop(const QString &accountId);
     /// Puts the server's copy of `href` back in place of a change it turned down.
     void restore(CalDavClient *client, const Folder &folder, const QString &fileName,
                  const QUrl &href, Done done);

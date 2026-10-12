@@ -101,6 +101,10 @@ class ThemeController : public QObject
     Q_PROPERTY(QColor dangerText READ dangerText NOTIFY changed)
 
     Q_PROPERTY(int minHourHeight READ minHourHeight CONSTANT)
+    /// The week grid fits the working day, counted as at least `fitHours`,
+    /// with `fitMargin` minutes either side.
+    Q_PROPERTY(int fitHours READ fitHours CONSTANT)
+    Q_PROPERTY(int fitMargin READ fitMargin CONSTANT)
     Q_PROPERTY(int gutterWidth READ gutterWidth CONSTANT)
     Q_PROPERTY(int allDayRowHeight READ allDayRowHeight CONSTANT)
     Q_PROPERTY(int snapMinutes READ snapMinutes CONSTANT)
@@ -244,6 +248,8 @@ public:
     QColor dayOffWash() const;
 
     int minHourHeight() const { return 48; }
+    int fitHours() const { return 8; }
+    int fitMargin() const { return 30; }
     int gutterWidth() const { return 52; }
     int allDayRowHeight() const { return 30; }
     int snapMinutes() const { return 15; }

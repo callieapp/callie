@@ -18,6 +18,7 @@ private Q_SLOTS:
     void loadsWaitForEverySource();
     void changesGoToTheCalendarsSource();
     void statusSpeaksForAll();
+    void newsComesFromTheSourcesSet();
 };
 
 namespace {
@@ -174,6 +175,30 @@ void TestCombinedSource::statusSpeaksForAll()
     QVERIFY(combined.syncing());
     local.error = u"offline"_s;
     QCOMPARE(combined.lastError(), u"offline"_s);
+}
+
+void TestCombinedSource::newsComesFromTheSourcesSet()
+{
+    OneCalendar google(u"me@example.com/work"_s, u"Standup"_s);
+    OneCalendar local(u"local:home"_s, u"Dentist"_s);
+    CombinedSource combined;
+    combined.setSources({&google});
+    QSignalSpy errors(&combined, &CalendarSource::errorOccurred);
+    QSignalSpy made(&combined, &CalendarSource::changeMade);
+    Q_EMIT google.errorOccurred(u"offline"_s);
+    Q_EMIT google.changeMade(u"1"_s, u"Moved Standup"_s);
+    QCOMPARE(errors.size(), 1);
+    QCOMPARE(made.size(), 1);
+    QCOMPARE(made.first().at(1).toString(), u"Moved Standup"_s);
+
+    // Once replaced, a source is no longer heard.
+    combined.setSources({&local});
+    QCOMPARE(combined.calendars().size(), 1);
+    Q_EMIT google.errorOccurred(u"offline"_s);
+    Q_EMIT google.changed();
+    QCOMPARE(errors.size(), 1);
+    Q_EMIT local.errorOccurred(u"disk full"_s);
+    QCOMPARE(errors.size(), 2);
 }
 
 QTEST_MAIN(TestCombinedSource)

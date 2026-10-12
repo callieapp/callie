@@ -80,6 +80,9 @@ private:
     {
         QUrl url;
         bool writable = true;
+        /// Gone from the server with changes still to send: kept, read-only,
+        /// and no longer synced.
+        bool gone = false;
         QString syncToken;
         QHash<QString, Remote> files;
         QHash<QString, Waiting> pending;
@@ -99,7 +102,9 @@ private:
     void scan();
     void sync(const Account &account);
     void finish(const Account &account, const QString &error);
-    void updateCalendars(const Account &account, const QList<DavCalendar> &calendars);
+    /// Makes the folders match the server's calendars; returns what the user
+    /// should hear about, such as a calendar gone with changes not sent.
+    QStringList updateCalendars(const Account &account, const QList<DavCalendar> &calendars);
     void syncFolders(const Account &account, QList<Folder> folders, QStringList errors);
     void push(CalDavClient *client, const Folder &folder, Done done);
     void pull(CalDavClient *client, const Folder &folder, Done done);

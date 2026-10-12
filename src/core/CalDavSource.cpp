@@ -47,6 +47,12 @@ QJsonObject readJson(const QString &path)
                                           : QJsonObject();
 }
 
+QString readText(const QString &path)
+{
+    QFile file(path);
+    return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()).trimmed() : QString();
+}
+
 void writeMeta(const QString &path, const QString &value)
 {
     QSaveFile file(path);
@@ -211,13 +217,13 @@ void CalDavSource::sync(const Account &account)
                 self->finish(account, error.message);
                 return;
             }
-            self->updateCalendars(account, calendars);
+            const QStringList problems = self->updateCalendars(account, calendars);
             QList<Folder> mine;
             for (const Folder &folder : self->folders()) {
-                if (folder.account == account.id)
+                if (folder.account == account.id && !readState(folder.path).gone)
                     mine.append(folder);
             }
-            self->syncFolders(account, mine, {});
+            self->syncFolders(account, mine, problems);
         };
         if (state.home.isValid()) {
             client->calendars(state.home, listed);
@@ -241,7 +247,8 @@ void CalDavSource::sync(const Account &account)
     });
 }
 
-void CalDavSource::updateCalendars(const Account &account, const QList<DavCalendar> &calendars)
+QStringList CalDavSource::updateCalendars(const Account &account,
+                                          const QList<DavCalendar> &calendars)
 {
     // Compared by path, since servers write the same address more than one way.
     const auto same = [](const QUrl &url) {
@@ -270,6 +277,7 @@ void CalDavSource::updateCalendars(const Account &account, const QList<DavCalend
         State state = readState(folder);
         state.url = calendar.url;
         state.writable = calendar.writable;
+        state.gone = false;
         writeState(folder, state);
         writeMeta(folder + u"/displayname"_s,
                   calendar.displayName.isEmpty() ? QDir(folder).dirName() : calendar.displayName);
@@ -277,18 +285,24 @@ void CalDavSource::updateCalendars(const Account &account, const QList<DavCalend
             writeMeta(folder + u"/color"_s, calendar.color.name());
     }
     // Calendars gone from the server go from here too, unless changes made
-    // here wait in them, which stay until the user sees to them.
+    // here wait in them: those stay, read-only and unsynced, for the user.
+    QStringList problems;
     for (const QString &folder : std::as_const(byUrl)) {
         if (seen.contains(folder))
             continue;
-        if (!readState(folder).pending.isEmpty()) {
-            qCWarning(lcSync) << "CalDAV calendar gone from" << account.id
-                              << "with changes not sent, kept in" << folder;
+        State state = readState(folder);
+        if (state.pending.isEmpty()) {
+            QDir(folder).removeRecursively();
             continue;
         }
-        QDir(folder).removeRecursively();
+        state.gone = true;
+        state.writable = false;
+        writeState(folder, state);
+        problems << tr("%1 is gone from the server, with changes not sent; they are kept in %2.")
+                        .arg(readText(folder + u"/displayname"_s), folder);
     }
     scan();
+    return problems;
 }
 
 void CalDavSource::syncFolders(const Account &account, QList<Folder> folders, QStringList errors)
@@ -651,6 +665,7 @@ CalDavSource::State CalDavSource::readState(const QString &folder)
     State state;
     state.url = QUrl(json[u"url"].toString());
     state.writable = json[u"writable"].toBool(true);
+    state.gone = json[u"gone"].toBool();
     state.syncToken = json[u"syncToken"].toString();
     const QJsonObject files = json[u"files"].toObject();
     for (auto it = files.begin(); it != files.end(); ++it)
@@ -675,6 +690,7 @@ void CalDavSource::writeState(const QString &folder, const State &state)
         pending.insert(it.key(), QJsonObject{{u"removed"_s, it->removed}, {u"seq"_s, it->seq}});
     writeJson(folder + u'/' + kStateFile, {{u"url"_s, state.url.toString()},
                                            {u"writable"_s, state.writable},
+                                           {u"gone"_s, state.gone},
                                            {u"syncToken"_s, state.syncToken},
                                            {u"files"_s, files},
                                            {u"pending"_s, pending},

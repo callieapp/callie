@@ -5,7 +5,6 @@
 
 #include <QCoreApplication>
 #include <QDir>
-#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -146,6 +145,11 @@ bool Subscriptions::remove(const QString &id, QString *error)
     for (const Folder &folder : folders()) {
         if (folder.id != id)
             continue;
+        // Its fetch is abandoned, so it cannot land in a feed added after.
+        if (const QPointer<QNetworkReply> reply = m_replies.take(id); reply)
+            reply->abort();
+        if (m_fetching.remove(id) && m_fetching.isEmpty())
+            Q_EMIT fetched();
         // A copy of someone else's calendar, so nothing of the user's is lost.
         if (!QDir(folder.path).removeRecursively()) {
             *error = tr("Callie could not delete %1.").arg(folder.path);
@@ -201,21 +205,17 @@ void Subscriptions::fetch(const Folder &folder)
     m_fetching.insert(folder.id);
     Q_EMIT statusChanged();
     QNetworkReply *reply = m_network->get(request);
+    m_replies.insert(folder.id, reply);
     connect(reply, &QNetworkReply::downloadProgress, reply, [reply](qint64 received, qint64) {
         if (received > kLargestFeed)
             reply->abort();
     });
     connect(reply, &QNetworkReply::finished, this, [this, reply, folder, state]() mutable {
         reply->deleteLater();
-        // Unsubscribed while it was fetched: nothing to keep, and no folder
-        // to make again.
-        if (!QFileInfo::exists(folder.path)) {
-            m_fetching.remove(folder.id);
-            Q_EMIT statusChanged();
-            if (m_fetching.isEmpty())
-                Q_EMIT fetched();
+        // Abandoned when its feed was stopped: another may have its place now.
+        if (m_replies.value(folder.id) != reply)
             return;
-        }
+        m_replies.remove(folder.id);
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         state.fetched = QDateTime::currentDateTimeUtc();
         state.error.clear();

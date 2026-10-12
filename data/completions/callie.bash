@@ -37,5 +37,7 @@ _callie() {
             COMPREPLY+=("$(printf '%q' "$line")")
         fi
     done
+    # A folder is a step on the way to a file, not the end of the word.
+    [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == */ ]] && compopt -o nospace
 }
 complete -F _callie callie

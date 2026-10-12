@@ -53,6 +53,8 @@ public:
     [[nodiscard]] static QStringList wordsOf(const QString &line);
 
 private:
+    /// Folders, and .ics files, whose path starts with `typed`.
+    [[nodiscard]] static QList<Candidate> calendarFiles(const QString &typed);
     [[nodiscard]] QList<Candidate> valuesOf(const QString &option) const;
     [[nodiscard]] QList<Candidate> argument(const QStringList &positional) const;
 

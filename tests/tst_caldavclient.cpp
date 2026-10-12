@@ -214,7 +214,10 @@ void TestCalDavClient::thePasswordGoesOnlyWhereItShould()
     // there does not earn the password.
     const QUrl elsewhere(u"http://localhost:%1/dav/"_s.arg(m_server->url().port()));
     m_server->redirects.insert("/hop", elsewhere.toEncoded());
-    QVERIFY(discover(m_server->url(u"/hop"_s)).second.isAuth());
+    const Found hopped = discover(m_server->url(u"/hop"_s));
+    QVERIFY(hopped.second.isAuth());
+    // Not blamed on the password, which never went there.
+    QVERIFY2(hopped.second.message.contains(u"not trust"_s), qPrintable(hopped.second.message));
 
     // Nor does a host named by an answer from somewhere a redirect led.
     const QByteArray other = "http://localhost:" + QByteArray::number(m_server->url().port());
@@ -245,6 +248,13 @@ void TestCalDavClient::thePasswordGoesOnlyWhereItShould()
     });
     QVERIFY(refused.second.message.contains(u"https"_s));
     QCOMPARE(m_server->server.requests.size(), before);
+
+    // Nor from https down to http.
+    QVERIFY(
+        !CalDavClient::mayFollow(QUrl(u"https://dav.example/"_s), QUrl(u"http://dav.example/"_s)));
+    QVERIFY(CalDavClient::mayFollow(QUrl(u"https://dav.example/"_s),
+                                    QUrl(u"https://other.example/"_s)));
+    QVERIFY(CalDavClient::mayFollow(QUrl(u"http://127.0.0.1/"_s), QUrl(u"http://localhost/"_s)));
 
     // Nor around in circles.
     m_server->redirects.insert("/loop", "/loop");

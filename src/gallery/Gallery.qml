@@ -67,7 +67,7 @@ ApplicationWindow {
         color: Theme.text
         font.family: Theme.displayFontFamily
         font.pixelSize: Theme.textXl
-        font.weight: Font.DemiBold
+        font.weight: Theme.weightStrong
         topPadding: Theme.space6
     }
 
@@ -101,7 +101,7 @@ ApplicationWindow {
                 color: Theme.text
                 font.family: Theme.displayFontFamily
                 font.pixelSize: Theme.text2xl
-                font.weight: Font.DemiBold
+                font.weight: Theme.weightStrong
             }
 
             Label {
@@ -241,6 +241,21 @@ ApplicationWindow {
                 StickerButton {
                     text: qsTr("Join call")
                     accent: true
+                }
+
+                Dropdown {
+                    model: [
+                        {
+                            "id": "week",
+                            "name": qsTr("Week")
+                        },
+                        {
+                            "id": "month",
+                            "name": qsTr("Month")
+                        }
+                    ]
+                    currentValue: "week"
+                    minimumWidth: 140
                 }
 
                 WindowControls {

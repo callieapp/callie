@@ -54,7 +54,7 @@ Connect Google accounts in Settings, under Accounts: Callie opens your browser t
 account's calendars appear once you have. The same tab shows how each account's sync is going and
 removes an account. `callie accounts add google` does the same from a terminal.
 
-Pick a theme in Settings, under Appearance: Callie, Callie Light, Paper, Minimal, Minimal Dark,
+Pick a theme in Settings, under Theme: Callie, Callie Light, Paper, Minimal, Minimal Dark,
 Tomorrow or Tomorrow Night. Customize colors copies the theme into
 `$XDG_CONFIG_HOME/callie/themes` and edits that copy; built-in themes are never changed. Theme files
 can be imported and exported there too, and Callie remembers the choice.

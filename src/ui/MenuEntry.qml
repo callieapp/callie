@@ -12,14 +12,25 @@ MenuItem {
 
     implicitHeight: 30
     leftPadding: Theme.space4
-    rightPadding: Theme.space4
+    // A checkable entry keeps room for its check on the right.
+    rightPadding: Theme.space4 + (root.checkable ? 14 + Theme.space2 : 0)
 
     contentItem: Text {
         text: root.text
         color: Theme.text
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
+        font.weight: root.checked ? Theme.weightBold : Font.Normal
+        elide: Text.ElideRight
         verticalAlignment: Text.AlignVCenter
+    }
+
+    indicator: Glyph {
+        x: root.width - width - Theme.space4
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.checkable && root.checked
+        name: "check"
+        color: Theme.accent
     }
 
     background: Rectangle {

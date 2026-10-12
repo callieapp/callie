@@ -3,7 +3,7 @@ import Callie.Ui
 import QtQuick
 
 /// A small line icon drawn from rounded bars, so icons need no image files and
-/// take the text color: chevron-left, chevron-right, minimize, maximize,
+/// take the text color: chevron-left, chevron-right, chevron-down, minimize, maximize,
 /// restore, close, check, plus, refresh, bell, search, settings, menu, video or more.
 Item {
     id: root
@@ -22,6 +22,8 @@ Item {
             return [[0.5, -45, 0.47, 0.36], [0.5, 45, 0.47, 0.64]]
         case "chevron-right":
             return [[0.5, 45, 0.53, 0.36], [0.5, -45, 0.53, 0.64]]
+        case "chevron-down":
+            return [[0.5, 45, 0.36, 0.53], [0.5, -45, 0.64, 0.53]]
         case "minimize":
             return [[0.62, 0, 0.5, 0.5]]
         case "close":

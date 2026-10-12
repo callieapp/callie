@@ -280,6 +280,33 @@ bool VdirSource::mirror(const Folder &folder, const ics::Group &events, QString 
     return true;
 }
 
+bool VdirSource::writeFile(const Folder &folder, const QString &fileName, const QByteArray &data,
+                           QString *error)
+{
+    const QString path = folder.path + u'/' + fileName;
+    QSaveFile file(path);
+    if (!QDir().mkpath(folder.path) || !file.open(QIODevice::WriteOnly) ||
+        file.write(data) != data.size() || !file.commit()) {
+        *error = tr("Callie could not write %1: %2").arg(path, file.errorString());
+        return false;
+    }
+    const QMutexLocker locker(&m_lock);
+    m_parsed.remove(path);
+    return true;
+}
+
+bool VdirSource::removeFile(const Folder &folder, const QString &fileName, QString *error)
+{
+    const QString path = folder.path + u'/' + fileName;
+    if (QFile::exists(path) && !QFile::remove(path)) {
+        *error = tr("Callie could not delete %1.").arg(path);
+        return false;
+    }
+    const QMutexLocker locker(&m_lock);
+    m_parsed.remove(path);
+    return true;
+}
+
 void VdirSource::fileChanged(const Folder &folder, const QString &fileName, bool removed)
 {
     Q_UNUSED(folder)

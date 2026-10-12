@@ -35,6 +35,7 @@ callie_add_test(tst_ics)
 callie_add_test(tst_localcalendars)
 callie_add_test(tst_subscriptions)
 callie_add_test(tst_caldavclient)
+callie_add_test(tst_caldavsource)
 callie_add_test(tst_import)
 target_link_libraries(tst_import PRIVATE callieui)
 # All-day previews are days, wherever they are opened.

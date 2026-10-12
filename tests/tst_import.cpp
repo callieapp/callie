@@ -109,6 +109,9 @@ void TestImport::turnsAwayWhatIsNotACalendar()
     QVERIFY(!importer->open({QUrl::fromLocalFile(write(u"broken.ics"_s, "hello"))}));
     QVERIFY(!importer->error().isEmpty());
     QVERIFY(!importer->pending());
+    // What is not a calendar file says nothing, nor repeats the last error.
+    QVERIFY(!importer->open({QUrl::fromLocalFile(write(u"notes.txt"_s, "hello"))}));
+    QVERIFY(importer->error().isEmpty());
 }
 
 void TestImport::allDayEventsShowTheirOwnDay()

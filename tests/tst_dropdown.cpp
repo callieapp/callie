@@ -20,6 +20,7 @@ private Q_SLOTS:
     void initTestCase() { QQuickStyle::setStyle(u"Basic"_s); }
     void pickingTheCurrentChoiceKeepsItMarked();
     void aLongListFitsTheWindow();
+    void aLongChoiceIsCutShort();
 
 private:
     /// The menu's entries, in the overlay over the window's content.
@@ -117,6 +118,21 @@ void TestDropdown::aLongListFitsTheWindow()
              qPrintable(u"%1 to %2"_s.arg(shown.top()).arg(shown.bottom())));
     QVERIFY(list->property("contentHeight").toReal() > list->height());
     QVERIFY(list->property("interactive").toBool());
+}
+
+void TestDropdown::aLongChoiceIsCutShort()
+{
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    component.loadFromModule("Callie.Ui", "Dropdown");
+    const QVariantList model{QVariantMap{
+        {u"id"_s, u"long"_s},
+        {u"name"_s, u"A calendar with a very long name that a team shares with everyone"_s}}};
+    std::unique_ptr<QObject> object(component.createWithInitialProperties(
+        {{u"model"_s, model}, {u"currentValue"_s, u"long"_s}, {u"maximumWidth"_s, 240}}));
+    QVERIFY2(object, qPrintable(component.errorString()));
+    auto *dropdown = qobject_cast<QQuickItem *>(object.get());
+    QCOMPARE(dropdown->implicitWidth(), 240.0);
 }
 
 QTEST_MAIN(TestDropdown)

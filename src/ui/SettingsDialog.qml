@@ -337,9 +337,11 @@ Popup {
             visible: root.tab === "general" && newEvents.calendars.length > 1
 
             Row {
+                width: parent.width
                 spacing: Theme.space4
 
                 Text {
+                    id: startIn
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("Start them in")
                     color: Theme.text
@@ -358,6 +360,7 @@ Popup {
                     ].concat(newEvents.calendars)
                     currentValue: newEvents.calendars.some(c => c.id === Settings.defaultCalendar)
                                   ? Settings.defaultCalendar : ""
+                    maximumWidth: parent.width - startIn.width - parent.spacing
                     Accessible.name: qsTr("Start new events in")
                     onActivated: value => Settings.defaultCalendar = value
                 }

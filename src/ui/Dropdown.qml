@@ -16,6 +16,8 @@ AbstractButton {
     property var currentValue
     /// The narrowest the button gets, whatever its choices.
     property real minimumWidth: 220
+    /// The widest it gets; a longer choice is cut short.
+    property real maximumWidth: Infinity
 
     signal activated(var value)
 
@@ -28,8 +30,9 @@ AbstractButton {
     }
 
     implicitHeight: Theme.listRowHeight + Theme.space2
-    implicitWidth: Math.max(root.minimumWidth, caption.implicitWidth + chevron.width + Theme.space2
-                            + 2 * Theme.space3)
+    implicitWidth: Math.min(root.maximumWidth, Math.max(root.minimumWidth, caption.implicitWidth
+                                                        + chevron.width + Theme.space2 + 2
+                                                        * Theme.space3))
     leftPadding: Theme.space3
     rightPadding: Theme.space3
     Accessible.role: Accessible.ComboBox

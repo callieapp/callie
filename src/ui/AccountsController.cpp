@@ -2,6 +2,8 @@
 
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/CalDavClient.h"
+#include "callie/CalDavSource.h"
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
@@ -40,6 +42,7 @@ void AccountsController::setUp(const Setup &setup)
     if (m_setup.store && m_setup.tokens) {
         m_manager = new AccountManager(*m_setup.tokens, *m_setup.store, m_setup.cache, this);
         m_manager->setContacts(m_setup.contacts);
+        m_manager->setCalDav(m_setup.caldav);
         connect(m_manager, &AccountManager::connected, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "connected" << account.id;
             const bool current = !m_auth.isNull();
@@ -50,6 +53,8 @@ void AccountsController::setUp(const Setup &setup)
                 m_setup.source->signedInAgain(account);
                 m_setup.source->refresh();
             }
+            if (account.provider == u"caldav" && m_setup.caldav)
+                m_setup.caldav->refresh();
         });
         connect(m_manager, &AccountManager::removed, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "removed" << account.id;
@@ -69,7 +74,10 @@ QVariantList AccountsController::accounts() const
 {
     QVariantList list;
     for (const Account &account : m_accounts)
-        list << QVariantMap{{u"id"_s, account.id}, {u"provider"_s, account.provider}};
+        list << QVariantMap{{u"id"_s, account.id},
+                            {u"provider"_s, account.provider},
+                            {u"server"_s, account.server},
+                            {u"user"_s, account.user}};
     return list;
 }
 
@@ -82,6 +90,58 @@ QString AccountsController::unavailable() const
     if (!m_setup.client.isValid())
         return tr("This build has no Google sign-in configured, so accounts cannot be added.");
     return {};
+}
+
+bool AccountsController::calDavReady() const
+{
+    return m_setup.unavailable.isEmpty() && m_manager && m_setup.network && m_setup.caldav;
+}
+
+QVariantList AccountsController::calDavPresets()
+{
+    return {
+        QVariantMap{{u"id"_s, u"fastmail"_s},
+                    {u"name"_s, u"Fastmail"_s},
+                    {u"server"_s, u"https://caldav.fastmail.com/"_s},
+                    {u"help"_s, tr("Make an app password in Fastmail's settings, under Privacy "
+                                   "& Security, with access to calendars.")}},
+        QVariantMap{{u"id"_s, u"icloud"_s},
+                    {u"name"_s, u"iCloud"_s},
+                    {u"server"_s, u"https://caldav.icloud.com/"_s},
+                    {u"help"_s, tr("Sign in with your Apple ID, and an app-specific password "
+                                   "made at account.apple.com, under Sign-In and Security.")}},
+        QVariantMap{{u"id"_s, u"nextcloud"_s},
+                    {u"name"_s, u"Nextcloud"_s},
+                    {u"server"_s, QString()},
+                    {u"help"_s, tr("Give your Nextcloud's address, such as cloud.example.com, "
+                                   "and an app password made under Settings, Security.")}},
+        QVariantMap{{u"id"_s, u"other"_s},
+                    {u"name"_s, tr("Another CalDAV server")},
+                    {u"server"_s, QString()},
+                    {u"help"_s, tr("Give the server's address. Callie finds the calendars from "
+                                   "there.")}},
+    };
+}
+
+void AccountsController::connectCalDav(const QString &server, const QString &user,
+                                       const QString &password)
+{
+    if (busy() || !calDavReady())
+        return;
+    const QString address = server.trimmed();
+    const QUrl url(address.contains(u"://"_s) ? address : u"https://"_s + address);
+    if (!url.isValid() || url.host().isEmpty() || user.trimmed().isEmpty() || password.isEmpty()) {
+        m_error = tr("A CalDAV account needs the server's address, a user name and a password.");
+        Q_EMIT stateChanged();
+        return;
+    }
+    m_error.clear();
+    m_checking = true;
+    m_status = tr("Checking with %1...").arg(url.host());
+    Q_EMIT stateChanged();
+    delete m_checker;
+    m_checker = new CalDavClient(m_setup.network, this);
+    m_manager->connectCalDav(*m_checker, url, user, password);
 }
 
 void AccountsController::connectGoogle()
@@ -167,19 +227,30 @@ void AccountsController::reload()
     QList<Account> accounts;
     if (m_setup.store && !m_setup.store->load(accounts))
         m_error = m_setup.store->errorString();
-    accounts.removeIf([](const Account &a) { return a.provider != u"google"; });
+    accounts.removeIf(
+        [](const Account &a) { return a.provider != u"google" && a.provider != u"caldav"; });
     if (accounts != m_accounts) {
         m_accounts = accounts;
         Q_EMIT accountsChanged();
     }
+    QList<Account> google;
+    QList<CalDavSource::Account> caldav;
+    for (const Account &account : std::as_const(accounts)) {
+        if (account.provider == u"google")
+            google << account;
+        else
+            caldav << CalDavSource::Account{account.id, QUrl(account.server), account.user};
+    }
     if (m_setup.source)
-        m_setup.source->setAccounts(accounts);
+        m_setup.source->setAccounts(google);
+    if (m_setup.caldav)
+        m_setup.caldav->setAccounts(caldav);
 }
 
 void AccountsController::finish(const QString &error)
 {
     // Only the attempt in progress may finish; a cancelled one has no auth left.
-    if (!m_auth && !m_removing)
+    if (!m_auth && !m_removing && !m_checking)
         return;
     if (m_auth)
         m_auth->deleteLater();
@@ -188,6 +259,7 @@ void AccountsController::finish(const QString &error)
     m_auth.clear();
     m_granted = false;
     m_removing = false;
+    m_checking = false;
     m_status.clear();
     m_error = error;
     reload();

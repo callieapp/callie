@@ -17,6 +17,7 @@
 
 #include "callie/AccountStore.h"
 #include "callie/Autostart.h"
+#include "callie/CalDavSource.h"
 #include "callie/CombinedSource.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
@@ -197,6 +198,12 @@ int main(int argc, char *argv[])
     if (!useSample && !cache.open())
         err << "callie-gui: " << cache.errorString() << "\n";
     err.flush();
+    QList<callie::CalDavSource::Account> calDavAccounts;
+    for (const callie::Account &account : std::as_const(accounts)) {
+        if (account.provider == u"caldav")
+            calDavAccounts << callie::CalDavSource::Account{account.id, QUrl(account.server),
+                                                            account.user};
+    }
     accounts.removeIf([](const callie::Account &a) { return a.provider != u"google"; });
 
     callie::KeychainTokenStore tokens;
@@ -220,13 +227,17 @@ int main(int argc, char *argv[])
     // leave the calendars on this computer alone.
     std::optional<callie::LocalCalendars> local;
     std::optional<callie::Subscriptions> subscriptions;
+    std::optional<callie::CalDavSource> caldav;
     if (!standalone) {
         local.emplace(callie::LocalCalendars::defaultRoot());
         subscriptions.emplace(callie::Subscriptions::defaultRoot(), &network);
+        caldav.emplace(callie::CalDavSource::defaultRoot(), &network, &tokens);
+        caldav->setAccounts(calDavAccounts);
     }
     callie::CombinedSource combined;
-    combined.setSources(local ? QList<callie::CalendarSource *>{&google, &*local, &*subscriptions}
-                              : QList<callie::CalendarSource *>{&google});
+    combined.setSources(
+        local ? QList<callie::CalendarSource *>{&google, &*caldav, &*local, &*subscriptions}
+              : QList<callie::CalendarSource *>{&google});
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
 
@@ -293,6 +304,13 @@ int main(int argc, char *argv[])
         if (!accounts.isEmpty())
             QTimer::singleShot(0, &google, &callie::GoogleSource::refresh);
     }
+    // CalDAV accounts sync as often as Google's, whatever the Google sign-in.
+    QTimer calDavTimer;
+    if (caldav) {
+        QObject::connect(&calDavTimer, &QTimer::timeout, &*caldav, &callie::CalDavSource::refresh);
+        calDavTimer.start(std::chrono::minutes(5));
+        QTimer::singleShot(0, &*caldav, &callie::CalDavSource::refresh);
+    }
     // Subscriptions look every quarter hour for feeds due again, which is hourly.
     QTimer feedTimer;
     if (subscriptions) {
@@ -320,6 +338,7 @@ int main(int argc, char *argv[])
     callie::AccountsController::Setup accountSetup{&store,   &tokens, &cache, &google,
                                                    &network, client,  {}};
     accountSetup.contacts = &contacts;
+    accountSetup.caldav = caldav ? &*caldav : nullptr;
     // Sample data and screenshots never show or touch the user's accounts.
     if (standalone) {
         accountSetup = {};

@@ -22,7 +22,7 @@
 </header>
 
 <h1>Privacy Policy</h1>
-<p class="meta">Last updated: 11 October 2026</p>
+<p class="meta">Last updated: 12 October 2026</p>
 
 <h2>Summary</h2>
 <p>
@@ -54,6 +54,16 @@
   place search, below, sends.
 </p>
 
+<h2>CalDAV accounts and subscriptions</h2>
+<p>
+  When you connect a CalDAV account, such as Fastmail, iCloud or Nextcloud, Callie talks
+  only to the server you name, over HTTPS, signing in with the user name and app password
+  you give it. It reads and changes your calendars there as you direct, and sends the
+  password to no one else. When you subscribe to a calendar by its link, Callie fetches
+  that link about once an hour; the site behind it receives the request and, like any
+  website, your IP address.
+</p>
+
 <h2>Place search</h2>
 <p>
   When you type an event's place, Callie suggests places from your own events, and, once
@@ -80,11 +90,11 @@
 
 <h2>Where information is stored</h2>
 <ul>
-  <li>Calendar data is cached in a local database in your user directory, so the app works offline.</li>
+  <li>Calendar data is cached in your user directory, so the app works offline: Google calendars in a local database, and CalDAV calendars, subscriptions and calendars on this computer as .ics files.</li>
   <li>Contact names and email addresses are cached in a file in your user directory, for guest suggestions.</li>
   <li>The address of each account's profile photo is kept in Callie's settings; the photo itself is loaded from Google when shown.</li>
   <li>Logs of what Callie did, such as syncs and their errors, are kept in your user directory. They never hold tokens, and hold event details only while "Log debug details" is on under Settings, Developer.</li>
-  <li>Authentication tokens are stored in your system keyring through the Secret Service API, not in plain text.</li>
+  <li>Authentication tokens and CalDAV app passwords are stored in your system keyring through the Secret Service API, not in plain text.</li>
   <li>Nothing is stored on any server operated by Callie, because there is none.</li>
 </ul>
 

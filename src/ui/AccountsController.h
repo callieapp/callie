@@ -16,6 +16,8 @@ namespace callie {
 
 class AccountManager;
 class AccountStore;
+class CalDavClient;
+class CalDavSource;
 class ContactBook;
 class GoogleCache;
 class GoogleCalendarApi;
@@ -30,10 +32,12 @@ class AccountsController : public QObject
     Q_OBJECT
     QML_NAMED_ELEMENT(Accounts)
     QML_SINGLETON
-    /// {id, provider} for each connected account.
+    /// {id, provider, server, user} for each connected account.
     Q_PROPERTY(QVariantList accounts READ accounts NOTIFY accountsChanged)
     /// Why accounts cannot be connected here, or empty when they can.
     Q_PROPERTY(QString unavailable READ unavailable CONSTANT)
+    /// CalDAV accounts can be connected here; they need no Google sign-in.
+    Q_PROPERTY(bool calDavReady READ calDavReady CONSTANT)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
     /// A sign-in is waiting on the browser, which cancel() can stop. Once Google
     /// grants access the account is being saved, and like a removal that runs on.
@@ -59,6 +63,8 @@ public:
         QUrl apiBaseUrl = {};
         /// Loses an account's contacts when the account is removed.
         ContactBook *contacts = nullptr;
+        /// Syncs the CalDAV accounts, and loses their calendars when removed.
+        CalDavSource *caldav = nullptr;
     };
 
     static AccountsController *instance();
@@ -68,7 +74,8 @@ public:
 
     [[nodiscard]] QVariantList accounts() const;
     [[nodiscard]] QString unavailable() const;
-    [[nodiscard]] bool busy() const { return m_auth != nullptr || m_removing; }
+    [[nodiscard]] bool busy() const { return m_auth != nullptr || m_removing || m_checking; }
+    [[nodiscard]] bool calDavReady() const;
     [[nodiscard]] bool signingIn() const { return m_auth != nullptr && !m_granted; }
     [[nodiscard]] QString status() const { return m_status; }
     [[nodiscard]] QString error() const { return m_error; }
@@ -79,6 +86,11 @@ public:
     /// it can grant permissions added since it first signed in.
     Q_INVOKABLE void reconnect(const QString &id);
     Q_INVOKABLE void cancel();
+    /// Signs in to a CalDAV server: `server` may leave out https://.
+    Q_INVOKABLE void connectCalDav(const QString &server, const QString &user,
+                                   const QString &password);
+    /// {id, name, server, help} for the services set up for, and "other".
+    Q_INVOKABLE static QVariantList calDavPresets();
     /// Forgets an account's sign-in, cached events and listing.
     Q_INVOKABLE void remove(const QString &id);
     /// Forgets an account's cached calendars and events and syncs them afresh.
@@ -101,6 +113,9 @@ private:
     /// Google said yes; the account is being stored and can no longer be stopped.
     bool m_granted = false;
     bool m_removing = false;
+    /// A CalDAV server is being asked whether the password works.
+    bool m_checking = false;
+    CalDavClient *m_checker = nullptr;
     QList<Account> m_accounts;
     QString m_status;
     QString m_error;

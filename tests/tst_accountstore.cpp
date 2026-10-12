@@ -30,6 +30,7 @@ private Q_SLOTS:
     void removeDropsOnlyThatAccount();
     void corruptFileIsNeverOverwritten();
     void loadReportsCorruptFile();
+    void calDavKeepsItsServer();
 
 private:
     QTemporaryDir m_dir;
@@ -105,6 +106,25 @@ void TestAccountStore::loadReportsCorruptFile()
     AccountStore store(file.fileName());
     QVERIFY(!store.load(accounts));
     QVERIFY(store.errorString().contains(QStringLiteral("not valid")));
+}
+
+void TestAccountStore::calDavKeepsItsServer()
+{
+    QTemporaryDir dir;
+    AccountStore store(dir.filePath(QStringLiteral("accounts.json")));
+    QVERIFY(store.add({QStringLiteral("caldav"), QStringLiteral("me@fastmail.com"),
+                       QStringLiteral("https://caldav.fastmail.com/"),
+                       QStringLiteral("me@fastmail.com")}));
+    QVERIFY(store.add({QStringLiteral("google"), QStringLiteral("me@gmail.com")}));
+    QList<Account> accounts;
+    QVERIFY(store.load(accounts));
+    QCOMPARE(accounts.size(), 2);
+    QCOMPARE(accounts.first().server, QStringLiteral("https://caldav.fastmail.com/"));
+    QCOMPARE(accounts.first().user, QStringLiteral("me@fastmail.com"));
+    QVERIFY(accounts.last().server.isEmpty());
+    // The same account, wherever it is said to be.
+    QVERIFY(
+        accounts.contains(Account{QStringLiteral("caldav"), QStringLiteral("me@fastmail.com")}));
 }
 
 QTEST_GUILESS_MAIN(TestAccountStore)

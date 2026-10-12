@@ -3,8 +3,8 @@ import Callie.Ui
 import QtQuick
 import QtQuick.Controls
 
-/// The connected Google accounts: each with how its sync is going, a way to
-/// sign in again, and removal; then connecting another.
+/// The connected Google and CalDAV accounts: each with how its sync is going,
+/// a way to sign in again, and removal; then connecting another.
 Column {
     id: root
 
@@ -25,7 +25,8 @@ Column {
         visible: Accounts.accounts.length === 0
         width: parent.width
         wrapMode: Text.Wrap
-        text: qsTr("No accounts yet. Connect a Google account to see its calendars here.")
+        text: qsTr(
+                  "No accounts yet. Connect a Google account, or a CalDAV one such as Fastmail, iCloud or Nextcloud, to see its calendars here.")
         color: Theme.textMuted
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
@@ -38,6 +39,7 @@ Column {
             id: row
 
             required property var modelData
+            readonly property bool caldav: modelData.provider === "caldav"
             readonly property var entry: root.entryFor(modelData.id)
             /// Callie asks for more than this account granted when it signed in.
             readonly property bool missing: !!entry && (entry.missingScopes || []).length > 0
@@ -153,11 +155,18 @@ Column {
                 // has asked for since, such as reading contacts.
                 StickerButton {
                     id: reconnect
-                    visible: Accounts.unavailable === ""
+                    visible: row.caldav ? Accounts.calDavReady : Accounts.unavailable === ""
                     enabled: !Accounts.busy
                     accent: row.problem !== "" || row.missing
                     text: qsTr("Reconnect")
-                    onClicked: Accounts.reconnect(row.modelData.id)
+                    onClicked: {
+                        if (!row.caldav) {
+                            Accounts.reconnect(row.modelData.id)
+                            return
+                        }
+                        root.calDavOpen = true
+                        calDav.prefill(row.modelData)
+                    }
 
                     // A dot when the account has not granted all Callie asks for.
                     Rectangle {
@@ -178,7 +187,7 @@ Column {
                 }
                 // Removing takes a second click, since the account's sign-in goes too.
                 DangerButton {
-                    visible: Accounts.unavailable === ""
+                    visible: row.caldav ? Accounts.calDavReady : Accounts.unavailable === ""
                     enabled: !Accounts.busy
                     label: qsTr("Remove")
                     armedLabel: qsTr("Click again to remove")
@@ -188,7 +197,33 @@ Column {
         }
     }
 
-    Row {
+    /// The CalDAV form is open.
+    property bool calDavOpen: false
+
+    Connections {
+        target: Accounts
+        // Connected: the form has done its work.
+        function onAccountsChanged() {
+            if (root.calDavOpen && Accounts.error === "") {
+                root.calDavOpen = false
+                calDav.clear()
+            }
+        }
+    }
+
+    CalDavForm {
+        id: calDav
+        visible: root.calDavOpen
+        width: parent.width
+        onCancelled: {
+            root.calDavOpen = false
+            clear()
+        }
+    }
+
+    Flow {
+        visible: !root.calDavOpen
+        width: parent.width
         spacing: Theme.space3
 
         StickerButton {
@@ -198,6 +233,13 @@ Column {
             glyph: "plus"
             text: qsTr("Connect a Google account")
             onClicked: Accounts.connectGoogle()
+        }
+        StickerButton {
+            enabled: Accounts.calDavReady && !Accounts.busy
+            opacity: enabled ? 1 : Theme.fadedOpacity
+            glyph: "plus"
+            text: qsTr("Connect a CalDAV account")
+            onClicked: root.calDavOpen = true
         }
         StickerButton {
             visible: Accounts.signingIn
@@ -210,9 +252,9 @@ Column {
         visible: text !== ""
         width: parent.width
         wrapMode: Text.Wrap
-        text: Accounts.unavailable !== "" ? Accounts.unavailable : Accounts.error !== ""
-                                            ? Accounts.error : Accounts.status
-        color: Accounts.error !== "" && Accounts.unavailable === "" ? Theme.danger : Theme.textMuted
+        // What is happening now, ahead of why Google cannot be connected here.
+        text: Accounts.error || Accounts.status || Accounts.unavailable
+        color: Accounts.error !== "" ? Theme.danger : Theme.textMuted
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm
     }

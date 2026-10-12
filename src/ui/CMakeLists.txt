@@ -95,6 +95,7 @@ qt_add_qml_module(callieui
         Dropdown.qml
         PickerButton.qml
         LocalSection.qml
+        CalDavForm.qml
         ImportDialog.qml
         SubscribeDialog.qml
         SubscriptionsSection.qml

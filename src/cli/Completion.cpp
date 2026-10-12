@@ -180,7 +180,7 @@ QList<Candidate> Completion::argument(const QStringList &positional) const
             return plain({u"list"_s, u"add"_s, u"remove"_s, u"rename"_s});
         const QString action = positional.at(1);
         if ((action == u"add" || action == u"remove") && at == 2)
-            return plain({u"google"_s});
+            return plain({u"google"_s, u"caldav"_s});
         if ((action == u"remove" && at == 3) || (action == u"rename" && at == 2))
             return from(m_sources.accounts);
     }

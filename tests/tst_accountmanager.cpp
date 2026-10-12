@@ -1,18 +1,25 @@
+#include "FakeCalDavServer.h"
 #include "GoogleAuthDriver.h"
 
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
+#include "callie/CalDavClient.h"
+#include "callie/CalDavSource.h"
 #include "callie/ContactBook.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/TokenStore.h"
 
+#include <QDir>
 #include <QFile>
+#include <QNetworkAccessManager>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
 
 using namespace callie;
+using namespace Qt::StringLiterals;
 
 namespace {
 
@@ -97,6 +104,9 @@ private Q_SLOTS:
     void removeKeepsAccountWhenCacheFails();
     void removeReportsCorruptList();
     void connectRefusesCorruptListBeforeSignIn();
+    void calDavChecksThePasswordFirst();
+    void calDavSignInAgainKeepsTheListing();
+    void removingCalDavForgetsItsCalendars();
 
 private:
     void corruptAccountList();
@@ -332,6 +342,70 @@ void TestAccountManager::connectRefusesCorruptListBeforeSignIn()
     QVERIFY(failed.wait(2000));
     QCOMPARE(browser.size(), 0);
     QVERIFY(m_tokens->secrets.isEmpty());
+}
+
+void TestAccountManager::calDavChecksThePasswordFirst()
+{
+    FakeCalDavServer server;
+    server.addCalendar("work", "Work");
+    QNetworkAccessManager network;
+    CalDavClient client(&network);
+    QSignalSpy connected(m_manager.get(), &AccountManager::connected);
+    QSignalSpy failed(m_manager.get(), &AccountManager::failed);
+    Account account;
+    connect(m_manager.get(), &AccountManager::connected, this,
+            [&account](const Account &made) { account = made; });
+
+    // A wrong password stores and lists nothing.
+    m_manager->connectCalDav(client, server.url(), u"me"_s, u"guess"_s);
+    QVERIFY(failed.wait());
+    QVERIFY(failed.first().first().toString().contains(u"app password"_s));
+    QVERIFY(m_tokens->secrets.isEmpty());
+    QList<Account> accounts;
+    QVERIFY(m_store->load(accounts));
+    QVERIFY(accounts.isEmpty());
+
+    m_manager->connectCalDav(client, server.url(), u"me"_s, u"app-password"_s);
+    QVERIFY(connected.wait());
+    QCOMPARE(account.provider, u"caldav"_s);
+    QCOMPARE(account.id, u"me@127.0.0.1"_s);
+    QCOMPARE(m_tokens->secrets.value(account.id), u"app-password"_s);
+    QVERIFY(m_store->load(accounts));
+    QCOMPARE(accounts.size(), 1);
+    QCOMPARE(accounts.first().server, server.url().toString());
+    QCOMPARE(accounts.first().user, u"me"_s);
+}
+
+void TestAccountManager::calDavSignInAgainKeepsTheListing()
+{
+    FakeCalDavServer server;
+    server.addCalendar("work", "Work");
+    QNetworkAccessManager network;
+    CalDavClient client(&network);
+    QSignalSpy connected(m_manager.get(), &AccountManager::connected);
+    m_manager->connectCalDav(client, server.url(), u"me"_s, u"app-password"_s);
+    QVERIFY(connected.wait());
+    server.password = "new-password";
+    m_manager->connectCalDav(client, server.url(), u"me"_s, u"new-password"_s);
+    QVERIFY(connected.wait());
+    QList<Account> accounts;
+    QVERIFY(m_store->load(accounts));
+    QCOMPARE(accounts.size(), 1);
+    QCOMPARE(m_tokens->secrets.value(u"me@127.0.0.1"_s), u"new-password"_s);
+}
+
+void TestAccountManager::removingCalDavForgetsItsCalendars()
+{
+    const Account account{u"caldav"_s, u"me@example.com"_s, u"https://dav.example.com/"_s, u"me"_s};
+    QVERIFY(m_store->add(account));
+    m_tokens->secrets.insert(account.id, u"app-password"_s);
+    CalDavSource caldav(m_dir->filePath(u"caldav"_s), nullptr, nullptr);
+    QVERIFY(QDir().mkpath(m_dir->filePath(u"caldav/me@example.com/work"_s)));
+    m_manager->setCalDav(&caldav);
+    QSignalSpy removed(m_manager.get(), &AccountManager::removed);
+    m_manager->remove(account);
+    QVERIFY(removed.wait());
+    QVERIFY(!QDir(m_dir->filePath(u"caldav/me@example.com"_s)).exists());
 }
 
 QTEST_GUILESS_MAIN(TestAccountManager)

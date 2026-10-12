@@ -56,7 +56,8 @@ std::optional<QList<Account>> AccountStore::read(QString *error) const
     const QJsonArray array = document.object()[u"accounts"].toArray();
     for (const QJsonValue &value : array) {
         const QJsonObject o = value.toObject();
-        Account account{o[u"provider"].toString(), o[u"id"].toString()};
+        Account account{o[u"provider"].toString(), o[u"id"].toString(), o[u"server"].toString(),
+                        o[u"user"].toString()};
         if (!account.provider.isEmpty() && !account.id.isEmpty())
             out.append(account);
     }
@@ -94,9 +95,15 @@ bool AccountStore::save(const QList<Account> &accounts)
     }
 
     QJsonArray array;
-    for (const Account &account : accounts)
-        array.append(QJsonObject{{QStringLiteral("provider"), account.provider},
-                                 {QStringLiteral("id"), account.id}});
+    for (const Account &account : accounts) {
+        QJsonObject entry{{QStringLiteral("provider"), account.provider},
+                          {QStringLiteral("id"), account.id}};
+        if (!account.server.isEmpty())
+            entry.insert(QStringLiteral("server"), account.server);
+        if (!account.user.isEmpty())
+            entry.insert(QStringLiteral("user"), account.user);
+        array.append(entry);
+    }
 
     QSaveFile file(m_path);
     if (!file.open(QIODevice::WriteOnly)) {

@@ -3,7 +3,16 @@
 #include "callie/Color.h"
 #include "callie/ThemeLoader.h"
 
+#include <algorithm>
+
 namespace callie::cli {
+
+namespace {
+
+/// Lightness, in OKLCH, that reads at 4.5:1 on a near-white page at every hue.
+constexpr double kOnLightPage = 0.5;
+
+} // namespace
 
 Palette Palette::forTheme(const QString &idOrPath)
 {
@@ -30,6 +39,14 @@ QColor Palette::ink(const QColor &calendar) const
     const QColor black(0, 0, 0), white(255, 255, 255);
     return color::contrastRatio(black, calendar) >= color::contrastRatio(white, calendar) ? black
                                                                                           : white;
+}
+
+QColor Palette::onPage(const QColor &calendar) const
+{
+    const ThemeSpec::Calendar &c = m_theme.calendar;
+    if (m_theme.dark || !c.harmonize)
+        return fill(calendar);
+    return color::harmonize(calendar, kOnLightPage, std::max(c.chroma, c.edgeChroma));
 }
 
 } // namespace callie::cli

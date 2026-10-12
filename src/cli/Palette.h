@@ -23,6 +23,9 @@ public:
     [[nodiscard]] QColor fill(const QColor &calendar) const;
     /// The text color that reads on that fill, for an event drawn as a sticker.
     [[nodiscard]] QColor ink(const QColor &calendar) const;
+    /// A calendar's color for text or a mark straight on the page. The pale
+    /// fill reads on a dark page; a light page takes a deeper shade of it.
+    [[nodiscard]] QColor onPage(const QColor &calendar) const;
 
 private:
     ThemeSpec m_theme;

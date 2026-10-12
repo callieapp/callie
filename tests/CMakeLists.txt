@@ -95,6 +95,8 @@ target_link_libraries(tst_placesearch PRIVATE callieui)
 callie_add_test(tst_samplesource)
 callie_add_test(tst_accounts)
 target_link_libraries(tst_accounts PRIVATE callieui callieuiplugin Qt6::QuickControls2)
+callie_add_test(tst_dropdown)
+target_link_libraries(tst_dropdown PRIVATE callieui callieuiplugin Qt6::QuickControls2)
 callie_add_test(tst_composer)
 target_link_libraries(tst_composer PRIVATE callieui)
 # Drives the real main window with the pointer.

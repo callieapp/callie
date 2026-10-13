@@ -242,7 +242,6 @@ Popup {
                 anchors.right: parent.right
                 accent: true
                 enabled: composer.ready && !composer.busy
-                opacity: enabled ? 1 : Theme.fadedOpacity
                 text: composer.busy ? qsTr("Adding...") : qsTr("Add event")
                 onClicked: composer.submit()
             }

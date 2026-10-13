@@ -236,14 +236,12 @@ Column {
         StickerButton {
             accent: true
             enabled: Accounts.unavailable === "" && !Accounts.busy
-            opacity: enabled ? 1 : Theme.fadedOpacity
             glyph: "plus"
             text: qsTr("Connect a Google account")
             onClicked: Accounts.connectGoogle()
         }
         StickerButton {
             enabled: Accounts.calDavReady && !Accounts.busy
-            opacity: enabled ? 1 : Theme.fadedOpacity
             glyph: "plus"
             text: qsTr("Connect a CalDAV account")
             onClicked: root.calDavOpen = true

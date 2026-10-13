@@ -91,7 +91,6 @@ Column {
             enabled: !Accounts.busy && user.text.trim() !== "" && password.text !== "" && (!!root.chosen.server
                                                                                            || server.text.trim(
                                                                                                ) !== "")
-            opacity: enabled ? 1 : Theme.fadedOpacity
             onClicked: {
                 root.submitted()
                 Accounts.connectCalDav(root.chosen.server || server.text, user.text, password.text)
@@ -101,7 +100,6 @@ Column {
         StickerButton {
             text: qsTr("Cancel")
             enabled: !Accounts.busy
-            opacity: enabled ? 1 : Theme.fadedOpacity
             onClicked: root.cancelled()
         }
     }

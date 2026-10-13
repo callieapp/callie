@@ -11,7 +11,7 @@ What changed in each version of Callie, for the people using it. Each section is
 - Guests added to an event in a CalDAV calendar get invitations from the server. Calendars on this
   computer say in the event editor that they cannot send any.
 - `.ics` files can go into CalDAV and Google calendars as well as calendars on this computer, from
-  the app or with `callie import --calendar`.
+  the app or with `callie import --calendar`. Settings, under Accounts, has a button to pick one.
 
 ### Fixed
 

@@ -8,7 +8,6 @@
 #include <QNetworkAccessManager>
 #include <QProcess>
 #include <QSignalSpy>
-#include <QStandardPaths>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
@@ -19,7 +18,8 @@ using namespace Qt::StringLiterals;
 
 /// CalDavSource against a real CalDAV server, Radicale, run for the test.
 /// Skipped where Radicale is not installed, unless CALLIE_REQUIRE_RADICALE
-/// is set, as in CI. CALLIE_RADICALE names the program if not on the path.
+/// is set, as in CI. CALLIE_RADICALE_PYTHON names a Python other than python3
+/// that has it, such as a virtualenv's.
 class TestRadicale : public QObject
 {
     Q_OBJECT
@@ -69,9 +69,12 @@ bool write(const QString &path, const QByteArray &data)
 
 void TestRadicale::initTestCase()
 {
-    const QString program =
-        qEnvironmentVariable("CALLIE_RADICALE", QStandardPaths::findExecutable(u"radicale"_s));
-    if (program.isEmpty()) {
+    // Run as a module, since Fedora's radicale command runs only as its own user.
+    const QString python = qEnvironmentVariable("CALLIE_RADICALE_PYTHON", u"python3"_s);
+    QProcess check;
+    check.start(python, {u"-c"_s, u"import radicale"_s});
+    if (!check.waitForFinished(10000) || check.exitStatus() != QProcess::NormalExit ||
+        check.exitCode() != 0) {
         if (qEnvironmentVariableIsSet("CALLIE_REQUIRE_RADICALE"))
             QFAIL("Radicale is not installed");
         QSKIP("Radicale is not installed");
@@ -98,15 +101,18 @@ void TestRadicale::initTestCase()
                   R"( "C:supported-calendar-component-set": "VEVENT"})"));
 
     m_server.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    m_server.start(program, {u"--config"_s, root + u"/config"_s});
+    m_server.start(python, {u"-m"_s, u"radicale"_s, u"--config"_s, root + u"/config"_s});
     QVERIFY2(m_server.waitForStarted(), qPrintable(m_server.errorString()));
     QVERIFY(QTest::qWaitFor(
-        [port] {
+        [this, port] {
+            if (m_server.state() == QProcess::NotRunning)
+                return true;
             QTcpSocket socket;
             socket.connectToHost(QHostAddress::LocalHost, port);
             return socket.waitForConnected(200);
         },
         15000));
+    QVERIFY2(m_server.state() == QProcess::Running, "Radicale stopped; its output is above");
     m_url = QUrl(u"http://127.0.0.1:%1/"_s.arg(port));
     m_tokens.secrets.insert(u"me@radicale"_s, u"app-password"_s);
 }

@@ -954,6 +954,7 @@ ApplicationWindow {
                 close()
                 themeEditor.open()
             }
+            onImportRequested: file => window.openFiles([file])
         }
     }
 

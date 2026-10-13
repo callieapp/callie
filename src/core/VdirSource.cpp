@@ -392,9 +392,7 @@ void VdirSource::createEvent(const EventDraft &draft, Created done)
     }
     QString error;
     const Folder target = *where;
-    ics::Group made = {ics::fromDraft(draft, uid)};
-    ics::takeOrganizer(made, {}, target.self);
-    if (!save(target, fileNameFor(uid), uid, made, &error)) {
+    if (!save(target, fileNameFor(uid), uid, {ics::fromDraft(draft, uid)}, &error)) {
         done(error);
         return;
     }

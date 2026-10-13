@@ -473,6 +473,14 @@ void TestAccountManager::calDavSignInToAnotherServerMovesIt()
     QVERIFY(m_store->load(accounts));
     QCOMPARE(accounts.size(), 1);
     QCOMPARE(accounts.first().server, second.url().toString());
+
+    // A password typed into the address is not kept with the account.
+    QUrl typed = second.url();
+    typed.setUserInfo(u"me:app-password"_s);
+    m_manager->connectCalDav(client, typed, u"me"_s, u"app-password"_s);
+    QVERIFY(connected.wait());
+    QVERIFY(m_store->load(accounts));
+    QVERIFY(!accounts.first().server.contains(u"app-password"_s));
 }
 
 void TestAccountManager::calDavCopiesThatStayKeepTheAccount()

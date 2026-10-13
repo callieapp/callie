@@ -200,11 +200,17 @@ Column {
     /// The CalDAV form is open.
     property bool calDavOpen: false
 
+    /// The form's Connect is being checked with the server.
+    property bool calDavChecking: false
+
     Connections {
         target: Accounts
-        // Connected: the form has done its work.
-        function onAccountsChanged() {
-            if (root.calDavOpen && Accounts.error === "") {
+        // Done checking without an error: connected, so the form has done its work.
+        function onStateChanged() {
+            if (!root.calDavChecking || Accounts.busy)
+                return
+            root.calDavChecking = false
+            if (Accounts.error === "") {
                 root.calDavOpen = false
                 calDav.clear()
             }
@@ -215,6 +221,7 @@ Column {
         id: calDav
         visible: root.calDavOpen
         width: parent.width
+        onSubmitted: root.calDavChecking = true
         onCancelled: {
             root.calDavOpen = false
             clear()

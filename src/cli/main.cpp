@@ -47,6 +47,7 @@
 #include <QTextStream>
 #include <QTimer>
 
+#include <csignal>
 #include <termios.h>
 #include <unistd.h>
 
@@ -200,22 +201,35 @@ int runAccountsList()
 
 /// The password, asked for without showing it when a person is typing, or read
 /// as the first line of what is piped in.
+/// The terminal as it was before a password was asked for, put back on Ctrl-C too.
+termios g_terminal{};
+
+void restoreTerminal(int signal)
+{
+    tcsetattr(STDIN_FILENO, TCSANOW, &g_terminal);
+    std::signal(signal, SIG_DFL);
+    std::raise(signal);
+}
+
 QString readPassword(const QString &prompt)
 {
     const bool typing = isatty(STDIN_FILENO);
-    termios before{};
     if (typing) {
         err << prompt;
         err.flush();
-        tcgetattr(STDIN_FILENO, &before);
-        termios quiet = before;
+        tcgetattr(STDIN_FILENO, &g_terminal);
+        std::signal(SIGINT, restoreTerminal);
+        std::signal(SIGTERM, restoreTerminal);
+        termios quiet = g_terminal;
         quiet.c_lflag &= ~tcflag_t(ECHO);
         tcsetattr(STDIN_FILENO, TCSANOW, &quiet);
     }
     QTextStream in(stdin);
     const QString password = in.readLine();
     if (typing) {
-        tcsetattr(STDIN_FILENO, TCSANOW, &before);
+        tcsetattr(STDIN_FILENO, TCSANOW, &g_terminal);
+        std::signal(SIGINT, SIG_DFL);
+        std::signal(SIGTERM, SIG_DFL);
         err << "\n";
         err.flush();
     }

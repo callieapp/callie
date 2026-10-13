@@ -22,6 +22,7 @@ Column {
     }
 
     signal cancelled
+    signal submitted
 
     property string preset: "fastmail"
     readonly property var chosen: Accounts.calDavPresets().find(p => p.id === root.preset) || ({})
@@ -91,8 +92,10 @@ Column {
                                                                                            || server.text.trim(
                                                                                                ) !== "")
             opacity: enabled ? 1 : Theme.fadedOpacity
-            onClicked: Accounts.connectCalDav(root.chosen.server || server.text, user.text,
-                                              password.text)
+            onClicked: {
+                root.submitted()
+                Accounts.connectCalDav(root.chosen.server || server.text, user.text, password.text)
+            }
         }
         StickerButton {
             text: qsTr("Cancel")

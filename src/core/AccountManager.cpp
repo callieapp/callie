@@ -164,7 +164,8 @@ void AccountManager::remove(const Account &account)
             Q_EMIT failed(m_store.errorString());
         else {
             qCInfo(lcAccounts) << "removed" << account.provider << account.id;
-            if (m_contacts)
+            // Only Google accounts bring contacts, and a CalDAV id can match one.
+            if (m_contacts && account.provider == u"google")
                 m_contacts->forget(account.id);
             Q_EMIT removed(account);
         }

@@ -406,10 +406,15 @@ void TestAccountManager::removingCalDavForgetsItsCalendars()
     CalDavSource caldav(m_dir->filePath(u"caldav"_s), nullptr, nullptr);
     QVERIFY(QDir().mkpath(m_dir->filePath(u"caldav/me@example.com/work"_s)));
     m_manager->setCalDav(&caldav);
+    // A Google account of the same address keeps its contacts.
+    ContactBook contacts(m_dir->filePath(u"contacts.json"_s));
+    contacts.setContacts(u"me@example.com"_s, {Contact{u"Alex"_s, u"alex@example.com"_s}});
+    m_manager->setContacts(&contacts);
     QSignalSpy removed(m_manager.get(), &AccountManager::removed);
     m_manager->remove(account);
     QVERIFY(removed.wait());
     QVERIFY(!QDir(m_dir->filePath(u"caldav/me@example.com"_s)).exists());
+    QCOMPARE(contacts.suggest(u"alex"_s, {}).size(), 1);
 }
 
 void TestAccountManager::calDavFailuresStoreNothing()

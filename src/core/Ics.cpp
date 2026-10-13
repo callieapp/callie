@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QSet>
 
+#include <cmath>
 #include <functional>
 
 using namespace Qt::StringLiterals;
@@ -297,6 +298,19 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
         const bool plainWeekdays = std::ranges::all_of(
             weekdays, [](const Rule::WDayPos &weekday) { return weekday.pos() == 0; });
         if (rule->recurrenceType() == Rule::rWeekly && plainWeekdays && monthDays.isEmpty()) {
+            // Every other week or more, the days must stay in one week, or a
+            // weekend moved a day would fall in two fortnights.
+            if (rule->frequency() > 1) {
+                const int weekStart = rule->weekStart();
+                const auto week = [weekStart, days](short day) {
+                    return int(std::floor(((day - weekStart + 7) % 7 + days) / 7.0));
+                };
+                const int first = week(weekdays.first().day());
+                if (!std::ranges::all_of(weekdays, [&](const Rule::WDayPos &weekday) {
+                        return week(weekday.day()) == first;
+                    }))
+                    return refuse();
+            }
             QList<Rule::WDayPos> moved = weekdays;
             for (Rule::WDayPos &weekday : moved)
                 weekday.setDay(short(((weekday.day() - 1 + days) % 7 + 7) % 7 + 1));
@@ -311,7 +325,11 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
         const auto inMonth = [months](QDate day) {
             return QDate(day.year(), day.month(), 1).addMonths(months);
         };
+        // Days some months lack, the 29th on or a fifth weekday, would skip them.
+        const bool everyMonth = landing.day() <= 28;
         if (weekdays.size() == 1 && weekdays.first().pos() != 0 && monthDays.isEmpty()) {
+            if (!everyMonth && weekdays.first().pos() > 0)
+                return refuse();
             const int pos = weekdays.first().pos() > 0
                                 ? (landing.day() - 1) / 7 + 1
                                 : -((landing.daysInMonth() - landing.day()) / 7 + 1);
@@ -321,6 +339,8 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
                 return nthWeekday(inMonth(day), pos, weekday);
             };
         } else if (weekdays.isEmpty() && monthDays.size() == 1 && monthDays.first() > 0) {
+            if (!everyMonth)
+                return refuse();
             const int dayOfMonth = landing.day();
             rule->setByMonthDays({dayOfMonth});
             *map = [inMonth, dayOfMonth](QDate day) {

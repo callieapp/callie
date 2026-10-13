@@ -338,6 +338,45 @@ void TestIcs::monthlySeriesFollowTheirNewDay()
                                        QDate(2026, 10, 28), QDate(2026, 11, 2));
     QVERIFY2(yearly.value(0).contains(u"cannot move"_s), qPrintable(yearly.join(u' ')));
 
+    // Days some months lack would skip them, so they are refused too.
+    QVERIFY(movedTo("FREQ=MONTHLY;BYMONTHDAY=10", QDate(2026, 10, 10), QDate(2026, 10, 10),
+                    QDate(2026, 10, 30))
+                .value(0)
+                .contains(u"cannot move"_s));
+    QVERIFY(movedTo("FREQ=MONTHLY;BYDAY=4MO", QDate(2026, 10, 26), QDate(2026, 10, 26),
+                    QDate(2026, 10, 29))
+                .value(0)
+                .contains(u"cannot move"_s));
+    // A weekend every other week stays in one week: a day earlier is fine,
+    // a day later would split it.
+    const QStringList earlier = movedTo("FREQ=WEEKLY;INTERVAL=2;BYDAY=SA,SU", QDate(2026, 10, 3),
+                                        QDate(2026, 10, 3), QDate(2026, 10, 2));
+    QCOMPARE(earlier.mid(0, 3), (QStringList{u"2026-10-02"_s, u"2026-10-03"_s, u"2026-10-16"_s}));
+    QVERIFY(movedTo("FREQ=WEEKLY;INTERVAL=2;BYDAY=SA,SU", QDate(2026, 10, 3), QDate(2026, 10, 3),
+                    QDate(2026, 10, 4))
+                .value(0)
+                .contains(u"cannot move"_s));
+
+    // One changed on its own moves with its month.
+    const ics::Group tenth =
+        ics::parse(calendar("BEGIN:VEVENT\r\nUID:x\r\nDTSTART;VALUE=DATE:20261010\r\n"
+                            "RRULE:FREQ=MONTHLY;BYMONTHDAY=10\r\nSUMMARY:Rent\r\nEND:VEVENT\r\n"
+                            "BEGIN:VEVENT\r\nUID:x\r\nRECURRENCE-ID;VALUE=DATE:20261110\r\n"
+                            "DTSTART;VALUE=DATE:20261111\r\nSUMMARY:Rent, late\r\nEND:VEVENT\r\n"));
+    const QDateTime october(QDate(2026, 10, 1), QTime(0, 0), kBerlin);
+    const Event rent = ics::expand(tenth, kHome, october, october.addDays(15), kBerlin).value(0);
+    QString moveError;
+    const auto twelfth =
+        ics::move(tenth, rent, rent.start.addDays(2), rent.end.addDays(2), true, &moveError);
+    QVERIFY2(twelfth, qPrintable(moveError));
+    QStringList after;
+    for (const Event &event :
+         ics::expand(twelfth->group, kHome, october, october.addMonths(3), kBerlin))
+        after << event.start.date().toString(Qt::ISODate) + u' ' + event.summary;
+    after.sort();
+    QCOMPARE(after,
+             (QStringList{u"2026-10-12 Rent"_s, u"2026-11-11 Rent, late"_s, u"2026-12-12 Rent"_s}));
+
     // Given a repeat of its own at the same time, the old rule is no matter.
     const ics::Group twice =
         ics::parse(calendar("BEGIN:VEVENT\r\nUID:t\r\nDTSTART;VALUE=DATE:20261005\r\n"

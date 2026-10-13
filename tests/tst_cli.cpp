@@ -737,7 +737,8 @@ void TestCli::importPicksItsCalendar()
     const auto import = [&](const QString &path, const QString &calendar) {
         m_out.clear();
         m_err.clear();
-        const int code = Commands::importFile(local, path, calendar, *m_outStream, *m_errStream);
+        const int code =
+            Commands::importFile(local, local, path, calendar, *m_outStream, *m_errStream);
         m_outStream->flush();
         m_errStream->flush();
         return code;

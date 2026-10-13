@@ -1,5 +1,6 @@
 #include "ImportController.h"
 
+#include "callie/CalendarSource.h"
 #include "callie/LocalCalendars.h"
 
 #include <QCoreApplication>
@@ -32,8 +33,9 @@ ImportController *ImportController::create(QQmlEngine *, QJSEngine *)
     return importer;
 }
 
-void ImportController::setUp(LocalCalendars *local)
+void ImportController::setUp(CalendarSource *calendars, LocalCalendars *local)
 {
+    m_calendars = calendars;
     m_local = local;
     Q_EMIT pendingChanged();
 }
@@ -62,9 +64,8 @@ QVariantList ImportController::preview() const
 QVariantList ImportController::calendars() const
 {
     QVariantList list;
-    if (!m_local)
-        return list;
-    for (const CalendarInfo &calendar : m_local->calendars()) {
+    for (const CalendarInfo &calendar :
+         m_calendars ? m_calendars->calendars() : QList<CalendarInfo>()) {
         if (calendar.writable)
             list << QVariantMap{{u"id"_s, calendar.id}, {u"name"_s, calendar.displayName}};
     }
@@ -99,14 +100,17 @@ bool ImportController::open(const QList<QUrl> &urls)
         return false;
     }
     QString problem;
-    const ics::Group events = ics::parse(file.readAll(), &problem);
+    const QByteArray data = file.readAll();
+    const ics::Group events = ics::parse(data, &problem);
     if (events.isEmpty()) {
         setError(problem.isEmpty() ? tr("%1 has no events in it.").arg(QFileInfo(path).fileName())
                                    : tr("%1 is %2.").arg(QFileInfo(path).fileName(), problem));
         return false;
     }
     m_fileName = QFileInfo(path).fileName();
+    m_data = data;
     m_events = events;
+    ++m_file;
     setError({});
     Q_EMIT pendingChanged();
     return true;
@@ -114,7 +118,7 @@ bool ImportController::open(const QList<QUrl> &urls)
 
 bool ImportController::add(const QString &calendarId)
 {
-    if (m_events.isEmpty())
+    if (m_events.isEmpty() || m_busy)
         return false;
     QString error;
     QString id = calendarId;
@@ -129,31 +133,57 @@ bool ImportController::add(const QString &calendarId)
             return false;
         }
     }
-    for (const CalendarInfo &calendar : m_local ? m_local->calendars() : QList<CalendarInfo>()) {
-        if (calendar.id != id)
-            continue;
-        const int written = m_local->importEvents(id, m_events, &error);
-        if (written < 0) {
-            setError(error);
-            return false;
-        }
-        m_events.clear();
-        m_fileName.clear();
-        setError({});
-        Q_EMIT pendingChanged();
-        Q_EMIT added(written, calendar.displayName);
-        return true;
+    const QList<CalendarInfo> calendars =
+        m_calendars ? m_calendars->calendars() : QList<CalendarInfo>();
+    const auto calendar = std::ranges::find(calendars, id, &CalendarInfo::id);
+    if (calendar == calendars.cend()) {
+        setError(tr("That calendar is not connected any more."));
+        return false;
     }
-    setError(tr("That calendar is not on this computer any more."));
-    return false;
+    setError({});
+    setBusy(true);
+    const QPointer<ImportController> self(this);
+    m_calendars->importEvents(
+        id, m_data,
+        [self, name = calendar->displayName, file = m_file](int count, const QString &failed) {
+            if (!self)
+                return;
+            self->setBusy(false);
+            // Some may have gone in before the failure; sending again replaces them.
+            if (!failed.isEmpty()) {
+                if (file == self->m_file)
+                    self->setError(count > 0
+                                       ? tr("Only %n events went in: %1", "", count).arg(failed)
+                                       : failed);
+                return;
+            }
+            if (file == self->m_file && !self->m_events.isEmpty()) {
+                self->m_events.clear();
+                self->m_data.clear();
+                self->m_fileName.clear();
+                Q_EMIT self->pendingChanged();
+            }
+            Q_EMIT self->added(count, name);
+        });
+    return true;
 }
 
 void ImportController::cancel()
 {
+    ++m_file;
     m_events.clear();
+    m_data.clear();
     m_fileName.clear();
     setError({});
     Q_EMIT pendingChanged();
+}
+
+void ImportController::setBusy(bool busy)
+{
+    if (m_busy == busy)
+        return;
+    m_busy = busy;
+    Q_EMIT busyChanged();
 }
 
 void ImportController::setError(const QString &error)

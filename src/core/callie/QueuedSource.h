@@ -70,6 +70,8 @@ public:
                                                const QTimeZone &tz) const override;
     void refresh() override;
     void createEvent(const EventDraft &draft, Created done) override;
+    /// Not held: a file's events go at once, with no undo.
+    void importEvents(const QString &calendarId, const QByteArray &data, Imported done) override;
     void respond(const Event &event, const QString &status, bool wholeSeries,
                  Created done) override;
     void deleteEvent(const Event &event, bool wholeSeries, Created done) override;

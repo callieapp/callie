@@ -47,6 +47,7 @@ public:
     /// cache's error, when they could not be forgotten.
     bool resync(const Account &account, QString *error = nullptr);
     void createEvent(const EventDraft &draft, Created done) override;
+    void importEvents(const QString &calendarId, const QByteArray &data, Imported done) override;
     void respond(const Event &event, const QString &status, bool wholeSeries,
                  Created done) override;
     void deleteEvent(const Event &event, bool wholeSeries, Created done) override;

@@ -5,6 +5,7 @@
 #include <KCalendarCore/RecurrenceRule>
 
 #include <QHash>
+#include <QJsonArray>
 #include <QSet>
 
 #include <cmath>
@@ -92,6 +93,51 @@ QStringList recurrenceLines(const KEvent &series)
     for (KCalendarCore::RecurrenceRule *rule : series.recurrence()->rRules())
         lines << format.toString(rule).trimmed(); // "RRULE:..." with its line ending
     return lines;
+}
+
+/// A start or end as Google writes one.
+QJsonObject googleTime(const QDateTime &moment, bool allDay)
+{
+    if (allDay)
+        return {{u"date"_s, moment.date().toString(Qt::ISODate)}};
+    QJsonObject json{{u"dateTime"_s, moment.toString(Qt::ISODate)}};
+    if (moment.timeSpec() == Qt::TimeZone)
+        json.insert(u"timeZone"_s, QString::fromUtf8(moment.timeZone().id()));
+    return json;
+}
+
+/// An EXDATE or RDATE line for one date or moment.
+QString dateLine(const QString &name, const QDateTime &moment, bool allDay)
+{
+    return allDay ? name + u";VALUE=DATE:"_s + moment.date().toString(u"yyyyMMdd"_s)
+                  : name + u':' + moment.toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s);
+}
+
+/// What Google's import takes of one event, without its UID.
+QJsonObject googleEvent(const KEvent &event)
+{
+    const QDateTime start = event.dtStart();
+    const QDateTime end =
+        event.allDay() ? start.addDays(days(event)) : start.addSecs(seconds(event));
+    QJsonObject json{{u"summary"_s, event.summary()},
+                     {u"start"_s, googleTime(start, event.allDay())},
+                     {u"end"_s, googleTime(end, event.allDay())}};
+    if (!event.location().isEmpty())
+        json.insert(u"location"_s, event.location());
+    if (!event.description().isEmpty())
+        json.insert(u"description"_s, event.description());
+    if (event.transparency() == KCalendarCore::Event::Transparent)
+        json.insert(u"transparency"_s, u"transparent"_s);
+    if (!event.organizer().email().isEmpty())
+        json.insert(u"organizer"_s, QJsonObject{{u"email"_s, event.organizer().email()}});
+    QJsonArray guests;
+    for (const KCalendarCore::Attendee &attendee : event.attendees()) {
+        if (!attendee.email().isEmpty())
+            guests << QJsonObject{{u"email"_s, attendee.email()}};
+    }
+    if (!guests.isEmpty())
+        json.insert(u"attendees"_s, guests);
+    return json;
 }
 
 /// One occurrence as Callie shows it: `start` is where it starts, in the
@@ -817,6 +863,55 @@ void takeOrganizer(Group &group, const Group &before, const QString &self)
                                                       KCalendarCore::Attendee::Chair));
         event->setAttendees(attendees);
     }
+}
+
+QList<QJsonObject> toGoogle(const Group &events)
+{
+    QList<QJsonObject> list;
+    for (const Group &group : byUid(events)) {
+        QStringList skipped;
+        QList<QJsonObject> changed;
+        for (const KEvent::Ptr &event : group) {
+            if (!event->hasRecurrenceId())
+                continue;
+            const QDateTime id = event->recurrenceId();
+            skipped << dateLine(u"EXDATE"_s, id, event->allDay());
+            if (event->status() == KCalendarCore::Incidence::StatusCanceled)
+                continue;
+            QJsonObject json = googleEvent(*event);
+            json.insert(u"iCalUID"_s,
+                        event->uid() + u'-' +
+                            (event->allDay() ? id.date().toString(u"yyyyMMdd"_s)
+                                             : id.toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s)));
+            changed << json;
+        }
+        for (const KEvent::Ptr &event : group) {
+            if (event->hasRecurrenceId() ||
+                event->status() == KCalendarCore::Incidence::StatusCanceled)
+                continue;
+            QJsonObject json = googleEvent(*event);
+            QStringList lines = recurrenceLines(*event);
+            if (event->recurs()) {
+                const KCalendarCore::Recurrence *recurrence = event->recurrence();
+                const bool allDay = event->allDay();
+                for (const QDateTime &moment : recurrence->exDateTimes())
+                    lines << dateLine(u"EXDATE"_s, moment, false);
+                for (const QDate &date : recurrence->exDates())
+                    lines << dateLine(u"EXDATE"_s, date.startOfDay(), true);
+                for (const QDateTime &moment : recurrence->rDateTimes())
+                    lines << dateLine(u"RDATE"_s, moment, allDay);
+                for (const QDate &date : recurrence->rDates())
+                    lines << dateLine(u"RDATE"_s, date.startOfDay(), true);
+                lines << skipped;
+            }
+            if (!lines.isEmpty())
+                json.insert(u"recurrence"_s, QJsonArray::fromStringList(lines));
+            json.insert(u"iCalUID"_s, event->uid());
+            list << json;
+        }
+        list << changed;
+    }
+    return list;
 }
 
 std::optional<Changed> respond(const Group &group, const Event &occurrence, const QString &status,

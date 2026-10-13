@@ -110,7 +110,7 @@ const QList<std::pair<QString, QString>> kCommands = {
     {u"invites"_s, u"Invitations waiting for an answer"_s},
     {u"contacts"_s, u"People to invite whose name or address matches"_s},
     {u"add"_s, u"Create an event: callie add \"Lunch tomorrow 12-1pm\""_s},
-    {u"import"_s, u"Add the events of an .ics file to a calendar on this computer"_s},
+    {u"import"_s, u"Add the events of an .ics file to a calendar"_s},
     {u"subscribe"_s, u"Subscribe to a calendar by its webcal:// or https:// link"_s},
     {u"unsubscribe"_s, u"Stop a subscription"_s},
     {u"edit"_s, u"Change an event: callie edit <id> --start \"friday 3pm\""_s},
@@ -1243,8 +1243,18 @@ int main(int argc, char *argv[])
     }
     if (command == QLatin1String("import")) {
         LocalCalendars local(LocalCalendars::defaultRoot());
-        return cli::Commands::importFile(local, args.value(1), parser.value(u"calendar"_s), out,
-                                         err);
+        const QString calendar = parser.value(u"calendar"_s);
+        if (calendar.isEmpty())
+            return cli::Commands::importFile(local, local, args.value(1), calendar, out, err);
+        // A calendar named can be one of an account's.
+        int code = 0;
+        const std::unique_ptr<Backend> backend = openBackend(false, true, code);
+        if (!backend)
+            return code;
+        code =
+            cli::Commands::importFile(*backend->source, local, args.value(1), calendar, out, err);
+        sendCalDavChanges(*backend);
+        return code;
     }
     if (command == u"subscribe" || command == u"unsubscribe")
         return runSubscription(command, args.value(1), args.mid(2).join(u' '));

@@ -65,6 +65,11 @@ public:
     void insert(const Account &account, const QString &calendarId, const QJsonObject &event,
                 bool conference, Created done);
 
+    /// Imports `events`, as ics::toGoogle() writes them, one after another,
+    /// and stores them. `done` has how many went in before any error.
+    void importEvents(const Account &account, const QString &calendarId, QList<QJsonObject> events,
+                      std::function<void(int, const QString &)> done, int imported = 0);
+
     /// What an answer or a deletion is aimed at: one event, one occurrence of
     /// a series (with `seriesId` and its original start), or a whole series.
     struct Target

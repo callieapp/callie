@@ -94,6 +94,17 @@ public:
         done(tr("These calendars cannot take new events."));
     }
 
+    /// Called once an import finishes, with how many events went in, or an error.
+    using Imported = std::function<void(int count, const QString &error)>;
+    /// Adds the events of iCalendar `data` to the calendar. Events already
+    /// there with the same UIDs, as from importing a file twice, are replaced.
+    virtual void importEvents(const QString &calendarId, const QByteArray &data, Imported done)
+    {
+        Q_UNUSED(calendarId)
+        Q_UNUSED(data)
+        done(0, tr("That calendar cannot take events from a file."));
+    }
+
     /// Answers an invitation with "accepted", "tentative" or "declined", for
     /// this occurrence or, with `wholeSeries`, every occurrence.
     virtual void respond(const Event &event, const QString &status, bool wholeSeries, Created done)

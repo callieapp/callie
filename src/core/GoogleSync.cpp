@@ -127,6 +127,51 @@ void GoogleSync::insert(const Account &account, const QString &calendarId, const
         done);
 }
 
+void GoogleSync::importEvents(const Account &account, const QString &calendarId,
+                              QList<QJsonObject> events,
+                              std::function<void(int, const QString &)> done, int imported)
+{
+    if (events.isEmpty()) {
+        if (imported > 0)
+            Q_EMIT changed(account);
+        done(imported, {});
+        return;
+    }
+    const QJsonObject event = events.takeFirst();
+    const QPointer<GoogleSync> self(this);
+    const Created failed = [this, account, done, imported](const Outcome &outcome) {
+        if (imported > 0)
+            Q_EMIT changed(account);
+        done(imported, outcome.error);
+    };
+    withToken(
+        account, false,
+        [this, self, account, calendarId, event, events, done, imported,
+         failed](const QString &token, const Retry &retry) {
+            m_api.importEvent(
+                token, calendarId, event,
+                [this, self, account, calendarId, events, done, imported, failed,
+                 retry](const GoogleEvent &stored, const GoogleApiError &error) {
+                    if (!self)
+                        return;
+                    if (error.unauthorized()) {
+                        retry();
+                        return;
+                    }
+                    if (error) {
+                        failed(tr("Google could not import the events: %1").arg(error.message));
+                        return;
+                    }
+                    if (!m_cache.storeEvents(account, calendarId, {stored})) {
+                        failed(m_cache.errorString());
+                        return;
+                    }
+                    importEvents(account, calendarId, events, done, imported + 1);
+                });
+        },
+        failed);
+}
+
 void GoogleSync::withToken(const Account &account, bool retried, Call call, const Created &failed)
 {
     const QPointer<GoogleSync> self(this);

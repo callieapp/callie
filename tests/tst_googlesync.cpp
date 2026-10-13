@@ -95,6 +95,7 @@ private Q_SLOTS:
     void createRetriesOnceAfterRejection();
     void createReportsWhatGoogleSaid();
     void createWithTakenIdIsAlreadyMade();
+    void importedEventsAreStoredOneByOne();
     void answerKeepsOtherGuestsIntact();
     void answerNeedsAnInvitation();
     void deletingAnOccurrenceKeepsTheRest();
@@ -658,6 +659,31 @@ void TestGoogleSync::createdEventIsStoredWithoutCountingAsASync()
     QCOMPARE(after.lastError, u"quota"_s);
     QCOMPARE(after.lastSynced, before.lastSynced);
     QCOMPARE(m_cache->syncToken(kAccount, u"team"_s), token);
+}
+
+void TestGoogleSync::importedEventsAreStoredOneByOne()
+{
+    syncOnce();
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events/import"_s, 200, kCreated);
+    m_google->on(u"calendars/team/events/import"_s, 400,
+                 R"({"error":{"message":"Invalid start time."}})");
+    QSignalSpy changed(m_sync.get(), &GoogleSync::changed);
+    const QJsonObject event{{u"iCalUID"_s, u"pottery"_s}};
+    int count = -1;
+    QString error;
+    m_sync->importEvents(kAccount, u"team"_s, {event, event, event},
+                         [&](int imported, const QString &failed) {
+                             count = imported;
+                             error = failed;
+                         });
+    QTRY_COMPARE(count, 1);
+    // The first went in and shows; the one turned down stops the rest.
+    QVERIFY(error.contains(u"Invalid start time."_s));
+    QCOMPARE(m_google->count(u"calendars/team/events/import"_s), 2);
+    QCOMPARE(changed.size(), 1);
+    const QList<GoogleEvent> stored = m_cache->events(kAccount, u"team"_s);
+    QVERIFY(std::ranges::any_of(stored, [](const GoogleEvent &e) { return e.id == u"made"; }));
 }
 
 void TestGoogleSync::createRetriesOnceAfterRejection()

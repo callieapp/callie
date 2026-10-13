@@ -347,6 +347,18 @@ void VdirSource::apply(const Event &event, const Created &done, const Change &ch
     done({});
 }
 
+void VdirSource::importEvents(const QString &calendarId, const QByteArray &data, Imported done)
+{
+    QString error;
+    const ics::Group events = ics::parse(data, &error);
+    if (events.isEmpty()) {
+        done(0, error.isEmpty() ? tr("There are no events to add.") : error);
+        return;
+    }
+    const int written = importEvents(calendarId, events, &error);
+    done(std::max(written, 0), written < 0 ? error : QString());
+}
+
 int VdirSource::importEvents(const QString &calendarId, const ics::Group &events, QString *error)
 {
     const Folder *where = folder(calendarId);

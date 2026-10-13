@@ -331,8 +331,8 @@ void VdirSource::apply(const Event &event, const Created &done, const Change &ch
     }
     // Guests in a calendar a server keeps are invited by the server, which
     // needs the user named as organizer.
-    ics::takeOrganizer(changed->group, where->self);
-    ics::takeOrganizer(changed->split, where->self);
+    ics::takeOrganizer(changed->group, group, where->self);
+    ics::takeOrganizer(changed->split, group, where->self);
     const Folder target = *where;
     // A series split off is written before the old one is cut short, so a
     // failure part way loses nothing.
@@ -392,7 +392,9 @@ void VdirSource::createEvent(const EventDraft &draft, Created done)
     }
     QString error;
     const Folder target = *where;
-    if (!save(target, fileNameFor(uid), uid, {ics::fromDraft(draft, uid)}, &error)) {
+    ics::Group made = {ics::fromDraft(draft, uid)};
+    ics::takeOrganizer(made, {}, target.self);
+    if (!save(target, fileNameFor(uid), uid, made, &error)) {
         done(error);
         return;
     }

@@ -303,14 +303,18 @@ EventDraft EventActions::toCopy(const QVariantMap &event, const QDateTime &start
     return draft;
 }
 
-bool EventActions::canInvite(const QString &calendarId) const
+QString EventActions::noInvites(const QString &calendarId) const
 {
-    if (!m_source)
-        return false;
-    const QList<CalendarInfo> calendars = m_source->calendars();
-    return std::ranges::any_of(calendars, [&calendarId](const CalendarInfo &c) {
-        return c.id == calendarId && c.invites;
-    });
+    const QList<CalendarInfo> calendars = m_source ? m_source->calendars() : QList<CalendarInfo>();
+    const auto found = std::ranges::find(calendars, calendarId, &CalendarInfo::id);
+    if (found != calendars.cend() && found->invites)
+        return {};
+    // A CalDAV account whose server never said the user's address.
+    if (found != calendars.cend() && !found->account.isEmpty())
+        return tr("Callie does not know this account's email address, so guests are kept with "
+                  "the event but not sent invitations.");
+    return tr("This calendar is only on this computer, so guests are kept with the event but "
+              "not sent invitations.");
 }
 
 bool EventActions::canAddCall(const QString &calendarId) const

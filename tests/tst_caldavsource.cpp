@@ -33,6 +33,8 @@ private Q_SLOTS:
     void theSameServerWrittenOtherwiseKeepsItsCopies();
     void resyncStartsOver();
     void guestsAddedAreForTheServerToInvite();
+    void guestsAlreadyThereAreLeftAlone();
+    void noAddressNoInvitations();
 
 private:
     void sync();
@@ -431,6 +433,37 @@ void TestCalDavSource::guestsAddedAreForTheServerToInvite()
                                 .data;
     QVERIFY(sent.toLower().contains("organizer:mailto:me@example.com"));
     QVERIFY(sent.contains("alex@example.com"));
+}
+
+void TestCalDavSource::guestsAlreadyThereAreLeftAlone()
+{
+    QByteArray planning = calendarText("plan", "Planning", 15);
+    planning.replace("SUMMARY:", "ATTENDEE:mailto:alex@example.com\r\nSUMMARY:");
+    m_server->putElsewhere("work", "plan.ics", planning);
+    sync();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    const QList<Event> events = week();
+    const auto plan = std::ranges::find(events, u"Planning"_s, &Event::summary);
+    QVERIFY(plan != events.cend());
+    QVERIFY(outcome([&](auto done) {
+                m_source->moveEvent(*plan, plan->start.addSecs(3600), plan->end.addSecs(3600),
+                                    false, done);
+            }).isEmpty());
+    QVERIFY(synced.wait(5000));
+    const QByteArray sent = m_server->calendars[FakeCalDavServer::calendarPath("work")]
+                                .items.value("/dav/calendars/me/work/plan.ics")
+                                .data;
+    QVERIFY(sent.contains("T160000Z"));
+    QVERIFY(!sent.toLower().contains("organizer"));
+}
+
+void TestCalDavSource::noAddressNoInvitations()
+{
+    m_server->address.clear();
+    sync();
+    QVERIFY(!m_source->calendars().isEmpty());
+    for (const CalendarInfo &calendar : m_source->calendars())
+        QVERIFY(!calendar.invites);
 }
 
 QTEST_MAIN(TestCalDavSource)

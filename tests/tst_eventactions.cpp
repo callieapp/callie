@@ -330,8 +330,8 @@ void TestEventActions::callsOnlyWhereTheCalendarHasThem()
     actions.setProperty("source", QVariant::fromValue(&source));
     QVERIFY(actions.canAddCall(u"work"_s));
     QVERIFY(!actions.canAddCall(u"local:home"_s));
-    QVERIFY(actions.canInvite(u"work"_s));
-    QVERIFY(!actions.canInvite(u"local:home"_s));
+    QVERIFY(actions.noInvites(u"work"_s).isEmpty());
+    QVERIFY(actions.noInvites(u"local:home"_s).contains(u"only on this computer"_s));
 }
 
 QTEST_GUILESS_MAIN(TestEventActions)

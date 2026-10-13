@@ -529,11 +529,10 @@ Column {
     }
 
     Text {
-        visible: root.guests.length > 0 && !root.actions.canInvite(root.event.calendarId || "")
+        visible: root.guests.length > 0 && text !== ""
         width: parent.width
         wrapMode: Text.Wrap
-        text: qsTr(
-                  "This calendar is only on this computer, so guests are kept with the event but not sent invitations.")
+        text: root.actions.noInvites(root.event.calendarId || "")
         color: Theme.textMuted
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textSm

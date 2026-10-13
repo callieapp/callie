@@ -73,6 +73,11 @@ struct Changed
 [[nodiscard]] std::optional<Changed> update(const Group &group, const Event &occurrence,
                                             const EventEdit &edit, EditScope scope,
                                             const QString &newUid, QString *error);
+/// Makes `self` the organizer of each event in `group` that has guests and
+/// no organizer yet, and one of its guests, as a CalDAV server needs before it
+/// sends the others invitations.
+void takeOrganizer(Group &group, const QString &self);
+
 /// Sets the user's answer, "accepted", "tentative" or "declined", as the
 /// guest `self`.
 [[nodiscard]] std::optional<Changed> respond(const Group &group, const Event &occurrence,

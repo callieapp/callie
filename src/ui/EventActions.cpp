@@ -303,6 +303,16 @@ EventDraft EventActions::toCopy(const QVariantMap &event, const QDateTime &start
     return draft;
 }
 
+bool EventActions::canInvite(const QString &calendarId) const
+{
+    if (!m_source)
+        return false;
+    const QList<CalendarInfo> calendars = m_source->calendars();
+    return std::ranges::any_of(calendars, [&calendarId](const CalendarInfo &c) {
+        return c.id == calendarId && c.invites;
+    });
+}
+
 bool EventActions::canAddCall(const QString &calendarId) const
 {
     if (!m_source)

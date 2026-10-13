@@ -31,6 +31,9 @@ struct CalendarInfo
     QString account = {};
     /// Whether its events can be given a video call, as Google's can.
     bool videoCalls = false;
+    /// Whether guests added to its events are sent invitations, by Callie or
+    /// the server; a calendar only on this computer cannot send any.
+    bool invites = false;
 };
 
 /// What a source holds for a range, read at one moment: its calendars and the

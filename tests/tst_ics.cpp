@@ -23,6 +23,7 @@ private Q_SLOTS:
     void monthlySeriesFollowTheirNewDay();
     void editsThisAndFollowingSplitTheSeries();
     void answersAsTheUser();
+    void theOrganizerIsTheUser();
 };
 
 namespace {
@@ -497,6 +498,43 @@ END:VEVENT
     QCOMPARE(week(yes->group).first().responseStatus, u"accepted"_s);
     QVERIFY(!ics::respond(events, week(events).first(), u"accepted"_s, false,
                           u"someone@example.com"_s, &error));
+}
+
+void TestIcs::theOrganizerIsTheUser()
+{
+    ics::Group events = ics::parse(calendar(R"(BEGIN:VEVENT
+UID:plan
+DTSTART:20261006T130000Z
+DTEND:20261006T140000Z
+SUMMARY:Planning
+ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:alex@example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:solo
+DTSTART:20261007T130000Z
+DTEND:20261007T140000Z
+SUMMARY:Focus
+END:VEVENT
+)"));
+    ics::takeOrganizer(events, u"me@example.com"_s);
+    const auto byUid = [&events](const QString &uid) {
+        return *std::ranges::find_if(events, [&uid](const auto &e) { return e->uid() == uid; });
+    };
+    QCOMPARE(byUid(u"plan"_s)->organizer().email(), u"me@example.com"_s);
+    QCOMPARE(byUid(u"plan"_s)->attendees().size(), 2);
+    // No guests, no organizer.
+    QVERIFY(byUid(u"solo"_s)->organizer().email().isEmpty());
+    // Someone else's invitation keeps its organizer.
+    ics::Group theirs = ics::parse(calendar(R"(BEGIN:VEVENT
+UID:theirs
+DTSTART:20261006T130000Z
+DTEND:20261006T140000Z
+ORGANIZER:mailto:sam@example.com
+ATTENDEE:mailto:me@example.com
+END:VEVENT
+)"));
+    ics::takeOrganizer(theirs, u"me@example.com"_s);
+    QCOMPARE(theirs.first()->organizer().email(), u"sam@example.com"_s);
 }
 
 QTEST_MAIN(TestIcs)

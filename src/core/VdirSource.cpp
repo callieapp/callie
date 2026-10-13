@@ -103,6 +103,8 @@ QList<CalendarInfo> VdirSource::calendarsOf(const QList<Folder> &folders)
         info.color = color.isValid() ? color : defaultColor(folder.id);
         info.writable = folder.writable;
         info.account = folder.account;
+        // Known to a server as someone, it can have the server invite guests.
+        info.invites = folder.writable && !folder.self.isEmpty();
         calendars.append(info);
     }
     return calendars;
@@ -322,11 +324,15 @@ void VdirSource::apply(const Event &event, const Created &done, const Change &ch
     if (!find(event, done, &where, &group, &fileName))
         return;
     QString error;
-    const std::optional<ics::Changed> changed = change(group, &error);
+    std::optional<ics::Changed> changed = change(group, &error);
     if (!changed) {
         done(error);
         return;
     }
+    // Guests in a calendar a server keeps are invited by the server, which
+    // needs the user named as organizer.
+    ics::takeOrganizer(changed->group, where->self);
+    ics::takeOrganizer(changed->split, where->self);
     const Folder target = *where;
     // A series split off is written before the old one is cut short, so a
     // failure part way loses nothing.

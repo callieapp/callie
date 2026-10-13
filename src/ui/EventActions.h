@@ -91,6 +91,8 @@ public:
     Q_INVOKABLE void clearError();
     /// Whether events in the calendar can be given a video call.
     Q_INVOKABLE bool canAddCall(const QString &calendarId) const;
+    /// Whether guests added in the calendar are sent invitations.
+    Q_INVOKABLE bool canInvite(const QString &calendarId) const;
 
 Q_SIGNALS:
     void sourceChanged();

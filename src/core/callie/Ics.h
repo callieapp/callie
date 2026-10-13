@@ -9,6 +9,7 @@
 #include <QByteArray>
 #include <QByteArrayView>
 #include <QColor>
+#include <QJsonObject>
 #include <QList>
 #include <QTimeZone>
 
@@ -35,6 +36,11 @@ using Group = QList<KCalendarCore::Event::Ptr>;
 
 /// `events` split by UID, keeping their order.
 [[nodiscard]] QList<Group> byUid(const Group &events);
+
+/// `events` as Google's events.import takes them. A changed occurrence is
+/// left out of its series and goes as an event of its own, since Google
+/// takes no RECURRENCE-ID; a cancelled one is only left out.
+[[nodiscard]] QList<QJsonObject> toGoogle(const Group &events);
 
 /// What expanding a calendar's events needs to know about the calendar.
 struct Calendar

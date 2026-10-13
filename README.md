@@ -58,8 +58,9 @@ removes an account. `callie accounts add google` does the same from a terminal.
 CalDAV accounts connect there too: pick Fastmail, iCloud or Nextcloud, or give any server's
 address, then the user name and an app password, which goes in the system keyring. Callie keeps a
 copy of each calendar under `$XDG_DATA_HOME/callie/caldav`, laid out like the calendars on this
-computer, sends changes in the background, holds them while the server cannot be reached, and keeps
-the server's version when an event changed in both places. `callie accounts add caldav <server>
+computer, sends changes in the background, renamed and recolored calendars included, holds them
+while the server cannot be reached, and keeps the server's version when an event changed in both
+places. `callie accounts add caldav <server>
 <user>` does the same from a terminal, asking for the password.
 
 Calendars can also live on this computer alone: add one in Settings, under Accounts, or with
@@ -68,9 +69,10 @@ Calendars can also live on this computer alone: add one in Settings, under Accou
 other apps can read them and a folder put there by hand shows up as a calendar. Removing one moves
 its folder to the trash.
 
-Open an `.ics` file with Callie, or drop one on its window, to add its events to one of these
-calendars or to a new one named after the file. Adding the same file again updates its events
-rather than repeating them.
+Open an `.ics` file with Callie, or drop one on its window, to add its events to any calendar you
+can change, CalDAV and Google ones included, or to a new one on this computer named after the file.
+Adding the same file again updates its events rather than repeating them. Google keeps no changed
+occurrences of a repeating event, so those go in as events of their own.
 
 Subscribe to a calendar others publish as a link, such as holidays or a team's schedule, in
 Settings, under Accounts, or by opening a `webcal://` link. Callie keeps a read-only copy under
@@ -109,7 +111,7 @@ callie accounts add caldav caldav.fastmail.com me@fastmail.com # asks for an app
 callie accounts remove google you@example.com # or caldav <id>
 callie calendars                         # calendars in each account, tab-separated
 callie calendars new "Book club"         # a calendar on this computer; remove takes it away
-callie import party.ics                  # its events into a calendar here; --calendar picks one
+callie import party.ics                  # its events into a calendar here; --calendar picks any
 callie subscribe webcal://example.com/holidays.ics # unsubscribe <calendar> stops it
 callie calendars rename Focus "Deep work" # also hide, show, color <calendar> <#rrggbb>, reset
 callie accounts rename you@example.com Work

@@ -151,8 +151,8 @@ Popup {
             StickerButton {
                 accent: true
                 glyph: "plus"
-                text: qsTr("Add")
-                enabled: root.calendarId !== ""
+                text: Importer.busy ? qsTr("Adding...") : qsTr("Add")
+                enabled: root.calendarId !== "" && !Importer.busy
                 onClicked: Importer.add(root.calendarId)
             }
         }

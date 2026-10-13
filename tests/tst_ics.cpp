@@ -1,5 +1,6 @@
 #include "callie/Ics.h"
 
+#include <QJsonArray>
 #include <QTest>
 
 using namespace callie;
@@ -24,6 +25,7 @@ private Q_SLOTS:
     void editsThisAndFollowingSplitTheSeries();
     void answersAsTheUser();
     void theOrganizerIsTheUser();
+    void eventsGoToGoogleWithTheirRepeats();
 };
 
 namespace {
@@ -552,6 +554,67 @@ END:VEVENT
 )"));
     ics::takeOrganizer(moved, before, u"me@example.com"_s);
     QVERIFY(moved.first()->organizer().email().isEmpty());
+}
+
+void TestIcs::eventsGoToGoogleWithTheirRepeats()
+{
+    const QList<QJsonObject> events = ics::toGoogle(ics::parse(calendar(R"(BEGIN:VEVENT
+UID:standup
+DTSTART;TZID=Europe/Berlin:20261005T090000
+DTEND;TZID=Europe/Berlin:20261005T091500
+RRULE:FREQ=DAILY;COUNT=5
+EXDATE:20261006T070000Z
+SUMMARY:Standup
+LOCATION:Room 1
+ATTENDEE:mailto:alex@example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:standup
+RECURRENCE-ID;TZID=Europe/Berlin:20261007T090000
+DTSTART;TZID=Europe/Berlin:20261007T100000
+DTEND;TZID=Europe/Berlin:20261007T101500
+SUMMARY:Standup, later
+END:VEVENT
+BEGIN:VEVENT
+UID:standup
+RECURRENCE-ID;TZID=Europe/Berlin:20261008T090000
+DTSTART;TZID=Europe/Berlin:20261008T090000
+DTEND;TZID=Europe/Berlin:20261008T091500
+STATUS:CANCELLED
+SUMMARY:Standup
+END:VEVENT
+BEGIN:VEVENT
+UID:trip
+DTSTART;VALUE=DATE:20261010
+DTEND;VALUE=DATE:20261012
+SUMMARY:Trip
+END:VEVENT
+)")));
+    QCOMPARE(events.size(), 3);
+    const auto byUid = [&events](const QString &uid) {
+        return *std::ranges::find_if(
+            events, [&uid](const QJsonObject &e) { return e[u"iCalUID"].toString() == uid; });
+    };
+    const QJsonObject series = byUid(u"standup"_s);
+    QCOMPARE(series[u"start"][u"timeZone"].toString(), u"Europe/Berlin"_s);
+    QCOMPARE(QDateTime::fromString(series[u"end"][u"dateTime"].toString(), Qt::ISODate).toUTC(),
+             QDateTime(QDate(2026, 10, 5), QTime(7, 15), QTimeZone::UTC));
+    QCOMPARE(series[u"location"].toString(), u"Room 1"_s);
+    QCOMPARE(series[u"attendees"][0][u"email"].toString(), u"alex@example.com"_s);
+    const QStringList lines = series[u"recurrence"].toVariant().toStringList();
+    QVERIFY(lines.contains(u"RRULE:FREQ=DAILY;COUNT=5"_s));
+    // Its own skipped day, and the two changed ones, which Google takes no
+    // RECURRENCE-ID for.
+    QVERIFY(lines.contains(u"EXDATE:20261006T070000Z"_s));
+    QVERIFY(lines.contains(u"EXDATE:20261007T070000Z"_s));
+    QVERIFY(lines.contains(u"EXDATE:20261008T070000Z"_s));
+    const QJsonObject moved = byUid(u"standup-20261007T070000Z"_s);
+    QCOMPARE(moved[u"summary"].toString(), u"Standup, later"_s);
+    QVERIFY(!moved.contains(u"recurrence"_s));
+    // All day, with Google's end the day after the last.
+    const QJsonObject trip = byUid(u"trip"_s);
+    QCOMPARE(trip[u"start"][u"date"].toString(), u"2026-10-10"_s);
+    QCOMPARE(trip[u"end"][u"date"].toString(), u"2026-10-12"_s);
 }
 
 QTEST_MAIN(TestIcs)

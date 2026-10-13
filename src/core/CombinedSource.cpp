@@ -95,6 +95,13 @@ void CombinedSource::createEvent(const EventDraft &draft, Created done)
         source->createEvent(draft, std::move(done));
 }
 
+void CombinedSource::importEvents(const QString &calendarId, const QByteArray &data, Imported done)
+{
+    if (CalendarSource *source =
+            owner(calendarId, [&done](const Outcome &outcome) { done(0, outcome.error); }))
+        source->importEvents(calendarId, data, std::move(done));
+}
+
 void CombinedSource::respond(const Event &event, const QString &status, bool wholeSeries,
                              Created done)
 {

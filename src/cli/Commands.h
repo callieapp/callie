@@ -85,10 +85,11 @@ public:
     /// Hides, shows, renames, recolors or resets the look of a calendar, given
     /// by its id or name: `action` is hide, show, rename, color or reset.
     int calendarLook(const QString &action, const QString &calendar, const QString &value);
-    /// Adds the events of an .ics file to `calendar` in `local`, by id or name;
-    /// without one, to the only calendar there or a new one named after the file.
-    static int importFile(LocalCalendars &local, const QString &path, const QString &calendar,
-                          QTextStream &out, QTextStream &err);
+    /// Adds the events of an .ics file to `calendar` among `calendars`, by id
+    /// or name; without one, to the only calendar in `local` or a new one there
+    /// named after the file.
+    static int importFile(CalendarSource &calendars, LocalCalendars &local, const QString &path,
+                          const QString &calendar, QTextStream &out, QTextStream &err);
     /// The name Callie shows for an account; empty goes back to its own.
     int renameAccount(const QString &account, const QString &name);
 

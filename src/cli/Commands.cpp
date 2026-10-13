@@ -9,6 +9,7 @@
 #include "callie/Settings.h"
 
 #include <QColor>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -646,8 +647,8 @@ int Commands::settings(Settings &settings, QTextStream &out, QTextStream &err, c
     return 0;
 }
 
-int Commands::importFile(LocalCalendars &local, const QString &path, const QString &calendar,
-                         QTextStream &out, QTextStream &err)
+int Commands::importFile(CalendarSource &calendars, LocalCalendars &local, const QString &path,
+                         const QString &calendar, QTextStream &out, QTextStream &err)
 {
     QFile file(path);
     if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) {
@@ -657,40 +658,55 @@ int Commands::importFile(LocalCalendars &local, const QString &path, const QStri
         return path.isEmpty() ? 2 : 1;
     }
     QString error;
-    const ics::Group events = ics::parse(file.readAll(), &error);
-    if (events.isEmpty()) {
+    const QByteArray data = file.readAll();
+    if (ics::parse(data, &error).isEmpty()) {
         err << QStringLiteral("callie: %1: %2\n")
                    .arg(path, error.isEmpty() ? tr("no events in it") : error);
         return 1;
     }
-    const QList<CalendarInfo> calendars = local.calendars();
+    // Named, it can be anywhere; unnamed, only on this computer.
     QList<CalendarInfo> found;
-    for (const CalendarInfo &each : calendars) {
-        if (calendar.isEmpty() || each.id == calendar ||
-            each.displayName.compare(calendar, Qt::CaseInsensitive) == 0)
+    for (const CalendarInfo &each :
+         calendar.isEmpty() ? local.calendars() : calendars.calendars()) {
+        if (each.writable && (calendar.isEmpty() || each.id == calendar ||
+                              each.displayName.compare(calendar, Qt::CaseInsensitive) == 0))
             found.append(each);
     }
     if (!calendar.isEmpty() && found.isEmpty()) {
-        err << tr("callie: no calendar on this computer is called %1").arg(calendar) << "\n";
+        err << tr("callie: no calendar that takes events is called %1").arg(calendar) << "\n";
         return 1;
     }
     if (found.size() > 1) {
         QStringList names;
         for (const CalendarInfo &each : found)
-            names << each.displayName;
+            names << (calendar.isEmpty() ? each.displayName : each.id);
         err << tr("callie: which calendar? Give one with --calendar: %1").arg(names.join(u", "_s))
             << "\n";
         return 2;
     }
     QString id = found.isEmpty() ? QString() : found.first().id;
     QString name = found.isEmpty() ? QFileInfo(path).completeBaseName() : found.first().displayName;
-    if (id.isEmpty() && (id = local.create(name, {}, &error)).isEmpty()) {
-        err << QStringLiteral("callie: %1\n").arg(error);
-        return 1;
+    CalendarSource *into = &calendars;
+    if (id.isEmpty()) {
+        if ((id = local.create(name, {}, &error)).isEmpty()) {
+            err << QStringLiteral("callie: %1\n").arg(error);
+            return 1;
+        }
+        into = &local;
     }
-    const int added = local.importEvents(id, events, &error);
-    if (added < 0) {
-        err << QStringLiteral("callie: %1\n").arg(error);
+    std::optional<std::pair<int, QString>> result;
+    QEventLoop waiting;
+    into->importEvents(id, data, [&result, &waiting](int count, const QString &failed) {
+        result = {count, failed};
+        waiting.quit();
+    });
+    if (!result)
+        waiting.exec();
+    const auto &[added, failed] = *result;
+    if (!failed.isEmpty()) {
+        if (added > 0)
+            err << tr("callie: %n events went in before this:", "", added) << "\n";
+        err << QStringLiteral("callie: %1\n").arg(failed);
         return 1;
     }
     out << (added == 1 ? tr("Added 1 event to %1.").arg(name)

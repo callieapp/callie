@@ -1,11 +1,14 @@
 #include "ImportController.h"
 
+#include "callie/CombinedSource.h"
 #include "callie/LocalCalendars.h"
+#include "callie/SampleSource.h"
 
 #include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTimer>
 
 using namespace callie;
 using namespace Qt::StringLiterals;
@@ -21,6 +24,7 @@ private Q_SLOTS:
     void addsToACalendarOrANewOne();
     void turnsAwayWhatIsNotACalendar();
     void allDayEventsShowTheirOwnDay();
+    void goesToCalendarsElsewhereToo();
 
 private:
     QString write(const QString &name, const QByteArray &data)
@@ -45,19 +49,33 @@ const QByteArray kParty = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n
                           "DTEND:20261020T130000Z\r\nSUMMARY:Lunch\r\nEND:VEVENT\r\n"
                           "END:VCALENDAR\r\n";
 
+/// Sample calendars that take files a moment later, as a server would.
+class Remote : public SampleSource
+{
+public:
+    void importEvents(const QString &calendarId, const QByteArray &data, Imported done) override
+    {
+        sent.append({calendarId, data});
+        QTimer::singleShot(0, this, [this, done] { done(taken, error); });
+    }
+    QList<std::pair<QString, QByteArray>> sent;
+    int taken = 2;
+    QString error;
+};
+
 } // namespace
 
 void TestImport::init()
 {
     m_dir = std::make_unique<QTemporaryDir>();
     m_local = std::make_unique<LocalCalendars>(m_dir->filePath(u"calendars"_s));
-    ImportController::instance()->setUp(m_local.get());
+    ImportController::instance()->setUp(m_local.get(), m_local.get());
 }
 
 void TestImport::cleanup()
 {
     ImportController::instance()->cancel();
-    ImportController::instance()->setUp(nullptr);
+    ImportController::instance()->setUp(nullptr, nullptr);
 }
 
 void TestImport::showsWhatIsInTheFile()
@@ -125,6 +143,40 @@ void TestImport::allDayEventsShowTheirOwnDay()
     const QDateTime start = importer->preview().first().toMap().value(u"start"_s).toDateTime();
     QCOMPARE(start, QDateTime(QDate(2026, 10, 12), QTime(0, 0)));
     QCOMPARE(start.toLocalTime().date(), QDate(2026, 10, 12));
+}
+
+void TestImport::goesToCalendarsElsewhereToo()
+{
+    Remote remote;
+    CombinedSource combined;
+    combined.setSources({m_local.get(), &remote});
+    ImportController *importer = ImportController::instance();
+    importer->setUp(&combined, m_local.get());
+    QSignalSpy added(importer, &ImportController::added);
+    QVERIFY(importer->open({QUrl::fromLocalFile(write(u"party.ics"_s, kParty))}));
+    const QVariantList calendars = importer->calendars();
+    QVERIFY(std::ranges::any_of(calendars, [](const QVariant &c) {
+        return c.toMap().value(u"id"_s).toString() == u"work";
+    }));
+
+    // Turned down part way: what went in is said, and the file stays to try again.
+    remote.taken = 1;
+    remote.error = u"Server said no"_s;
+    QVERIFY(importer->add(u"work"_s));
+    QVERIFY(importer->busy());
+    QTRY_VERIFY(!importer->busy());
+    QVERIFY(importer->error().contains(u"Server said no"_s));
+    QVERIFY(importer->pending());
+    QCOMPARE(added.size(), 0);
+
+    remote.taken = 2;
+    remote.error.clear();
+    QVERIFY(importer->add(u"work"_s));
+    QTRY_COMPARE(added.size(), 1);
+    QCOMPARE(added.first().at(0).toInt(), 2);
+    QVERIFY(!importer->pending());
+    QCOMPARE(remote.sent.size(), 2);
+    QCOMPARE(remote.sent.last().second, kParty);
 }
 
 QTEST_GUILESS_MAIN(TestImport)

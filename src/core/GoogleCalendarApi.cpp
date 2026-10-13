@@ -205,6 +205,24 @@ void GoogleCalendarApi::insertEvent(const QString &accessToken, const QString &c
          });
 }
 
+void GoogleCalendarApi::importEvent(const QString &accessToken, const QString &calendarId,
+                                    const QJsonObject &event, EventResult result)
+{
+    const QUrl url = m_baseUrl.resolved(QUrl(
+        QStringLiteral("calendars/%1/events/import").arg(encoded(calendarId)), QUrl::StrictMode));
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    send(m_network->post(request, QJsonDocument(event).toJson(QJsonDocument::Compact)),
+         [result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) {
+             const GoogleEvent imported = parseGoogleEvent(body);
+             if (!error && imported.id.isEmpty())
+                 result({}, {200, tr("Google returned no event")});
+             else
+                 result(imported, error);
+         });
+}
+
 void GoogleCalendarApi::patchEvent(const QString &accessToken, const QString &calendarId,
                                    const QString &eventId, const QJsonObject &fields,
                                    EventResult result, bool conference)

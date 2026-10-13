@@ -348,7 +348,8 @@ int main(int argc, char *argv[])
     }
     callie::AccountsController::instance()->setUp(accountSetup);
     callie::LocalController::instance()->setUp(local ? &*local : nullptr);
-    callie::ImportController::instance()->setUp(local ? &*local : nullptr);
+    callie::ImportController::instance()->setUp(local ? &looked : nullptr,
+                                                local ? &*local : nullptr);
     callie::SubscriptionsController::instance()->setUp(subscriptions ? &*subscriptions : nullptr);
 
     callie::UpdateCheck updates;

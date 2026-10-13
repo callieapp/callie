@@ -425,6 +425,11 @@ void QueuedSource::add(PendingChange change, const Created &done)
     flush();
 }
 
+void QueuedSource::importEvents(const QString &calendarId, const QByteArray &data, Imported done)
+{
+    m_inner->importEvents(calendarId, data, std::move(done));
+}
+
 void QueuedSource::createEvent(const EventDraft &draft, Created done)
 {
     PendingChange change;

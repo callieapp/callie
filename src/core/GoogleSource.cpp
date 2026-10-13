@@ -3,6 +3,7 @@
 #include "callie/GoogleCache.h"
 #include "callie/GoogleRecurrence.h"
 #include "callie/GoogleSync.h"
+#include "callie/Ics.h"
 #include "callie/Logging.h"
 #include "callie/Times.h"
 
@@ -361,6 +362,23 @@ void GoogleSource::createEvent(const EventDraft &draft, Created done)
         return;
     }
     m_sync->createEvent(calendar->first, calendar->second, draft, std::move(done));
+}
+
+void GoogleSource::importEvents(const QString &calendarId, const QByteArray &data, Imported done)
+{
+    const auto calendar = splitCalendarId(calendarId);
+    if (!m_sync || !calendar) {
+        done(0, !m_sync ? tr("Callie is not connected to Google right now.")
+                        : tr("That calendar is not in any connected account."));
+        return;
+    }
+    QString error;
+    const QList<QJsonObject> events = ics::toGoogle(ics::parse(data, &error));
+    if (events.isEmpty()) {
+        done(0, error.isEmpty() ? tr("There are no events to add.") : error);
+        return;
+    }
+    m_sync->importEvents(calendar->first, calendar->second, events, std::move(done));
 }
 
 void GoogleSource::respond(const Event &event, const QString &status, bool wholeSeries,

@@ -37,6 +37,7 @@ private Q_SLOTS:
     void guestsAlreadyThereAreLeftAlone();
     void noAddressNoInvitations();
     void aNewLookGoesToTheServer();
+    void importedEventsGoToTheServer();
     void aLookTurnedDownComesBack();
     void looksGivenInSettingsBecomeTheCalendars();
     void aNewColorKeepsANameGivenElsewhere();
@@ -472,6 +473,20 @@ void TestCalDavSource::noAddressNoInvitations()
     QVERIFY(!m_source->calendars().isEmpty());
     for (const CalendarInfo &calendar : m_source->calendars())
         QVERIFY(!calendar.invites);
+}
+
+void TestCalDavSource::importedEventsGoToTheServer()
+{
+    sync();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    int count = -1;
+    m_source->importEvents(calendarId(u"Work"_s), calendarText("party", "Party", 18),
+                           [&count](int imported, const QString &) { count = imported; });
+    QCOMPARE(count, 1);
+    QVERIFY(synced.wait(5000));
+    QVERIFY(m_server->calendars[FakeCalDavServer::calendarPath("work")]
+                .items.value("/dav/calendars/me/work/party.ics")
+                .data.contains("SUMMARY:Party"));
 }
 
 void TestCalDavSource::aNewLookGoesToTheServer()

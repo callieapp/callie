@@ -159,7 +159,9 @@ Popup {
             }
         }
 
+        // Shown with a look to undo; a CalDAV calendar takes its look as its own.
         StickerButton {
+            visible: root.account || Settings.calendarLooks[root.targetId] !== undefined
             text: root.account ? qsTr("Use the account's own name") : qsTr(
                                      "Use the calendar's own name and color")
             onClicked: {

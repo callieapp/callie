@@ -41,6 +41,8 @@ private Q_SLOTS:
     void looksGivenInSettingsBecomeTheCalendars();
     void aNewColorKeepsANameGivenElsewhere();
     void aLookWaitsWhileTheServerIsDown();
+    void aLookKeptOutlivesTheListing();
+    void aLookGivenWhileOneIsSentGoesNext();
 
 private:
     void sync();
@@ -569,6 +571,53 @@ void TestCalDavSource::aLookWaitsWhileTheServerIsDown()
     sync();
     QVERIFY(m_source->waitingChanges().isEmpty());
     QCOMPARE(m_server->calendars[FakeCalDavServer::calendarPath("work")].name, "Office");
+}
+
+void TestCalDavSource::aLookKeptOutlivesTheListing()
+{
+    sync();
+    const QString work = calendarId(u"Work"_s);
+    // Only the rename fails, so the listing still comes down.
+    const auto up = m_server->server.replier;
+    m_server->server.replier = [up](const FakeHttpServer::Request &request) {
+        if (request.method == "PROPPATCH")
+            return FakeHttpServer::Reply{503, "busy", {}, "text/plain"};
+        return up(request);
+    };
+    QString error;
+    QVERIFY(m_source->setLook(work, u"Office"_s, {}, &error));
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    m_source->refresh();
+    QVERIFY(synced.wait(5000));
+    QCOMPARE(calendarId(u"Office"_s), work);
+    QCOMPARE(m_source->waitingChanges().size(), 1);
+}
+
+void TestCalDavSource::aLookGivenWhileOneIsSentGoesNext()
+{
+    sync();
+    const QString work = calendarId(u"Work"_s);
+    // Renamed again while the first name is on its way.
+    const auto up = m_server->server.replier;
+    bool renamed = false;
+    m_server->server.replier = [&, up](const FakeHttpServer::Request &request) {
+        if (request.method == "PROPPATCH" && !renamed) {
+            renamed = true;
+            QString again;
+            m_source->setLook(work, u"Studio"_s, {}, &again);
+        }
+        return up(request);
+    };
+    QString error;
+    QVERIFY(m_source->setLook(work, u"Office"_s, {}, &error));
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    m_source->refresh();
+    QVERIFY(synced.wait(5000));
+    QVERIFY(renamed);
+    QCOMPARE(calendarId(u"Studio"_s), work);
+    QCOMPARE(m_source->waitingChanges().size(), 1);
+    sync();
+    QCOMPARE(m_server->calendars[FakeCalDavServer::calendarPath("work")].name, "Studio");
 }
 
 QTEST_MAIN(TestCalDavSource)

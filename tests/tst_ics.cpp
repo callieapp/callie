@@ -584,13 +584,20 @@ STATUS:CANCELLED
 SUMMARY:Standup
 END:VEVENT
 BEGIN:VEVENT
+UID:gym
+DTSTART:20261005T060000Z
+DTEND:20261005T070000Z
+RRULE:FREQ=WEEKLY
+SUMMARY:Gym
+END:VEVENT
+BEGIN:VEVENT
 UID:trip
 DTSTART;VALUE=DATE:20261010
 DTEND;VALUE=DATE:20261012
 SUMMARY:Trip
 END:VEVENT
 )")));
-    QCOMPARE(events.size(), 3);
+    QCOMPARE(events.size(), 4);
     const auto byUid = [&events](const QString &uid) {
         return *std::ranges::find_if(
             events, [&uid](const QJsonObject &e) { return e[u"iCalUID"].toString() == uid; });
@@ -611,6 +618,8 @@ END:VEVENT
     const QJsonObject moved = byUid(u"standup-20261007T070000Z"_s);
     QCOMPARE(moved[u"summary"].toString(), u"Standup, later"_s);
     QVERIFY(!moved.contains(u"recurrence"_s));
+    // Written in UTC, it says so, as Google needs to repeat it.
+    QCOMPARE(byUid(u"gym"_s)[u"start"][u"timeZone"].toString(), u"UTC"_s);
     // All day, with Google's end the day after the last.
     const QJsonObject trip = byUid(u"trip"_s);
     QCOMPARE(trip[u"start"][u"date"].toString(), u"2026-10-10"_s);

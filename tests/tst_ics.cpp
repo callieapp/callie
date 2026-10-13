@@ -19,6 +19,7 @@ private Q_SLOTS:
     void movesOneOrAll();
     void seriesKeepTheirHourAcrossAClockChange();
     void allDaySeriesMoveByDays();
+    void endsAndAddedDatesMoveWithTheSeries();
     void monthlySeriesFollowTheirNewDay();
     void editsThisAndFollowingSplitTheSeries();
     void answersAsTheUser();
@@ -295,6 +296,34 @@ END:VEVENT
     QVERIFY2(moved, qPrintable(error));
     QCOMPARE(days(moved->group),
              (QStringList{u"Oct 20 Bins, late"_s, u"Oct 27 Bins"_s, u"Oct 6 Bins"_s}));
+}
+
+void TestIcs::endsAndAddedDatesMoveWithTheSeries()
+{
+    // Mondays until 30 November, and one Thursday added.
+    const ics::Group events = ics::parse(calendar(R"(BEGIN:VEVENT
+UID:class
+DTSTART;VALUE=DATE:20261005
+RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261130
+RDATE;VALUE=DATE:20261015
+SUMMARY:Class
+END:VEVENT
+)"));
+    const QDateTime from(QDate(2026, 10, 1), QTime(0, 0), kBerlin);
+    const Event first = ics::expand(events, kHome, from, from.addDays(5), kBerlin).value(0);
+    QString error;
+    const auto moved =
+        ics::move(events, first, first.start.addDays(7), first.end.addDays(7), true, &error);
+    QVERIFY2(moved, qPrintable(error));
+    QList<QDate> days;
+    for (const Event &event : ics::expand(moved->group, kHome, from, from.addMonths(3), kBerlin))
+        days << event.start.date();
+    std::ranges::sort(days);
+    // Still nine Mondays, a week later, and the Thursday a week later too.
+    QCOMPARE(days.size(), 10);
+    QCOMPARE(days.first(), QDate(2026, 10, 12));
+    QVERIFY(days.contains(QDate(2026, 10, 22)));
+    QCOMPARE(days.last(), QDate(2026, 12, 7));
 }
 
 void TestIcs::monthlySeriesFollowTheirNewDay()

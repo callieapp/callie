@@ -414,6 +414,19 @@ bool shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint6
         for (const QDate &date : series->recurrence()->exDates())
             excludedDays << map(date);
         series->recurrence()->setExDates(excludedDays);
+        // Its end, and dates added by hand, move with the rest.
+        for (KCalendarCore::RecurrenceRule *rule : series->recurrence()->rRules()) {
+            if (rule->duration() == 0 && rule->endDt().isValid())
+                rule->setEndDt(moved(rule->endDt()));
+        }
+        QList<QDateTime> added;
+        for (const QDateTime &date : series->recurrence()->rDateTimes())
+            added << moved(date);
+        series->recurrence()->setRDateTimes(added);
+        KCalendarCore::DateList addedDays;
+        for (const QDate &date : series->recurrence()->rDates())
+            addedDays << map(date);
+        series->recurrence()->setRDates(addedDays);
     }
     // All-day lengths in whole days, which a change of clocks makes 23 or 25 hours.
     const QDateTime end = allDay ? start.addDays(std::max<qint64>(1, qRound(length / 86400.0)))

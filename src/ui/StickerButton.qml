@@ -5,7 +5,8 @@ import QtQuick.Controls
 
 /// A raised button that sits on its edge and presses down into it. `accent`
 /// makes it pink, for the one primary action in view; `destructive` gives it
-/// a red label, and `armed` fills it red for the click that confirms.
+/// a red label, and `armed` fills it red for the click that confirms. Disabled,
+/// it lies flat and grey, whatever kind it is.
 AbstractButton {
     id: root
 
@@ -19,12 +20,14 @@ AbstractButton {
     property bool armed: false
     readonly property bool filledRed: destructive && armed
 
-    readonly property color face: filledRed ? Theme.danger : accent ? Theme.accent : hovered
-                                                                      ? Theme.border :
-                                                                        Theme.surfaceAlt
-    readonly property color ink: filledRed ? Theme.dangerText : destructive ? Theme.danger : accent
-                                                                              ? Theme.accentText :
-                                                                                Theme.text
+    readonly property color face: !enabled ? Theme.surfaceAlt : filledRed ? Theme.danger : accent
+                                                                            ? Theme.accent :
+                                                                              hovered ? Theme.border :
+                                                                                        Theme.surfaceAlt
+    readonly property color ink: !enabled ? Theme.textFaint : filledRed ? Theme.dangerText : destructive
+                                                                          ? Theme.danger : accent
+                                                                            ? Theme.accentText :
+                                                                              Theme.text
     readonly property real sink: down ? Theme.stickerEdge : 0
 
     implicitHeight: 32
@@ -34,11 +37,13 @@ AbstractButton {
     Accessible.name: text || glyph
 
     HoverHandler {
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
     }
 
     background: Item {
+        // The edge it sits on, which a disabled button has none of.
         Rectangle {
+            visible: root.enabled
             anchors {
                 fill: parent
                 topMargin: Theme.stickerEdge

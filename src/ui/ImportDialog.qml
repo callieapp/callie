@@ -153,7 +153,6 @@ Popup {
                 glyph: "plus"
                 text: qsTr("Add")
                 enabled: root.calendarId !== ""
-                opacity: enabled ? 1 : Theme.fadedOpacity
                 onClicked: Importer.add(root.calendarId)
             }
         }

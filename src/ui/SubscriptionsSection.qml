@@ -100,7 +100,6 @@ Column {
             glyph: "plus"
             text: qsTr("Subscribe")
             enabled: link.text.trim() !== ""
-            opacity: enabled ? 1 : Theme.fadedOpacity
             onClicked: {
                 if (Subscribed.add(link.text) !== "")
                     link.clear()

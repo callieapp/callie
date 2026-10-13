@@ -243,6 +243,14 @@ ApplicationWindow {
                     accent: true
                 }
 
+                // Disabled lies flat and grey, accent or not.
+                StickerButton {
+                    text: qsTr("Disabled")
+                    glyph: "plus"
+                    accent: true
+                    enabled: false
+                }
+
                 Dropdown {
                     model: [
                         {

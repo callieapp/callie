@@ -84,7 +84,6 @@ Column {
             glyph: "plus"
             text: qsTr("Add")
             enabled: name.text.trim() !== ""
-            opacity: enabled ? 1 : Theme.fadedOpacity
             onClicked: {
                 if (Local.add(name.text) !== "")
                     name.clear()

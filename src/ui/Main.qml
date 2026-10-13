@@ -1017,13 +1017,67 @@ ApplicationWindow {
     }
 
     DropArea {
-        anchors.fill: parent
-        onEntered: drag => drag.accepted = drag.hasUrls && drag.urls.some(url => Importer.accepts(
-                                                                                     url))
+        id: fileDrop
 
+        // An .ics file is over the window, which says it will take it.
+        property bool takes: false
+
+        anchors.fill: parent
+        onEntered: drag => {
+            takes = drag.hasUrls && drag.urls.some(url => Importer.accepts(url))
+            drag.accepted = takes
+        }
+        onExited: takes = false
         onDropped: drop => {
+            takes = false
             window.openFiles(drop.urls)
             drop.accept()
+        }
+
+        Scrim {
+            anchors.fill: parent
+            opacity: fileDrop.takes ? 1 : 0
+            visible: opacity > 0
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: hint.implicitWidth + 2 * Theme.space7
+                height: hint.implicitHeight + 2 * Theme.space7
+                radius: Theme.radiusXl
+                color: Theme.surface
+                border.width: 2
+                border.color: Theme.accent
+
+                Column {
+                    id: hint
+                    anchors.centerIn: parent
+                    spacing: Theme.space2
+
+                    Glyph {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: Theme.space6
+                        height: Theme.space6
+                        name: "plus"
+                        stroke: 3
+                        color: Theme.accent
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("Drop to add its events")
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textXl
+                        font.weight: Theme.weightStrong
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("You pick the calendar next.")
+                        color: Theme.textMuted
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.textSm
+                    }
+                }
+            }
         }
     }
 

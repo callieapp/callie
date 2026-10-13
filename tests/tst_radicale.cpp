@@ -16,10 +16,8 @@
 using namespace callie;
 using namespace Qt::StringLiterals;
 
-/// CalDavSource against a real CalDAV server, Radicale, run for the test.
-/// Skipped where Radicale is not installed, unless CALLIE_REQUIRE_RADICALE
-/// is set, as in CI. CALLIE_RADICALE_PYTHON names a Python other than python3
-/// that has it, such as a virtualenv's.
+/// CalDavSource against a real Radicale, run for the test; GUIDELINES.md says
+/// when it runs.
 class TestRadicale : public QObject
 {
     Q_OBJECT

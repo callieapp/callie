@@ -815,19 +815,28 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
 }
 
 /// Sends the changes made to CalDAV calendars before the command ends, giving
-/// up after a while; what is left goes with the next sync.
-void sendCalDavChanges(const Backend &backend)
+/// up after a while; what is left goes with the next sync. False when the
+/// server turned one down.
+bool sendCalDavChanges(const Backend &backend)
 {
     if (!backend.caldav || backend.caldav->waitingChanges().isEmpty())
-        return;
+        return true;
+    bool taken = true;
+    const QMetaObject::Connection refused = QObject::connect(
+        backend.caldav.get(), &CalendarSource::errorOccurred, [&taken](const QString &message) {
+            err << QObject::tr("callie: not made: %1").arg(message) << "\n";
+            taken = false;
+        });
     QEventLoop sending;
     QObject::connect(backend.caldav.get(), &CalDavSource::synced, &sending, &QEventLoop::quit);
     QTimer::singleShot(std::chrono::seconds(15), &sending, &QEventLoop::quit);
     backend.caldav->refresh();
     if (backend.caldav->syncing())
         sending.exec();
+    QObject::disconnect(refused);
     for (const QString &waiting : backend.caldav->waitingChanges())
         err << QObject::tr("callie: %1; they go with the next sync").arg(waiting) << "\n";
+    return taken;
 }
 
 /// The event commands: agenda, search, invites, add, edit, delete, respond and duplicate.
@@ -878,8 +887,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
             backend->caldav->followLooks(&settings);
         const int looked =
             commands.calendarLook(args.value(1), args.value(2), args.mid(3).join(u' '));
-        sendCalDavChanges(*backend);
-        return looked;
+        return sendCalDavChanges(*backend) ? looked : 1;
     }
     if (command == u"accounts")
         return commands.renameAccount(args.value(2), args.mid(3).join(u' '));
@@ -908,8 +916,8 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
             err << QObject::tr("callie: not made: %1").arg(message) << "\n";
         for (const PendingChange &change : queued.changes())
             err << QObject::tr("callie: not sent: %1").arg(change.describe()) << "\n";
-        sendCalDavChanges(*backend);
-        return queued.changes().isEmpty() && refused.isEmpty() ? code : 1;
+        const bool sent = sendCalDavChanges(*backend);
+        return sent && queued.changes().isEmpty() && refused.isEmpty() ? code : 1;
 #else
         err << QObject::tr("callie: this build has no TUI; try: callie agenda") << "\n";
         return 1;
@@ -965,8 +973,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     }
     // Sample data answers at once; Google answers over the network.
     const int ended = result ? *result : app.exec();
-    sendCalDavChanges(*backend);
-    return ended;
+    return sendCalDavChanges(*backend) ? ended : 1;
 }
 
 int runAccounts(QCoreApplication &app, const QStringList &args)

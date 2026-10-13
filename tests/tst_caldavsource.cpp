@@ -505,8 +505,10 @@ void TestCalDavSource::aLookTurnedDownComesBack()
     m_server->refuseLooks = true;
     QString error;
     QVERIFY(m_source->setLook(work, u"Office"_s, {}, &error));
+    QSignalSpy refused(m_source.get(), &CalendarSource::errorOccurred);
     sync();
     QVERIFY(!m_source->lastError().isEmpty());
+    QCOMPARE(refused.size(), 1);
     QCOMPARE(calendarId(u"Work"_s), work);
     QVERIFY(m_source->waitingChanges().isEmpty());
     QVERIFY(!m_source->setLook(u"caldav:nobody/work"_s, u"Office"_s, {}, &error));
@@ -585,11 +587,15 @@ void TestCalDavSource::aLookKeptOutlivesTheListing()
         return up(request);
     };
     QString error;
-    QVERIFY(m_source->setLook(work, u"Office"_s, {}, &error));
+    QVERIFY(m_source->setLook(work, u"Office"_s, QColor(u"#ff0066"_s), &error));
     QSignalSpy synced(m_source.get(), &CalDavSource::synced);
     m_source->refresh();
     QVERIFY(synced.wait(5000));
     QCOMPARE(calendarId(u"Office"_s), work);
+    for (const CalendarInfo &calendar : m_source->calendars()) {
+        if (calendar.id == work)
+            QCOMPARE(calendar.color, QColor(u"#ff0066"_s));
+    }
     QCOMPARE(m_source->waitingChanges().size(), 1);
 }
 

@@ -705,7 +705,9 @@ int Commands::importFile(CalendarSource &calendars, LocalCalendars &local, const
     const auto &[added, failed] = *result;
     if (!failed.isEmpty()) {
         if (added > 0)
-            err << tr("callie: %n events went in before this:", "", added) << "\n";
+            err << (added == 1 ? tr("callie: 1 event went in before this:")
+                               : tr("callie: %1 events went in before this:").arg(added))
+                << "\n";
         err << QStringLiteral("callie: %1\n").arg(failed);
         return 1;
     }

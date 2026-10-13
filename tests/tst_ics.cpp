@@ -387,6 +387,17 @@ void TestIcs::monthlySeriesFollowTheirNewDay()
                  .value(0),
              u"2026-12-02"_s);
 
+    // An end that is no occurrence's day ends the series as before: on the
+    // last one, moved.
+    QCOMPARE(movedTo("FREQ=MONTHLY;BYMONTHDAY=28;UNTIL=20261227", QDate(2026, 10, 28),
+                     QDate(2026, 10, 28), QDate(2026, 11, 2)),
+             (QStringList{u"2026-11-02"_s, u"2026-12-02"_s}));
+    // A date added by hand has no place in a series moved by months.
+    QVERIFY(movedTo("FREQ=MONTHLY;BYMONTHDAY=28\r\nRDATE;VALUE=DATE:20261015", QDate(2026, 10, 28),
+                    QDate(2026, 10, 28), QDate(2026, 11, 2))
+                .value(0)
+                .contains(u"cannot move"_s));
+
     // The last Saturday dropped on 3 October would be the fifth from the end.
     QVERIFY(movedTo("FREQ=MONTHLY;BYDAY=-1SA", QDate(2026, 10, 31), QDate(2026, 10, 31),
                     QDate(2026, 10, 3))

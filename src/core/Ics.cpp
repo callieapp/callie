@@ -275,10 +275,14 @@ using DayMap = std::function<QDate(QDate)>;
 /// `landing`, and says where each old day goes. Rules Callie cannot carry
 /// over, such as several ordinals or a month, are refused rather than left to
 /// repeat somewhere else.
-bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *error)
+bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, bool *byDays, QString *error)
 {
     using Rule = KCalendarCore::RecurrenceRule;
     const qint64 days = from.daysTo(landing);
+    *byDays = true;
+    // Dates added by hand have no place in a series moved by months or years.
+    const bool added =
+        !series.recurrence()->rDates().isEmpty() || !series.recurrence()->rDateTimes().isEmpty();
     *map = [days](QDate day) { return day.addDays(days); };
     const QList<Rule *> rules = series.recurrence()->rRules();
     const auto refuse = [error] {
@@ -298,8 +302,9 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
         // date the moved one lands on.
         if (weekdays.isEmpty() && monthDays.isEmpty()) {
             if (rule->recurrenceType() == Rule::rMonthly) {
-                if (landing.day() > 28)
+                if (landing.day() > 28 || added)
                     return refuse();
+                *byDays = false;
                 const int months =
                     (landing.year() - from.year()) * 12 + landing.month() - from.month();
                 const int dayOfMonth = landing.day();
@@ -308,8 +313,9 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
                     return QDate(month.year(), month.month(), dayOfMonth);
                 };
             } else if (rule->recurrenceType() == Rule::rYearly) {
-                if (landing.month() == 2 && landing.day() == 29)
+                if ((landing.month() == 2 && landing.day() == 29) || added)
                     return refuse();
+                *byDays = false;
                 const int years = landing.year() - from.year();
                 *map = [years, landing](QDate day) {
                     return QDate(day.year() + years, landing.month(), landing.day());
@@ -339,8 +345,9 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
             rule->setByDays(moved);
             continue;
         }
-        if (rule->recurrenceType() != Rule::rMonthly)
+        if (rule->recurrenceType() != Rule::rMonthly || added)
             return refuse();
+        *byDays = false;
         // A monthly series keeps its months, moved as many as the one moved
         // did, and takes the day the moved one lands on in each.
         const int months = (landing.year() - from.year()) * 12 + landing.month() - from.month();
@@ -391,10 +398,18 @@ bool shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint6
     const KEvent::Ptr series = master(group);
     const Shift shift = shiftBetween(from, to, series->dtStart(), allDay);
     DayMap map = [&shift](QDate day) { return day.addDays(shift.days); };
+    // A series moved by months or years ends where its last occurrence goes,
+    // since only occurrences have a place in it; read before its rule moves.
+    QDateTime lastOne;
+    for (KCalendarCore::RecurrenceRule *rule : series->recurrence()->rRules()) {
+        if (rule->duration() == 0 && rule->endDt().isValid())
+            lastOne = series->recurrence()->getPreviousDateTime(rule->endDt().addSecs(1));
+    }
+    bool byDays = true;
     if (series->recurs() && shift.days != 0 && !keepRule) {
         const QDate was = allDay ? from.date() : inZoneOf(from, series->dtStart()).date();
         const QDate landing = allDay ? to.date() : inZoneOf(to, series->dtStart()).date();
-        if (!moveRule(*series, was, landing, &map, error))
+        if (!moveRule(*series, was, landing, &map, &byDays, error))
             return false;
     }
     // The time moves by the shift, the day as the rule now puts it.
@@ -417,7 +432,7 @@ bool shiftSeries(Group &group, const QDateTime &from, const QDateTime &to, qint6
         // Its end, and dates added by hand, move with the rest.
         for (KCalendarCore::RecurrenceRule *rule : series->recurrence()->rRules()) {
             if (rule->duration() == 0 && rule->endDt().isValid())
-                rule->setEndDt(moved(rule->endDt()));
+                rule->setEndDt(moved(byDays || !lastOne.isValid() ? rule->endDt() : lastOne));
         }
         QList<QDateTime> added;
         for (const QDateTime &date : series->recurrence()->rDateTimes())

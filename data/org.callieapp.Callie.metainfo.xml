@@ -42,6 +42,12 @@
   </categories>
 
   <releases>
+    <release version="0.4.0" date="2026-10-12">
+      <description>
+        <p>CalDAV accounts such as Fastmail, iCloud and Nextcloud, calendars kept on this
+          computer, adding events from .ics files, and subscriptions to calendar links.</p>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-10-12">
       <description>
         <p>The week grid fits your working day to the window, base16 color schemes import as

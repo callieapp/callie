@@ -3,6 +3,31 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.4.0 - 2026-10-12
+
+### New
+
+- CalDAV accounts: connect Fastmail, iCloud, Nextcloud or any CalDAV server in Settings, under
+  Accounts, with an app password kept in the system keyring. Callie keeps a copy of each calendar so
+  it works offline, sends your changes in the background, and keeps the server's version when an
+  event changed in both places. `callie accounts add caldav <server> <user>` does the same in a
+  terminal.
+- Calendars on this computer: add one in Settings, under Accounts, or with `callie calendars new`.
+  Each is a folder of `.ics` files that other apps such as khal can read, and changes made there
+  show in Callie as they happen.
+- Open an `.ics` file with Callie, or drop one on its window, to add its events to a calendar here;
+  `callie import` does the same.
+- Subscribe to calendars others publish as a link, such as holidays or a team's schedule, from
+  Settings, by opening a `webcal://` link, or with `callie subscribe`. Callie fetches them again
+  every hour.
+- `callie sync` also syncs CalDAV accounts and subscriptions.
+
+### Changed
+
+- The About window keeps to the website, privacy, terms and source links; Support Callie stays in
+  the ? menu.
+- The event editor offers a video call only for calendars that can add one.
+
 ## 0.3.2 - 2026-10-12
 
 ### New

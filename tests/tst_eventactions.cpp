@@ -62,6 +62,21 @@ private:
     bool m_readOnly = false;
 };
 
+/// A CalDAV account whose server never said the user's address.
+class NoAddressSource : public SampleSource
+{
+public:
+    QList<CalendarInfo> calendars() const override
+    {
+        CalendarInfo calendar;
+        calendar.id = u"caldav:me/work"_s;
+        calendar.displayName = u"Work"_s;
+        calendar.writable = true;
+        calendar.account = u"me"_s;
+        return {calendar};
+    }
+};
+
 } // namespace
 
 class TestEventActions : public QObject
@@ -332,6 +347,9 @@ void TestEventActions::callsOnlyWhereTheCalendarHasThem()
     QVERIFY(!actions.canAddCall(u"local:home"_s));
     QVERIFY(actions.noInvites(u"work"_s).isEmpty());
     QVERIFY(actions.noInvites(u"local:home"_s).contains(u"only on this computer"_s));
+    NoAddressSource noAddress;
+    actions.setProperty("source", QVariant::fromValue(&noAddress));
+    QVERIFY(actions.noInvites(u"caldav:me/work"_s).contains(u"email address"_s));
 }
 
 QTEST_GUILESS_MAIN(TestEventActions)

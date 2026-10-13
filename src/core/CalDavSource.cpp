@@ -486,8 +486,10 @@ void CalDavSource::sendLooks(CalDavClient *client, QList<Folder> folders, QStrin
                             now.look = 0;
                             now.lookName = now.lookColor = false;
                             writeState(folder.path, now);
-                            if (error)
+                            if (error) {
                                 errors << error.message;
+                                Q_EMIT self->errorOccurred(error.message);
+                            }
                         }
                         self->sendLooks(client, folders, errors, done);
                     });

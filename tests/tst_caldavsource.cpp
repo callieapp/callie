@@ -30,6 +30,7 @@ private Q_SLOTS:
     void removingAnAccountStopsItsSync();
     void aCalendarGoneKeepsChangesNotSent();
     void anotherServerStartsAfresh();
+    void theSameServerWrittenOtherwiseKeepsItsCopies();
 
 private:
     void sync();
@@ -374,6 +375,22 @@ void TestCalDavSource::anotherServerStartsAfresh()
     QCOMPARE(m_source->calendars().size(), 1);
     QCOMPARE(m_source->calendars().first().displayName, u"Home"_s);
     QVERIFY(week().isEmpty());
+}
+
+void TestCalDavSource::theSameServerWrittenOtherwiseKeepsItsCopies()
+{
+    sync();
+    const QDir copies(m_dir->filePath(u"me@example.com"_s));
+    const QStringList before = copies.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    QVERIFY(!before.isEmpty());
+    // No last slash, and the scheme in capitals: the same server.
+    QUrl written = m_server->url();
+    written.setPath(QString());
+    written.setScheme(u"HTTP"_s);
+    m_source->setAccounts({{u"me@example.com"_s, written, u"me"_s}});
+    sync();
+    QCOMPARE(copies.entryList(QDir::Dirs | QDir::NoDotAndDotDot), before);
+    QCOMPARE(week().size(), 1);
 }
 
 QTEST_MAIN(TestCalDavSource)

@@ -545,7 +545,7 @@ Popup {
                         enabled: !Accounts.busy
                         label: qsTr("Forget and resync")
                         armedLabel: qsTr("Click again to resync")
-                        onConfirmed: Accounts.resync(cached.modelData.id)
+                        onConfirmed: Accounts.resync(cached.modelData.provider, cached.modelData.id)
                     }
                 }
             }

@@ -6,7 +6,7 @@ namespace callie {
 
 /// A connected calendar account. `id` is the provider's stable identifier for
 /// the user, which for Google is the primary calendar id (the account email)
-/// and for CalDAV the user name, with the server's host when it has no @.
+/// and for CalDAV the user name with the server's host.
 struct Account
 {
     QString provider;

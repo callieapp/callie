@@ -42,7 +42,8 @@ public:
     /// already listed, only the password changes. Emits connected or failed once.
     void connectCalDav(CalDavClient &client, const QUrl &server, const QString &user,
                        const QString &password);
-    /// The id a CalDAV account has: the user name, with the host when it has no @.
+    /// The id a CalDAV account has: the user name with the server's host, as
+    /// "me@dav.example.com", or "me@example.com (dav.example.com)".
     [[nodiscard]] static QString calDavId(const QUrl &server, const QString &user);
 
     /// Forgets the token, then cached events or a CalDAV account's copies,

@@ -61,6 +61,20 @@ void writeMeta(const QString &path, const QString &value)
         file.commit();
 }
 
+/// Whether two addresses are the same server, however they are written.
+bool sameServer(const QUrl &a, const QUrl &b)
+{
+    const auto plain = [](const QUrl &url) {
+        QString path = url.path();
+        while (path.endsWith(u'/'))
+            path.chop(1);
+        return u"%1://%2:%3%4"_s.arg(url.scheme().toLower(), url.host().toLower())
+            .arg(url.port(url.scheme().toLower() == u"http" ? 80 : 443))
+            .arg(path);
+    };
+    return plain(a) == plain(b);
+}
+
 /// A file name for an event the server keeps at `href`: the last part of its
 /// address, when that is a safe name.
 QString fileNameOf(const QUrl &href)
@@ -146,6 +160,25 @@ bool CalDavSource::forget(const QString &accountId, QString *error)
     return true;
 }
 
+bool CalDavSource::resync(const QString &accountId, QString *error)
+{
+    const auto account = std::ranges::find_if(
+        m_accounts, [&accountId](const Account &each) { return each.id == accountId; });
+    if (account == m_accounts.end()) {
+        *error = tr("There is no CalDAV account %1.").arg(accountId);
+        return false;
+    }
+    stop(accountId);
+    const QString path = accountPath(accountId);
+    if (QDir(path).exists() && !QDir(path).removeRecursively()) {
+        *error = tr("Callie could not delete %1.").arg(path);
+        return false;
+    }
+    scan();
+    sync(*account);
+    return true;
+}
+
 bool CalDavSource::hasAccount(const QString &accountId) const
 {
     return std::ranges::any_of(m_accounts,
@@ -210,7 +243,7 @@ void CalDavSource::sync(const Account &account)
         const QString path = self->accountPath(account.id);
         AccountState state = readAccount(path);
         // Signed in again to another server: the copies are of the old one.
-        if (!state.server.isEmpty() && state.server != account.server.toString()) {
+        if (!state.server.isEmpty() && !sameServer(QUrl(state.server), account.server)) {
             QDir(path).removeRecursively();
             self->scan();
             state = {};

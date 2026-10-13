@@ -92,9 +92,9 @@ public:
     /// {id, name, server, help} for the services set up for, and "other".
     Q_INVOKABLE static QVariantList calDavPresets();
     /// Forgets an account's sign-in, cached events and listing.
-    Q_INVOKABLE void remove(const QString &id);
+    Q_INVOKABLE void remove(const QString &provider, const QString &id);
     /// Forgets an account's cached calendars and events and syncs them afresh.
-    Q_INVOKABLE void resync(const QString &id);
+    Q_INVOKABLE void resync(const QString &provider, const QString &id);
 
 Q_SIGNALS:
     void accountsChanged();

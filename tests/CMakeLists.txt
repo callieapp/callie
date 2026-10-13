@@ -32,6 +32,10 @@ target_link_libraries(tst_startatlogin PRIVATE callieui)
 callie_add_test(tst_lookedsource)
 callie_add_test(tst_combinedsource)
 callie_add_test(tst_ics)
+# Times with no zone go to Google in the computer's own, so that is checked
+# away from UTC too.
+add_test(NAME tst_ics_new_york COMMAND tst_ics eventsGoToGoogleWithTheirRepeats)
+set_tests_properties(tst_ics_new_york PROPERTIES ENVIRONMENT "TZ=America/New_York")
 callie_add_test(tst_localcalendars)
 callie_add_test(tst_subscriptions)
 callie_add_test(tst_caldavclient)

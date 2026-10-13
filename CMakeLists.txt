@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 project(callie
-    VERSION 0.3.2
+    VERSION 0.4.0
     DESCRIPTION "An elegant calendar for Linux"
     HOMEPAGE_URL "https://callieapp.org"
     LANGUAGES CXX

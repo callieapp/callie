@@ -110,6 +110,7 @@ private Q_SLOTS:
     void calDavFailuresStoreNothing();
     void calDavSignInToAnotherServerMovesIt();
     void calDavCopiesThatStayKeepTheAccount();
+    void calDavIdsNameTheServer();
 
 private:
     void corruptAccountList();
@@ -474,20 +475,37 @@ void TestAccountManager::calDavCopiesThatStayKeepTheAccount()
     const Account account{u"caldav"_s, u"me@example.com"_s, u"https://dav.example.com/"_s, u"me"_s};
     QVERIFY(m_store->add(account));
     m_tokens->secrets.insert(account.id, u"app-password"_s);
-    const QString root = m_dir->filePath(u"caldav"_s);
-    QVERIFY(QDir().mkpath(root + u"/me@example.com/work"_s));
-    // Copies that cannot be deleted, as in a folder made read-only.
-    QFile::setPermissions(root, QFileDevice::ReadOwner | QFileDevice::ExeOwner);
-    CalDavSource caldav(root, nullptr, nullptr);
+    // Copies that cannot be deleted, as on a full or read-only disk.
+    struct Stuck : CalDavSource
+    {
+        using CalDavSource::CalDavSource;
+        bool forget(const QString &, QString *error) override
+        {
+            *error = u"read-only file system"_s;
+            return false;
+        }
+    } caldav(m_dir->filePath(u"caldav"_s), nullptr, nullptr);
     m_manager->setCalDav(&caldav);
     QSignalSpy failed(m_manager.get(), &AccountManager::failed);
     m_manager->remove(account);
     QVERIFY(failed.wait());
-    QFile::setPermissions(root,
-                          QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+    QVERIFY(failed.first().first().toString().contains(u"read-only"_s));
     QList<Account> accounts;
     QVERIFY(m_store->load(accounts));
     QCOMPARE(accounts.size(), 1);
+}
+
+void TestAccountManager::calDavIdsNameTheServer()
+{
+    // One login at two services is two accounts.
+    const QString fastmail =
+        AccountManager::calDavId(QUrl(u"https://caldav.fastmail.com/"_s), u"me@example.com"_s);
+    const QString icloud =
+        AccountManager::calDavId(QUrl(u"https://caldav.icloud.com/"_s), u"me@example.com"_s);
+    QVERIFY(fastmail != icloud);
+    QCOMPARE(fastmail, u"me@example.com (caldav.fastmail.com)"_s);
+    QCOMPARE(AccountManager::calDavId(QUrl(u"https://cloud.example.com/"_s), u" sam "_s),
+             u"sam@cloud.example.com"_s);
 }
 
 QTEST_GUILESS_MAIN(TestAccountManager)

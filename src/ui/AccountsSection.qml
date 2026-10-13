@@ -191,7 +191,7 @@ Column {
                     enabled: !Accounts.busy
                     label: qsTr("Remove")
                     armedLabel: qsTr("Click again to remove")
-                    onConfirmed: Accounts.remove(row.modelData.id)
+                    onConfirmed: Accounts.remove(row.modelData.provider, row.modelData.id)
                 }
             }
         }

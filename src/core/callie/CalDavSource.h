@@ -43,7 +43,9 @@ public:
     void setAccounts(const QList<Account> &accounts);
     [[nodiscard]] QList<Account> accounts() const { return m_accounts; }
     /// Deletes an account's copies, as when the account is removed.
-    bool forget(const QString &accountId, QString *error);
+    virtual bool forget(const QString &accountId, QString *error);
+    /// Deletes an account's copies, changes not sent included, and syncs it afresh.
+    bool resync(const QString &accountId, QString *error);
 
     /// Sends what is waiting and brings down what changed, for every account.
     void refresh() override;

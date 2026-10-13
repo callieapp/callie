@@ -15,6 +15,8 @@
 
 #include <memory>
 
+using namespace Qt::StringLiterals;
+
 namespace callie {
 
 AccountManager::AccountManager(TokenStore &tokens, AccountStore &store, GoogleCache *cache,
@@ -89,8 +91,10 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
 
 QString AccountManager::calDavId(const QUrl &server, const QString &user)
 {
+    // The host is always in it, so one login at two services is two accounts.
     const QString name = user.trimmed();
-    return name.contains(u'@') ? name : name + u'@' + server.host();
+    return name.contains(u'@') ? u"%1 (%2)"_s.arg(name, server.host())
+                               : name + u'@' + server.host();
 }
 
 void AccountManager::connectCalDav(CalDavClient &client, const QUrl &server, const QString &user,

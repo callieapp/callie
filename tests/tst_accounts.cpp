@@ -116,7 +116,7 @@ void TestAccounts::listsAndRemovesAccounts()
     // The source follows the stored list.
     QCOMPARE(source.accounts(), (QList<Account>{me, other}));
 
-    accounts->remove(me.id);
+    accounts->remove(me.provider, me.id);
     QVERIFY(!accounts->signingIn());
     QTRY_VERIFY_WITH_TIMEOUT(!accounts->busy(), 5000);
     QVERIFY2(accounts->error().isEmpty(), qPrintable(accounts->error()));
@@ -220,7 +220,7 @@ void TestAccounts::signingInAgainSyncsAndHoldsOffOtherActions()
         sawSaving = true;
         QVERIFY(accounts->busy());
         QVERIFY(!accounts->signingIn());
-        accounts->remove(kMe.id);
+        accounts->remove(kMe.provider, kMe.id);
         accounts->connectGoogle();
         accounts->cancel();
     });
@@ -315,7 +315,7 @@ void TestAccounts::resyncForgetsCachedEvents()
     calendar.id = u"team"_s;
     QVERIFY(m_cache->setCalendars(kMe, {calendar}));
 
-    AccountsController::instance()->resync(kMe.id);
+    AccountsController::instance()->resync(kMe.provider, kMe.id);
     QVERIFY(m_cache->calendars(kMe).isEmpty());
     // The account itself stays.
     QCOMPARE(AccountsController::instance()->accounts().size(), 1);

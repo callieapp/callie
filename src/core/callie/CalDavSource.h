@@ -12,6 +12,7 @@ class QNetworkAccessManager;
 
 namespace callie {
 
+class Settings;
 class TokenStore;
 
 /// The calendars of CalDAV accounts, each kept as a vdir folder that mirrors
@@ -46,6 +47,14 @@ public:
     virtual bool forget(const QString &accountId, QString *error);
     /// Deletes an account's copies, changes not sent included, and syncs it afresh.
     bool resync(const QString &accountId, QString *error);
+
+    /// Renames and recolors a calendar here at once and on the server with
+    /// the next sync; an empty name or an invalid color leaves that one.
+    bool setLook(const QString &calendarId, const QString &name, const QColor &color,
+                 QString *error);
+    /// Takes the names and colors given in `settings` to these calendars'
+    /// own, so the server has them too.
+    void followLooks(Settings *settings);
 
     /// Sends what is waiting and brings down what changed, for every account.
     void refresh() override;
@@ -88,6 +97,8 @@ private:
         QString syncToken;
         QHash<QString, Remote> files;
         QHash<QString, Waiting> pending;
+        /// A new name or color not sent yet, as the `seq` it was given.
+        qint64 look = 0;
         qint64 seq = 0;
     };
     /// What is kept about an account beside its calendars.
@@ -110,6 +121,10 @@ private:
     /// should hear about, such as a calendar gone with changes not sent.
     QStringList updateCalendars(const Account &account, const QList<DavCalendar> &calendars);
     void syncFolders(const Account &account, QList<Folder> folders, QStringList errors);
+    /// Sends the names and colors changed in `folders`, then calls `done`
+    /// with what went wrong.
+    void sendLooks(CalDavClient *client, QList<Folder> folders, QStringList errors,
+                   std::function<void(const QStringList &errors)> done);
     void push(CalDavClient *client, const Folder &folder, Done done);
     void pull(CalDavClient *client, const Folder &folder, Done done);
     /// Brings down `changed` and takes away `removed`. A `whole` listing also

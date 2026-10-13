@@ -233,6 +233,7 @@ int main(int argc, char *argv[])
         subscriptions.emplace(callie::Subscriptions::defaultRoot(), &network);
         caldav.emplace(callie::CalDavSource::defaultRoot(), &network, &tokens);
         caldav->setAccounts(calDavAccounts);
+        caldav->followLooks(&settings);
     }
     callie::CombinedSource combined;
     combined.setSources(

@@ -2,6 +2,7 @@
 #include "FakeTokenStore.h"
 
 #include "callie/CalDavSource.h"
+#include "callie/Settings.h"
 
 #include <QDir>
 #include <QNetworkAccessManager>
@@ -35,6 +36,9 @@ private Q_SLOTS:
     void guestsAddedAreForTheServerToInvite();
     void guestsAlreadyThereAreLeftAlone();
     void noAddressNoInvitations();
+    void aNewLookGoesToTheServer();
+    void aLookTurnedDownComesBack();
+    void looksGivenInSettingsBecomeTheCalendars();
 
 private:
     void sync();
@@ -464,6 +468,60 @@ void TestCalDavSource::noAddressNoInvitations()
     QVERIFY(!m_source->calendars().isEmpty());
     for (const CalendarInfo &calendar : m_source->calendars())
         QVERIFY(!calendar.invites);
+}
+
+void TestCalDavSource::aNewLookGoesToTheServer()
+{
+    sync();
+    const QString work = calendarId(u"Work"_s);
+    QString error;
+    QVERIFY(m_source->setLook(work, u"Office"_s, QColor(u"#ff0066"_s), &error));
+    // Shown at once, and sent with the next sync.
+    QCOMPARE(calendarId(u"Office"_s), work);
+    QCOMPARE(m_source->waitingChanges().size(), 1);
+    sync();
+    QVERIFY2(m_source->lastError().isEmpty(), qPrintable(m_source->lastError()));
+    const FakeCalDavServer::Calendar &calendar =
+        m_server->calendars[FakeCalDavServer::calendarPath("work")];
+    QCOMPARE(calendar.name, "Office");
+    QCOMPARE(calendar.color, "#FF0066FF");
+    QVERIFY(m_source->waitingChanges().isEmpty());
+    sync();
+    QCOMPARE(calendarId(u"Office"_s), work);
+    for (const CalendarInfo &info : m_source->calendars()) {
+        if (info.id == work)
+            QCOMPARE(info.color, QColor(u"#ff0066"_s));
+    }
+}
+
+void TestCalDavSource::aLookTurnedDownComesBack()
+{
+    sync();
+    const QString work = calendarId(u"Work"_s);
+    m_server->refuseLooks = true;
+    QString error;
+    QVERIFY(m_source->setLook(work, u"Office"_s, {}, &error));
+    sync();
+    QVERIFY(!m_source->lastError().isEmpty());
+    QCOMPARE(calendarId(u"Work"_s), work);
+    QVERIFY(m_source->waitingChanges().isEmpty());
+    QVERIFY(!m_source->setLook(u"caldav:nobody/work"_s, u"Office"_s, {}, &error));
+}
+
+void TestCalDavSource::looksGivenInSettingsBecomeTheCalendars()
+{
+    sync();
+    const QString work = calendarId(u"Work"_s);
+    Settings settings(m_dir->filePath(u"settings.ini"_s));
+    m_source->followLooks(&settings);
+    settings.setCalendarName(u"google-calendar"_s, u"Mine"_s);
+    settings.setCalendarName(work, u"Office"_s);
+    // The calendar's own name now, so nothing is left to stand over it.
+    QCOMPARE(calendarId(u"Office"_s), work);
+    QVERIFY(!settings.calendarLooks().contains(work));
+    QVERIFY(settings.calendarLooks().contains(u"google-calendar"_s));
+    sync();
+    QCOMPARE(m_server->calendars[FakeCalDavServer::calendarPath("work")].name, "Office");
 }
 
 QTEST_MAIN(TestCalDavSource)

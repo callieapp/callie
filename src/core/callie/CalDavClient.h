@@ -103,6 +103,10 @@ public:
     /// is when `etag` is empty. Gives the new version when the server says it.
     void put(const QUrl &href, const QByteArray &data, const QString &etag,
              std::function<void(const QString &etag, const DavError &)> done);
+    /// Renames and recolors a calendar on the server; an empty name or an
+    /// invalid color leaves that one as it is.
+    void setLook(const QUrl &calendar, const QString &name, const QColor &color,
+                 std::function<void(const DavError &)> done);
     /// Deletes the item, only at version `etag` when given. Gone already counts.
     void remove(const QUrl &href, const QString &etag, std::function<void(const DavError &)> done);
 

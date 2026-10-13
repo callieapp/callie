@@ -2,6 +2,7 @@
 
 #include "callie/Identity.h"
 #include "callie/Logging.h"
+#include "callie/Settings.h"
 #include "callie/TokenStore.h"
 
 #include <QCryptographicHash>
@@ -59,6 +60,13 @@ void writeMeta(const QString &path, const QString &value)
     const QByteArray data = value.toUtf8() + '\n';
     if (file.open(QIODevice::WriteOnly) && file.write(data) == data.size())
         file.commit();
+}
+
+/// Offline, signed out, busy or failing: worth trying again at the next sync.
+bool later(const DavError &error)
+{
+    return error.status == 0 || error.isAuth() || error.status == 408 || error.status == 429 ||
+           error.status >= 500;
 }
 
 /// Whether two addresses are the same server, however they are written.
@@ -205,6 +213,50 @@ void CalDavSource::refresh()
     VdirSource::refresh();
 }
 
+bool CalDavSource::setLook(const QString &calendarId, const QString &name, const QColor &color,
+                           QString *error)
+{
+    const QList<Folder> all = folders();
+    const auto found = std::ranges::find(all, calendarId, &Folder::id);
+    State state = found != all.cend() ? readState(found->path) : State();
+    if (found == all.cend() || state.gone) {
+        if (error)
+            *error = tr("No CalDAV calendar has the id %1.").arg(calendarId);
+        return false;
+    }
+    const QString path = found->path;
+    if (!name.trimmed().isEmpty())
+        writeMeta(path + u"/displayname"_s, name.trimmed());
+    if (color.isValid())
+        writeMeta(path + u"/color"_s, color.name());
+    state.look = ++state.seq;
+    writeState(path, state);
+    m_soon.start();
+    Q_EMIT changed();
+    Q_EMIT statusChanged();
+    return true;
+}
+
+void CalDavSource::followLooks(Settings *settings)
+{
+    const auto take = [this, settings] {
+        const QVariantMap looks = settings->calendarLooks();
+        const QList<Folder> all = folders();
+        for (auto it = looks.cbegin(); it != looks.cend(); ++it) {
+            if (std::ranges::find(all, it.key(), &Folder::id) == all.cend())
+                continue;
+            const QVariantMap look = it->toMap();
+            QString error;
+            if (setLook(it.key(), look.value(u"name"_s).toString(),
+                        QColor::fromString(look.value(u"color"_s).toString()), &error))
+                settings->resetCalendarLook(it.key());
+            else
+                qCWarning(lcSync) << error;
+        }
+    };
+    connect(settings, &Settings::calendarLooksChanged, this, take);
+}
+
 void CalDavSource::fileChanged(const Folder &folder, const QString &fileName, bool removed)
 {
     State state = readState(folder.path);
@@ -249,14 +301,14 @@ void CalDavSource::sync(const Account &account)
             state = {};
         }
         const auto listed = [self, account](const QList<DavCalendar> &calendars,
-                                            const DavError &error) {
+                                            const DavError &error, QStringList problems) {
             if (!self)
                 return;
             if (error) {
                 self->finish(account, error.message);
                 return;
             }
-            const QStringList problems = self->updateCalendars(account, calendars);
+            problems += self->updateCalendars(account, calendars);
             QList<Folder> mine;
             for (const Folder &folder : self->folders()) {
                 if (folder.account == account.id && !readState(folder.path).gone)
@@ -264,8 +316,22 @@ void CalDavSource::sync(const Account &account)
             }
             self->syncFolders(account, mine, problems);
         };
+        // New names and colors go first, so the listing has them.
         if (state.home.isValid()) {
-            client->calendars(state.home, listed);
+            QList<Folder> looks;
+            for (const Folder &folder : self->folders()) {
+                const State looked = readState(folder.path);
+                if (folder.account == account.id && looked.look != 0 && !looked.gone)
+                    looks.append(folder);
+            }
+            self->sendLooks(client, looks, {},
+                            [client, home = state.home, listed](const QStringList &problems) {
+                                client->calendars(
+                                    home, [listed, problems](const QList<DavCalendar> &calendars,
+                                                             const DavError &error) {
+                                        listed(calendars, error, problems);
+                                    });
+                            });
             return;
         }
         client->discover(account.server, [self, account, path, listed](const DavAccount &found,
@@ -282,7 +348,7 @@ void CalDavSource::sync(const Account &account)
             state.addresses = found.addresses;
             QDir().mkpath(path);
             writeAccount(path, state);
-            listed(found.calendars, {});
+            listed(found.calendars, {}, {});
         });
     });
 }
@@ -319,6 +385,9 @@ QStringList CalDavSource::updateCalendars(const Account &account,
         state.writable = calendar.writable;
         state.gone = false;
         writeState(folder, state);
+        // A new name or color not sent yet stays until it is.
+        if (state.look != 0)
+            continue;
         writeMeta(folder + u"/displayname"_s,
                   calendar.displayName.isEmpty() ? QDir(folder).dirName() : calendar.displayName);
         if (calendar.color.isValid())
@@ -368,6 +437,38 @@ void CalDavSource::syncFolders(const Account &account, QList<Folder> folders, QS
                        self->syncFolders(account, folders, errors);
                    });
     });
+}
+
+void CalDavSource::sendLooks(CalDavClient *client, QList<Folder> folders, QStringList errors,
+                             std::function<void(const QStringList &errors)> done)
+{
+    if (folders.isEmpty()) {
+        done(errors);
+        return;
+    }
+    const Folder folder = folders.takeFirst();
+    const State state = readState(folder.path);
+    const QString name = readText(folder.path + u"/displayname"_s);
+    const QColor color = QColor::fromString(readText(folder.path + u"/color"_s));
+    const QPointer<CalDavSource> self(this);
+    client->setLook(state.url, name, color,
+                    [self, client, folder, folders, errors, done,
+                     sent = state.look](const DavError &error) mutable {
+                        if (!self)
+                            return;
+                        // Turned down, the server's own name and color come
+                        // back with the listing; a change made meanwhile waits.
+                        State now = readState(folder.path);
+                        if (error && later(error)) {
+                            errors << error.message;
+                        } else if (now.look == sent) {
+                            now.look = 0;
+                            writeState(folder.path, now);
+                            if (error)
+                                errors << error.message;
+                        }
+                        self->sendLooks(client, folders, errors, done);
+                    });
 }
 
 void CalDavSource::push(CalDavClient *client, const Folder &folder, Done done)
@@ -420,25 +521,19 @@ void CalDavSource::push(CalDavClient *client, const Folder &folder, Done done)
                               self->push(client, folder, done);
                       });
     };
-    // Offline, signed out, busy or failing: kept for the next sync.
-    const auto later = [](const DavError &error) {
-        return error.status == 0 || error.isAuth() || error.status == 408 || error.status == 429 ||
-               error.status >= 500;
-    };
     if (waiting.removed) {
         if (!remote.href.isValid()) {
             next({}, true);
             return;
         }
-        client->remove(remote.href, remote.etag,
-                       [next, refused, later, done](const DavError &error) {
-                           if (!error)
-                               next({}, true);
-                           else if (later(error))
-                               done(error.message);
-                           else
-                               refused(error);
-                       });
+        client->remove(remote.href, remote.etag, [next, refused, done](const DavError &error) {
+            if (!error)
+                next({}, true);
+            else if (later(error))
+                done(error.message);
+            else
+                refused(error);
+        });
         return;
     }
     QFile file(folder.path + u'/' + fileName);
@@ -454,7 +549,7 @@ void CalDavSource::push(CalDavClient *client, const Folder &folder, Done done)
                                             : calendar.resolved(QUrl(QString::fromLatin1(
                                                   QUrl::toPercentEncoding(fileName, "@._-"))));
     client->put(href, file.readAll(), remote.etag,
-                [next, refused, later, done, href](const QString &etag, const DavError &error) {
+                [next, refused, done, href](const QString &etag, const DavError &error) {
                     if (!error)
                         next({href, etag}, false);
                     else if (later(error))
@@ -692,7 +787,8 @@ QStringList CalDavSource::waitingChanges() const
 {
     QStringList waiting;
     for (const Folder &folder : folders()) {
-        const qsizetype count = readState(folder.path).pending.size();
+        const State state = readState(folder.path);
+        const qsizetype count = state.pending.size() + (state.look != 0 ? 1 : 0);
         if (count > 0)
             waiting << tr("%1 changes not sent yet to %2").arg(count).arg(folder.account);
     }
@@ -707,6 +803,7 @@ CalDavSource::State CalDavSource::readState(const QString &folder)
     state.writable = json[u"writable"].toBool(true);
     state.gone = json[u"gone"].toBool();
     state.syncToken = json[u"syncToken"].toString();
+    state.look = json[u"look"].toInteger();
     const QJsonObject files = json[u"files"].toObject();
     for (auto it = files.begin(); it != files.end(); ++it)
         state.files.insert(it.key(), {QUrl(it->toObject()[u"href"].toString()),
@@ -734,6 +831,7 @@ void CalDavSource::writeState(const QString &folder, const State &state)
                                            {u"syncToken"_s, state.syncToken},
                                            {u"files"_s, files},
                                            {u"pending"_s, pending},
+                                           {u"look"_s, state.look},
                                            {u"seq"_s, state.seq}});
 }
 

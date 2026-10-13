@@ -225,10 +225,14 @@ bool CalDavSource::setLook(const QString &calendarId, const QString &name, const
         return false;
     }
     const QString path = found->path;
-    if (!name.trimmed().isEmpty())
+    if (!name.trimmed().isEmpty()) {
         writeMeta(path + u"/displayname"_s, name.trimmed());
-    if (color.isValid())
+        state.lookName = true;
+    }
+    if (color.isValid()) {
         writeMeta(path + u"/color"_s, color.name());
+        state.lookColor = true;
+    }
     state.look = ++state.seq;
     writeState(path, state);
     m_soon.start();
@@ -239,19 +243,34 @@ bool CalDavSource::setLook(const QString &calendarId, const QString &name, const
 
 void CalDavSource::followLooks(Settings *settings)
 {
+    m_looks = settings->calendarLooks();
     const auto take = [this, settings] {
         const QVariantMap looks = settings->calendarLooks();
+        const QVariantMap before = std::exchange(m_looks, looks);
         const QList<Folder> all = folders();
         for (auto it = looks.cbegin(); it != looks.cend(); ++it) {
             if (std::ranges::find(all, it.key(), &Folder::id) == all.cend())
                 continue;
+            // Only the part just given; one given before stays as it was.
             const QVariantMap look = it->toMap();
+            const QVariantMap old = before.value(it.key()).toMap();
+            const auto given = [&look, &old](const QString &part) {
+                const QString value = look.value(part).toString();
+                return value == old.value(part).toString() ? QString() : value;
+            };
+            const QString name = given(u"name"_s);
+            const QColor color = QColor::fromString(given(u"color"_s));
+            if (name.isEmpty() && !color.isValid())
+                continue;
             QString error;
-            if (setLook(it.key(), look.value(u"name"_s).toString(),
-                        QColor::fromString(look.value(u"color"_s).toString()), &error))
-                settings->resetCalendarLook(it.key());
-            else
+            if (!setLook(it.key(), name, color, &error)) {
                 qCWarning(lcSync) << error;
+                continue;
+            }
+            if (!name.isEmpty())
+                settings->setCalendarName(it.key(), {});
+            if (color.isValid())
+                settings->setCalendarColor(it.key(), {});
         }
     };
     connect(settings, &Settings::calendarLooksChanged, this, take);
@@ -386,11 +405,11 @@ QStringList CalDavSource::updateCalendars(const Account &account,
         state.gone = false;
         writeState(folder, state);
         // A new name or color not sent yet stays until it is.
-        if (state.look != 0)
-            continue;
-        writeMeta(folder + u"/displayname"_s,
-                  calendar.displayName.isEmpty() ? QDir(folder).dirName() : calendar.displayName);
-        if (calendar.color.isValid())
+        if (!state.lookName)
+            writeMeta(folder + u"/displayname"_s, calendar.displayName.isEmpty()
+                                                      ? QDir(folder).dirName()
+                                                      : calendar.displayName);
+        if (!state.lookColor && calendar.color.isValid())
             writeMeta(folder + u"/color"_s, calendar.color.name());
     }
     // Calendars gone from the server go from here too, unless changes made
@@ -448,8 +467,10 @@ void CalDavSource::sendLooks(CalDavClient *client, QList<Folder> folders, QStrin
     }
     const Folder folder = folders.takeFirst();
     const State state = readState(folder.path);
-    const QString name = readText(folder.path + u"/displayname"_s);
-    const QColor color = QColor::fromString(readText(folder.path + u"/color"_s));
+    // Only what changed here, so a rename made elsewhere is not undone.
+    const QString name = state.lookName ? readText(folder.path + u"/displayname"_s) : QString();
+    const QColor color =
+        state.lookColor ? QColor::fromString(readText(folder.path + u"/color"_s)) : QColor();
     const QPointer<CalDavSource> self(this);
     client->setLook(state.url, name, color,
                     [self, client, folder, folders, errors, done,
@@ -463,6 +484,7 @@ void CalDavSource::sendLooks(CalDavClient *client, QList<Folder> folders, QStrin
                             errors << error.message;
                         } else if (now.look == sent) {
                             now.look = 0;
+                            now.lookName = now.lookColor = false;
                             writeState(folder.path, now);
                             if (error)
                                 errors << error.message;
@@ -804,6 +826,8 @@ CalDavSource::State CalDavSource::readState(const QString &folder)
     state.gone = json[u"gone"].toBool();
     state.syncToken = json[u"syncToken"].toString();
     state.look = json[u"look"].toInteger();
+    state.lookName = json[u"lookName"].toBool();
+    state.lookColor = json[u"lookColor"].toBool();
     const QJsonObject files = json[u"files"].toObject();
     for (auto it = files.begin(); it != files.end(); ++it)
         state.files.insert(it.key(), {QUrl(it->toObject()[u"href"].toString()),
@@ -832,6 +856,8 @@ void CalDavSource::writeState(const QString &folder, const State &state)
                                            {u"files"_s, files},
                                            {u"pending"_s, pending},
                                            {u"look"_s, state.look},
+                                           {u"lookName"_s, state.lookName},
+                                           {u"lookColor"_s, state.lookColor},
                                            {u"seq"_s, state.seq}});
 }
 

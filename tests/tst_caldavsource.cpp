@@ -39,6 +39,8 @@ private Q_SLOTS:
     void aNewLookGoesToTheServer();
     void aLookTurnedDownComesBack();
     void looksGivenInSettingsBecomeTheCalendars();
+    void aNewColorKeepsANameGivenElsewhere();
+    void aLookWaitsWhileTheServerIsDown();
 
 private:
     void sync();
@@ -513,14 +515,59 @@ void TestCalDavSource::looksGivenInSettingsBecomeTheCalendars()
     sync();
     const QString work = calendarId(u"Work"_s);
     Settings settings(m_dir->filePath(u"settings.ini"_s));
+    // Given before, it stays on this computer.
+    settings.setCalendarColor(work, QColor(u"#123456"_s));
     m_source->followLooks(&settings);
     settings.setCalendarName(u"google-calendar"_s, u"Mine"_s);
     settings.setCalendarName(work, u"Office"_s);
     // The calendar's own name now, so nothing is left to stand over it.
     QCOMPARE(calendarId(u"Office"_s), work);
-    QVERIFY(!settings.calendarLooks().contains(work));
+    QVERIFY(!settings.calendarLooks().value(work).toMap().contains(u"name"_s));
+    QCOMPARE(settings.calendarLooks().value(work).toMap().value(u"color"_s).toString(),
+             u"#123456"_s);
     QVERIFY(settings.calendarLooks().contains(u"google-calendar"_s));
     sync();
+    const FakeCalDavServer::Calendar &calendar =
+        m_server->calendars[FakeCalDavServer::calendarPath("work")];
+    QCOMPARE(calendar.name, "Office");
+    QCOMPARE(calendar.color, "#33B679FF");
+}
+
+void TestCalDavSource::aNewColorKeepsANameGivenElsewhere()
+{
+    sync();
+    const QString work = calendarId(u"Work"_s);
+    m_server->calendars[FakeCalDavServer::calendarPath("work")].name = "Desk";
+    QString error;
+    QVERIFY(m_source->setLook(work, {}, QColor(u"#ff0066"_s), &error));
+    sync();
+    const FakeCalDavServer::Calendar &calendar =
+        m_server->calendars[FakeCalDavServer::calendarPath("work")];
+    QCOMPARE(calendar.name, "Desk");
+    QCOMPARE(calendar.color, "#FF0066FF");
+    QCOMPARE(calendarId(u"Desk"_s), work);
+}
+
+void TestCalDavSource::aLookWaitsWhileTheServerIsDown()
+{
+    sync();
+    const QString work = calendarId(u"Work"_s);
+    const auto up = std::move(m_server->server.replier);
+    m_server->server.replier = [](const FakeHttpServer::Request &) {
+        return FakeHttpServer::Reply{503, "down", {}, "text/plain"};
+    };
+    QString error;
+    QVERIFY(m_source->setLook(work, u"Office"_s, {}, &error));
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    m_source->refresh();
+    QVERIFY(synced.wait(5000));
+    QVERIFY(!m_source->lastError().isEmpty());
+    QCOMPARE(m_source->waitingChanges().size(), 1);
+    QCOMPARE(calendarId(u"Office"_s), work);
+
+    m_server->server.replier = up;
+    sync();
+    QVERIFY(m_source->waitingChanges().isEmpty());
     QCOMPARE(m_server->calendars[FakeCalDavServer::calendarPath("work")].name, "Office");
 }
 

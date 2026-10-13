@@ -7,6 +7,7 @@
 #include <QPointer>
 #include <QSet>
 #include <QTimer>
+#include <QVariantMap>
 
 class QNetworkAccessManager;
 
@@ -52,8 +53,9 @@ public:
     /// the next sync; an empty name or an invalid color leaves that one.
     bool setLook(const QString &calendarId, const QString &name, const QColor &color,
                  QString *error);
-    /// Takes the names and colors given in `settings` to these calendars'
-    /// own, so the server has them too.
+    /// Takes names and colors given in `settings` from now on to these
+    /// calendars' own, so the server has them too. Those given before stay
+    /// in `settings`, on this computer only.
     void followLooks(Settings *settings);
 
     /// Sends what is waiting and brings down what changed, for every account.
@@ -97,8 +99,11 @@ private:
         QString syncToken;
         QHash<QString, Remote> files;
         QHash<QString, Waiting> pending;
-        /// A new name or color not sent yet, as the `seq` it was given.
+        /// A new name or color not sent yet, as the `seq` it was given, and
+        /// which of the two it is.
         qint64 look = 0;
+        bool lookName = false;
+        bool lookColor = false;
         qint64 seq = 0;
     };
     /// What is kept about an account beside its calendars.
@@ -153,6 +158,8 @@ private:
     QSet<QString> m_again;
     /// Changes made together go out together.
     QTimer m_soon;
+    /// The looks in Settings as last seen, to tell which changed.
+    QVariantMap m_looks;
 };
 
 } // namespace callie

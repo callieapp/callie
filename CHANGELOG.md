@@ -3,6 +3,20 @@
 What changed in each version of Callie, for the people using it. Each section is drafted with
 `git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
 
+## 0.4.1 - 2026-10-13
+
+### New
+
+- Renaming or recoloring a CalDAV calendar changes it on the server too, so other apps see it.
+- Guests added to an event in a CalDAV calendar get invitations from the server. Calendars on this
+  computer say in the event editor that they cannot send any.
+- `.ics` files can go into CalDAV and Google calendars as well as calendars on this computer, from
+  the app or with `callie import --calendar`.
+
+### Fixed
+
+- Disabled buttons are flat and grey rather than a faded pink.
+
 ## 0.4.0 - 2026-10-12
 
 ### New

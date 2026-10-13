@@ -293,8 +293,30 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
         const QList<int> monthDays = rule->byMonthDays();
         if (others || rules.size() > 1)
             return refuse();
-        if (weekdays.isEmpty() && monthDays.isEmpty())
+        // A rule naming no days repeats on its first one's: monthly on that
+        // date of the month, yearly on that date of the year. They take the
+        // date the moved one lands on.
+        if (weekdays.isEmpty() && monthDays.isEmpty()) {
+            if (rule->recurrenceType() == Rule::rMonthly) {
+                if (landing.day() > 28)
+                    return refuse();
+                const int months =
+                    (landing.year() - from.year()) * 12 + landing.month() - from.month();
+                const int dayOfMonth = landing.day();
+                *map = [months, dayOfMonth](QDate day) {
+                    const QDate month = QDate(day.year(), day.month(), 1).addMonths(months);
+                    return QDate(month.year(), month.month(), dayOfMonth);
+                };
+            } else if (rule->recurrenceType() == Rule::rYearly) {
+                if (landing.month() == 2 && landing.day() == 29)
+                    return refuse();
+                const int years = landing.year() - from.year();
+                *map = [years, landing](QDate day) {
+                    return QDate(day.year() + years, landing.month(), landing.day());
+                };
+            }
             continue;
+        }
         const bool plainWeekdays = std::ranges::all_of(
             weekdays, [](const Rule::WDayPos &weekday) { return weekday.pos() == 0; });
         if (rule->recurrenceType() == Rule::rWeekly && plainWeekdays && monthDays.isEmpty()) {

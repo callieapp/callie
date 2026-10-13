@@ -490,6 +490,35 @@ void CalDavClient::put(const QUrl &href, const QByteArray &data, const QString &
     });
 }
 
+void CalDavClient::setLook(const QUrl &calendar, const QString &name, const QColor &color,
+                           std::function<void(const DavError &)> done)
+{
+    QByteArray props;
+    if (!name.isEmpty())
+        props += "<d:displayname>" + escaped(name) + "</d:displayname>";
+    if (color.isValid())
+        props += "<a:calendar-color>" + color.name().toUpper().toUtf8() + "FF</a:calendar-color>";
+    const QByteArray body =
+        R"(<d:propertyupdate xmlns:d="DAV:" xmlns:a="http://apple.com/ns/ical/"><d:set><d:prop>)" +
+        props + "</d:prop></d:set></d:propertyupdate>";
+    send("PROPPATCH", calendar, body, {},
+         [name, color, done](QNetworkReply *reply, const DavError &error) {
+             if (error) {
+                 done(error);
+                 return;
+             }
+             // Each property says how it went; one left out was turned down.
+             for (const Response &response : multistatus(reply->readAll(), reply->url())) {
+                 if ((!name.isEmpty() && !response.has(kDav, u"displayname"_s)) ||
+                     (color.isValid() && !response.has(kApple, u"calendar-color"_s))) {
+                     done({403, tr("The server did not take the calendar's new name or color.")});
+                     return;
+                 }
+             }
+             done({});
+         });
+}
+
 void CalDavClient::remove(const QUrl &href, const QString &etag,
                           std::function<void(const DavError &)> done)
 {

@@ -71,6 +71,8 @@ public:
     bool rootAnswers = false;
     /// The user's address, as the principal gives it; empty for none.
     QByteArray address = "mailto:me@example.com";
+    /// On, calendars cannot be renamed or recolored.
+    bool refuseLooks = false;
     /// The calendar home as the principal names it, when not the usual path.
     QByteArray homeHref = "/dav/calendars/me/";
     QMap<QByteArray, Calendar> calendars;
@@ -179,10 +181,35 @@ private:
         return {405, "", {}, "text/plain"};
     }
 
-    FakeHttpServer::Reply collection(const FakeHttpServer::Request &request,
-                                     const Calendar &calendar)
+    FakeHttpServer::Reply collection(const FakeHttpServer::Request &request, Calendar &calendar)
     {
         const QByteArray body = request.body;
+        if (request.method == "PROPPATCH") {
+            static const QRegularExpression name(
+                QStringLiteral("<d:displayname>([^<]*)</d:displayname>"));
+            static const QRegularExpression color(
+                QStringLiteral("<a:calendar-color>([^<]*)</a:calendar-color>"));
+            const auto named = name.match(QString::fromUtf8(body));
+            const auto colored = color.match(QString::fromUtf8(body));
+            QByteArray props;
+            if (named.hasMatch())
+                props += "<d:displayname/>";
+            if (colored.hasMatch())
+                props += "<a:calendar-color/>";
+            if (refuseLooks)
+                return xml("<d:response><d:href>" + request.target +
+                           "</d:href><d:propstat><d:prop>" + props +
+                           "</d:prop><d:status>HTTP/1.1 403 Forbidden</d:status></d:propstat>"
+                           "</d:response>");
+            if (named.hasMatch())
+                calendar.name = named.captured(1)
+                                    .replace(QStringLiteral("&lt;"), QStringLiteral("<"))
+                                    .replace(QStringLiteral("&amp;"), QStringLiteral("&"))
+                                    .toUtf8();
+            if (colored.hasMatch())
+                calendar.color = colored.captured(1).toUtf8();
+            return xml(response(request.target, props));
+        }
         if (request.method == "PROPFIND") {
             QByteArray out = response(request.target, "<d:resourcetype><d:collection/>"
                                                       "<c:calendar/></d:resourcetype>");

@@ -3,8 +3,9 @@ import Callie.Ui
 import QtQuick
 import QtQuick.Controls
 
-/// Renames a calendar or an account in Callie, and recolors a calendar. The
-/// changes stay on this computer; Google keeps its own names and colors.
+/// Renames a calendar or an account in Callie, and recolors a calendar. A
+/// CalDAV calendar takes the change to its server; for the others it stays on
+/// this computer, and Google keeps its own names and colors.
 Popup {
     id: root
 
@@ -12,13 +13,16 @@ Popup {
     property string targetId
     property bool account: false
     property string name
+    // A CalDAV calendar's color becomes its own at once, leaving no look.
+    property string picked
 
     readonly property string chosenColor: Settings.calendarLooks[targetId] ? (
                                                                                  Settings.calendarLooks[targetId].color
-                                                                                 || "") : ""
+                                                                                 || picked) : picked
 
     function editCalendar(id, name) {
         account = false
+        picked = ""
         targetId = id
         root.name = name
         open()
@@ -128,7 +132,10 @@ Popup {
                     height: Theme.space7
                     Accessible.name: qsTr("Color %1").arg(modelData)
                     Accessible.checked: chosen
-                    onClicked: Settings.setCalendarColor(root.targetId, modelData)
+                    onClicked: {
+                        root.picked = modelData
+                        Settings.setCalendarColor(root.targetId, modelData)
+                    }
 
                     HoverHandler {
                         cursorShape: Qt.PointingHandCursor

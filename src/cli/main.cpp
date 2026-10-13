@@ -838,8 +838,11 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         const QString option = QString::fromLatin1(name);
         return parser.isSet(option) ? std::optional(parser.value(option)) : std::nullopt;
     };
+    // Renaming and recoloring reach CalDAV servers.
+    const bool looks = command == u"calendars" &&
+                       QStringList{u"rename"_s, u"color"_s, u"reset"_s}.contains(args.value(1));
     const bool reading = command == u"agenda" || command == u"search" || command == u"invites" ||
-                         command == u"contacts" || command == u"calendars" ||
+                         command == u"contacts" || (command == u"calendars" && !looks) ||
                          command == u"accounts";
     // Sample data and scripts that only read leave the user's settings alone.
     QTemporaryDir scratch;
@@ -870,8 +873,14 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     commands.setPaint(paint());
     const bool json = parser.isSet(u"json"_s);
 
-    if (command == u"calendars")
-        return commands.calendarLook(args.value(1), args.value(2), args.mid(3).join(u' '));
+    if (command == u"calendars") {
+        if (backend->caldav)
+            backend->caldav->followLooks(&settings);
+        const int looked =
+            commands.calendarLook(args.value(1), args.value(2), args.mid(3).join(u' '));
+        sendCalDavChanges(*backend);
+        return looked;
+    }
     if (command == u"accounts")
         return commands.renameAccount(args.value(2), args.mid(3).join(u' '));
     if (command == u"agenda")

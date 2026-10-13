@@ -21,6 +21,8 @@ Popup {
 
     /// The user wants to edit the theme's colors, which needs the calendar in view.
     signal editColorsRequested
+    /// An .ics file was picked to import.
+    signal importRequested(url file)
 
     /// The tabs side by side, which the dialog widens to hold.
     readonly property real tabsWidth: {
@@ -161,6 +163,27 @@ Popup {
 
             LocalSection {
                 width: parent.width
+            }
+        }
+
+        Section {
+            title: qsTr("Import")
+            // Sample data has nowhere to put the events.
+            visible: root.tab === "accounts" && Local.available
+
+            Text {
+                width: parent.width
+                wrapMode: Text.Wrap
+                text: qsTr(
+                          "Add the events of an .ics file to any calendar you can change. Dropping the file on the window works too.")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textSm
+            }
+            StickerButton {
+                glyph: "plus"
+                text: qsTr("Choose a file...")
+                onClicked: icsDialog.open()
             }
         }
 
@@ -833,6 +856,17 @@ Popup {
         title: qsTr("Import a theme")
         nameFilters: [qsTr("Callie and base16 themes (*.toml *.yaml *.yml)")]
         onAccepted: Themes.importFrom(selectedFile)
+    }
+
+    // The import dialog takes over once a file is picked.
+    FileDialog {
+        id: icsDialog
+        title: qsTr("Import events")
+        nameFilters: [qsTr("Calendar files (*.ics)")]
+        onAccepted: {
+            root.close()
+            root.importRequested(selectedFile)
+        }
     }
 
     FileDialog {

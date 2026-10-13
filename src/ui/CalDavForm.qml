@@ -97,8 +97,11 @@ Column {
                 Accounts.connectCalDav(root.chosen.server || server.text, user.text, password.text)
             }
         }
+        // Not while the server is asked: the account would be listed anyway.
         StickerButton {
             text: qsTr("Cancel")
+            enabled: !Accounts.busy
+            opacity: enabled ? 1 : Theme.fadedOpacity
             onClicked: root.cancelled()
         }
     }

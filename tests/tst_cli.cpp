@@ -1,5 +1,6 @@
 #include "Commands.h"
 
+#include "callie/CombinedSource.h"
 #include "callie/ContactBook.h"
 #include "callie/LocalCalendars.h"
 #include "callie/SampleSource.h"
@@ -10,6 +11,7 @@
 #include <QJsonObject>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTimer>
 
 #include <utility>
 
@@ -97,6 +99,20 @@ QDateTime at(int day, int hour, int minute = 0)
 
 } // namespace
 
+/// Sample calendars that take files a moment later, as a server would.
+class TakingSource : public SampleSource
+{
+public:
+    void importEvents(const QString &calendarId, const QByteArray &, Imported done) override
+    {
+        into = calendarId;
+        QTimer::singleShot(0, this, [this, done] { done(taken, error); });
+    }
+    QString into;
+    int taken = 1;
+    QString error;
+};
+
 class TestCli : public QObject
 {
     Q_OBJECT
@@ -128,6 +144,7 @@ private Q_SLOTS:
     void settingsReadAndChange();
     void calendarsAndAccountsTakeNewLooks();
     void importPicksItsCalendar();
+    void importReachesCalendarsElsewhere();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -765,6 +782,48 @@ void TestCli::importPicksItsCalendar()
     notes.write("not a calendar");
     notes.close();
     QCOMPARE(import(notes.fileName(), u"home"_s), 1);
+}
+
+void TestCli::importReachesCalendarsElsewhere()
+{
+    QTemporaryDir dir;
+    LocalCalendars local(dir.filePath(u"calendars"_s));
+    TakingSource elsewhere;
+    CombinedSource calendars;
+    calendars.setSources({&local, &elsewhere});
+    const QString party = dir.filePath(u"party.ics"_s);
+    QFile file(party);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nBEGIN:VEVENT\r\n"
+               "UID:p\r\nDTSTART:20261009T190000Z\r\nDTEND:20261009T230000Z\r\n"
+               "SUMMARY:Party\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
+    file.close();
+    const auto import = [&](const QString &calendar) {
+        m_out.clear();
+        m_err.clear();
+        const int code =
+            Commands::importFile(calendars, local, party, calendar, *m_outStream, *m_errStream);
+        m_outStream->flush();
+        m_errStream->flush();
+        return code;
+    };
+
+    // Named, a calendar of an account takes them, answering later.
+    QCOMPARE(import(u"Work"_s), 0);
+    QCOMPARE(elsewhere.into, u"work"_s);
+    QCOMPARE(m_out, u"Added 1 event to Work.\n"_s);
+    QVERIFY(local.calendars().isEmpty());
+
+    // Turned down part way, it says what went in and why the rest did not.
+    elsewhere.error = u"Google could not import the events: Forbidden"_s;
+    QCOMPARE(import(u"work"_s), 1);
+    QVERIFY(m_err.contains(u"1 event went in"_s));
+    QVERIFY(m_err.contains(u"Forbidden"_s));
+
+    // A calendar that takes no events is not offered.
+    elsewhere.error.clear();
+    QCOMPARE(import(u"Nowhere"_s), 1);
+    QVERIFY(m_err.contains(u"no calendar that takes events"_s));
 }
 
 QTEST_GUILESS_MAIN(TestCli)

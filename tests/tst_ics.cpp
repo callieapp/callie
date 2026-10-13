@@ -591,13 +591,19 @@ RRULE:FREQ=WEEKLY
 SUMMARY:Gym
 END:VEVENT
 BEGIN:VEVENT
+UID:walk
+DTSTART:20261006T080000
+DTEND:20261006T090000
+SUMMARY:Walk
+END:VEVENT
+BEGIN:VEVENT
 UID:trip
 DTSTART;VALUE=DATE:20261010
 DTEND;VALUE=DATE:20261012
 SUMMARY:Trip
 END:VEVENT
 )")));
-    QCOMPARE(events.size(), 4);
+    QCOMPARE(events.size(), 5);
     const auto byUid = [&events](const QString &uid) {
         return *std::ranges::find_if(
             events, [&uid](const QJsonObject &e) { return e[u"iCalUID"].toString() == uid; });
@@ -620,6 +626,11 @@ END:VEVENT
     QVERIFY(!moved.contains(u"recurrence"_s));
     // Written in UTC, it says so, as Google needs to repeat it.
     QCOMPARE(byUid(u"gym"_s)[u"start"][u"timeZone"].toString(), u"UTC"_s);
+    // With no zone at all, in this computer's.
+    const QJsonObject walk = byUid(u"walk"_s);
+    QCOMPARE(walk[u"start"][u"timeZone"].toString(),
+             QString::fromUtf8(QTimeZone::systemTimeZoneId()));
+    QCOMPARE(walk[u"start"][u"dateTime"].toString().left(19), u"2026-10-06T08:00:00"_s);
     // All day, with Google's end the day after the last.
     const QJsonObject trip = byUid(u"trip"_s);
     QCOMPARE(trip[u"start"][u"date"].toString(), u"2026-10-10"_s);

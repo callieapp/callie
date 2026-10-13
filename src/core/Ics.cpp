@@ -101,11 +101,14 @@ QJsonObject googleTime(const QDateTime &moment, bool allDay)
     if (allDay)
         return {{u"date"_s, moment.date().toString(Qt::ISODate)}};
     QJsonObject json{{u"dateTime"_s, moment.toString(Qt::ISODate)}};
-    // Google needs a zone to repeat an event in, so UTC is named too.
+    // Google needs a zone to read a time and repeat it in, so UTC is named
+    // too, and a time given with none is this computer's.
     if (moment.timeSpec() == Qt::TimeZone)
         json.insert(u"timeZone"_s, QString::fromUtf8(moment.timeZone().id()));
     else if (moment.timeSpec() == Qt::UTC)
         json.insert(u"timeZone"_s, u"UTC"_s);
+    else
+        json.insert(u"timeZone"_s, QString::fromUtf8(QTimeZone::systemTimeZoneId()));
     return json;
 }
 

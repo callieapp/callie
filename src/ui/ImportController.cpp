@@ -152,8 +152,9 @@ bool ImportController::add(const QString &calendarId)
             // Some may have gone in before the failure; sending again replaces them.
             if (!failed.isEmpty()) {
                 if (file == self->m_file)
-                    self->setError(count > 0
-                                       ? tr("Only %n events went in: %1", "", count).arg(failed)
+                    self->setError(count == 1 ? tr("Only 1 event went in: %1").arg(failed)
+                                   : count > 1
+                                       ? tr("Only %1 events went in: %2").arg(count).arg(failed)
                                        : failed);
                 return;
             }

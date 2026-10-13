@@ -528,6 +528,17 @@ Column {
         }
     }
 
+    Text {
+        visible: root.guests.length > 0 && !root.actions.canInvite(root.event.calendarId || "")
+        width: parent.width
+        wrapMode: Text.Wrap
+        text: qsTr(
+                  "This calendar is only on this computer, so guests are kept with the event but not sent invitations.")
+        color: Theme.textMuted
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.textSm
+    }
+
     TextArea {
         width: parent.width
         text: root.notes

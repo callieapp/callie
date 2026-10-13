@@ -791,6 +791,25 @@ std::optional<Changed> update(const Group &group, const Event &occurrence, const
     return Changed{after, rest};
 }
 
+void takeOrganizer(Group &group, const QString &self)
+{
+    if (self.isEmpty())
+        return;
+    for (const KEvent::Ptr &event : std::as_const(group)) {
+        if (event->attendees().isEmpty() || !event->organizer().email().isEmpty())
+            continue;
+        event->setOrganizer(KCalendarCore::Person(QString(), self));
+        KCalendarCore::Attendee::List attendees = event->attendees();
+        if (std::ranges::none_of(attendees, [&self](const auto &attendee) {
+                return sameAddress(attendee.email(), self);
+            }))
+            attendees.prepend(KCalendarCore::Attendee(QString(), self, false,
+                                                      KCalendarCore::Attendee::Accepted,
+                                                      KCalendarCore::Attendee::Chair));
+        event->setAttendees(attendees);
+    }
+}
+
 std::optional<Changed> respond(const Group &group, const Event &occurrence, const QString &status,
                                bool wholeSeries, const QString &self, QString *error)
 {

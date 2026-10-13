@@ -32,6 +32,7 @@ private Q_SLOTS:
     void anotherServerStartsAfresh();
     void theSameServerWrittenOtherwiseKeepsItsCopies();
     void resyncStartsOver();
+    void guestsAddedAreForTheServerToInvite();
 
 private:
     void sync();
@@ -410,6 +411,26 @@ void TestCalDavSource::resyncStartsOver()
     QCOMPARE(week().size(), 1);
     QCOMPARE(week().first().summary, u"Lunch"_s);
     QVERIFY(!m_source->resync(u"nobody@example.com"_s, &error));
+}
+
+void TestCalDavSource::guestsAddedAreForTheServerToInvite()
+{
+    sync();
+    for (const CalendarInfo &calendar : m_source->calendars())
+        QCOMPARE(calendar.invites, calendar.writable);
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    EventEdit edit;
+    edit.guests = QStringList{u"alex@example.com"_s};
+    const Event lunch = week().first();
+    QVERIFY(outcome([&](auto done) {
+                m_source->updateEvent(lunch, edit, EditScope::ThisEvent, done);
+            }).isEmpty());
+    QVERIFY(synced.wait(5000));
+    const QByteArray sent = m_server->calendars[FakeCalDavServer::calendarPath("work")]
+                                .items.value("/dav/calendars/me/work/lunch.ics")
+                                .data;
+    QVERIFY(sent.toLower().contains("organizer:mailto:me@example.com"));
+    QVERIFY(sent.contains("alex@example.com"));
 }
 
 QTEST_MAIN(TestCalDavSource)

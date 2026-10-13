@@ -77,6 +77,8 @@ void TestLocalCalendars::createsNamedFolders()
     QCOMPARE(calendars.first().displayName, u"Book club"_s);
     QCOMPARE(calendars.first().color, QColor(u"#33b679"_s));
     QVERIFY(calendars.first().writable);
+    // Nobody to send invitations through.
+    QVERIFY(!calendars.first().invites);
     // One without a color of its own gets one no other calendar has.
     QVERIFY(calendars.last().color.isValid());
     QVERIFY(calendars.last().color != calendars.first().color);

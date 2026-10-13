@@ -347,6 +347,11 @@ void TestIcs::monthlySeriesFollowTheirNewDay()
                     QDate(2026, 10, 29))
                 .value(0)
                 .contains(u"cannot move"_s));
+    // The last Saturday dropped on 3 October would be the fifth from the end.
+    QVERIFY(movedTo("FREQ=MONTHLY;BYDAY=-1SA", QDate(2026, 10, 31), QDate(2026, 10, 31),
+                    QDate(2026, 10, 3))
+                .value(0)
+                .contains(u"cannot move"_s));
     // A weekend every other week stays in one week: a day earlier is fine,
     // a day later would split it.
     const QStringList earlier = movedTo("FREQ=WEEKLY;INTERVAL=2;BYDAY=SA,SU", QDate(2026, 10, 3),

@@ -199,8 +199,6 @@ int runAccountsList()
     return 0;
 }
 
-/// The password, asked for without showing it when a person is typing, or read
-/// as the first line of what is piped in.
 /// The terminal as it was before a password was asked for, put back on Ctrl-C too.
 termios g_terminal{};
 
@@ -211,6 +209,8 @@ void restoreTerminal(int signal)
     std::raise(signal);
 }
 
+/// The password, asked for without showing it when a person is typing, or read
+/// as the first line of what is piped in.
 QString readPassword(const QString &prompt)
 {
     const bool typing = isatty(STDIN_FILENO);

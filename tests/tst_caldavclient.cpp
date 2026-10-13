@@ -17,6 +17,7 @@ class TestCalDavClient : public QObject
 private Q_SLOTS:
     void init();
     void discoveryFindsTheCalendars();
+    void aRootWithoutPrincipalTriesTheWellKnownAddress();
     void wrongPasswordsSaySo();
     void changesSinceAToken();
     void listsWhereThereAreNoTokens();
@@ -78,6 +79,18 @@ void TestCalDavClient::discoveryFindsTheCalendars()
     QVERIFY(work.writable);
     QVERIFY(!shared.writable);
     QVERIFY(!work.syncToken.isEmpty());
+}
+
+void TestCalDavClient::aRootWithoutPrincipalTriesTheWellKnownAddress()
+{
+    m_server->rootAnswers = true;
+    using Found = std::pair<DavAccount, DavError>;
+    const Found found = wait<Found>([&](auto done) {
+        m_client->discover(m_server->url(),
+                           [done](const DavAccount &a, const DavError &e) { done({a, e}); });
+    });
+    QVERIFY2(!found.second, qPrintable(found.second.message));
+    QCOMPARE(found.first.calendars.size(), 2);
 }
 
 void TestCalDavClient::wrongPasswordsSaySo()

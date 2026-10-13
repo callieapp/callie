@@ -283,7 +283,9 @@ void CalDavClient::findPrincipal(const QUrl &url, bool wellKnownTried,
     static const QByteArray body =
         R"(<d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>)";
     const auto tryWellKnown = [this, url, wellKnownTried, done](const DavError &error) {
-        if (wellKnownTried || error.isAuth() || error.status == 0) {
+        // An answer without a principal tries the well-known address too; a
+        // turned-down password or no answer at all does not.
+        if (wellKnownTried || error.isAuth() || (error && error.status == 0)) {
             done({}, error ? error
                            : DavError{404, tr("No CalDAV calendars were found at %1.")
                                                .arg(url.toString(QUrl::RemoveUserInfo))});

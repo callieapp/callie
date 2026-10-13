@@ -347,6 +347,17 @@ void TestIcs::monthlySeriesFollowTheirNewDay()
                     QDate(2026, 10, 29))
                 .value(0)
                 .contains(u"cannot move"_s));
+    // A monthly rule naming no day repeats on its first one's date, which
+    // moves to where the one moved lands.
+    QCOMPARE(movedTo("FREQ=MONTHLY", QDate(2026, 10, 10), QDate(2026, 11, 10), QDate(2026, 12, 2)),
+             (QStringList{u"2026-11-02"_s, u"2026-12-02"_s, u"2027-01-02"_s}));
+    QVERIFY(movedTo("FREQ=MONTHLY", QDate(2026, 10, 10), QDate(2026, 11, 10), QDate(2026, 11, 30))
+                .value(0)
+                .contains(u"cannot move"_s));
+    QCOMPARE(movedTo("FREQ=YEARLY", QDate(2026, 10, 10), QDate(2026, 10, 10), QDate(2026, 12, 2))
+                 .value(0),
+             u"2026-12-02"_s);
+
     // The last Saturday dropped on 3 October would be the fifth from the end.
     QVERIFY(movedTo("FREQ=MONTHLY;BYDAY=-1SA", QDate(2026, 10, 31), QDate(2026, 10, 31),
                     QDate(2026, 10, 3))

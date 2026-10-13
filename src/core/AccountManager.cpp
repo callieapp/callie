@@ -97,9 +97,12 @@ QString AccountManager::calDavId(const QUrl &server, const QString &user)
                                : name + u'@' + server.host();
 }
 
-void AccountManager::connectCalDav(CalDavClient &client, const QUrl &server, const QString &user,
+void AccountManager::connectCalDav(CalDavClient &client, const QUrl &given, const QString &user,
                                    const QString &password)
 {
+    // A name or password typed into the address goes nowhere it would be kept.
+    QUrl server = given;
+    server.setUserInfo({});
     QList<Account> existing;
     if (!m_store.load(existing)) {
         QTimer::singleShot(0, this,

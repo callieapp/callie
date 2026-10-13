@@ -233,7 +233,11 @@ void AccountsController::reload()
         m_error = m_setup.store->errorString();
     accounts.removeIf(
         [](const Account &a) { return a.provider != u"google" && a.provider != u"caldav"; });
-    if (accounts != m_accounts) {
+    // Compared whole, so signing in again to another server shows.
+    const auto same = [](const Account &a, const Account &b) {
+        return a == b && a.server == b.server && a.user == b.user;
+    };
+    if (!std::ranges::equal(accounts, m_accounts, same)) {
         m_accounts = accounts;
         Q_EMIT accountsChanged();
     }

@@ -39,8 +39,9 @@ public:
 
     /// Checks that the server takes the password and has calendars, then stores
     /// the password and lists the account, as connectGoogle does. For an account
-    /// already listed, only the password changes. Emits connected or failed once.
-    void connectCalDav(CalDavClient &client, const QUrl &server, const QString &user,
+    /// already listed, its password and server change. A name or password in
+    /// `given` is dropped. Emits connected or failed once.
+    void connectCalDav(CalDavClient &client, const QUrl &given, const QString &user,
                        const QString &password);
     /// The id a CalDAV account has: the user name with the server's host, as
     /// "me@dav.example.com", or "me@example.com (dav.example.com)".

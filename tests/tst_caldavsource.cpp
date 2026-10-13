@@ -31,6 +31,7 @@ private Q_SLOTS:
     void aCalendarGoneKeepsChangesNotSent();
     void anotherServerStartsAfresh();
     void theSameServerWrittenOtherwiseKeepsItsCopies();
+    void resyncStartsOver();
 
 private:
     void sync();
@@ -391,6 +392,24 @@ void TestCalDavSource::theSameServerWrittenOtherwiseKeepsItsCopies()
     sync();
     QCOMPARE(copies.entryList(QDir::Dirs | QDir::NoDotAndDotDot), before);
     QCOMPARE(week().size(), 1);
+}
+
+void TestCalDavSource::resyncStartsOver()
+{
+    sync();
+    // A copy gone wrong, as by hand: resync throws it away and fetches anew.
+    const QDir work(m_dir->filePath(u"me@example.com/work"_s));
+    QFile broken(work.filePath(u"lunch.ics"_s));
+    QVERIFY(broken.open(QIODevice::WriteOnly));
+    broken.write("not a calendar");
+    broken.close();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+    QString error;
+    QVERIFY2(m_source->resync(u"me@example.com"_s, &error), qPrintable(error));
+    QVERIFY(synced.wait(5000));
+    QCOMPARE(week().size(), 1);
+    QCOMPARE(week().first().summary, u"Lunch"_s);
+    QVERIFY(!m_source->resync(u"nobody@example.com"_s, &error));
 }
 
 QTEST_MAIN(TestCalDavSource)

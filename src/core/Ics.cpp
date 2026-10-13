@@ -333,6 +333,9 @@ bool moveRule(KEvent &series, QDate from, QDate landing, DayMap *map, QString *e
             const int pos = weekdays.first().pos() > 0
                                 ? (landing.day() - 1) / 7 + 1
                                 : -((landing.daysInMonth() - landing.day()) / 7 + 1);
+            // A fifth from either end is missing from some months.
+            if (std::abs(pos) > 4)
+                return refuse();
             const int weekday = landing.dayOfWeek();
             rule->setByDays({Rule::WDayPos(pos, short(weekday))});
             *map = [inMonth, pos, weekday](QDate day) {

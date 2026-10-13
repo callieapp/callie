@@ -50,7 +50,7 @@ jobs:
 
       # The runner image ships shellcheck.
       - name: Lint the installer
-        run: shellcheck -s sh www/install.sh tests/install_test.sh
+        run: shellcheck -s sh www/install.sh tests/install_test.sh tests/package_smoke.sh
 
   format:
     # Needs clang-format and qmlformat, so it runs where Qt is packaged.
@@ -93,6 +93,7 @@ jobs:
           qt6-qtbase-devel qt6-qtdeclarative-devel
           qt6-qtquickcontrols2-devel qt6-qtnetworkauth-devel qtkeychain-qt6-devel
           tomlplusplus-devel kf6-kcalendarcore-devel ftxui-devel dbus-daemon
+          radicale3
 
       - name: Install build dependencies (Debian)
         if: matrix.name == 'debian'
@@ -104,13 +105,16 @@ jobs:
             qml6-module-qtquick-controls qml6-module-qtquick-templates \
             qml6-module-qtquick-effects qml6-module-qtquick-dialogs \
             qt6-networkauth-dev qtkeychain-qt6-dev libtomlplusplus-dev libqt6sql6-sqlite \
-            libkf6calendarcore-dev libftxui-dev dbus-daemon
+            libkf6calendarcore-dev libftxui-dev dbus-daemon radicale
 
       - uses: actions/checkout@v5
 
       # One command covers configure, build, qmllint and ctest. The preset
-      # turns compiler warnings into errors.
+      # turns compiler warnings into errors. The CalDAV test against Radicale
+      # must run here rather than skip.
       - name: Configure, build, lint and test
+        env:
+          CALLIE_REQUIRE_RADICALE: "1"
         run: cmake --workflow --preset ci
 
       # Reviewers can see what a change looks like without building it.

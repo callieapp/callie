@@ -12,6 +12,7 @@ on:
       - packaging/**
       - scripts/check-version.sh
       - scripts/release-notes.sh
+      - tests/package_smoke.sh
       - CHANGELOG.md
       - .github/workflows/release.yml
   workflow_dispatch:
@@ -121,9 +122,56 @@ jobs:
           path: "*.deb"
           if-no-files-found: error
 
+  # Each package installed on a clean system, and run, before it is published.
+  installed:
+    needs: [rpm, deb]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: fedora
+            image: fedora:44
+            package: rpm
+          - name: debian
+            image: debian:trixie
+            package: deb
+    name: installed (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: packages
+
+      - name: Install the package (Fedora)
+        if: matrix.name == 'fedora'
+        run: >-
+          dnf install -y --setopt=install_weak_deps=False
+          $(find packages/RPMS -name 'callie-[0-9]*.rpm')
+
+      # The offscreen platform the check draws with is not one a desktop needs.
+      - name: Install the package (Debian)
+        if: matrix.name == 'debian'
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            qt6-qpa-plugins ./packages/callie_*.deb
+
+      - name: Run what was installed
+        run: tests/package_smoke.sh shots
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installed-${{ matrix.name }}
+          path: shots/
+          if-no-files-found: error
+
   publish:
     if: github.ref_type == 'tag'
-    needs: [source, rpm, deb]
+    needs: [source, rpm, deb, installed]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -50,5 +50,9 @@ Do not re-litigate these without being asked:
 Run `make` to list the commands; `make check` runs what CI runs. The Makefile wraps CMake presets,
 which work directly too: `cmake --workflow --preset ci` is CI's build, lint and test.
 
+`tst_radicale` syncs with a real CalDAV server. It runs when `radicale` is on the path or named by
+`CALLIE_RADICALE` (`pip install radicale` in a virtualenv is enough), and skips otherwise; CI
+requires it.
+
 `make run` and `make watch` enable Callie's logging categories and QML `console.log`. Log through
 `lcAuth`, `lcAccounts`, `lcSync`, `lcTheme` or `lcUi` from `callie/Logging.h`, never `qDebug()`, and never log tokens.

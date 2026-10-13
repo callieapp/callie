@@ -65,6 +65,8 @@ public:
     QHash<QByteArray, QByteArray> redirects;
     /// Paths answered without signing in, with a multistatus body.
     QHash<QByteArray, QByteArray> anonymous;
+    /// On, the server's root answers, but names no principal.
+    bool rootAnswers = false;
     /// The calendar home as the principal names it, when not the usual path.
     QByteArray homeHref = "/dav/calendars/me/";
     QMap<QByteArray, Calendar> calendars;
@@ -112,6 +114,8 @@ private:
         if (request.headers.value("authorization") != "Basic " + (user + ':' + password).toBase64())
             return {401, "no", {{"WWW-Authenticate", "Basic realm=\"test\""}}, "text/plain"};
         const QByteArray path = request.target;
+        if (request.method == "PROPFIND" && path == "/" && rootAnswers)
+            return xml(response(path, "<d:displayname>Welcome</d:displayname>"));
         if (request.method == "PROPFIND" && (path == "/" || path == "/.well-known/caldav"))
             return path == "/"
                        ? FakeHttpServer::Reply{404, "", {}, "text/plain"}

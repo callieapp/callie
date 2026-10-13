@@ -516,7 +516,7 @@ DTEND:20261007T140000Z
 SUMMARY:Focus
 END:VEVENT
 )"));
-    ics::takeOrganizer(events, u"me@example.com"_s);
+    ics::takeOrganizer(events, {}, u"me@example.com"_s);
     const auto byUid = [&events](const QString &uid) {
         return *std::ranges::find_if(events, [&uid](const auto &e) { return e->uid() == uid; });
     };
@@ -533,8 +533,25 @@ ORGANIZER:mailto:sam@example.com
 ATTENDEE:mailto:me@example.com
 END:VEVENT
 )"));
-    ics::takeOrganizer(theirs, u"me@example.com"_s);
+    ics::takeOrganizer(theirs, {}, u"me@example.com"_s);
     QCOMPARE(theirs.first()->organizer().email(), u"sam@example.com"_s);
+    // Guests it had already, as in a moved event, are not new ones to invite.
+    ics::Group moved = ics::parse(calendar(R"(BEGIN:VEVENT
+UID:old
+DTSTART:20261006T130000Z
+DTEND:20261006T140000Z
+ATTENDEE:mailto:alex@example.com
+END:VEVENT
+)"));
+    const ics::Group before = ics::parse(calendar(R"(BEGIN:VEVENT
+UID:old
+DTSTART:20261006T120000Z
+DTEND:20261006T130000Z
+ATTENDEE:mailto:alex@example.com
+END:VEVENT
+)"));
+    ics::takeOrganizer(moved, before, u"me@example.com"_s);
+    QVERIFY(moved.first()->organizer().email().isEmpty());
 }
 
 QTEST_MAIN(TestIcs)

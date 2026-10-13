@@ -69,6 +69,8 @@ public:
     QHash<QByteArray, QByteArray> anonymous;
     /// On, the server's root answers, but names no principal.
     bool rootAnswers = false;
+    /// The user's address, as the principal gives it; empty for none.
+    QByteArray address = "mailto:me@example.com";
     /// The calendar home as the principal names it, when not the usual path.
     QByteArray homeHref = "/dav/calendars/me/";
     QMap<QByteArray, Calendar> calendars;
@@ -128,9 +130,10 @@ private:
         if (request.method == "PROPFIND" && path == "/dav/principals/me/")
             return xml(
                 response(path, "<c:calendar-home-set><d:href>" + homeHref +
-                                   "</d:href></c:calendar-home-set><c:calendar-user-address-set>"
-                                   "<d:href>mailto:me@example.com</d:href><d:href>/dav/"
-                                   "principals/me/</d:href></c:calendar-user-address-set>"));
+                                   "</d:href></c:calendar-home-set><c:calendar-user-address-set>" +
+                                   (address.isEmpty() ? "" : "<d:href>" + address + "</d:href>") +
+                                   "<d:href>/dav/principals/me/</d:href>"
+                                   "</c:calendar-user-address-set>"));
         if (request.method == "PROPFIND" && path == "/dav/calendars/me/") {
             QByteArray body = response(path, "<d:resourcetype><d:collection/></d:resourcetype>");
             for (auto it = calendars.cbegin(); it != calendars.cend(); ++it)

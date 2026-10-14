@@ -55,6 +55,12 @@ Connect Google accounts in Settings, under Accounts: Callie opens your browser t
 account's calendars appear once you have. The same tab shows how each account's sync is going and
 removes an account. `callie accounts add google` does the same from a terminal.
 
+Outlook.com and Microsoft 365 accounts sign in the same way, with Connect a Microsoft account or
+`callie accounts add microsoft`. Callie keeps a copy of their calendars under
+`$XDG_DATA_HOME/callie/microsoft` and syncs them both ways through Microsoft Graph: guests get
+invitations from Outlook, invitations can be answered, and events can have a Teams link where the
+account has Teams. Builds name the Microsoft app they sign in as with `CALLIE_MICROSOFT_CLIENT_ID`.
+
 CalDAV accounts connect there too: pick Fastmail, iCloud or Nextcloud, or give any server's
 address, then the user name and an app password, which goes in the system keyring. Callie keeps a
 copy of each calendar under `$XDG_DATA_HOME/callie/caldav`, laid out like the calendars on this
@@ -108,6 +114,7 @@ callie delete <id>                       # --scope all deletes a whole series
 callie duplicate <id> --start 2026-10-12 # a copy, at the same time unless moved
 callie accounts                          # connected calendar accounts
 callie accounts add google               # sign in with Google in your browser
+callie accounts add microsoft            # or with Microsoft, for Outlook.com and Microsoft 365
 callie accounts add caldav caldav.fastmail.com me@fastmail.com # asks for an app password
 callie accounts remove google you@example.com # or caldav <id>
 callie calendars                         # calendars in each account, tab-separated

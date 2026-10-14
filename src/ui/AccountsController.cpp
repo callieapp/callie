@@ -8,7 +8,9 @@
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSource.h"
+#include "callie/GraphApi.h"
 #include "callie/Logging.h"
+#include "callie/MicrosoftSource.h"
 
 #include <QCoreApplication>
 #include <QDesktopServices>
@@ -43,6 +45,7 @@ void AccountsController::setUp(const Setup &setup)
         m_manager = new AccountManager(*m_setup.tokens, *m_setup.store, m_setup.cache, this);
         m_manager->setContacts(m_setup.contacts);
         m_manager->setCalDav(m_setup.caldav);
+        m_manager->setMicrosoft(m_setup.microsoft);
         connect(m_manager, &AccountManager::connected, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "connected" << account.id;
             const bool current = !m_auth.isNull();
@@ -55,6 +58,8 @@ void AccountsController::setUp(const Setup &setup)
             }
             if (account.provider == u"caldav" && m_setup.caldav)
                 m_setup.caldav->refresh();
+            if (account.provider == u"microsoft" && m_setup.microsoft)
+                m_setup.microsoft->refresh();
         });
         connect(m_manager, &AccountManager::removed, this, [this](const Account &account) {
             qCInfo(lcAccounts) << "removed" << account.id;
@@ -62,10 +67,15 @@ void AccountsController::setUp(const Setup &setup)
         });
         connect(m_manager, &AccountManager::failed, this, &AccountsController::finish);
     }
+    delete m_graph;
+    m_graph = nullptr;
     if (m_setup.network) {
         m_api = new GoogleCalendarApi(m_setup.network, this);
         if (m_setup.apiBaseUrl.isValid())
             m_api->setBaseUrl(m_setup.apiBaseUrl);
+        m_graph = new GraphApi(m_setup.network, this);
+        if (m_setup.graphBaseUrl.isValid())
+            m_graph->setBaseUrl(m_setup.graphBaseUrl);
     }
     reload();
 }
@@ -90,6 +100,12 @@ QString AccountsController::unavailable() const
     if (!m_setup.client.isValid())
         return tr("This build has no Google sign-in configured, so accounts cannot be added.");
     return {};
+}
+
+bool AccountsController::microsoftReady() const
+{
+    return m_setup.unavailable.isEmpty() && m_manager && m_graph && m_setup.microsoft &&
+           m_setup.microsoftClient.isValid();
 }
 
 bool AccountsController::calDavReady() const
@@ -151,7 +167,40 @@ void AccountsController::connectGoogle()
 
 void AccountsController::reconnect(const QString &id)
 {
-    signIn(id);
+    const bool microsoft = std::ranges::any_of(
+        m_accounts, [&id](const Account &a) { return a.provider == u"microsoft" && a.id == id; });
+    microsoft ? signInToMicrosoft(id) : signIn(id);
+}
+
+void AccountsController::connectMicrosoft()
+{
+    signInToMicrosoft({});
+}
+
+void AccountsController::signInToMicrosoft(const QString &hint)
+{
+    if (busy() || !microsoftReady())
+        return;
+    m_error.clear();
+    m_granted = false;
+    m_microsoftAuth = new MicrosoftAuth(m_setup.microsoftClient, this);
+    m_microsoftAuth->setLoginHint(hint);
+    if (m_setup.microsoftTokenUrl.isValid())
+        m_microsoftAuth->setEndpoints(m_setup.microsoftAuthUrl, m_setup.microsoftTokenUrl);
+    connect(m_microsoftAuth, &MicrosoftAuth::granted, this, [this] {
+        m_granted = true;
+        m_status = tr("Saving the account...");
+        Q_EMIT stateChanged();
+    });
+    connect(m_microsoftAuth, &MicrosoftAuth::authorizeUrlReady, this, [this](const QUrl &url) {
+        m_status = tr("Finish signing in to Microsoft in your browser.");
+        if (!QDesktopServices::openUrl(url))
+            m_status = tr("Open this address to sign in: %1").arg(url.toString(QUrl::FullyEncoded));
+        Q_EMIT stateChanged();
+    });
+    m_status = tr("Opening your browser...");
+    Q_EMIT stateChanged();
+    m_manager->connectMicrosoft(*m_microsoftAuth, *m_graph);
 }
 
 void AccountsController::signIn(const QString &hint)
@@ -190,8 +239,11 @@ void AccountsController::resync(const QString &provider, const QString &id)
         return;
     qCInfo(lcAccounts) << "resyncing" << provider << id;
     QString error;
-    if (provider == u"caldav") {
-        if (m_setup.caldav && !m_setup.caldav->resync(id, &error))
+    if (provider == u"caldav" || provider == u"microsoft") {
+        const bool forgotten = provider == u"caldav"
+                                   ? !m_setup.caldav || m_setup.caldav->resync(id, &error)
+                                   : !m_setup.microsoft || m_setup.microsoft->resync(id, &error);
+        if (!forgotten)
             finish(tr("Could not forget the calendars' copies: %1").arg(error));
         return;
     }
@@ -206,6 +258,7 @@ void AccountsController::cancel()
     // Deleted now, not later, so a sign-in finishing in the browser meanwhile
     // reaches nothing and cannot add the account or end the next attempt.
     delete m_auth;
+    delete m_microsoftAuth;
     m_status.clear();
     Q_EMIT stateChanged();
 }
@@ -231,8 +284,9 @@ void AccountsController::reload()
     QList<Account> accounts;
     if (m_setup.store && !m_setup.store->load(accounts))
         m_error = m_setup.store->errorString();
-    accounts.removeIf(
-        [](const Account &a) { return a.provider != u"google" && a.provider != u"caldav"; });
+    accounts.removeIf([](const Account &a) {
+        return a.provider != u"google" && a.provider != u"caldav" && a.provider != u"microsoft";
+    });
     // Compared whole, so signing in again to another server shows.
     const auto same = [](const Account &a, const Account &b) {
         return a == b && a.server == b.server && a.user == b.user;
@@ -243,12 +297,17 @@ void AccountsController::reload()
     }
     QList<Account> google;
     QList<CalDavSource::Account> caldav;
+    QStringList microsoft;
     for (const Account &account : std::as_const(accounts)) {
         if (account.provider == u"google")
             google << account;
+        else if (account.provider == u"microsoft")
+            microsoft << account.id;
         else
             caldav << CalDavSource::Account{account.id, QUrl(account.server), account.user};
     }
+    if (m_setup.microsoft)
+        m_setup.microsoft->setAccounts(microsoft);
     if (m_setup.source)
         m_setup.source->setAccounts(google);
     if (m_setup.caldav)
@@ -258,13 +317,16 @@ void AccountsController::reload()
 void AccountsController::finish(const QString &error)
 {
     // Only the attempt in progress may finish; a cancelled one has no auth left.
-    if (!m_auth && !m_removing && !m_checking)
+    if (!m_auth && !m_microsoftAuth && !m_removing && !m_checking)
         return;
     if (m_auth)
         m_auth->deleteLater();
+    if (m_microsoftAuth)
+        m_microsoftAuth->deleteLater();
     // Cleared now rather than when the deferred delete runs, so busy() is
     // already false when stateChanged() is emitted below.
     m_auth.clear();
+    m_microsoftAuth.clear();
     m_granted = false;
     m_removing = false;
     m_checking = false;

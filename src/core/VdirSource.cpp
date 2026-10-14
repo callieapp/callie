@@ -297,6 +297,11 @@ bool VdirSource::writeFile(const Folder &folder, const QString &fileName, const 
     return true;
 }
 
+QString VdirSource::fileOf(const Folder &folder, const QString &uid) const
+{
+    return read(folder).files.value(uid);
+}
+
 bool VdirSource::removeFile(const Folder &folder, const QString &fileName, QString *error)
 {
     const QString path = folder.path + u'/' + fileName;

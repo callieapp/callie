@@ -118,7 +118,7 @@ void TestCompletion::argumentsByCommand()
     QCOMPARE(values(completion.complete({u"calendars"_s, u"hide"_s, QString()})),
              (QStringList{u"Work"_s, u"Deep work"_s}));
     QCOMPARE(values(completion.complete({u"accounts"_s, u"remove"_s, QString()})),
-             (QStringList{u"google"_s, u"caldav"_s}));
+             (QStringList{u"google"_s, u"microsoft"_s, u"caldav"_s}));
     QCOMPARE(values(completion.complete({u"accounts"_s, u"remove"_s, u"google"_s, QString()})),
              QStringList{u"me@example.com"_s});
     QCOMPARE(values(completion.complete({u"accounts"_s, u"rename"_s, QString()})),

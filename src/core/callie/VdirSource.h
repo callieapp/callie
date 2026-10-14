@@ -79,6 +79,8 @@ protected:
     bool writeFile(const Folder &folder, const QString &fileName, const QByteArray &data,
                    QString *error);
     bool removeFile(const Folder &folder, const QString &fileName, QString *error);
+    /// The file in `folder` that holds the event `uid`; empty when none does.
+    [[nodiscard]] QString fileOf(const Folder &folder, const QString &uid) const;
 
 private:
     /// A parsed file, kept until the file changes.

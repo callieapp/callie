@@ -26,11 +26,14 @@
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/GraphApi.h"
 #include "callie/Identity.h"
 #include "callie/LocalCalendars.h"
 #include "callie/LogFile.h"
 #include "callie/Logging.h"
 #include "callie/LookedSource.h"
+#include "callie/MicrosoftSource.h"
+#include "callie/MicrosoftTokenProvider.h"
 #include "callie/QueuedSource.h"
 #include "callie/ReminderScheduler.h"
 #include "callie/SampleSource.h"
@@ -201,10 +204,13 @@ int main(int argc, char *argv[])
         err << "callie-gui: " << cache.errorString() << "\n";
     err.flush();
     QList<callie::CalDavSource::Account> calDavAccounts;
+    QStringList microsoftAccounts;
     for (const callie::Account &account : std::as_const(accounts)) {
         if (account.provider == u"caldav")
             calDavAccounts << callie::CalDavSource::Account{account.id, QUrl(account.server),
                                                             account.user};
+        if (account.provider == u"microsoft")
+            microsoftAccounts << account.id;
     }
     accounts.removeIf([](const callie::Account &a) { return a.provider != u"google"; });
 
@@ -216,6 +222,9 @@ int main(int argc, char *argv[])
     callie::GoogleSync sync(provider, api, cache);
     callie::GoogleSource google(cache, accounts);
     google.setSync(&sync);
+    const callie::MicrosoftClientConfig microsoftClient = callie::MicrosoftClientConfig::resolve();
+    callie::MicrosoftTokenProvider microsoftTokens(microsoftClient, tokens);
+    callie::GraphApi graph(&network);
     QObject::connect(&sync, &callie::GoogleSync::photoFound, &settings,
                      [&settings](const callie::Account &account, const QUrl &photo) {
                          settings.setAccountPhoto(account.id, photo);
@@ -230,17 +239,20 @@ int main(int argc, char *argv[])
     std::optional<callie::LocalCalendars> local;
     std::optional<callie::Subscriptions> subscriptions;
     std::optional<callie::CalDavSource> caldav;
+    std::optional<callie::MicrosoftSource> microsoft;
     if (!standalone) {
         local.emplace(callie::LocalCalendars::defaultRoot());
         subscriptions.emplace(callie::Subscriptions::defaultRoot(), &network);
         caldav.emplace(callie::CalDavSource::defaultRoot(), &network, &tokens);
         caldav->setAccounts(calDavAccounts);
         caldav->followLooks(&settings);
+        microsoft.emplace(callie::MicrosoftSource::defaultRoot(), &graph, &microsoftTokens);
+        microsoft->setAccounts(microsoftAccounts);
     }
     callie::CombinedSource combined;
-    combined.setSources(
-        local ? QList<callie::CalendarSource *>{&google, &*caldav, &*local, &*subscriptions}
-              : QList<callie::CalendarSource *>{&google});
+    combined.setSources(local ? QList<callie::CalendarSource *>{&google, &*microsoft, &*caldav,
+                                                                &*local, &*subscriptions}
+                              : QList<callie::CalendarSource *>{&google});
     callie::SampleSource sample;
     sample.setNow([] { return callie::Clock::instance()->now(); });
 
@@ -276,8 +288,13 @@ int main(int argc, char *argv[])
         QStringList ids;
         for (const callie::Account &account : std::as_const(accounts))
             ids << account.id;
-        contacts.keepOnly(ids);
+        contacts.keepOnly(ids + microsoftAccounts);
     }
+    if (microsoft)
+        QObject::connect(&*microsoft, &callie::MicrosoftSource::contactsFound, &contacts,
+                         [&contacts](const QString &account, const QList<callie::Contact> &people) {
+                             contacts.setContacts(account, people);
+                         });
     QObject::connect(
         &sync, &callie::GoogleSync::contactsFound, &contacts,
         [&contacts](const callie::Account &account, const QList<callie::Contact> &people) {
@@ -307,12 +324,15 @@ int main(int argc, char *argv[])
         if (!accounts.isEmpty())
             QTimer::singleShot(0, &google, &callie::GoogleSource::refresh);
     }
-    // CalDAV accounts sync as often as Google's, whatever the Google sign-in.
+    // CalDAV and Microsoft accounts sync as often as Google's, whatever the Google sign-in.
     QTimer calDavTimer;
     if (caldav) {
         QObject::connect(&calDavTimer, &QTimer::timeout, &*caldav, &callie::CalDavSource::refresh);
         calDavTimer.start(std::chrono::minutes(5));
         QTimer::singleShot(0, &*caldav, &callie::CalDavSource::refresh);
+        QObject::connect(&calDavTimer, &QTimer::timeout, &*microsoft,
+                         &callie::MicrosoftSource::refresh);
+        QTimer::singleShot(0, &*microsoft, &callie::MicrosoftSource::refresh);
     }
     // Subscriptions look every quarter hour for feeds due again, which is hourly.
     QTimer feedTimer;
@@ -342,6 +362,8 @@ int main(int argc, char *argv[])
                                                    &network, client,  {}};
     accountSetup.contacts = &contacts;
     accountSetup.caldav = caldav ? &*caldav : nullptr;
+    accountSetup.microsoftClient = microsoftClient;
+    accountSetup.microsoft = microsoft ? &*microsoft : nullptr;
     // Sample data and screenshots never show or touch the user's accounts.
     if (standalone) {
         accountSetup = {};

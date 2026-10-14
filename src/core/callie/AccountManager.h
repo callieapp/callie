@@ -19,6 +19,7 @@ class GoogleAuth;
 class GoogleCalendarApi;
 class GraphApi;
 class MicrosoftAuth;
+class MicrosoftSource;
 class TokenStore;
 
 /// Connects and removes accounts. Owns the ordering between the keyring and the
@@ -35,6 +36,8 @@ public:
     void setContacts(ContactBook *contacts) { m_contacts = contacts; }
     /// `caldav`, when given, loses a CalDAV account's calendars when it is removed.
     void setCalDav(CalDavSource *caldav) { m_caldav = caldav; }
+    /// `microsoft`, when given, loses a Microsoft account's calendars when it is removed.
+    void setMicrosoft(MicrosoftSource *microsoft) { m_microsoft = microsoft; }
 
     /// Signs in with Google and records the account. The token is stored before
     /// the account is listed, so a keyring failure never leaves an account
@@ -86,6 +89,7 @@ private:
     GoogleCache *m_cache;
     ContactBook *m_contacts = nullptr;
     CalDavSource *m_caldav = nullptr;
+    MicrosoftSource *m_microsoft = nullptr;
 };
 
 } // namespace callie

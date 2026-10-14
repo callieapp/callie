@@ -12,9 +12,13 @@
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/GraphApi.h"
 #include "callie/Ics.h"
 #include "callie/LocalCalendars.h"
 #include "callie/LogFile.h"
+#include "callie/MicrosoftAuth.h"
+#include "callie/MicrosoftSource.h"
+#include "callie/MicrosoftTokenProvider.h"
 #include "callie/QueuedSource.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
@@ -186,8 +190,8 @@ int runAccountsList()
         return 1;
     }
     if (accounts.isEmpty()) {
-        err << QObject::tr("No accounts. Add one with: callie accounts add google, or callie "
-                           "accounts add caldav <server> <user>")
+        err << QObject::tr("No accounts. Add one with: callie accounts add google, callie "
+                           "accounts add microsoft, or callie accounts add caldav <server> <user>")
             << "\n";
         return 0;
     }
@@ -311,6 +315,43 @@ int runAccountsAddGoogle(QCoreApplication &app)
     return app.exec();
 }
 
+int runAccountsAddMicrosoft(QCoreApplication &app)
+{
+    const MicrosoftClientConfig client = MicrosoftClientConfig::resolve();
+    if (!client.isValid()) {
+        err << QObject::tr(
+                   "callie: this build has no Microsoft app; set CALLIE_MICROSOFT_CLIENT_ID "
+                   "to the application id")
+            << "\n";
+        return 1;
+    }
+    MicrosoftAuth auth(client);
+    QNetworkAccessManager network;
+    GraphApi graph(&network);
+    KeychainTokenStore tokens;
+    AccountStore store(AccountStore::defaultPath());
+    AccountManager manager(tokens, store);
+    QObject::connect(&auth, &MicrosoftAuth::authorizeUrlReady, [](const QUrl &url) {
+        const QString link = url.toString(QUrl::FullyEncoded);
+        err << QObject::tr("Opening your browser to sign in to Microsoft. If it does not open, "
+                           "visit:\n%1")
+                   .arg(link)
+            << "\n";
+        err.flush();
+        QProcess::startDetached(QStringLiteral("xdg-open"), {link});
+    });
+    QObject::connect(&manager, &AccountManager::connected, [](const Account &account) {
+        out << account.id << "\n";
+        finish(0);
+    });
+    QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
+        err << QStringLiteral("callie: %1\n").arg(message);
+        finish(1);
+    });
+    QTimer::singleShot(0, &manager, [&] { manager.connectMicrosoft(auth, graph); });
+    return app.exec();
+}
+
 int runAccountsRemove(QCoreApplication &app, const Account &account)
 {
     KeychainTokenStore tokens;
@@ -325,6 +366,8 @@ int runAccountsRemove(QCoreApplication &app, const Account &account)
     manager.setContacts(&contacts);
     CalDavSource caldav(CalDavSource::defaultRoot(), nullptr, nullptr);
     manager.setCalDav(&caldav);
+    MicrosoftSource microsoft(MicrosoftSource::defaultRoot(), nullptr, nullptr);
+    manager.setMicrosoft(&microsoft);
 
     QObject::connect(&manager, &AccountManager::removed, [] { finish(0); });
     QObject::connect(&manager, &AccountManager::failed, [](const QString &message) {
@@ -523,9 +566,42 @@ int runSync(QCoreApplication &app)
         }
     }
 
+    // Then Microsoft accounts, the same way.
+    QStringList microsoftAccounts;
+    for (const Account &account : std::as_const(accounts)) {
+        if (account.provider == u"microsoft")
+            microsoftAccounts << account.id;
+    }
+    const MicrosoftClientConfig microsoftClient = MicrosoftClientConfig::resolve();
+    MicrosoftTokenProvider microsoftTokens(microsoftClient, tokens);
+    GraphApi graph(&network);
+    MicrosoftSource microsoft(MicrosoftSource::defaultRoot(), &graph, &microsoftTokens);
+    if (!microsoftAccounts.isEmpty() && !microsoftClient.isValid()) {
+        err << QObject::tr("callie: this build has no Microsoft app, so Microsoft accounts "
+                           "cannot sync; set CALLIE_MICROSOFT_CLIENT_ID")
+            << "\n";
+        failed = true;
+    } else if (!microsoftAccounts.isEmpty()) {
+        microsoft.setAccounts(microsoftAccounts);
+        QEventLoop syncing;
+        QObject::connect(&microsoft, &MicrosoftSource::synced, &syncing, &QEventLoop::quit);
+        microsoft.refresh();
+        if (microsoft.syncing())
+            syncing.exec();
+        for (const QVariant &entry : microsoft.syncReport()) {
+            const QVariantMap account = entry.toMap();
+            if (const QString error = account.value(u"error"_s).toString(); !error.isEmpty()) {
+                err << QStringLiteral("callie: %1: %2\n")
+                           .arg(account.value(u"account"_s).toString(), error);
+                failed = true;
+            }
+        }
+    }
+
     accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
     if (accounts.isEmpty()) {
-        if (subscriptions.calendars().isEmpty() && calDavAccounts.isEmpty())
+        if (subscriptions.calendars().isEmpty() && calDavAccounts.isEmpty() &&
+            microsoftAccounts.isEmpty())
             err << QObject::tr("No accounts. Add one with: callie accounts add google") << "\n";
         return failed ? 1 : 0;
     }
@@ -773,6 +849,9 @@ struct Backend
     std::unique_ptr<LocalCalendars> local;
     std::unique_ptr<Subscriptions> subscriptions;
     std::unique_ptr<CalDavSource> caldav;
+    std::unique_ptr<MicrosoftTokenProvider> microsoftTokens;
+    std::unique_ptr<GraphApi> graph;
+    std::unique_ptr<MicrosoftSource> microsoft;
     std::unique_ptr<CalendarSource> source;
 };
 
@@ -793,9 +872,12 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
         return nullptr;
     }
     QList<CalDavSource::Account> calDavAccounts;
+    QStringList microsoftAccounts;
     for (const Account &account : std::as_const(backend->accounts)) {
         if (account.provider == u"caldav")
             calDavAccounts << CalDavSource::Account{account.id, QUrl(account.server), account.user};
+        if (account.provider == u"microsoft")
+            microsoftAccounts << account.id;
     }
     backend->accounts.removeIf([](const Account &a) { return a.provider != kGoogle; });
     // Changes need the network and the keyring; reading needs neither.
@@ -809,9 +891,17 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
     backend->caldav = std::make_unique<CalDavSource>(CalDavSource::defaultRoot(),
                                                      backend->network.get(), backend->tokens.get());
     backend->caldav->setAccounts(calDavAccounts);
-    const bool others = !backend->local->calendars().isEmpty() ||
-                        !backend->subscriptions->calendars().isEmpty() ||
-                        !backend->caldav->calendars().isEmpty();
+    if (writing) {
+        backend->microsoftTokens = std::make_unique<MicrosoftTokenProvider>(
+            MicrosoftClientConfig::resolve(), *backend->tokens);
+        backend->graph = std::make_unique<GraphApi>(backend->network.get());
+    }
+    backend->microsoft = std::make_unique<MicrosoftSource>(
+        MicrosoftSource::defaultRoot(), backend->graph.get(), backend->microsoftTokens.get());
+    backend->microsoft->setAccounts(microsoftAccounts);
+    const bool others =
+        !backend->local->calendars().isEmpty() || !backend->subscriptions->calendars().isEmpty() ||
+        !backend->caldav->calendars().isEmpty() || !backend->microsoft->calendars().isEmpty();
     QList<CalendarSource *> sources;
     if (!backend->accounts.isEmpty()) {
         backend->cache = std::make_unique<GoogleCache>(GoogleCache::defaultPath());
@@ -833,43 +923,55 @@ std::unique_ptr<Backend> openBackend(bool sample, bool writing, int &code)
         sources << backend->google.get();
     }
     if ((!backend->google || backend->google->calendars().isEmpty()) && !others) {
-        err << (backend->accounts.isEmpty() && calDavAccounts.isEmpty()
+        err << (backend->accounts.isEmpty() && calDavAccounts.isEmpty() &&
+                        microsoftAccounts.isEmpty()
                     ? QObject::tr("No calendars. Add an account with: callie accounts add google, "
                                   "or make a calendar with: callie calendars new <name>")
                     : QObject::tr("Nothing synced yet. Run: callie sync"))
             << "\n";
         return nullptr;
     }
-    sources << backend->caldav.get() << backend->local.get() << backend->subscriptions.get();
+    sources << backend->microsoft.get() << backend->caldav.get() << backend->local.get()
+            << backend->subscriptions.get();
     auto combined = std::make_unique<CombinedSource>();
     combined->setSources(sources);
     backend->source = std::move(combined);
     return backend;
 }
 
-/// Sends the changes made to CalDAV calendars before the command ends, giving
-/// up after a while; what is left goes with the next sync. False when the
-/// server turned one down.
-bool sendCalDavChanges(const Backend &backend)
+/// Sends the changes made to one kind of server calendar before the command
+/// ends, giving up after a while; what is left goes with the next sync. False
+/// when the server turned one down.
+template<typename Source>
+bool sendChanges(Source *source)
 {
-    if (!backend.caldav || backend.caldav->waitingChanges().isEmpty())
+    if (!source || source->waitingChanges().isEmpty())
         return true;
     bool taken = true;
-    const QMetaObject::Connection refused = QObject::connect(
-        backend.caldav.get(), &CalendarSource::errorOccurred, [&taken](const QString &message) {
+    const QMetaObject::Connection refused =
+        QObject::connect(source, &CalendarSource::errorOccurred, [&taken](const QString &message) {
             err << QObject::tr("callie: not made: %1").arg(message) << "\n";
             taken = false;
         });
     QEventLoop sending;
-    QObject::connect(backend.caldav.get(), &CalDavSource::synced, &sending, &QEventLoop::quit);
+    QObject::connect(source, &Source::synced, &sending, &QEventLoop::quit);
     QTimer::singleShot(std::chrono::seconds(15), &sending, &QEventLoop::quit);
-    backend.caldav->refresh();
-    if (backend.caldav->syncing())
+    source->refresh();
+    if (source->syncing())
         sending.exec();
     QObject::disconnect(refused);
-    for (const QString &waiting : backend.caldav->waitingChanges())
+    for (const QString &waiting : source->waitingChanges())
         err << QObject::tr("callie: %1; they go with the next sync").arg(waiting) << "\n";
     return taken;
+}
+
+/// Sends what waits for CalDAV and Microsoft calendars; false when either
+/// turned a change down.
+bool sendServerChanges(const Backend &backend)
+{
+    const bool caldav = sendChanges(backend.caldav.get());
+    const bool microsoft = sendChanges(backend.microsoft.get());
+    return caldav && microsoft;
 }
 
 /// The event commands: agenda, search, invites, add, edit, delete, respond and duplicate.
@@ -920,7 +1022,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
             backend->caldav->followLooks(&settings);
         const int looked =
             commands.calendarLook(args.value(1), args.value(2), args.mid(3).join(u' '));
-        return sendCalDavChanges(*backend) ? looked : 1;
+        return sendServerChanges(*backend) ? looked : 1;
     }
     if (command == u"accounts")
         return commands.renameAccount(args.value(2), args.mid(3).join(u' '));
@@ -949,7 +1051,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
             err << QObject::tr("callie: not made: %1").arg(message) << "\n";
         for (const PendingChange &change : queued.changes())
             err << QObject::tr("callie: not sent: %1").arg(change.describe()) << "\n";
-        const bool sent = sendCalDavChanges(*backend);
+        const bool sent = sendServerChanges(*backend);
         return sent && queued.changes().isEmpty() && refused.isEmpty() ? code : 1;
 #else
         err << QObject::tr("callie: this build has no TUI; try: callie agenda") << "\n";
@@ -1008,7 +1110,7 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     }
     // Sample data answers at once; Google answers over the network.
     const int ended = result ? *result : app.exec();
-    return sendCalDavChanges(*backend) ? ended : 1;
+    return sendServerChanges(*backend) ? ended : 1;
 }
 
 int runAccounts(QCoreApplication &app, const QStringList &args)
@@ -1020,14 +1122,18 @@ int runAccounts(QCoreApplication &app, const QStringList &args)
         return runAccountsList();
     if (action == QLatin1String("add") && provider == kGoogle && args.size() == 3)
         return runAccountsAddGoogle(app);
+    if (action == QLatin1String("add") && provider == u"microsoft" && args.size() == 3)
+        return runAccountsAddMicrosoft(app);
     if (action == QLatin1String("add") && provider == u"caldav" && args.size() == 5)
         return runAccountsAddCalDav(app, args.at(3), args.at(4));
-    if (action == QLatin1String("remove") && (provider == kGoogle || provider == u"caldav") &&
+    if (action == QLatin1String("remove") &&
+        (provider == kGoogle || provider == u"caldav" || provider == u"microsoft") &&
         args.size() == 4)
         return runAccountsRemove(app, Account{provider, args.at(3)});
 
-    err << QObject::tr("usage: callie accounts [list | add google | add caldav <server> <user> | "
-                       "remove google|caldav <id> | rename <id> <name>]")
+    err << QObject::tr(
+               "usage: callie accounts [list | add google | add microsoft | add caldav <server> "
+               "<user> | remove google|microsoft|caldav <id> | rename <id> <name>]")
         << "\n";
     return 2;
 }
@@ -1292,7 +1398,7 @@ int main(int argc, char *argv[])
             return code;
         code =
             cli::Commands::importFile(*backend->source, local, args.value(1), calendar, out, err);
-        sendCalDavChanges(*backend);
+        sendServerChanges(*backend);
         return code;
     }
     if (command == u"subscribe" || command == u"unsubscribe")

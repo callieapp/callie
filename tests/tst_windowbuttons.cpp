@@ -22,6 +22,7 @@ private Q_SLOTS:
     void readsKwinrcOnKde();
     void readsGnomeSettingWithoutBlocking();
     void keepsTheDefaultWithoutGsettings();
+    void takesAnEmptyGnomeLayout();
 };
 
 void TestWindowButtons::gnomeDefaultHasOnlyClose()
@@ -106,6 +107,22 @@ void TestWindowButtons::readsGnomeSettingWithoutBlocking()
     QVERIFY(changed.wait(3000));
     qputenv("PATH", path);
     QCOMPARE(buttons.left(), QStringList{u"close"_s});
+    QCOMPARE(buttons.right(), QStringList());
+}
+
+void TestWindowButtons::takesAnEmptyGnomeLayout()
+{
+    // The app menu alone, as tiling setups often have: no buttons either side.
+    QTemporaryDir bin;
+    write(bin.filePath(u"gsettings"_s), "#!/bin/sh\necho \"'appmenu:'\"\n", true);
+    const QByteArray path = qgetenv("PATH");
+    qputenv("PATH", bin.path().toUtf8() + ':' + path);
+    qputenv("XDG_CURRENT_DESKTOP", "GNOME");
+    WindowButtons buttons;
+    QSignalSpy changed(&buttons, &WindowButtons::changed);
+    QVERIFY(changed.wait(3000));
+    qputenv("PATH", path);
+    QCOMPARE(buttons.left(), QStringList());
     QCOMPARE(buttons.right(), QStringList());
 }
 

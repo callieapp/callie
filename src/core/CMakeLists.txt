@@ -159,6 +159,8 @@ add_library(calliecore STATIC
     MicrosoftTokenProvider.cpp
     callie/GraphApi.h
     GraphApi.cpp
+    callie/GraphEvents.h
+    GraphEvents.cpp
     callie/GoogleCache.h
     GoogleCache.cpp
     callie/GoogleSync.h

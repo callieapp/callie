@@ -177,6 +177,12 @@ bool CalDavSource::resync(const QString &accountId, QString *error)
         *error = tr("There is no CalDAV account %1.").arg(accountId);
         return false;
     }
+    // Its copies are what a calendar being made or deleted is written into.
+    if (m_changing.contains(accountId) || m_waiting.contains(accountId)) {
+        *error = tr("A calendar of %1 is being made or deleted; try again once it is done.")
+                     .arg(accountId);
+        return false;
+    }
     stop(accountId);
     const QString path = accountPath(accountId);
     if (QDir(path).exists() && !QDir(path).removeRecursively()) {
@@ -196,8 +202,10 @@ bool CalDavSource::hasAccount(const QString &accountId) const
 
 void CalDavSource::stop(const QString &accountId)
 {
-    // Deleted now, so no answer to it can arrive and write for an account gone.
-    delete m_clients.take(accountId);
+    // Deleted now, so no answer to it can arrive and write for an account gone;
+    // a calendar change under way keeps it until it answers.
+    if (!m_changing.contains(accountId))
+        delete m_clients.take(accountId);
     m_again.remove(accountId);
     if (m_running.remove(accountId)) {
         Q_EMIT statusChanged();
@@ -914,6 +922,9 @@ void CalDavSource::whenIdle(const QString &accountId, std::function<void()> work
 void CalDavSource::doneChanging(const QString &accountId)
 {
     m_changing.remove(accountId);
+    // Removed meanwhile: what waited still answers, each finding no account.
+    if (!hasAccount(accountId) && !m_waiting.contains(accountId))
+        delete m_clients.take(accountId);
     next(accountId);
 }
 

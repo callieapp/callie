@@ -23,7 +23,8 @@ void TestRelease::notesComeFromTheBundledChangelog()
     const ReleaseInfo release;
     QVERIFY(!release.notesVersion().isEmpty());
     QVERIFY(release.notesDate().isValid());
-    QVERIFY(release.notes().contains(u"### New"_s));
+    // Any kind of section; a release of fixes alone has no "New".
+    QVERIFY(release.notes().contains(u"### "_s));
     QCOMPARE(release.support(), QUrl(u"https://ko-fi.com/sayonara_lara"_s));
 }
 

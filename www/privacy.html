@@ -22,7 +22,7 @@
 </header>
 
 <h1>Privacy Policy</h1>
-<p class="meta">Last updated: 12 October 2026</p>
+<p class="meta">Last updated: 14 October 2026</p>
 
 <h2>Summary</h2>
 <p>
@@ -44,6 +44,16 @@
   your Google contacts, the people you have been in touch with, and, for a Google Workspace
   account, your organization's directory, so it can suggest guests as you type them; and
   your Google profile photo, to show beside the account in Settings.
+</p>
+
+<h2>Microsoft accounts</h2>
+<p>
+  When you connect an Outlook.com or Microsoft 365 account, Callie signs in through
+  Microsoft and asks for these permissions: <code>Calendars.ReadWrite</code>, to show and
+  edit your events and answer invitations; <code>User.Read</code>, for your address, name and
+  profile photo; <code>People.Read</code>, for the people you work with, so it can suggest
+  guests as you type them; and <code>offline_access</code>, so you stay signed in. Callie
+  talks to Microsoft Graph directly from your computer.
 </p>
 
 <h2>How that information is used</h2>
@@ -90,11 +100,11 @@
 
 <h2>Where information is stored</h2>
 <ul>
-  <li>Calendar data is cached in your user directory, so the app works offline: Google calendars in a local database, and CalDAV calendars, subscriptions and calendars on this computer as .ics files.</li>
+  <li>Calendar data is cached in your user directory, so the app works offline: Google calendars in a local database, and Outlook and CalDAV calendars, subscriptions and calendars on this computer as .ics files.</li>
   <li>Contact names and email addresses are cached in a file in your user directory, for guest suggestions.</li>
-  <li>The address of each account's profile photo is kept in Callie's settings; the photo itself is loaded from Google when shown.</li>
+  <li>The address of a Google account's profile photo is kept in Callie's settings, and the photo is loaded from Google when shown; a Microsoft account's photo is saved in your user directory.</li>
   <li>Logs of what Callie did, such as syncs and their errors, are kept in your user directory. They never hold tokens, and hold event details only while "Log debug details" is on under Settings, Developer.</li>
-  <li>Authentication tokens and CalDAV app passwords are stored in your system keyring through the Secret Service API, not in plain text.</li>
+  <li>Google and Microsoft sign-in tokens and CalDAV app passwords are stored in your system keyring through the Secret Service API, not in plain text.</li>
   <li>Nothing is stored on any server operated by Callie, because there is none.</li>
 </ul>
 
@@ -113,7 +123,11 @@
   You can disconnect an account inside Callie at any time, which deletes its cached data
   and its stored token from your keyring. You can also revoke Callie's access to your
   Google account at
-  <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.
+  <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>,
+  to a personal Microsoft account at
+  <a href="https://account.live.com/consent/Manage">account.live.com/consent/Manage</a>, and to
+  a work or school account at
+  <a href="https://myapps.microsoft.com">myapps.microsoft.com</a>.
   Uninstalling Callie leaves its files in your user directory, as Linux packages do; delete
   the <code>callie</code> folders in <code>~/.cache</code>, <code>~/.config</code>,
   <code>~/.local/share</code> and <code>~/.local/state</code> to remove them.

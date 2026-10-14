@@ -221,6 +221,11 @@ bool MicrosoftSource::hasAccount(const QString &accountId) const
     return m_accounts.contains(accountId);
 }
 
+bool MicrosoftSource::gone(const Folder &folder) const
+{
+    return !hasAccount(folder.account) || !QDir(folder.path).exists();
+}
+
 void MicrosoftSource::setAccounts(const QStringList &accounts)
 {
     m_accounts = accounts;
@@ -538,6 +543,10 @@ void MicrosoftSource::pull(const QString &token, const Folder &folder, Done done
         [self, token, folder, done](const QList<QJsonObject> &items, const GraphError &error) {
             if (!self)
                 return;
+            if (self->gone(folder)) {
+                done({});
+                return;
+            }
             if (error) {
                 done(error.message);
                 return;
@@ -622,6 +631,10 @@ void MicrosoftSource::store(const QString &token, const Folder &folder, const QS
         {}, [self, folder, fileName, done](const QJsonObject &json, const GraphError &error) {
             if (!self)
                 return;
+            if (self->gone(folder)) {
+                done({});
+                return;
+            }
             State state = readState(folder.path);
             QString problem;
             if (error.status == 404) {

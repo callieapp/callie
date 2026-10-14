@@ -88,6 +88,8 @@ public:
     int refuseChanges = 0;
     /// Runs before a change to an event is answered, as while it is on its way.
     std::function<void()> whileChanging;
+    /// Runs before a calendar's events are listed, as while the list is on its way.
+    std::function<void()> whileListing;
 
 private:
     static FakeHttpServer::Reply json(const QJsonObject &body, int status = 200)
@@ -183,6 +185,8 @@ private:
                 const QString id = add(parts[2], event);
                 return json(items[id].event, 201);
             }
+            if (whileListing)
+                std::exchange(whileListing, nullptr)();
             QJsonArray list;
             for (const Item &item : std::as_const(items)) {
                 if (item.calendar == parts[2])

@@ -4,6 +4,7 @@
 #include "callie/MicrosoftSource.h"
 #include "callie/MicrosoftTokenProvider.h"
 
+#include <QDir>
 #include <QNetworkAccessManager>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -26,6 +27,8 @@ private Q_SLOTS:
     void changesWaitWhileOutlookIsDown();
     void aChangeOutlookTurnsDownGoesBack();
     void removingAnAccountForgetsItsCopies();
+    void forgettingDuringASyncLeavesNothingBehind();
+    void occurrencesAreFoundInTheirSeriesZone();
 
 private:
     void sync();
@@ -373,6 +376,79 @@ void TestMicrosoftSource::removingAnAccountForgetsItsCopies()
     QVERIFY(m_source->forget(kMe, &error));
     QVERIFY(m_source->calendars().isEmpty());
     QVERIFY(QDir(m_dir->path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
+}
+
+void TestMicrosoftSource::forgettingDuringASyncLeavesNothingBehind()
+{
+    sync();
+    // Removed while Outlook is listing the calendar's events.
+    m_graph->change(m_lunch, {{u"subject"_s, u"Lunch, later"_s}});
+    m_graph->whileListing = [this] {
+        QString error;
+        QVERIFY(m_source->forget(kMe, &error));
+    };
+    m_source->refresh();
+    QTRY_VERIFY(!m_source->syncing());
+    QTest::qWait(200);
+    // What the list brings goes nowhere.
+    QVERIFY(QDir(m_dir->path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty());
+    QVERIFY(m_source->calendars().isEmpty());
+}
+
+void TestMicrosoftSource::occurrencesAreFoundInTheirSeriesZone()
+{
+    // 9:00 in New York each day, and a run of all-day days.
+    const QString nine = m_graph->add(
+        u"cal1"_s,
+        {{u"subject"_s, u"Nine"_s},
+         {u"start"_s, at("2026-10-05T13:00:00")},
+         {u"end"_s, at("2026-10-05T13:30:00")},
+         {u"originalStartTimeZone"_s, u"Eastern Standard Time"_s},
+         {u"recurrence"_s,
+          QJsonObject{
+              {u"pattern"_s, QJsonObject{{u"type"_s, u"daily"_s}, {u"interval"_s, 1}}},
+              {u"range"_s, QJsonObject{{u"type"_s, u"numbered"_s},
+                                       {u"numberOfOccurrences"_s, 3},
+                                       {u"startDate"_s, u"2026-10-05"_s},
+                                       {u"recurrenceTimeZone"_s, u"Eastern Standard Time"_s}}}}}});
+    const QString away = m_graph->add(
+        u"cal1"_s,
+        {{u"subject"_s, u"Away"_s},
+         {u"isAllDay"_s, true},
+         {u"originalStartTimeZone"_s, u"Eastern Standard Time"_s},
+         {u"start"_s, at("2026-10-07T00:00:00")},
+         {u"end"_s, at("2026-10-08T00:00:00")},
+         {u"recurrence"_s,
+          QJsonObject{{u"pattern"_s, QJsonObject{{u"type"_s, u"daily"_s}, {u"interval"_s, 1}}},
+                      {u"range"_s, QJsonObject{{u"type"_s, u"numbered"_s},
+                                               {u"numberOfOccurrences"_s, 3},
+                                               {u"startDate"_s, u"2026-10-07"_s}}}}}});
+    sync();
+    Event tuesday;
+    for (const Event &event : week()) {
+        if (event.summary == u"Nine" && event.start.toUTC().date() == QDate(2026, 10, 6))
+            tuesday = event;
+    }
+    QVERIFY(!tuesday.uid.isEmpty());
+    QVERIFY(outcome([&](auto done) {
+                m_source->moveEvent(tuesday, tuesday.start.addSecs(3600), tuesday.end.addSecs(3600),
+                                    false, done);
+            }).isEmpty());
+    sync();
+    QVERIFY(called("PATCH", u"me/events/"_s + nine + u"_20261006T130000"_s));
+
+    // The middle day off, found by its date.
+    Event middle;
+    for (const Event &event : week()) {
+        if (event.summary == u"Away" && event.start.date() == QDate(2026, 10, 8))
+            middle = event;
+    }
+    QVERIFY(!middle.uid.isEmpty());
+    QVERIFY(outcome([&](auto done) { m_source->deleteEvent(middle, false, done); }).isEmpty());
+    sync();
+    QVERIFY(called("DELETE", u"me/events/"_s + away + u"_20261008T000000"_s));
+    QVERIFY(m_graph->items[away].cancelled.contains(u"2026-10-08"_s));
+    QVERIFY(m_source->waitingChanges().isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestMicrosoftSource)

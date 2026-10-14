@@ -24,6 +24,7 @@ private Q_SLOTS:
     void answersGoAsAnswers();
     void teamsLinksAreAskedFor();
     void changesWaitWhileOutlookIsDown();
+    void aChangeOutlookTurnsDownGoesBack();
     void removingAnAccountForgetsItsCopies();
 
 private:
@@ -312,6 +313,24 @@ void TestMicrosoftSource::changesWaitWhileOutlookIsDown()
     QVERIFY(m_source->waitingChanges().isEmpty());
     QCOMPARE(m_graph->items[m_lunch].event[u"start"][u"dateTime"].toString(),
              u"2026-10-06T13:00:00"_s);
+}
+
+void TestMicrosoftSource::aChangeOutlookTurnsDownGoesBack()
+{
+    sync();
+    m_graph->refuseChanges = 403;
+    QSignalSpy refused(m_source.get(), &CalendarSource::errorOccurred);
+    const Event lunch = find(u"Lunch"_s);
+    QVERIFY(outcome([&](auto done) {
+                m_source->moveEvent(lunch, lunch.start.addSecs(3600), lunch.end.addSecs(3600),
+                                    false, done);
+            }).isEmpty());
+    sync();
+    // Outlook's version stands, and the user hears why.
+    QCOMPARE(refused.size(), 1);
+    QVERIFY(refused.first().first().toString().contains(u"denied"_s));
+    QCOMPARE(find(u"Lunch"_s).start.time(), QTime(12, 0));
+    QVERIFY(m_source->waitingChanges().isEmpty());
 }
 
 void TestMicrosoftSource::removingAnAccountForgetsItsCopies()

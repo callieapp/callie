@@ -37,24 +37,11 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
         return;
     }
 
-    // The attempt owns this call's connections, and the flag makes sure only the
-    // first outcome is reported even if the flow signals more than once.
-    auto *attempt = new QObject(this);
-    auto finished = std::make_shared<bool>(false);
-    const auto finish = [attempt, finished] {
-        if (*finished)
-            return false;
-        *finished = true;
-        attempt->deleteLater();
-        return true;
-    };
-    const auto fail = [this, finish](const QString &message) {
-        if (finish())
-            Q_EMIT failed(message);
-    };
+    const Attempt attempt = begin();
+    const auto &[context, finish, fail] = attempt;
 
-    connect(&auth, &GoogleAuth::failed, attempt, fail);
-    connect(&auth, &GoogleAuth::granted, attempt,
+    connect(&auth, &GoogleAuth::failed, context, fail);
+    connect(&auth, &GoogleAuth::granted, context,
             [this, &api, finish, fail](const GoogleTokens &tokens) {
                 api.fetchPrimaryCalendarId(
                     tokens.accessToken,
@@ -78,21 +65,10 @@ void AccountManager::connectMicrosoft(MicrosoftAuth &auth, GraphApi &graph)
                            [this, message = m_store.errorString()] { Q_EMIT failed(message); });
         return;
     }
-    auto *attempt = new QObject(this);
-    auto finished = std::make_shared<bool>(false);
-    const auto finish = [attempt, finished] {
-        if (*finished)
-            return false;
-        *finished = true;
-        attempt->deleteLater();
-        return true;
-    };
-    const auto fail = [this, finish](const QString &message) {
-        if (finish())
-            Q_EMIT failed(message);
-    };
-    connect(&auth, &MicrosoftAuth::failed, attempt, fail);
-    connect(&auth, &MicrosoftAuth::granted, attempt,
+    const Attempt attempt = begin();
+    const auto &[context, finish, fail] = attempt;
+    connect(&auth, &MicrosoftAuth::failed, context, fail);
+    connect(&auth, &MicrosoftAuth::granted, context,
             [this, &graph, finish, fail](const MicrosoftTokens &tokens) {
                 graph.fetchMe(
                     tokens.accessToken,
@@ -106,6 +82,26 @@ void AccountManager::connectMicrosoft(MicrosoftAuth &auth, GraphApi &graph)
                     });
             });
     auth.authorize();
+}
+
+AccountManager::Attempt AccountManager::begin()
+{
+    // The context owns the attempt's connections, and the flag makes sure only
+    // the first outcome is reported even if the flow signals more than once.
+    auto *context = new QObject(this);
+    auto finished = std::make_shared<bool>(false);
+    const std::function<bool()> finish = [context, finished] {
+        if (*finished)
+            return false;
+        *finished = true;
+        context->deleteLater();
+        return true;
+    };
+    const std::function<void(const QString &)> fail = [this, finish](const QString &message) {
+        if (finish())
+            Q_EMIT failed(message);
+    };
+    return {context, finish, fail};
 }
 
 void AccountManager::record(const Account &account, const QString &secret,

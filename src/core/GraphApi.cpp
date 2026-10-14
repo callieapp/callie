@@ -57,10 +57,17 @@ void GraphApi::nextPage(const QString &accessToken, const QUrl &url, QList<QJson
                 for (const QJsonValue &item : body[u"value"].toArray())
                     items.append(item.toObject());
                 const QUrl next(body[u"@odata.nextLink"].toString());
-                if (next.isValid() && !next.isEmpty())
-                    nextPage(accessToken, next, std::move(items), std::move(pages));
-                else
+                if (next.isEmpty()) {
                     pages(items, {});
+                    return;
+                }
+                // The token goes only where the calls already go.
+                if (next.scheme() != m_baseUrl.scheme() || next.host() != m_baseUrl.host() ||
+                    next.port() != m_baseUrl.port()) {
+                    pages({}, {200, tr("Microsoft pointed the next page somewhere else")});
+                    return;
+                }
+                nextPage(accessToken, next, std::move(items), std::move(pages));
             });
 }
 

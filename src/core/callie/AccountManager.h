@@ -66,6 +66,16 @@ Q_SIGNALS:
     void failed(const QString &message);
 
 private:
+    /// One sign-in under way: what owns its connections, and the calls that
+    /// end it, of which only the first counts.
+    struct Attempt
+    {
+        QObject *context;
+        std::function<bool()> finish;
+        std::function<void(const QString &)> fail;
+    };
+    [[nodiscard]] Attempt begin();
+
     /// Stores `secret` for the account, then lists it, undoing the first if
     /// the second fails; `finish` says whether this outcome is the first.
     void record(const Account &account, const QString &secret, const std::function<bool()> &finish,

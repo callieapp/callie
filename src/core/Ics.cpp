@@ -944,51 +944,65 @@ Group fromGoogle(const QList<GoogleEvent> &events)
     return group;
 }
 
-QList<QJsonObject> toGoogle(const Group &events)
+QList<GoogleImport> toGoogle(const Group &events)
 {
-    QList<QJsonObject> list;
+    QList<GoogleImport> list;
     for (const Group &group : byUid(events)) {
+        const auto master = std::ranges::find_if(group, [](const KEvent::Ptr &event) {
+            return !event->hasRecurrenceId() &&
+                   event->status() != KCalendarCore::Incidence::StatusCanceled;
+        });
+        const bool series = master != group.cend() && (*master)->recurs();
         QStringList skipped;
-        QList<QJsonObject> changed;
+        QList<GoogleImport::Occurrence> changed;
+        QList<GoogleImport> alone;
         for (const KEvent::Ptr &event : group) {
             if (!event->hasRecurrenceId())
                 continue;
             const QDateTime id = event->recurrenceId();
-            skipped << dateLine(u"EXDATE"_s, id, event->allDay());
-            if (event->status() == KCalendarCore::Incidence::StatusCanceled)
+            const bool cancelled = event->status() == KCalendarCore::Incidence::StatusCanceled;
+            if (series && cancelled) {
+                skipped << dateLine(u"EXDATE"_s, id, event->allDay());
+                continue;
+            }
+            if (cancelled)
                 continue;
             QJsonObject json = googleEvent(*event);
+            if (series) {
+                // Who organizes and who comes stay as the series has them.
+                json.remove(u"organizer"_s);
+                json.remove(u"attendees"_s);
+                changed << GoogleImport::Occurrence{id, event->allDay(), json};
+                continue;
+            }
             json.insert(u"iCalUID"_s,
                         event->uid() + u'-' +
                             (event->allDay() ? id.date().toString(u"yyyyMMdd"_s)
                                              : id.toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s)));
-            changed << json;
+            alone << GoogleImport{json, {}};
         }
-        for (const KEvent::Ptr &event : group) {
-            if (event->hasRecurrenceId() ||
-                event->status() == KCalendarCore::Incidence::StatusCanceled)
-                continue;
-            QJsonObject json = googleEvent(*event);
-            QStringList lines = recurrenceLines(*event);
-            if (event->recurs()) {
-                const KCalendarCore::Recurrence *recurrence = event->recurrence();
-                const bool allDay = event->allDay();
+        if (master != group.cend()) {
+            const KEvent &event = **master;
+            QJsonObject json = googleEvent(event);
+            QStringList lines = recurrenceLines(event);
+            if (series) {
+                const KCalendarCore::Recurrence *recurrence = event.recurrence();
                 for (const QDateTime &moment : recurrence->exDateTimes())
                     lines << dateLine(u"EXDATE"_s, moment, false);
                 for (const QDate &date : recurrence->exDates())
                     lines << dateLine(u"EXDATE"_s, date.startOfDay(), true);
                 for (const QDateTime &moment : recurrence->rDateTimes())
-                    lines << dateLine(u"RDATE"_s, moment, allDay);
+                    lines << dateLine(u"RDATE"_s, moment, event.allDay());
                 for (const QDate &date : recurrence->rDates())
                     lines << dateLine(u"RDATE"_s, date.startOfDay(), true);
                 lines << skipped;
             }
             if (!lines.isEmpty())
                 json.insert(u"recurrence"_s, QJsonArray::fromStringList(lines));
-            json.insert(u"iCalUID"_s, event->uid());
-            list << json;
+            json.insert(u"iCalUID"_s, event.uid());
+            list << GoogleImport{json, changed};
         }
-        list << changed;
+        list << alone;
     }
     return list;
 }

@@ -45,10 +45,25 @@ using Group = QList<KCalendarCore::Event::Ptr>;
 /// becomes an EXDATE of its series, a changed one keeps its RECURRENCE-ID.
 [[nodiscard]] Group fromGoogle(const QList<GoogleEvent> &events);
 
-/// `events` as Google's events.import takes them. A changed occurrence is
-/// left out of its series and goes as an event of its own, since Google
-/// takes no RECURRENCE-ID; a cancelled one is only left out.
-[[nodiscard]] QList<QJsonObject> toGoogle(const Group &events);
+/// One event as Google's events.import takes it, with the occurrences of its
+/// series the file changes. Google takes no RECURRENCE-ID, so each of those is
+/// patched once the series is in, found by the start it would have had.
+struct GoogleImport
+{
+    struct Occurrence
+    {
+        QDateTime start;
+        bool allDay = false;
+        QJsonObject fields;
+    };
+    QJsonObject event;
+    QList<Occurrence> changed;
+};
+
+/// `events` as Google's events.import takes them. A cancelled occurrence is
+/// an EXDATE; a changed one whose series is not in the file goes as an event
+/// of its own.
+[[nodiscard]] QList<GoogleImport> toGoogle(const Group &events);
 
 /// What expanding a calendar's events needs to know about the calendar.
 struct Calendar

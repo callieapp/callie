@@ -225,9 +225,11 @@ void GoogleCalendarApi::importEvent(const QString &accessToken, const QString &c
 
 void GoogleCalendarApi::patchEvent(const QString &accessToken, const QString &calendarId,
                                    const QString &eventId, const QJsonObject &fields,
-                                   EventResult result, bool conference)
+                                   EventResult result, bool conference, bool quietly)
 {
     QUrl url = eventUrl(calendarId, eventId);
+    if (quietly)
+        url.setQuery(QStringLiteral("sendUpdates=none"));
     if (conference)
         url.setQuery(url.query() + QStringLiteral("&conferenceDataVersion=1"));
     QNetworkRequest request(url);
@@ -238,6 +240,24 @@ void GoogleCalendarApi::patchEvent(const QString &accessToken, const QString &ca
          [result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) {
              result(error ? GoogleEvent() : parseGoogleEvent(body), error);
          });
+}
+
+void GoogleCalendarApi::fetchInstances(const QString &accessToken, const QString &calendarId,
+                                       const QString &eventId, const QDateTime &from,
+                                       const QDateTime &to, InstancesResult result)
+{
+    get(accessToken,
+        QStringLiteral("calendars/%1/events/%2/instances")
+            .arg(encoded(calendarId), encoded(eventId)),
+        {{QStringLiteral("timeMin"), from.toUTC().toString(Qt::ISODate)},
+         {QStringLiteral("timeMax"), to.toUTC().toString(Qt::ISODate)},
+         {QStringLiteral("showDeleted"), QStringLiteral("true")}},
+        [result = std::move(result)](const QJsonObject &body, const GoogleApiError &error) {
+            QList<GoogleEvent> instances;
+            for (const QJsonValue &item : body[u"items"].toArray())
+                instances.append(parseGoogleEvent(item.toObject()));
+            result(instances, error);
+        });
 }
 
 void GoogleCalendarApi::deleteEvent(const QString &accessToken, const QString &calendarId,

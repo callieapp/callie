@@ -560,7 +560,7 @@ END:VEVENT
 
 void TestIcs::eventsGoToGoogleWithTheirRepeats()
 {
-    const QList<QJsonObject> events = ics::toGoogle(ics::parse(calendar(R"(BEGIN:VEVENT
+    const QList<ics::GoogleImport> imports = ics::toGoogle(ics::parse(calendar(R"(BEGIN:VEVENT
 UID:standup
 DTSTART;TZID=Europe/Berlin:20261005T090000
 DTEND;TZID=Europe/Berlin:20261005T091500
@@ -605,10 +605,13 @@ DTEND;VALUE=DATE:20261012
 SUMMARY:Trip
 END:VEVENT
 )")));
-    QCOMPARE(events.size(), 5);
-    const auto byUid = [&events](const QString &uid) {
-        return *std::ranges::find_if(
-            events, [&uid](const QJsonObject &e) { return e[u"iCalUID"].toString() == uid; });
+    QCOMPARE(imports.size(), 4);
+    const auto byUid = [&imports](const QString &uid) {
+        return std::ranges::find_if(imports,
+                                    [&uid](const ics::GoogleImport &i) {
+                                        return i.event[u"iCalUID"].toString() == uid;
+                                    })
+            ->event;
     };
     const QJsonObject series = byUid(u"standup"_s);
     QCOMPARE(series[u"start"][u"timeZone"].toString(), u"Europe/Berlin"_s);
@@ -618,14 +621,19 @@ END:VEVENT
     QCOMPARE(series[u"attendees"][0][u"email"].toString(), u"alex@example.com"_s);
     const QStringList lines = series[u"recurrence"].toVariant().toStringList();
     QVERIFY(lines.contains(u"RRULE:FREQ=DAILY;COUNT=5"_s));
-    // Its own skipped day, and the two changed ones, which Google takes no
-    // RECURRENCE-ID for.
+    // Its own skipped day and the cancelled one; the moved one stays, to be
+    // patched once the series is in, since Google takes no RECURRENCE-ID.
     QVERIFY(lines.contains(u"EXDATE:20261006T070000Z"_s));
-    QVERIFY(lines.contains(u"EXDATE:20261007T070000Z"_s));
+    QVERIFY(!lines.contains(u"EXDATE:20261007T070000Z"_s));
     QVERIFY(lines.contains(u"EXDATE:20261008T070000Z"_s));
-    const QJsonObject moved = byUid(u"standup-20261007T070000Z"_s);
-    QCOMPARE(moved[u"summary"].toString(), u"Standup, later"_s);
-    QVERIFY(!moved.contains(u"recurrence"_s));
+    const auto standup = std::ranges::find_if(imports, [](const ics::GoogleImport &i) {
+        return i.event[u"iCalUID"].toString() == u"standup";
+    });
+    QCOMPARE(standup->changed.size(), 1);
+    const ics::GoogleImport::Occurrence moved = standup->changed.first();
+    QCOMPARE(moved.start.toUTC(), QDateTime(QDate(2026, 10, 7), QTime(7, 0), QTimeZone::UTC));
+    QCOMPARE(moved.fields[u"summary"].toString(), u"Standup, later"_s);
+    QVERIFY(!moved.fields.contains(u"iCalUID"_s));
     // Written in UTC, it says so, as Google needs to repeat it.
     QCOMPARE(byUid(u"gym"_s)[u"start"][u"timeZone"].toString(), u"UTC"_s);
     // With no zone at all, in this computer's.
@@ -637,6 +645,18 @@ END:VEVENT
     const QJsonObject trip = byUid(u"trip"_s);
     QCOMPARE(trip[u"start"][u"date"].toString(), u"2026-10-10"_s);
     QCOMPARE(trip[u"end"][u"date"].toString(), u"2026-10-12"_s);
+
+    // A changed occurrence without its series goes as an event of its own.
+    const QList<ics::GoogleImport> alone = ics::toGoogle(ics::parse(calendar(R"(BEGIN:VEVENT
+UID:other
+RECURRENCE-ID:20261007T070000Z
+DTSTART:20261007T090000Z
+DTEND:20261007T091500Z
+SUMMARY:Moved
+END:VEVENT
+)")));
+    QCOMPARE(alone.size(), 1);
+    QCOMPARE(alone.first().event[u"iCalUID"].toString(), u"other-20261007T070000Z"_s);
 }
 
 void TestIcs::googleEventsBecomeICalendar()

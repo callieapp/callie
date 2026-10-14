@@ -96,6 +96,7 @@ private Q_SLOTS:
     void createReportsWhatGoogleSaid();
     void createWithTakenIdIsAlreadyMade();
     void importedEventsAreStoredOneByOne();
+    void importedOccurrencesArePatchedQuietly();
     void answerKeepsOtherGuestsIntact();
     void answerNeedsAnInvitation();
     void deletingAnOccurrenceKeepsTheRest();
@@ -669,7 +670,7 @@ void TestGoogleSync::importedEventsAreStoredOneByOne()
     m_google->on(u"calendars/team/events/import"_s, 400,
                  R"({"error":{"message":"Invalid start time."}})");
     QSignalSpy changed(m_sync.get(), &GoogleSync::changed);
-    const QJsonObject event{{u"iCalUID"_s, u"pottery"_s}};
+    const ics::GoogleImport event{{{u"iCalUID"_s, u"pottery"_s}}, {}};
     int count = -1;
     QString error;
     m_sync->importEvents(kAccount, u"team"_s, {event, event, event},
@@ -684,6 +685,56 @@ void TestGoogleSync::importedEventsAreStoredOneByOne()
     QCOMPARE(changed.size(), 1);
     const QList<GoogleEvent> stored = m_cache->events(kAccount, u"team"_s);
     QVERIFY(std::ranges::any_of(stored, [](const GoogleEvent &e) { return e.id == u"made"; }));
+}
+
+void TestGoogleSync::importedOccurrencesArePatchedQuietly()
+{
+    syncOnce();
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events/import"_s, 200,
+                 R"({"id":"standup","status":"confirmed","summary":"Standup",)"
+                 R"("recurrence":["RRULE:FREQ=DAILY;COUNT=5"],)"
+                 R"("start":{"dateTime":"2026-10-05T07:00:00Z"},)"
+                 R"("end":{"dateTime":"2026-10-05T07:15:00Z"}})");
+    m_google->on(u"calendars/team/events/standup/instances"_s, 200,
+                 R"({"items":[{"id":"standup_20261006T070000Z","status":"confirmed",)"
+                 R"("recurringEventId":"standup",)"
+                 R"("originalStartTime":{"dateTime":"2026-10-06T07:00:00Z"},)"
+                 R"("start":{"dateTime":"2026-10-06T07:00:00Z"},)"
+                 R"("end":{"dateTime":"2026-10-06T07:15:00Z"}},)"
+                 R"({"id":"standup_20261007T070000Z","status":"confirmed",)"
+                 R"("recurringEventId":"standup",)"
+                 R"("originalStartTime":{"dateTime":"2026-10-07T07:00:00Z"},)"
+                 R"("start":{"dateTime":"2026-10-07T07:00:00Z"},)"
+                 R"("end":{"dateTime":"2026-10-07T07:15:00Z"}}]})");
+    m_google->on(u"calendars/team/events/standup_20261007T070000Z"_s, 200,
+                 R"({"id":"standup_20261007T070000Z","status":"confirmed",)"
+                 R"("summary":"Standup, later","recurringEventId":"standup",)"
+                 R"("originalStartTime":{"dateTime":"2026-10-07T07:00:00Z"},)"
+                 R"("start":{"dateTime":"2026-10-07T09:00:00Z"},)"
+                 R"("end":{"dateTime":"2026-10-07T09:15:00Z"}})");
+    const QDateTime original(QDate(2026, 10, 7), QTime(7, 0), QTimeZone::UTC);
+    const ics::GoogleImport series{{{u"iCalUID"_s, u"standup"_s}},
+                                   {{original, false, {{u"summary"_s, u"Standup, later"_s}}}}};
+    int count = -1;
+    QString error = u"no answer"_s;
+    m_sync->importEvents(kAccount, u"team"_s, {series}, [&](int imported, const QString &failed) {
+        count = imported;
+        error = failed;
+    });
+    QTRY_COMPARE(count, 1);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    // The one occurrence it changed, found among the series', and no one told.
+    QCOMPARE(m_google->count(u"calendars/team/events/standup_20261007T070000Z"_s), 1);
+    QCOMPARE(m_google->count(u"calendars/team/events/standup_20261006T070000Z"_s), 0);
+    for (const auto &[path, query] : std::as_const(m_google->requests)) {
+        if (path.endsWith(u"standup_20261007T070000Z"))
+            QCOMPARE(query.queryItemValue(u"sendUpdates"_s), u"none"_s);
+    }
+    const QList<GoogleEvent> stored = m_cache->events(kAccount, u"team"_s);
+    QVERIFY(std::ranges::any_of(stored, [](const GoogleEvent &e) {
+        return e.id == u"standup_20261007T070000Z" && e.summary == u"Standup, later";
+    }));
 }
 
 void TestGoogleSync::createRetriesOnceAfterRejection()

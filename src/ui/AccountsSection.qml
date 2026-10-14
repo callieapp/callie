@@ -26,7 +26,7 @@ Column {
         width: parent.width
         wrapMode: Text.Wrap
         text: qsTr(
-                  "No accounts yet. Connect a Google account, or a CalDAV one such as Fastmail, iCloud or Nextcloud, to see its calendars here.")
+                  "No accounts yet. Connect a Google or Microsoft account, or a CalDAV one such as Fastmail, iCloud or Nextcloud, to see its calendars here.")
         color: Theme.textMuted
         font.family: Theme.fontFamily
         font.pixelSize: Theme.textMd
@@ -48,6 +48,11 @@ Column {
 
                 readonly property var modelData: account.modelData
                 readonly property bool caldav: modelData.provider === "caldav"
+                readonly property bool microsoft: modelData.provider === "microsoft"
+                /// The account can sign in again or be removed here.
+                readonly property bool manageable: caldav ? Accounts.calDavReady : microsoft
+                                                            ? Accounts.microsoftReady :
+                                                              Accounts.unavailable === ""
                 readonly property var entry: root.entryFor(modelData.id)
                 /// Callie asks for more than this account granted when it signed in.
                 readonly property bool missing: !!entry && (entry.missingScopes || []).length > 0
@@ -163,7 +168,7 @@ Column {
                     // has asked for since, such as reading contacts.
                     StickerButton {
                         id: reconnect
-                        visible: row.caldav ? Accounts.calDavReady : Accounts.unavailable === ""
+                        visible: row.manageable
                         enabled: !Accounts.busy
                         accent: row.problem !== "" || row.missing
                         text: qsTr("Reconnect")
@@ -195,7 +200,7 @@ Column {
                     }
                     // Removing takes a second click, since the account's sign-in goes too.
                     DangerButton {
-                        visible: row.caldav ? Accounts.calDavReady : Accounts.unavailable === ""
+                        visible: row.manageable
                         enabled: !Accounts.busy
                         label: qsTr("Remove")
                         armedLabel: qsTr("Click again to remove")
@@ -256,6 +261,13 @@ Column {
             glyph: "plus"
             text: qsTr("Connect a Google account")
             onClicked: Accounts.connectGoogle()
+        }
+        StickerButton {
+            visible: Accounts.microsoftReady
+            enabled: !Accounts.busy
+            glyph: "plus"
+            text: qsTr("Connect a Microsoft account")
+            onClicked: Accounts.connectMicrosoft()
         }
         StickerButton {
             enabled: Accounts.calDavReady && !Accounts.busy

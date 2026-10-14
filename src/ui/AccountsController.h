@@ -3,6 +3,7 @@
 #include "callie/Account.h"
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleClientConfig.h"
+#include "callie/MicrosoftAuth.h"
 
 #include <QObject>
 #include <QPointer>
@@ -18,6 +19,8 @@ class AccountManager;
 class AccountStore;
 class CalDavClient;
 class CalDavSource;
+class GraphApi;
+class MicrosoftSource;
 class ContactBook;
 class GoogleCache;
 class GoogleCalendarApi;
@@ -38,6 +41,8 @@ class AccountsController : public QObject
     Q_PROPERTY(QString unavailable READ unavailable CONSTANT)
     /// CalDAV accounts can be connected here; they need no Google sign-in.
     Q_PROPERTY(bool calDavReady READ calDavReady CONSTANT)
+    /// Microsoft accounts can be connected: the build or environment names the app.
+    Q_PROPERTY(bool microsoftReady READ microsoftReady CONSTANT)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
     /// A sign-in is waiting on the browser, which cancel() can stop. Once Google
     /// grants access the account is being saved, and like a removal that runs on.
@@ -65,6 +70,13 @@ public:
         ContactBook *contacts = nullptr;
         /// Syncs the CalDAV accounts, and loses their calendars when removed.
         CalDavSource *caldav = nullptr;
+        /// Signs in to Microsoft accounts and syncs them, through these
+        /// endpoints, which tests point at fakes.
+        MicrosoftClientConfig microsoftClient = {};
+        MicrosoftSource *microsoft = nullptr;
+        QUrl microsoftAuthUrl = {};
+        QUrl microsoftTokenUrl = {};
+        QUrl graphBaseUrl = {};
     };
 
     static AccountsController *instance();
@@ -74,14 +86,23 @@ public:
 
     [[nodiscard]] QVariantList accounts() const;
     [[nodiscard]] QString unavailable() const;
-    [[nodiscard]] bool busy() const { return m_auth != nullptr || m_removing || m_checking; }
+    [[nodiscard]] bool busy() const
+    {
+        return m_auth != nullptr || m_microsoftAuth != nullptr || m_removing || m_checking;
+    }
     [[nodiscard]] bool calDavReady() const;
-    [[nodiscard]] bool signingIn() const { return m_auth != nullptr && !m_granted; }
+    [[nodiscard]] bool microsoftReady() const;
+    [[nodiscard]] bool signingIn() const
+    {
+        return (m_auth != nullptr || m_microsoftAuth != nullptr) && !m_granted;
+    }
     [[nodiscard]] QString status() const { return m_status; }
     [[nodiscard]] QString error() const { return m_error; }
 
     /// Opens the browser to sign in with Google; the account appears once done.
     Q_INVOKABLE void connectGoogle();
+    /// Opens the browser to sign in with Microsoft: Outlook.com or Microsoft 365.
+    Q_INVOKABLE void connectMicrosoft();
     /// Signs an account in again, with that address picked in the browser, so
     /// it can grant permissions added since it first signed in.
     Q_INVOKABLE void reconnect(const QString &id);
@@ -102,6 +123,7 @@ Q_SIGNALS:
 
 private:
     void signIn(const QString &hint);
+    void signInToMicrosoft(const QString &hint);
     explicit AccountsController(QObject *parent);
     void reload();
     void finish(const QString &error);
@@ -110,6 +132,8 @@ private:
     AccountManager *m_manager = nullptr;
     GoogleCalendarApi *m_api = nullptr;
     QPointer<GoogleAuth> m_auth;
+    QPointer<MicrosoftAuth> m_microsoftAuth;
+    GraphApi *m_graph = nullptr;
     /// Google said yes; the account is being stored and can no longer be stopped.
     bool m_granted = false;
     bool m_removing = false;

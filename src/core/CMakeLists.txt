@@ -161,6 +161,8 @@ add_library(calliecore STATIC
     GraphApi.cpp
     callie/GraphEvents.h
     GraphEvents.cpp
+    callie/MicrosoftSource.h
+    MicrosoftSource.cpp
     callie/GoogleCache.h
     GoogleCache.cpp
     callie/GoogleSync.h

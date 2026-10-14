@@ -11,6 +11,7 @@
 #include "callie/GraphApi.h"
 #include "callie/Logging.h"
 #include "callie/MicrosoftAuth.h"
+#include "callie/MicrosoftSource.h"
 #include "callie/TokenStore.h"
 
 #include <QTimer>
@@ -201,12 +202,15 @@ void AccountManager::remove(const Account &account)
         else if (QString copies; m_caldav && account.provider == u"caldav" &&
                                  !m_caldav->forget(account.id, &copies))
             Q_EMIT failed(tr("could not delete the calendars' copies: %1").arg(copies));
+        else if (QString copies; m_microsoft && account.provider == u"microsoft" &&
+                                 !m_microsoft->forget(account.id, &copies))
+            Q_EMIT failed(tr("could not delete the calendars' copies: %1").arg(copies));
         else if (!m_store.remove(account))
             Q_EMIT failed(m_store.errorString());
         else {
             qCInfo(lcAccounts) << "removed" << account.provider << account.id;
-            // Only Google accounts bring contacts, and a CalDAV id can match one.
-            if (m_contacts && account.provider == u"google")
+            // Google and Microsoft accounts bring contacts; a CalDAV id can match one.
+            if (m_contacts && account.provider != u"caldav")
                 m_contacts->forget(account.id);
             Q_EMIT removed(account);
         }

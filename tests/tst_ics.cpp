@@ -650,6 +650,25 @@ END:VEVENT
     QCOMPARE(trip[u"start"][u"date"].toString(), u"2026-10-10"_s);
     QCOMPARE(trip[u"end"][u"date"].toString(), u"2026-10-12"_s);
 
+    // An all-day series' occurrence is found by its day, even made timed.
+    const QList<ics::GoogleImport> days = ics::toGoogle(ics::parse(calendar(R"(BEGIN:VEVENT
+UID:off
+DTSTART;VALUE=DATE:20261010
+DTEND;VALUE=DATE:20261011
+RRULE:FREQ=WEEKLY;COUNT=3
+SUMMARY:Off
+END:VEVENT
+BEGIN:VEVENT
+UID:off
+RECURRENCE-ID;VALUE=DATE:20261017
+DTSTART:20261017T090000Z
+DTEND:20261017T120000Z
+SUMMARY:Morning off
+END:VEVENT
+)")));
+    QCOMPARE(days.first().changed.size(), 1);
+    QVERIFY(days.first().changed.first().allDay);
+
     // A changed occurrence without its series goes as an event of its own.
     const QList<ics::GoogleImport> alone = ics::toGoogle(ics::parse(calendar(R"(BEGIN:VEVENT
 UID:other

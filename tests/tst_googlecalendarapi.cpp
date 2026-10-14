@@ -9,6 +9,7 @@
 #include <QNetworkAccessManager>
 #include <QTest>
 #include <QTimeZone>
+#include <QUrlQuery>
 
 using namespace callie;
 
@@ -31,6 +32,7 @@ private Q_SLOTS:
     void draftBecomesRequestBody();
     void insertPostsAndReturnsTheEvent();
     void patchAndDeleteTellGuests();
+    void instancesAreAskedForAroundTheirStart();
     void init();
 
     void primaryCalendarIdSendsBearerToken();
@@ -385,6 +387,33 @@ void TestGoogleCalendarApi::insertPostsAndReturnsTheEvent()
     QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
     QVERIFY(m_server->requests.last().target.contains("sendUpdates=all"));
     QVERIFY(m_server->requests.last().target.contains("conferenceDataVersion=1"));
+}
+
+void TestGoogleCalendarApi::instancesAreAskedForAroundTheirStart()
+{
+    m_server->respond(200, R"({"items":[{"id":"ev_20261009T100000Z","recurringEventId":"ev",
+        "status":"cancelled","originalStartTime":{"dateTime":"2026-10-09T10:00:00Z"}}]})");
+    QList<GoogleEvent> found;
+    bool done = false;
+    const QDateTime at(QDate(2026, 10, 9), QTime(10, 0), QTimeZone::UTC);
+    m_api->fetchInstances(QStringLiteral("at-1"), QStringLiteral("team"), QStringLiteral("ev"),
+                          at.addDays(-1), at.addDays(1),
+                          [&](const QList<GoogleEvent> &instances, const GoogleApiError &) {
+                              found = instances;
+                              done = true;
+                          });
+    QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
+    QCOMPARE(found.size(), 1);
+    QVERIFY(found.first().isCancelled());
+    const QUrl url(QString::fromUtf8(m_server->requests.last().target));
+    QVERIFY(url.path().endsWith(u"calendars/team/events/ev/instances"));
+    const QUrlQuery query(url);
+    QCOMPARE(query.queryItemValue(QStringLiteral("timeMin"), QUrl::FullyDecoded),
+             QStringLiteral("2026-10-08T10:00:00Z"));
+    QCOMPARE(query.queryItemValue(QStringLiteral("timeMax"), QUrl::FullyDecoded),
+             QStringLiteral("2026-10-10T10:00:00Z"));
+    // Cancelled ones too, so one already gone is told apart from one not there.
+    QCOMPARE(query.queryItemValue(QStringLiteral("showDeleted")), QStringLiteral("true"));
 }
 
 void TestGoogleCalendarApi::patchAndDeleteTellGuests()

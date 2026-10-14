@@ -171,6 +171,12 @@ bool overlaps(const Event &event, const QDateTime &from, const QDateTime &to)
 
 } // namespace
 
+bool buildGoogleRecurrence(KCalendarCore::Recurrence &recurrence, const GoogleEvent &series,
+                           const QDateTime &start, bool allDay)
+{
+    return buildRecurrence(recurrence, series, start, allDay);
+}
+
 QList<Event> expandGoogleEvents(const QList<GoogleEvent> &events, const QDateTime &from,
                                 const QDateTime &to, const QTimeZone &viewZone)
 {

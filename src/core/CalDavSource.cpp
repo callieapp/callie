@@ -298,6 +298,11 @@ void CalDavSource::signIn(const Account &account,
                                                                     const QString &keyring) {
         if (!self)
             return;
+        // Removed while the keyring was asked: no client comes back for it.
+        if (!self->hasAccount(account.id)) {
+            done(nullptr, tr("That account is not connected."));
+            return;
+        }
         if (!keyring.isEmpty() || password.isEmpty()) {
             done(nullptr, keyring.isEmpty()
                               ? tr("No password is stored for this account; sign in again.")
@@ -336,35 +341,43 @@ void CalDavSource::createCalendar(const QString &accountId, const QString &name,
         slug(trimmed) + u'-' + QUuid::createUuid().toString(QUuid::Id128).left(8);
     const QUrl url = home.resolved(QUrl(folderName + u'/'));
     const QPointer<CalDavSource> self(this);
-    signIn(*account, [self, url, trimmed, color, path, folderName, accountId,
-                      done](CalDavClient *client, const QString &signInError) {
-        if (!self)
-            return;
-        if (!client) {
-            done({}, signInError);
-            return;
-        }
-        client->makeCalendar(
-            url, trimmed, color,
-            [self, url, trimmed, color, path, folderName, accountId, done](const DavError &error) {
-                if (!self)
-                    return;
-                if (error) {
-                    done({}, error.message);
-                    return;
-                }
-                const QString folder = path + u'/' + folderName;
-                QDir().mkpath(folder);
-                State state;
-                state.url = url;
-                writeState(folder, state);
-                writeMeta(folder + u"/displayname"_s, trimmed);
-                if (color.isValid())
-                    writeMeta(folder + u"/color"_s, color.name());
-                self->scan();
-                Q_EMIT self->changed();
-                done(u"caldav:"_s + slug(accountId) + u'/' + folderName, {});
-            });
+    const Account signer = *account;
+    whenIdle(accountId, [self, signer, url, trimmed, color, path, folderName, done] {
+        const auto finish = [self, id = signer.id, done](const QString &made,
+                                                         const QString &error) {
+            if (!self)
+                return;
+            self->doneChanging(id);
+            done(made, error);
+        };
+        self->signIn(signer, [self, url, trimmed, color, path, folderName, id = signer.id,
+                              finish](CalDavClient *client, const QString &signInError) {
+            if (!client) {
+                finish({}, signInError);
+                return;
+            }
+            client->makeCalendar(
+                url, trimmed, color,
+                [self, url, trimmed, color, path, folderName, id, finish](const DavError &error) {
+                    if (!self)
+                        return;
+                    if (error) {
+                        finish({}, error.message);
+                        return;
+                    }
+                    const QString folder = path + u'/' + folderName;
+                    QDir().mkpath(folder);
+                    State state;
+                    state.url = url;
+                    writeState(folder, state);
+                    writeMeta(folder + u"/displayname"_s, trimmed);
+                    if (color.isValid())
+                        writeMeta(folder + u"/color"_s, color.name());
+                    self->scan();
+                    Q_EMIT self->changed();
+                    finish(u"caldav:"_s + slug(id) + u'/' + folderName, {});
+                });
+        });
     });
 }
 
@@ -383,31 +396,37 @@ void CalDavSource::removeCalendar(const QString &calendarId,
     const QString folder = found->path;
     const QUrl url = readState(folder).url;
     const QPointer<CalDavSource> self(this);
-    signIn(*account, [self, folder, url, done](CalDavClient *client, const QString &signInError) {
-        if (!self)
-            return;
-        if (!client) {
-            done(signInError);
-            return;
-        }
-        client->removeCalendar(url, [self, folder, done](const DavError &error) {
+    const Account signer = *account;
+    whenIdle(signer.id, [self, signer, folder, url, done] {
+        const auto finish = [self, id = signer.id, done](const QString &error) {
             if (!self)
                 return;
-            if (error) {
-                done(error.message);
-                return;
-            }
-            QDir(folder).removeRecursively();
-            self->scan();
-            Q_EMIT self->changed();
-            done({});
-        });
+            self->doneChanging(id);
+            done(error);
+        };
+        self->signIn(signer,
+                     [self, folder, url, finish](CalDavClient *client, const QString &signInError) {
+                         if (!client) {
+                             finish(signInError);
+                             return;
+                         }
+                         client->removeCalendar(url, [self, folder, finish](const DavError &error) {
+                             if (!self)
+                                 return;
+                             if (!error) {
+                                 QDir(folder).removeRecursively();
+                                 self->scan();
+                                 Q_EMIT self->changed();
+                             }
+                             finish(error.message);
+                         });
+                     });
     });
 }
 
 void CalDavSource::sync(const Account &account)
 {
-    if (m_running.contains(account.id)) {
+    if (m_running.contains(account.id) || m_changing.contains(account.id)) {
         m_again.insert(account.id);
         return;
     }
@@ -877,14 +896,43 @@ void CalDavSource::finish(const Account &account, const QString &error)
         writeAccount(path, state);
     m_running.remove(account.id);
     Q_EMIT statusChanged();
-    if (m_again.remove(account.id)) {
-        const auto again = std::ranges::find_if(
-            m_accounts, [&account](const Account &each) { return each.id == account.id; });
+    next(account.id);
+    if (m_running.isEmpty())
+        Q_EMIT synced();
+}
+
+void CalDavSource::whenIdle(const QString &accountId, std::function<void()> work)
+{
+    if (m_running.contains(accountId) || m_changing.contains(accountId)) {
+        m_waiting[accountId].append(std::move(work));
+        return;
+    }
+    m_changing.insert(accountId);
+    work();
+}
+
+void CalDavSource::doneChanging(const QString &accountId)
+{
+    m_changing.remove(accountId);
+    next(accountId);
+}
+
+void CalDavSource::next(const QString &accountId)
+{
+    // Calendar changes go before a sync asked for meanwhile, which then sees them.
+    if (const auto waiting = m_waiting.find(accountId); waiting != m_waiting.end()) {
+        const std::function<void()> work = waiting->takeFirst();
+        if (waiting->isEmpty())
+            m_waiting.erase(waiting);
+        m_changing.insert(accountId);
+        work();
+        return;
+    }
+    if (m_again.remove(accountId)) {
+        const auto again = std::ranges::find(m_accounts, accountId, &Account::id);
         if (again != m_accounts.end())
             sync(*again);
     }
-    if (m_running.isEmpty())
-        Q_EMIT synced();
 }
 
 QDateTime CalDavSource::lastSynced() const

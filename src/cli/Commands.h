@@ -14,6 +14,7 @@
 
 namespace callie {
 
+class CalDavSource;
 class ContactBook;
 class LocalCalendars;
 class Settings;
@@ -90,6 +91,11 @@ public:
     /// named after the file.
     static int importFile(CalendarSource &calendars, LocalCalendars &local, const QString &path,
                           const QString &calendar, QTextStream &out, QTextStream &err);
+    /// Removes `calendar`, by id or name: one here goes to the trash, one on a
+    /// CalDAV server is deleted there, once `yes` or the answer read from
+    /// `answers` says so. `answers` is null when no one is there to ask.
+    static int removeCalendar(LocalCalendars &local, CalDavSource &caldav, const QString &calendar,
+                              bool yes, QTextStream *answers, QTextStream &out, QTextStream &err);
     /// The name Callie shows for an account; empty goes back to its own.
     int renameAccount(const QString &account, const QString &name);
 

@@ -577,22 +577,6 @@ struct ServerCalendars
     }
 };
 
-/// Asks before something that cannot be undone, unless `yes`; a script has to
-/// say yes, since no one is there to ask.
-bool confirmed(const QString &question, bool yes)
-{
-    if (yes)
-        return true;
-    if (!isatty(STDIN_FILENO)) {
-        err << QObject::tr("callie: %1 Run it again with --yes to go ahead.").arg(question) << "\n";
-        return false;
-    }
-    err << question << QObject::tr(" [y/N] ");
-    err.flush();
-    const QString answer = QTextStream(stdin).readLine().trimmed().toLower();
-    return answer == u"y" || answer == u"yes";
-}
-
 /// `callie calendars new <name> [--account <id>]` and `callie calendars remove
 /// <calendar>`, for calendars on this computer or on a CalDAV server.
 int runCalendarChange(const QString &action, const QString &name, const QString &accountId,
@@ -639,52 +623,9 @@ int runCalendarChange(const QString &action, const QString &name, const QString 
         out << made->first << "\n";
         return 0;
     }
-    QList<CalendarInfo> found;
-    for (const CalendarInfo &calendar : local.calendars() + server.source.calendars()) {
-        if (calendar.id == name || calendar.displayName.compare(name, Qt::CaseInsensitive) == 0)
-            found << calendar;
-    }
-    if (found.size() != 1) {
-        QStringList ids;
-        for (const CalendarInfo &calendar : std::as_const(found))
-            ids << calendar.id;
-        err << (found.isEmpty() ? QObject::tr("callie: no calendar here or on a CalDAV server is "
-                                              "called %1")
-                                      .arg(name)
-                                : QObject::tr("callie: more than one calendar is called %1; give "
-                                              "its id: %2")
-                                      .arg(name, ids.join(u", "_s)))
-            << "\n";
-        return found.isEmpty() ? 1 : 2;
-    }
-    const CalendarInfo calendar = found.first();
-    if (!calendar.id.startsWith(u"caldav:")) {
-        if (!local.remove(calendar.id, &error)) {
-            err << QStringLiteral("callie: %1\n").arg(error);
-            return 1;
-        }
-        out << QObject::tr("Moved %1 to the trash.").arg(calendar.displayName) << "\n";
-        return 0;
-    }
-    if (!confirmed(QObject::tr("Delete %1 and its events on the server of %2? This cannot be "
-                               "undone.")
-                       .arg(calendar.displayName, calendar.account),
-                   yes))
-        return 1;
-    std::optional<QString> failed;
-    QEventLoop waiting;
-    server.source.removeCalendar(calendar.id, [&failed, &waiting](const QString &problem) {
-        failed = problem;
-        waiting.quit();
-    });
-    if (!failed)
-        waiting.exec();
-    if (!failed->isEmpty()) {
-        err << QStringLiteral("callie: %1\n").arg(*failed);
-        return 1;
-    }
-    out << QObject::tr("Deleted %1 on its server.").arg(calendar.displayName) << "\n";
-    return 0;
+    QTextStream answers(stdin);
+    return cli::Commands::removeCalendar(local, server.source, name, yes,
+                                         isatty(STDIN_FILENO) ? &answers : nullptr, out, err);
 }
 
 /// `callie subscribe <link> [name]`, fetched at once, and `callie unsubscribe

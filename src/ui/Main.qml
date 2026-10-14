@@ -1063,7 +1063,7 @@ ApplicationWindow {
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("Drop to add its events")
+                        text: qsTr("Drop to import .ics events")
                         color: Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textXl
@@ -1071,7 +1071,7 @@ ApplicationWindow {
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("You pick the calendar next.")
+                        text: qsTr("Choose target calendar next")
                         color: Theme.textMuted
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.textSm

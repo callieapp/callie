@@ -40,7 +40,7 @@ define watch
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help deps setup configure build run logs cli gallery watch watch-gallery screenshots test lint format check clean
+.PHONY: help deps setup configure build run logs cli gallery watch watch-gallery screenshots test lint format check clean release release-dry major minor patch
 
 help: ## List commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  make %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -123,3 +123,15 @@ check: ## Run everything CI checks: format, lint, a -Werror build, and tests
 
 clean: ## Remove build output
 	@rm -rf build
+
+# The level comes as a second goal, as in `make release patch`; VERSION=1.2.3 names one.
+LEVEL := $(or $(VERSION),$(firstword $(filter major minor patch,$(MAKECMDGOALS))))
+
+release: ## Release from main: make release patch|minor|major, or VERSION=1.2.3
+	@scripts/release.sh $(LEVEL)
+
+release-dry: ## Show what make release would do, changing nothing
+	@scripts/release.sh $(LEVEL) --dry-run
+
+major minor patch:
+	@:

@@ -1,7 +1,23 @@
 # Changelog
 
-What changed in each version of Callie, for the people using it. Each section is drafted with
-`git cliff` and then written up by hand; see [RELEASING.md](RELEASING.md).
+What changed in each version of Callie, for the people using it. Notes collect under Unreleased
+as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md).
+
+## Unreleased
+
+### New
+
+- Outlook and Microsoft 365 accounts: connect one in Settings, under Accounts, or with
+  `callie accounts add microsoft`. Calendars sync both ways, guests get invitations from Outlook,
+  invitations can be answered, and events can have a Teams link where the account has Teams.
+- Make and delete calendars on CalDAV servers, under the account in Settings or with
+  `callie calendars new <name> --account <id>` and `callie calendars remove`. Deleting asks first.
+- Save a calendar, or one event, as an `.ics` file from the calendar's menu in the sidebar or the
+  event's details, or with `callie export`.
+
+### Changed
+
+- Importing an `.ics` file into Google keeps a changed occurrence of a repeating event in its series.
 
 ## 0.4.1 - 2026-10-13
 

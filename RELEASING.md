@@ -1,13 +1,20 @@
 # Releasing Callie
 
-1. Set the new version in `CMakeLists.txt`, `packaging/rpm/callie.spec` (with a `%changelog`
-   entry), `packaging/debian/changelog` and a new `<release>` in
-   `data/org.callieapp.Callie.metainfo.xml`, dated as in `CHANGELOG.md`.
-2. Draft the notes with `git cliff --unreleased --tag vX.Y.Z`, then write them up at the top of
-   `CHANGELOG.md` under `## X.Y.Z - YYYY-MM-DD`, in words for the people using Callie. The app shows
-   this section in "What's new?".
-3. Run `scripts/check-version.sh X.Y.Z`; `make check` runs it too.
-4. Merge, then tag the merge on `main` with `git tag vX.Y.Z` and push the tag.
+Notes for the next release collect under `## Unreleased` at the top of `CHANGELOG.md` as changes
+land, in words for the people using Callie; the app shows each release's section in "What's new?".
+With everything for the release on `main`:
+
+```sh
+make release-dry minor   # what it would do, changing nothing
+make release minor       # or patch or major; VERSION=1.2.3 names one
+```
+
+`make release` runs only on `main`, clean and level with `origin/main`. It dates the Unreleased
+notes, or has `git cliff` draft them and opens `$EDITOR` to write them up when there are none. Then
+it sets the version in `CMakeLists.txt`, `packaging/rpm/callie.spec`, `packaging/debian/changelog`
+and the metainfo, whose release lists the notes' first-level points, runs
+`scripts/check-version.sh`, and asks before it commits `chore: release X.Y.Z`, tags `vX.Y.Z` and
+pushes both. The push goes straight to `main`, which repository admins may do.
 
 Pushing the tag runs the release workflow. It checks the versions again, builds the source tarball
 and the `.deb` and `.rpm` packages, and publishes a GitHub release with the notes from

@@ -65,7 +65,8 @@ void TestGraphEvents::aSeriesWithItsOccurrencesBecomesICalendar()
         "originalStartTimeZone":"W. Europe Standard Time","isAllDay":false,"showAs":"busy",
         "organizer":{"emailAddress":{"name":"Sam","address":"sam@contoso.com"}},
         "attendees":[{"emailAddress":{"name":"Me","address":"me@contoso.com"},
-                      "status":{"response":"tentativelyAccepted"}}],
+                      "status":{"response":"tentativelyAccepted"}},
+                     {"type":"optional","emailAddress":{"address":"kim@contoso.com"}}],
         "onlineMeeting":{"joinUrl":"https://teams.microsoft.com/l/meetup-join/1"},
         "recurrence":{"pattern":{"type":"daily","interval":1},
                       "range":{"type":"numbered","numberOfOccurrences":5,"startDate":"2026-10-05",
@@ -91,6 +92,7 @@ void TestGraphEvents::aSeriesWithItsOccurrencesBecomesICalendar()
     QCOMPARE(master->recurrence()->exDateTimes().first().date(), QDate(2026, 10, 8));
     QCOMPARE(master->organizer().email(), u"sam@contoso.com"_s);
     QCOMPARE(master->attendees().first().status(), KCalendarCore::Attendee::Tentative);
+    QCOMPARE(master->attendees().last().role(), KCalendarCore::Attendee::OptParticipant);
     QCOMPARE(master->conferences().first().uri(),
              QUrl(u"https://teams.microsoft.com/l/meetup-join/1"_s));
     const auto later =
@@ -120,6 +122,23 @@ void TestGraphEvents::allDayEventsKeepTheirDays()
     QCOMPARE((*fields)[u"start"][u"dateTime"].toString(), u"2026-10-10T00:00:00"_s);
     QCOMPARE((*fields)[u"end"][u"dateTime"].toString(), u"2026-10-12T00:00:00"_s);
     QCOMPARE((*fields)[u"showAs"].toString(), u"free"_s);
+
+    // An all-day series made in Pacific time, with one day changed: the
+    // changed day names the day it replaces.
+    graph::Series weekly;
+    weekly.event = json(R"({"id":"w","iCalUId":"weekly","subject":"Off","isAllDay":true,
+        "originalStartTimeZone":"Pacific Standard Time",
+        "start":{"dateTime":"2026-10-10T00:00:00.0000000","timeZone":"UTC"},
+        "end":{"dateTime":"2026-10-11T00:00:00.0000000","timeZone":"UTC"},
+        "recurrence":{"pattern":{"type":"weekly","interval":1,"daysOfWeek":["saturday"]},
+                      "range":{"type":"numbered","numberOfOccurrences":3,"startDate":"2026-10-10"}}})");
+    weekly.exceptions = {json(R"({"id":"x","subject":"Off, half day","isAllDay":true,
+        "originalStart":"2026-10-17T00:00:00Z",
+        "start":{"dateTime":"2026-10-17T00:00:00.0000000","timeZone":"UTC"},
+        "end":{"dateTime":"2026-10-18T00:00:00.0000000","timeZone":"UTC"}})")};
+    const ics::Group days = graph::toIcs(weekly);
+    QCOMPARE(days.first()->dtStart().date(), QDate(2026, 10, 10));
+    QCOMPARE(days.last()->recurrenceId().date(), QDate(2026, 10, 17));
 }
 
 void TestGraphEvents::repeatsGoToOutlookAndBack()
@@ -127,6 +146,9 @@ void TestGraphEvents::repeatsGoToOutlookAndBack()
     QCOMPARE(roundTrip("FREQ=DAILY;INTERVAL=2;COUNT=10"),
              u"RRULE:FREQ=DAILY;INTERVAL=2;COUNT=10"_s);
     QCOMPARE(roundTrip("FREQ=WEEKLY;BYDAY=MO,WE"), u"RRULE:FREQ=WEEKLY;BYDAY=MO,WE;WKST=MO"_s);
+    // No days given: the day it starts, a Monday.
+    QCOMPARE(roundTrip("FREQ=WEEKLY;INTERVAL=2"),
+             u"RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO;WKST=MO"_s);
     QCOMPARE(roundTrip("FREQ=MONTHLY;BYMONTHDAY=5"), u"RRULE:FREQ=MONTHLY;BYMONTHDAY=5"_s);
     QCOMPARE(roundTrip("FREQ=MONTHLY;BYDAY=1MO"), u"RRULE:FREQ=MONTHLY;BYDAY=1MO"_s);
     QCOMPARE(roundTrip("FREQ=MONTHLY;BYDAY=-1FR", "20261030T090000"),
@@ -163,6 +185,8 @@ LOCATION:Room 2
 ORGANIZER:mailto:me@contoso.com
 ATTENDEE;PARTSTAT=ACCEPTED:mailto:me@contoso.com
 ATTENDEE;CN=Alex:mailto:alex@contoso.com
+ATTENDEE;ROLE=OPT-PARTICIPANT:mailto:kim@contoso.com
+ATTENDEE;CUTYPE=RESOURCE:mailto:room2@contoso.com
 END:VEVENT
 END:VCALENDAR
 )");
@@ -176,8 +200,11 @@ END:VCALENDAR
     QCOMPARE((*fields)[u"start"][u"timeZone"].toString(), u"Eastern Standard Time"_s);
     // The organizer is not one of its own guests.
     const QJsonArray attendees = (*fields)[u"attendees"].toArray();
-    QCOMPARE(attendees.size(), 1);
-    QCOMPARE(attendees.first()[u"emailAddress"][u"address"].toString(), u"alex@contoso.com"_s);
+    QCOMPARE(attendees.size(), 3);
+    QCOMPARE(attendees.at(0)[u"emailAddress"][u"address"].toString(), u"alex@contoso.com"_s);
+    QCOMPARE(attendees.at(0)[u"type"].toString(), u"required"_s);
+    QCOMPARE(attendees.at(1)[u"type"].toString(), u"optional"_s);
+    QCOMPARE(attendees.at(2)[u"type"].toString(), u"resource"_s);
     QVERIFY(!fields->contains(u"recurrence"_s));
 }
 

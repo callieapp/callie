@@ -972,6 +972,14 @@ QList<GoogleImport> toGoogle(const Group &events)
                 // Who organizes and who comes stay as the series has them.
                 json.remove(u"organizer"_s);
                 json.remove(u"attendees"_s);
+                // A patch keeps what it leaves out, so what the occurrence
+                // clears is sent cleared.
+                if (!json.contains(u"location"_s))
+                    json.insert(u"location"_s, QString());
+                if (!json.contains(u"description"_s))
+                    json.insert(u"description"_s, QString());
+                if (!json.contains(u"transparency"_s))
+                    json.insert(u"transparency"_s, u"opaque"_s);
                 changed << GoogleImport::Occurrence{id, event->allDay(), json};
                 continue;
             }

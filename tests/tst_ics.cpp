@@ -633,6 +633,10 @@ END:VEVENT
     const ics::GoogleImport::Occurrence moved = standup->changed.first();
     QCOMPARE(moved.start.toUTC(), QDateTime(QDate(2026, 10, 7), QTime(7, 0), QTimeZone::UTC));
     QCOMPARE(moved.fields[u"summary"].toString(), u"Standup, later"_s);
+    // It leaves the series' room behind, which a patch must say.
+    QVERIFY(moved.fields.contains(u"location"_s));
+    QCOMPARE(moved.fields[u"location"].toString(), QString());
+    QCOMPARE(moved.fields[u"transparency"].toString(), u"opaque"_s);
     QVERIFY(!moved.fields.contains(u"iCalUID"_s));
     // Written in UTC, it says so, as Google needs to repeat it.
     QCOMPARE(byUid(u"gym"_s)[u"start"][u"timeZone"].toString(), u"UTC"_s);

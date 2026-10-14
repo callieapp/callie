@@ -82,6 +82,8 @@ public:
     QJsonArray people;
     /// Answers every call with this status, as an Outlook that is down.
     int down = 0;
+    /// Answers only the lookups of a series' occurrences with this status.
+    int instancesDown = 0;
 
 private:
     static FakeHttpServer::Reply json(const QJsonObject &body, int status = 200)
@@ -140,6 +142,8 @@ private:
         calls.append({request.method, path, body});
         if (down)
             return {down, "{}"};
+        if (instancesDown && path.endsWith(u"/instances"))
+            return {instancesDown, "{}"};
         const QStringList parts = path.split(u'/');
         if (request.method == "GET" && path == u"me/calendars") {
             QJsonArray list;

@@ -237,6 +237,21 @@ void TestMicrosoftSource::occurrencesAreChangedOnTheirOwn()
     QVERIFY(m_graph->items[m_standup].cancelled.contains(u"2026-10-06"_s));
     QVERIFY(find(u"Standup"_s, 6).uid.isEmpty());
     QCOMPARE(find(u"Standup"_s, 9).start.time(), QTime(8, 0));
+
+    // Outlook busy finding an occurrence: the change waits, as made.
+    m_graph->instancesDown = 503;
+    const Event thursday = find(u"Standup"_s, 8);
+    QVERIFY(outcome([&](auto done) {
+                m_source->moveEvent(thursday, thursday.start.addSecs(1800),
+                                    thursday.end.addSecs(1800), false, done);
+            }).isEmpty());
+    sync();
+    QVERIFY(!m_source->waitingChanges().isEmpty());
+    QCOMPARE(find(u"Standup"_s, 8).start.time(), QTime(7, 30));
+    m_graph->instancesDown = 0;
+    sync();
+    QVERIFY(m_source->waitingChanges().isEmpty());
+    QVERIFY(m_graph->items[m_standup].exceptions.contains(u"2026-10-08T07:00:00Z"_s));
 }
 
 void TestMicrosoftSource::answersGoAsAnswers()

@@ -39,6 +39,14 @@ KCalendarCore::Attendee::PartStat partstatFor(const QString &response)
                                                                : A::NeedsAction;
 }
 
+/// The day an all-day time is: midnight where the event was made, wherever it
+/// is asked for, else its UTC date.
+QDate dayOf(const QDateTime &at, const QTimeZone &zone)
+{
+    const QDateTime local = at.toTimeZone(zone);
+    return local.time() == QTime(0, 0) ? local.date() : at.toUTC().date();
+}
+
 /// The zone a series repeats in: where it was made, else UTC.
 QTimeZone zoneOf(const QJsonObject &event)
 {
@@ -60,10 +68,7 @@ KEvent::Ptr eventFrom(const QJsonObject &json, const QString &uid, const QTimeZo
     const QDateTime end = timeOf(json[u"end"].toObject());
     if (allDay) {
         // All-day times are midnights where the event was made, wherever they are asked for.
-        const auto day = [&zone](const QDateTime &at) {
-            const QDateTime local = at.toTimeZone(zone);
-            return local.time() == QTime(0, 0) ? local.date() : at.date();
-        };
+        const auto day = [&zone](const QDateTime &at) { return dayOf(at, zone); };
         event->setDtStart(day(start).startOfDay());
         event->setDtEnd(day(end).addDays(-1).startOfDay());
     } else {
@@ -80,9 +85,16 @@ KEvent::Ptr eventFrom(const QJsonObject &json, const QString &uid, const QTimeZo
             KCalendarCore::Person(organizer[u"name"].toString(), organizer[u"address"].toString()));
     for (const QJsonValue &value : json[u"attendees"].toArray()) {
         const QJsonObject person = value[u"emailAddress"].toObject();
-        event->addAttendee(
-            KCalendarCore::Attendee(person[u"name"].toString(), person[u"address"].toString(),
-                                    false, partstatFor(value[u"status"][u"response"].toString())));
+        KCalendarCore::Attendee attendee(person[u"name"].toString(), person[u"address"].toString(),
+                                         false,
+                                         partstatFor(value[u"status"][u"response"].toString()));
+        // Kept, so an edit sends optional guests and rooms back as they were.
+        const QString type = value[u"type"].toString();
+        if (type == u"optional")
+            attendee.setRole(KCalendarCore::Attendee::OptParticipant);
+        else if (type == u"resource")
+            attendee.setCuType(KCalendarCore::Attendee::Resource);
+        event->addAttendee(attendee);
     }
     const QString joinUrl = json[u"onlineMeeting"][u"joinUrl"].toString();
     if (!joinUrl.isEmpty())
@@ -220,7 +232,7 @@ ics::Group toIcs(const Series &series)
         const KEvent::Ptr changed = eventFrom(exception, uid, zone);
         const QDateTime original =
             QDateTime::fromString(exception[u"originalStart"].toString(), Qt::ISODate);
-        changed->setRecurrenceId(allDay ? original.toTimeZone(zone).date().startOfDay()
+        changed->setRecurrenceId(allDay ? dayOf(original, zone).startOfDay()
                                         : original.toTimeZone(zone));
         group << changed;
     }
@@ -267,7 +279,10 @@ std::optional<QJsonObject> recurrenceFor(const KCalendarCore::Event &event, QStr
     case KCalendarCore::Recurrence::rDaily: pattern.insert(u"type"_s, u"daily"_s); break;
     case KCalendarCore::Recurrence::rWeekly:
         pattern.insert(u"type"_s, u"weekly"_s);
-        pattern.insert(u"daysOfWeek"_s, weekdays(recurrence->days()));
+        // A weekly rule with no days repeats on the day it starts.
+        pattern.insert(u"daysOfWeek"_s, recurrence->days().count(true) > 0
+                                            ? weekdays(recurrence->days())
+                                            : QJsonArray{kDays.at(first.dayOfWeek() - 1)});
         pattern.insert(u"firstDayOfWeek"_s, kDays.at(recurrence->weekStart() - 1));
         break;
     case KCalendarCore::Recurrence::rMonthlyDay: {
@@ -362,7 +377,13 @@ std::optional<QJsonObject> fieldsFor(const KCalendarCore::Event &event, QString 
         if (attendee.email().isEmpty() ||
             attendee.email().compare(organizer, Qt::CaseInsensitive) == 0)
             continue;
-        attendees << QJsonObject{{u"type"_s, u"required"_s},
+        const bool room = attendee.cuType() == KCalendarCore::Attendee::Resource ||
+                          attendee.cuType() == KCalendarCore::Attendee::Room;
+        const QString type = room ? u"resource"_s
+                             : attendee.role() == KCalendarCore::Attendee::OptParticipant
+                                 ? u"optional"_s
+                                 : u"required"_s;
+        attendees << QJsonObject{{u"type"_s, type},
                                  {u"emailAddress"_s, QJsonObject{{u"address"_s, attendee.email()},
                                                                  {u"name"_s, attendee.name()}}}};
     }

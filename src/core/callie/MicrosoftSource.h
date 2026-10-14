@@ -96,6 +96,9 @@ private:
 
     [[nodiscard]] QString accountPath(const QString &accountId) const;
     [[nodiscard]] bool hasAccount(const QString &accountId) const;
+    /// The folder's account was removed, or its copies deleted, while a sync
+    /// was on its way: nothing more is written there.
+    [[nodiscard]] bool gone(const Folder &folder) const;
     void scan();
     void sync(const QString &accountId);
     void finish(const QString &accountId, const QString &error);

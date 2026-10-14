@@ -200,7 +200,7 @@ Column {
                     }
                     // Removing takes a second click, since the account's sign-in goes too.
                     DangerButton {
-                        visible: row.manageable
+                        visible: row.microsoft ? Accounts.canRemove : row.manageable
                         enabled: !Accounts.busy
                         label: qsTr("Remove")
                         armedLabel: qsTr("Click again to remove")

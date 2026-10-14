@@ -43,6 +43,8 @@ class AccountsController : public QObject
     Q_PROPERTY(bool calDavReady READ calDavReady CONSTANT)
     /// Microsoft accounts can be connected: the build or environment names the app.
     Q_PROPERTY(bool microsoftReady READ microsoftReady CONSTANT)
+    /// Accounts can be removed here, whatever their kind; no sign-in is needed.
+    Q_PROPERTY(bool canRemove READ canRemove CONSTANT)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
     /// A sign-in is waiting on the browser, which cancel() can stop. Once Google
     /// grants access the account is being saved, and like a removal that runs on.
@@ -92,6 +94,7 @@ public:
     }
     [[nodiscard]] bool calDavReady() const;
     [[nodiscard]] bool microsoftReady() const;
+    [[nodiscard]] bool canRemove() const { return m_setup.unavailable.isEmpty() && m_manager; }
     [[nodiscard]] bool signingIn() const
     {
         return (m_auth != nullptr || m_microsoftAuth != nullptr) && !m_granted;

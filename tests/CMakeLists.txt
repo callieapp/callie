@@ -43,6 +43,10 @@ callie_add_test(tst_caldavclient)
 callie_add_test(tst_microsoftauth)
 callie_add_test(tst_graphevents)
 callie_add_test(tst_microsoftsource)
+# Occurrences are found by where their series is, so away from UTC too.
+add_test(NAME tst_microsoftsource_new_york COMMAND tst_microsoftsource)
+set_tests_properties(tst_microsoftsource_new_york PROPERTIES ENVIRONMENT
+                     "TZ=America/New_York;QT_QPA_PLATFORM=offscreen")
 callie_add_test(tst_caldavsource)
 callie_add_test(tst_radicale)
 callie_add_test(tst_import)

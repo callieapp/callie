@@ -8,6 +8,7 @@
 #include "callie/ContactBook.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
+#include "callie/MicrosoftSource.h"
 #include "callie/TokenStore.h"
 
 #include <QDir>
@@ -111,6 +112,7 @@ private Q_SLOTS:
     void calDavSignInToAnotherServerMovesIt();
     void calDavCopiesThatStayKeepTheAccount();
     void calDavIdsNameTheServer();
+    void removingAMicrosoftAccountTakesItsCopiesAndContacts();
 
 private:
     void corruptAccountList();
@@ -519,6 +521,30 @@ void TestAccountManager::calDavIdsNameTheServer()
     QCOMPARE(fastmail, u"me@example.com (caldav.fastmail.com)"_s);
     QCOMPARE(AccountManager::calDavId(QUrl(u"https://cloud.example.com/"_s), u" sam "_s),
              u"sam@cloud.example.com"_s);
+}
+
+void TestAccountManager::removingAMicrosoftAccountTakesItsCopiesAndContacts()
+{
+    const Account account{u"microsoft"_s, u"me@outlook.com"_s};
+    QVERIFY(m_store->add(account));
+    m_tokens->secrets.insert(account.id, u"rt-1"_s);
+    const QString copies = m_dir->filePath(u"microsoft/me@outlook.com/calendar"_s);
+    QVERIFY(QDir().mkpath(copies));
+    MicrosoftSource microsoft(m_dir->filePath(u"microsoft"_s), nullptr, nullptr);
+    microsoft.setAccounts({account.id});
+    ContactBook contacts({});
+    contacts.setContacts(account.id, {{u"Alex"_s, u"alex@contoso.com"_s}});
+    m_manager->setMicrosoft(&microsoft);
+    m_manager->setContacts(&contacts);
+    QSignalSpy removed(m_manager.get(), &AccountManager::removed);
+
+    m_manager->remove(account);
+
+    QVERIFY(removed.wait(2000));
+    QVERIFY(!QDir(copies).exists());
+    QVERIFY(microsoft.accounts().isEmpty());
+    QVERIFY(contacts.suggest(u"alex"_s, {}).isEmpty());
+    QVERIFY(m_tokens->secrets.isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestAccountManager)

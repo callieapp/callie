@@ -331,6 +331,39 @@ void TestMicrosoftSource::aChangeOutlookTurnsDownGoesBack()
     QVERIFY(refused.first().first().toString().contains(u"denied"_s));
     QCOMPARE(find(u"Lunch"_s).start.time(), QTime(12, 0));
     QVERIFY(m_source->waitingChanges().isEmpty());
+
+    // Moved again while the first move is turned down: the newer move stays
+    // and goes next, and Outlook takes that one.
+    m_graph->whileChanging = [this] {
+        m_graph->refuseChanges = 0;
+        const Event now = find(u"Lunch"_s);
+        QVERIFY(outcome([&](auto done) {
+                    m_source->moveEvent(now, now.start.addSecs(1800), now.end.addSecs(1800), false,
+                                        done);
+                }).isEmpty());
+    };
+    const Event again = find(u"Lunch"_s);
+    QVERIFY(outcome([&](auto done) {
+                m_source->moveEvent(again, again.start.addSecs(3600), again.end.addSecs(3600),
+                                    false, done);
+            }).isEmpty());
+    sync();
+    QCOMPARE(find(u"Lunch"_s).start.time(), QTime(13, 30));
+    QVERIFY(m_source->waitingChanges().isEmpty());
+    QCOMPARE(m_graph->items[m_lunch].event[u"start"][u"dateTime"].toString(),
+             u"2026-10-06T13:30:00"_s);
+
+    // A new event Outlook turns down does not stay here.
+    m_graph->refuseChanges = 403;
+    EventDraft draft;
+    draft.calendarId = m_source->calendars().first().id;
+    draft.summary = u"Planning"_s;
+    draft.start = kMonday.addDays(2).addSecs(10 * 3600);
+    draft.end = draft.start.addSecs(3600);
+    QVERIFY(outcome([&](auto done) { m_source->createEvent(draft, done); }).isEmpty());
+    sync();
+    QVERIFY(find(u"Planning"_s).uid.isEmpty());
+    QVERIFY(m_source->waitingChanges().isEmpty());
 }
 
 void TestMicrosoftSource::removingAnAccountForgetsItsCopies()

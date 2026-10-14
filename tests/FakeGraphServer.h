@@ -84,8 +84,10 @@ public:
     int down = 0;
     /// Answers only the lookups of a series' occurrences with this status.
     int instancesDown = 0;
-    /// Turns down every change to an event with this status.
+    /// Turns down every change to an event, and every new one, with this status.
     int refuseChanges = 0;
+    /// Runs before a change to an event is answered, as while it is on its way.
+    std::function<void()> whileChanging;
 
 private:
     static FakeHttpServer::Reply json(const QJsonObject &body, int status = 200)
@@ -146,8 +148,13 @@ private:
             return {down, "{}"};
         if (instancesDown && path.endsWith(u"/instances"))
             return {instancesDown, "{}"};
-        if (refuseChanges && request.method == "PATCH")
-            return {refuseChanges,
+        // Decided before whileChanging runs, which may stop the refusals.
+        const int refusal =
+            request.method == "PATCH" || request.method == "POST" ? refuseChanges : 0;
+        if (whileChanging && (request.method == "PATCH" || request.method == "POST"))
+            std::exchange(whileChanging, nullptr)();
+        if (refusal)
+            return {refusal,
                     R"({"error":{"code":"ErrorAccessDenied","message":"Access is denied."}})"};
         const QStringList parts = path.split(u'/');
         if (request.method == "GET" && path == u"me/calendars") {

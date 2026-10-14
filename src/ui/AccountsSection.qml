@@ -256,7 +256,6 @@ Column {
         spacing: Theme.space3
 
         StickerButton {
-            accent: true
             enabled: Accounts.unavailable === "" && !Accounts.busy
             glyph: "plus"
             text: qsTr("Connect a Google account")

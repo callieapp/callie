@@ -97,6 +97,8 @@ private Q_SLOTS:
     void createWithTakenIdIsAlreadyMade();
     void importedEventsAreStoredOneByOne();
     void importedOccurrencesArePatchedQuietly();
+    void importedAllDayOccurrencesAreFoundByDate();
+    void anOccurrenceGoogleCannotFindStopsTheImport();
     void answerKeepsOtherGuestsIntact();
     void answerNeedsAnInvitation();
     void deletingAnOccurrenceKeepsTheRest();
@@ -735,6 +737,89 @@ void TestGoogleSync::importedOccurrencesArePatchedQuietly()
     QVERIFY(std::ranges::any_of(stored, [](const GoogleEvent &e) {
         return e.id == u"standup_20261007T070000Z" && e.summary == u"Standup, later";
     }));
+}
+
+void TestGoogleSync::importedAllDayOccurrencesAreFoundByDate()
+{
+    syncOnce();
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events/import"_s, 200,
+                 R"({"id":"trip","status":"confirmed","summary":"Trip",)"
+                 R"("recurrence":["RRULE:FREQ=WEEKLY;COUNT=3"],)"
+                 R"("start":{"date":"2026-10-10"},"end":{"date":"2026-10-11"}})");
+    m_google->on(u"calendars/team/events/trip/instances"_s, 200,
+                 R"({"items":[{"id":"trip_20261017","status":"confirmed",)"
+                 R"("recurringEventId":"trip","originalStartTime":{"date":"2026-10-17"},)"
+                 R"("start":{"date":"2026-10-17"},"end":{"date":"2026-10-18"}}]})");
+    m_google->on(u"calendars/team/events/trip_20261017"_s, 200,
+                 R"({"id":"trip_20261017","status":"confirmed","summary":"Trip, longer",)"
+                 R"("recurringEventId":"trip","originalStartTime":{"date":"2026-10-17"},)"
+                 R"("start":{"date":"2026-10-17"},"end":{"date":"2026-10-19"}})");
+    const ics::GoogleImport series{
+        {{u"iCalUID"_s, u"trip"_s}},
+        {{QDate(2026, 10, 17).startOfDay(), true, {{u"summary"_s, u"Trip, longer"_s}}}}};
+    int count = -1;
+    QString error = u"no answer"_s;
+    m_sync->importEvents(kAccount, u"team"_s, {series}, [&](int imported, const QString &failed) {
+        count = imported;
+        error = failed;
+    });
+    QTRY_COMPARE(count, 1);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QCOMPARE(m_google->count(u"calendars/team/events/trip_20261017"_s), 1);
+}
+
+void TestGoogleSync::anOccurrenceGoogleCannotFindStopsTheImport()
+{
+    syncOnce();
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events/import"_s, 200,
+                 R"({"id":"standup","status":"confirmed","summary":"Standup",)"
+                 R"("recurrence":["RRULE:FREQ=DAILY;COUNT=5"],)"
+                 R"("start":{"dateTime":"2026-10-05T07:00:00Z"},)"
+                 R"("end":{"dateTime":"2026-10-05T07:15:00Z"}})");
+    m_google->on(u"calendars/team/events/standup/instances"_s, 200, R"({"items":[]})");
+    const QDateTime original(QDate(2026, 10, 7), QTime(7, 0), QTimeZone::UTC);
+    const ics::GoogleImport series{{{u"iCalUID"_s, u"standup"_s}},
+                                   {{original, false, {{u"summary"_s, u"Later"_s}}}}};
+    const ics::GoogleImport other{{{u"iCalUID"_s, u"other"_s}}, {}};
+    int count = -1;
+    QString error;
+    QSignalSpy changed(m_sync.get(), &GoogleSync::changed);
+    m_sync->importEvents(kAccount, u"team"_s, {series, other},
+                         [&](int imported, const QString &failed) {
+                             count = imported;
+                             error = failed;
+                         });
+    QTRY_COMPARE(count, 1);
+    // The series went in and shows; what came after it waits for another try.
+    QVERIFY(error.contains(u"no occurrence"_s));
+    QCOMPARE(m_google->count(u"calendars/team/events/import"_s), 1);
+    QCOMPARE(changed.size(), 1);
+
+    // A patch turned down partway stops it the same way.
+    m_google->responses.clear();
+    m_google->on(u"calendars/team/events/import"_s, 200,
+                 R"({"id":"standup","status":"confirmed","summary":"Standup",)"
+                 R"("recurrence":["RRULE:FREQ=DAILY;COUNT=5"],)"
+                 R"("start":{"dateTime":"2026-10-05T07:00:00Z"},)"
+                 R"("end":{"dateTime":"2026-10-05T07:15:00Z"}})");
+    m_google->on(u"calendars/team/events/standup/instances"_s, 200,
+                 R"({"items":[{"id":"standup_20261007T070000Z","status":"confirmed",)"
+                 R"("recurringEventId":"standup",)"
+                 R"("originalStartTime":{"dateTime":"2026-10-07T07:00:00Z"},)"
+                 R"("start":{"dateTime":"2026-10-07T07:00:00Z"},)"
+                 R"("end":{"dateTime":"2026-10-07T07:15:00Z"}}]})");
+    m_google->on(u"calendars/team/events/standup_20261007T070000Z"_s, 403,
+                 R"({"error":{"message":"Forbidden"}})");
+    count = -1;
+    m_sync->importEvents(kAccount, u"team"_s, {series, other},
+                         [&](int imported, const QString &failed) {
+                             count = imported;
+                             error = failed;
+                         });
+    QTRY_COMPARE(count, 1);
+    QVERIFY(error.contains(u"Forbidden"_s));
 }
 
 void TestGoogleSync::createRetriesOnceAfterRejection()

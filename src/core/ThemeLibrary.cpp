@@ -97,6 +97,8 @@ QString quoted(const QString &text)
 {
     QString escaped = text;
     escaped.replace(u'\\', u"\\\\"_s).replace(u'"', u"\\\""_s);
+    // TOML strings take no control characters, as from a pasted name.
+    escaped.remove(QRegularExpression(u"[\\x00-\\x1f\\x7f]"_s));
     return u'"' + escaped + u'"';
 }
 
@@ -147,6 +149,14 @@ QString ThemeLibrary::copy(const QString &idOrPath, const QString &name)
     }
     const QString path = freshPath(name);
     const QString renamed = setKey(QString::fromUtf8(data), u"theme"_s, u"name"_s, quoted(name));
+    // Checked before writing, as setColor does, so a copy that will not load
+    // never lands in the library.
+    const ThemeLoadResult result =
+        ThemeLoader::parse(renamed.toUtf8(), ThemeLoader::defaultTheme());
+    if (!result.ok()) {
+        fail(result.errors.join(u"; "_s));
+        return {};
+    }
     if (!write(path, renamed.toUtf8(), &problem)) {
         fail(problem);
         return {};

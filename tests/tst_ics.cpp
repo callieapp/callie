@@ -668,6 +668,10 @@ END:VEVENT
 )")));
     QCOMPARE(days.first().changed.size(), 1);
     QVERIFY(days.first().changed.first().allDay);
+    // Given hours, it clears its date, which Google would otherwise keep.
+    const QJsonObject start = days.first().changed.first().fields[u"start"].toObject();
+    QVERIFY(start[u"dateTime"].isString());
+    QVERIFY(start.contains(u"date"_s) && start[u"date"].isNull());
 
     // A changed occurrence without its series goes as an event of its own.
     const QList<ics::GoogleImport> alone = ics::toGoogle(ics::parse(calendar(R"(BEGIN:VEVENT

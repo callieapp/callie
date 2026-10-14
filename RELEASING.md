@@ -15,4 +15,6 @@ and the `.deb` and `.rpm` packages, and publishes a GitHub release with the note
 
 The packages take the Google OAuth client from the repository's `CALLIE_GOOGLE_CLIENT_ID` and
 `CALLIE_GOOGLE_CLIENT_SECRET` Actions secrets, so the installed app can sign in. A tag build without
-them fails rather than publish packages that cannot connect a Google account.
+them fails rather than publish packages that cannot connect a Google account. The Microsoft app id
+comes from the `CALLIE_MICROSOFT_CLIENT_ID` secret the same way; without it the packages build, and
+only Microsoft accounts cannot connect.

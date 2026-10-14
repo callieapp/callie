@@ -209,6 +209,15 @@ packages are; when set while Callie runs, they replace the built-in client for t
 make cli ARGS="accounts add google"
 ```
 
+### Microsoft accounts
+
+Register an app in the Microsoft Entra admin center for "Accounts in any organizational directory
+and personal Microsoft accounts", as a public client with the redirect URIs `http://localhost` and
+`http://127.0.0.1`, and the delegated Graph permissions `Calendars.ReadWrite`, `User.Read`,
+`People.Read` and `offline_access`. It has no secret. Its application id goes in
+`CALLIE_MICROSOFT_CLIENT_ID`, read the same way as Google's: built in when set while CMake
+configures, or taking over for one run when set while Callie runs.
+
 ### Editors
 
 After a first `make build`, clangd and qmlls work without extra setup: the repository ships a

@@ -73,7 +73,8 @@ Open an `.ics` file with Callie, drop one on its window, or pick one in Settings
 add its events to any calendar you can change, CalDAV and Google ones included, or to a new one on
 this computer named after the file. Adding the same file again updates its events rather than
 repeating them. Google keeps no changed occurrences of a repeating event, so those go in as events
-of their own.
+of their own. Any calendar, or one event, can be saved as an `.ics` file too, from the calendar's
+menu in the sidebar or the event's details.
 
 Subscribe to a calendar others publish as a link, such as holidays or a team's schedule, in
 Settings, under Accounts, or by opening a `webcal://` link. Callie keeps a read-only copy under
@@ -114,6 +115,7 @@ callie calendars                         # calendars in each account, tab-separa
 callie calendars new "Book club"         # a calendar on this computer; remove takes it away
 callie calendars new Club --account <id> # one on a CalDAV server; remove asks before deleting it
 callie import party.ics                  # its events into a calendar here; --calendar picks any
+callie export Work work.ics              # a calendar as an .ics file, or to the output without one
 callie subscribe webcal://example.com/holidays.ics # unsubscribe <calendar> stops it
 callie calendars rename Focus "Deep work" # also hide, show, color <calendar> <#rrggbb>, reset
 callie accounts rename you@example.com Work

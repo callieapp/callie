@@ -1,7 +1,9 @@
 pragma ComponentBehavior: Bound
 import Callie.Ui
+import QtCore as Core
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 
 /// Renames a calendar or an account in Callie, and recolors a calendar. A
 /// CalDAV calendar takes the change to its server; for the others it stays on
@@ -159,6 +161,17 @@ Popup {
             }
         }
 
+        StickerButton {
+            visible: !root.account
+            text: qsTr("Save as .ics")
+            onClicked: {
+                saveDialog.selectedFile = Core.StandardPaths.writableLocation(
+                            Core.StandardPaths.DocumentsLocation) + "/" + Exporter.fileNameFor(
+                            root.name)
+                saveDialog.open()
+            }
+        }
+
         // Shown with a look to undo; a CalDAV calendar takes its look as its own.
         StickerButton {
             visible: root.account || Settings.calendarLooks[root.targetId] !== undefined
@@ -173,5 +186,14 @@ Popup {
                 root.close()
             }
         }
+    }
+
+    FileDialog {
+        id: saveDialog
+        title: qsTr("Save the calendar")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "ics"
+        nameFilters: [qsTr("Calendar files (*.ics)")]
+        onAccepted: Exporter.save(root.targetId, "", selectedFile)
     }
 }

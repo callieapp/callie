@@ -19,6 +19,10 @@
 /// them, expanding a series into occurrences, and making the changes Callie
 /// offers to one. A "group" is one UID's events: the series, or a one-off,
 /// and the occurrences changed on their own.
+namespace callie {
+struct GoogleEvent;
+}
+
 namespace callie::ics {
 
 using Group = QList<KCalendarCore::Event::Ptr>;
@@ -36,6 +40,10 @@ using Group = QList<KCalendarCore::Event::Ptr>;
 
 /// `events` split by UID, keeping their order.
 [[nodiscard]] QList<Group> byUid(const Group &events);
+
+/// Google's events as iCalendar ones, for export: a cancelled occurrence
+/// becomes an EXDATE of its series, a changed one keeps its RECURRENCE-ID.
+[[nodiscard]] Group fromGoogle(const QList<GoogleEvent> &events);
 
 /// `events` as Google's events.import takes them. A changed occurrence is
 /// left out of its series and goes as an event of its own, since Google

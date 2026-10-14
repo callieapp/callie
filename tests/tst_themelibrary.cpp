@@ -17,6 +17,7 @@ private Q_SLOTS:
     void init();
     void copyStartsFromABuiltIn();
     void copiesNeverOverwrite();
+    void copiesTakeAnyName();
     void setColorKeepsTheRest();
     void setColorAddsMissingKeys();
     void setColorRefusesOtherFiles();
@@ -64,6 +65,16 @@ void TestThemeLibrary::copyStartsFromABuiltIn()
     QCOMPARE(ThemeLibrary::displayName(path), u"Peach Fuzz"_s);
     // Comments in the original survive the copy.
     QVERIFY(read(path).contains(u"# Callie, the default theme."_s));
+}
+
+void TestThemeLibrary::copiesTakeAnyName()
+{
+    // A quote, a backslash and a newline, as a pasted name may have.
+    const QString path = m_library->copy(u"callie"_s, u"Bo \"Peep\" \\ Two\nLines"_s);
+    QVERIFY2(!path.isEmpty(), qPrintable(m_library->error()));
+    const ThemeLoadResult loaded = ThemeLoader::load(path);
+    QVERIFY2(loaded.ok(), qPrintable(loaded.errors.join(u"; "_s)));
+    QCOMPARE(loaded.theme.name, u"Bo \"Peep\" \\ TwoLines"_s);
 }
 
 void TestThemeLibrary::copiesNeverOverwrite()

@@ -91,7 +91,12 @@ if [ "$drafted" = 1 ]; then
         { print }' CHANGELOG.md >CHANGELOG.md.new
     mv CHANGELOG.md.new CHANGELOG.md
     rm -f "$draft"
-    "${EDITOR:-vi}" CHANGELOG.md
+    # Split as a shell would, so an editor given with options, as "code --wait", works.
+    # shellcheck disable=SC2086
+    if ! ${EDITOR:-vi} CHANGELOG.md; then
+        git checkout -- CHANGELOG.md
+        fail "the editor stopped with an error; nothing was changed"
+    fi
 else
     sed -i "s/^## Unreleased *\$/## $next - $today/" CHANGELOG.md
 fi
@@ -148,7 +153,8 @@ fi
 git add CHANGELOG.md CMakeLists.txt packaging/rpm/callie.spec packaging/debian/changelog \
     data/org.callieapp.Callie.metainfo.xml
 git commit --quiet -m "chore: release $next"
-# Annotated, as --follow-tags pushes only annotated tags.
+# Annotated, as --follow-tags pushes only annotated tags; atomic, so a refused
+# main leaves no tag behind to start a release.
 git tag -a "v$next" -m "Callie $next"
-git push --follow-tags origin main
+git push --atomic --follow-tags origin main
 echo "Released v$next; the release workflow builds and publishes it."

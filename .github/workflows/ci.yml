@@ -50,7 +50,9 @@ jobs:
 
       # The runner image ships shellcheck.
       - name: Lint the installer
-        run: shellcheck -s sh www/install.sh tests/install_test.sh tests/package_smoke.sh scripts/release.sh
+        run: |
+          shellcheck -s sh www/install.sh tests/install_test.sh tests/package_smoke.sh
+          shellcheck -s bash scripts/release.sh scripts/check-version.sh scripts/release-notes.sh
 
   format:
     # Needs clang-format and qmlformat, so it runs where Qt is packaged.

@@ -1,3 +1,4 @@
+#include "ExportController.h"
 #include "ImportController.h"
 
 #include "callie/CombinedSource.h"
@@ -25,6 +26,7 @@ private Q_SLOTS:
     void turnsAwayWhatIsNotACalendar();
     void allDayEventsShowTheirOwnDay();
     void goesToCalendarsElsewhereToo();
+    void savesACalendarOrAnEvent();
 
 private:
     QString write(const QString &name, const QByteArray &data)
@@ -177,6 +179,32 @@ void TestImport::goesToCalendarsElsewhereToo()
     QVERIFY(!importer->pending());
     QCOMPARE(remote.sent.size(), 2);
     QCOMPARE(remote.sent.last().second, kParty);
+}
+
+void TestImport::savesACalendarOrAnEvent()
+{
+    QCOMPARE(ExportController::fileNameFor(u"Book club!"_s), u"book-club.ics"_s);
+    QCOMPARE(ExportController::fileNameFor(u"..."_s), u"calendar.ics"_s);
+
+    QString error;
+    const QString home = m_local->create(u"Home"_s, {}, &error);
+    QCOMPARE(m_local->importEvents(home, ics::parse(kParty), &error), 2);
+    ExportController *exporter = ExportController::instance();
+    exporter->setUp(m_local.get());
+    QSignalSpy saved(exporter, &ExportController::saved);
+    QSignalSpy failed(exporter, &ExportController::failed);
+    const QString path = m_dir->filePath(u"lunch.ics"_s);
+    QVERIFY(exporter->save(home, u"early"_s, QUrl::fromLocalFile(path)));
+    QCOMPARE(saved.first().first().toString(), u"lunch.ics"_s);
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const ics::Group events = ics::parse(file.readAll());
+    QCOMPARE(events.size(), 1);
+    QCOMPARE(events.first()->summary(), u"Lunch"_s);
+
+    QVERIFY(!exporter->save(u"local:gone"_s, {}, QUrl::fromLocalFile(path)));
+    QCOMPARE(failed.size(), 1);
+    exporter->setUp(nullptr);
 }
 
 QTEST_GUILESS_MAIN(TestImport)

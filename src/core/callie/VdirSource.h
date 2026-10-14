@@ -48,6 +48,8 @@ public:
 
     void createEvent(const EventDraft &draft, Created done) override;
     void importEvents(const QString &calendarId, const QByteArray &data, Imported done) override;
+    [[nodiscard]] QByteArray exportEvents(const QString &calendarId, const QString &uid,
+                                          QString *error) const override;
     void respond(const Event &event, const QString &status, bool wholeSeries,
                  Created done) override;
     void deleteEvent(const Event &event, bool wholeSeries, Created done) override;

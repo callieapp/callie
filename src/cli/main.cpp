@@ -111,6 +111,7 @@ const QList<std::pair<QString, QString>> kCommands = {
     {u"contacts"_s, u"People to invite whose name or address matches"_s},
     {u"add"_s, u"Create an event: callie add \"Lunch tomorrow 12-1pm\""_s},
     {u"import"_s, u"Add the events of an .ics file to a calendar"_s},
+    {u"export"_s, u"Save a calendar as an .ics file: callie export Work work.ics"_s},
     {u"subscribe"_s, u"Subscribe to a calendar by its webcal:// or https:// link"_s},
     {u"unsubscribe"_s, u"Stop a subscription"_s},
     {u"edit"_s, u"Change an event: callie edit <id> --start \"friday 3pm\""_s},
@@ -883,8 +884,8 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
     const bool looks = command == u"calendars" &&
                        QStringList{u"rename"_s, u"color"_s, u"reset"_s}.contains(args.value(1));
     const bool reading = command == u"agenda" || command == u"search" || command == u"invites" ||
-                         command == u"contacts" || (command == u"calendars" && !looks) ||
-                         command == u"accounts";
+                         command == u"contacts" || command == u"export" ||
+                         (command == u"calendars" && !looks) || command == u"accounts";
     // Sample data and scripts that only read leave the user's settings alone.
     QTemporaryDir scratch;
     Settings settings(sample ? scratch.filePath(u"settings.ini"_s) : Settings::defaultPath());
@@ -955,6 +956,8 @@ int runEvents(QCoreApplication &app, const QString &command, const QStringList &
         return 1;
 #endif
     }
+    if (command == u"export")
+        return commands.exportCalendar(args.value(1), args.value(2));
     if (command == u"search")
         return commands.search(args.mid(1).join(u' '), json);
     if (command == u"invites")

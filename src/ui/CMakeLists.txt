@@ -14,6 +14,8 @@ qt_add_qml_module(callieui
         AccountsController.cpp
         LocalController.h
         LocalController.cpp
+        ExportController.h
+        ExportController.cpp
         ServerCalendarsController.h
         ServerCalendarsController.cpp
         ImportController.h

@@ -96,6 +96,9 @@ public:
     /// `answers` says so. `answers` is null when no one is there to ask.
     static int removeCalendar(LocalCalendars &local, CalDavSource &caldav, const QString &calendar,
                               bool yes, QTextStream *answers, QTextStream &out, QTextStream &err);
+    /// Writes `calendar`, by id or name, as iCalendar to `file`, or to the
+    /// output when that is empty or "-".
+    int exportCalendar(const QString &calendar, const QString &file);
     /// The name Callie shows for an account; empty goes back to its own.
     int renameAccount(const QString &account, const QString &name);
 

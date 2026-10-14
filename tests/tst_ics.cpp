@@ -1,3 +1,4 @@
+#include "callie/GoogleCalendarApi.h"
 #include "callie/Ics.h"
 
 #include <QJsonArray>
@@ -26,6 +27,7 @@ private Q_SLOTS:
     void answersAsTheUser();
     void theOrganizerIsTheUser();
     void eventsGoToGoogleWithTheirRepeats();
+    void googleEventsBecomeICalendar();
 };
 
 namespace {
@@ -635,6 +637,76 @@ END:VEVENT
     const QJsonObject trip = byUid(u"trip"_s);
     QCOMPARE(trip[u"start"][u"date"].toString(), u"2026-10-10"_s);
     QCOMPARE(trip[u"end"][u"date"].toString(), u"2026-10-12"_s);
+}
+
+void TestIcs::googleEventsBecomeICalendar()
+{
+    GoogleEvent series;
+    series.id = u"standup"_s;
+    series.status = u"confirmed"_s;
+    series.summary = u"Standup"_s;
+    series.start = {
+        {}, QDateTime(QDate(2026, 10, 5), QTime(7, 0), QTimeZone::UTC), u"Europe/Berlin"_s};
+    series.end = {
+        {}, QDateTime(QDate(2026, 10, 5), QTime(7, 15), QTimeZone::UTC), u"Europe/Berlin"_s};
+    series.recurrence = {u"RRULE:FREQ=DAILY;COUNT=5"_s,
+                         u"EXDATE;TZID=Europe/Berlin:20261006T090000"_s};
+    series.attendees = R"([{"email":"me@example.com","organizer":true,"self":true,)"
+                       R"("responseStatus":"accepted"},)"
+                       R"({"email":"alex@example.com","responseStatus":"tentative"}])";
+    GoogleEvent moved;
+    moved.id = u"standup_20261007T070000Z"_s;
+    moved.status = u"confirmed"_s;
+    moved.summary = u"Standup, later"_s;
+    moved.recurringEventId = u"standup"_s;
+    moved.originalStart = {
+        {}, QDateTime(QDate(2026, 10, 7), QTime(7, 0), QTimeZone::UTC), u"Europe/Berlin"_s};
+    moved.start = {
+        {}, QDateTime(QDate(2026, 10, 7), QTime(9, 0), QTimeZone::UTC), u"Europe/Berlin"_s};
+    moved.end = {
+        {}, QDateTime(QDate(2026, 10, 7), QTime(9, 15), QTimeZone::UTC), u"Europe/Berlin"_s};
+    GoogleEvent skipped;
+    skipped.id = u"standup_20261008T070000Z"_s;
+    skipped.status = u"cancelled"_s;
+    skipped.recurringEventId = u"standup"_s;
+    skipped.originalStart = {
+        {}, QDateTime(QDate(2026, 10, 8), QTime(7, 0), QTimeZone::UTC), u"Europe/Berlin"_s};
+    GoogleEvent trip;
+    trip.id = u"trip"_s;
+    trip.status = u"confirmed"_s;
+    trip.summary = u"Trip"_s;
+    trip.start = {QDate(2026, 10, 10), {}, {}};
+    trip.end = {QDate(2026, 10, 12), {}, {}};
+    GoogleEvent focus = trip;
+    focus.id = u"focus"_s;
+    focus.eventType = u"focusTime"_s;
+
+    // Written out and read back, as an export would be.
+    const ics::Group events =
+        ics::parse(ics::write(ics::fromGoogle({series, moved, skipped, trip, focus})));
+    QCOMPARE(events.size(), 3);
+    const auto find = [&events](const QString &uid, bool exception) {
+        return *std::ranges::find_if(events, [&](const auto &e) {
+            return e->uid() == uid && e->hasRecurrenceId() == exception;
+        });
+    };
+    const auto master = find(u"standup@google.com"_s, false);
+    QCOMPARE(master->dtStart().timeZone().id(), QByteArray("Europe/Berlin"));
+    QCOMPARE(master->dtStart().time(), QTime(9, 0));
+    QCOMPARE(master->recurrence()->rRules().size(), 1);
+    // Its own skipped day and the cancelled occurrence.
+    QCOMPARE(master->recurrence()->exDateTimes().size(), 2);
+    QCOMPARE(master->organizer().email(), u"me@example.com"_s);
+    QCOMPARE(master->attendees().size(), 2);
+    QCOMPARE(master->attendees().last().status(), KCalendarCore::Attendee::Tentative);
+    const auto later = find(u"standup@google.com"_s, true);
+    QCOMPARE(later->summary(), u"Standup, later"_s);
+    QCOMPARE(later->recurrenceId().toUTC(),
+             QDateTime(QDate(2026, 10, 7), QTime(7, 0), QTimeZone::UTC));
+    // All day, ending on its last day.
+    const auto away = find(u"trip@google.com"_s, false);
+    QVERIFY(away->allDay());
+    QCOMPARE(away->dtEnd().date(), QDate(2026, 10, 11));
 }
 
 QTEST_MAIN(TestIcs)

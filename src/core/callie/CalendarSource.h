@@ -105,6 +105,18 @@ public:
         done(0, tr("That calendar cannot take events from a file."));
     }
 
+    /// The calendar's events as an iCalendar file, or with `uid` only that
+    /// event, its whole series if it repeats. Empty, with `error` set, when the
+    /// calendar cannot be read so.
+    [[nodiscard]] virtual QByteArray exportEvents(const QString &calendarId, const QString &uid,
+                                                  QString *error) const
+    {
+        Q_UNUSED(calendarId)
+        Q_UNUSED(uid)
+        *error = tr("That calendar cannot be saved as a file.");
+        return {};
+    }
+
     /// Answers an invitation with "accepted", "tentative" or "declined", for
     /// this occurrence or, with `wholeSeries`, every occurrence.
     virtual void respond(const Event &event, const QString &status, bool wholeSeries, Created done)

@@ -381,6 +381,30 @@ void GoogleSource::importEvents(const QString &calendarId, const QByteArray &dat
     m_sync->importEvents(calendar->first, calendar->second, events, std::move(done));
 }
 
+QByteArray GoogleSource::exportEvents(const QString &calendarId, const QString &uid,
+                                      QString *error) const
+{
+    const auto calendar = splitCalendarId(calendarId);
+    if (!calendar) {
+        *error = tr("That calendar is not in any connected account.");
+        return {};
+    }
+    QList<GoogleEvent> events = m_cache.events(calendar->first, calendar->second);
+    // A series is its own event and the occurrences that name it.
+    const QString id = uid.section(u'@', 0, 0);
+    if (!uid.isEmpty())
+        events.removeIf([&id](const GoogleEvent &event) {
+            return event.id != id && event.recurringEventId != id;
+        });
+    const ics::Group group = ics::fromGoogle(events);
+    if (group.isEmpty()) {
+        *error = uid.isEmpty() ? tr("That calendar has no events.")
+                               : tr("That event is not in the calendar any more.");
+        return {};
+    }
+    return ics::write(group);
+}
+
 void GoogleSource::respond(const Event &event, const QString &status, bool wholeSeries,
                            Created done)
 {

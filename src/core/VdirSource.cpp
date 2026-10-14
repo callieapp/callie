@@ -359,6 +359,27 @@ void VdirSource::importEvents(const QString &calendarId, const QByteArray &data,
     done(std::max(written, 0), written < 0 ? error : QString());
 }
 
+QByteArray VdirSource::exportEvents(const QString &calendarId, const QString &uid,
+                                    QString *error) const
+{
+    const Folder *where = folder(calendarId);
+    if (!where) {
+        *error = tr("That calendar is not on this computer any more.");
+        return {};
+    }
+    ics::Group events;
+    for (const ics::Group &group : read(*where).groups) {
+        if (uid.isEmpty() || group.first()->uid() == uid)
+            events += group;
+    }
+    if (events.isEmpty()) {
+        *error = uid.isEmpty() ? tr("That calendar has no events.")
+                               : tr("That event is not in the calendar any more.");
+        return {};
+    }
+    return ics::write(events);
+}
+
 int VdirSource::importEvents(const QString &calendarId, const ics::Group &events, QString *error)
 {
     const Folder *where = folder(calendarId);

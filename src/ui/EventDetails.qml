@@ -1,7 +1,9 @@
 pragma ComponentBehavior: Bound
 import Callie.Ui
+import QtCore as Core
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 
 /// The card that opens when an event is clicked: a header in the event's
 /// calendar colors, the user's answer when invited, a join button for calls,
@@ -494,6 +496,15 @@ Popup {
                     text: qsTr("Email guests")
                     onClicked: Qt.openUrlExternally(actions.mailGuests(root.event))
                 }
+                StickerButton {
+                    text: qsTr("Save as .ics")
+                    onClicked: {
+                        saveDialog.selectedFile = Core.StandardPaths.writableLocation(
+                                    Core.StandardPaths.DocumentsLocation) + "/"
+                                + Exporter.fileNameFor(root.summary)
+                        saveDialog.open()
+                    }
+                }
                 // A one-off event takes a second click to delete; a repeating
                 // one asks which occurrences instead.
                 DangerButton {
@@ -772,5 +783,16 @@ Popup {
                 onTapped: detail.activated()
             }
         }
+    }
+
+    // A repeating event goes as its whole series.
+    FileDialog {
+        id: saveDialog
+        title: qsTr("Save the event")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "ics"
+        nameFilters: [qsTr("Calendar files (*.ics)")]
+        onAccepted: Exporter.save(root.event.calendarId, root.event.seriesId || root.event.uid,
+                                  selectedFile)
     }
 }

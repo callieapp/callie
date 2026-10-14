@@ -1,6 +1,7 @@
 #include "AccountsController.h"
 #include "Clock.h"
 #include "EventModelForeign.h"
+#include "ExportController.h"
 #include "ImportController.h"
 #include "LiveQml.h"
 #include "LocalController.h"
@@ -350,6 +351,7 @@ int main(int argc, char *argv[])
     callie::AccountsController::instance()->setUp(accountSetup);
     callie::LocalController::instance()->setUp(local ? &*local : nullptr);
     callie::ServerCalendarsController::instance()->setUp(caldav ? &*caldav : nullptr);
+    callie::ExportController::instance()->setUp(&looked);
     callie::ImportController::instance()->setUp(local ? &looked : nullptr,
                                                 local ? &*local : nullptr);
     callie::SubscriptionsController::instance()->setUp(subscriptions ? &*subscriptions : nullptr);

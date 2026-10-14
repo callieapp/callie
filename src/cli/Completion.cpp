@@ -148,6 +148,8 @@ QList<Candidate> Completion::valuesOf(const QString &option) const
         return plain({u"on"_s, u"off"_s});
     if (option == u"calendar")
         return from(m_sources.calendars);
+    if (option == u"account")
+        return from(m_sources.accounts);
     return {};
 }
 
@@ -173,7 +175,7 @@ QList<Candidate> Completion::argument(const QStringList &positional) const
         if (at == 2 && positional.at(1) != u"new")
             return from(m_sources.calendars);
     }
-    if (command == u"unsubscribe" && at == 1)
+    if ((command == u"unsubscribe" || command == u"export") && at == 1)
         return from(m_sources.calendars);
     if (command == u"accounts") {
         if (at == 1)

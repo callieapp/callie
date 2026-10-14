@@ -1,11 +1,14 @@
 #include "callie/Ics.h"
 
+#include "callie/GoogleCalendarApi.h"
+
 #include <KCalendarCore/ICalFormat>
 #include <KCalendarCore/MemoryCalendar>
 #include <KCalendarCore/RecurrenceRule>
 
 #include <QHash>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QSet>
 
 #include <cmath>
@@ -869,6 +872,92 @@ void takeOrganizer(Group &group, const Group &before, const QString &self)
                                                       KCalendarCore::Attendee::Chair));
         event->setAttendees(attendees);
     }
+}
+
+Group fromGoogle(const QList<GoogleEvent> &events)
+{
+    const auto uidOf = [](const QString &id) { return id + u"@google.com"_s; };
+    const auto when = [](const GoogleEventTime &time) {
+        if (time.isAllDay())
+            return time.date.startOfDay();
+        const QTimeZone zone(time.timeZone.toUtf8());
+        return zone.isValid() ? time.dateTime.toTimeZone(zone) : time.dateTime;
+    };
+    const auto partstat = [](const QString &status) {
+        using A = KCalendarCore::Attendee;
+        return status == u"accepted"    ? A::Accepted
+               : status == u"declined"  ? A::Declined
+               : status == u"tentative" ? A::Tentative
+                                        : A::NeedsAction;
+    };
+    Group group;
+    QHash<QString, KEvent::Ptr> series;
+    QList<const GoogleEvent *> cancelled;
+    for (const GoogleEvent &google : events) {
+        if (google.isCancelled()) {
+            cancelled << &google;
+            continue;
+        }
+        if (google.eventType != u"default" && !google.eventType.isEmpty())
+            continue;
+        KEvent::Ptr event(new KEvent);
+        event->setUid(
+            uidOf(google.recurringEventId.isEmpty() ? google.id : google.recurringEventId));
+        event->setSummary(google.summary);
+        event->setDescription(google.description);
+        event->setLocation(google.location);
+        event->setAllDay(google.start.isAllDay());
+        event->setDtStart(when(google.start));
+        // Google's all-day end is the day after; iCalendar's here is the last day.
+        event->setDtEnd(google.end.isAllDay() ? google.end.date.addDays(-1).startOfDay()
+                                              : when(google.end));
+        if (google.updated.isValid())
+            event->setLastModified(google.updated);
+        if (!google.recurringEventId.isEmpty())
+            event->setRecurrenceId(when(google.originalStart));
+        for (const QJsonValue &value : QJsonDocument::fromJson(google.attendees).array()) {
+            const QJsonObject person = value.toObject();
+            const QString email = person[u"email"].toString();
+            if (person[u"organizer"].toBool())
+                event->setOrganizer(
+                    KCalendarCore::Person(person[u"displayName"].toString(), email));
+            event->addAttendee(
+                KCalendarCore::Attendee(person[u"displayName"].toString(), email, false,
+                                        partstat(person[u"responseStatus"].toString())));
+        }
+        if (!google.recurrence.isEmpty()) {
+            // Read by KCalendarCore, as part of an event, then moved across.
+            const QByteArray text =
+                "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Callie//EN\r\nBEGIN:VEVENT\r\n"
+                "UID:x\r\nDTSTART:" +
+                event->dtStart().toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s).toUtf8() + "\r\n" +
+                google.recurrence.join(u"\r\n"_s).toUtf8() + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+            const Group parsed = parse(text);
+            if (!parsed.isEmpty()) {
+                const KCalendarCore::Recurrence *from = parsed.first()->recurrence();
+                KCalendarCore::Recurrence *to = event->recurrence();
+                for (const KCalendarCore::RecurrenceRule *rule : from->rRules())
+                    to->addRRule(new KCalendarCore::RecurrenceRule(*rule));
+                to->setExDateTimes(from->exDateTimes());
+                to->setExDates(from->exDates());
+                to->setRDateTimes(from->rDateTimes());
+                to->setRDates(from->rDates());
+            }
+            series.insert(google.id, event);
+        }
+        group << event;
+    }
+    // A cancelled occurrence of a series known here is a day it skips.
+    for (const GoogleEvent *google : std::as_const(cancelled)) {
+        const KEvent::Ptr master = series.value(google->recurringEventId);
+        if (!master)
+            continue;
+        if (master->allDay())
+            master->recurrence()->addExDate(google->originalStart.date);
+        else
+            master->recurrence()->addExDateTime(when(google->originalStart));
+    }
+    return group;
 }
 
 QList<QJsonObject> toGoogle(const Group &events)

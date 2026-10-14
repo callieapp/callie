@@ -20,6 +20,7 @@ private Q_SLOTS:
     void sharedFilesKeepTheirOtherEntries();
     void importingAgainReplaces();
     void removingTrashesTheFolder();
+    void exportsTheCalendarOrOneEvent();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -224,6 +225,53 @@ void TestLocalCalendars::removingTrashesTheFolder()
     QVERIFY(local.calendars().isEmpty());
     QVERIFY(!QDir(root() + u"/old"_s).exists());
     QVERIFY(!local.remove(id, &error));
+}
+
+void TestLocalCalendars::exportsTheCalendarOrOneEvent()
+{
+    LocalCalendars local(root());
+    QString error;
+    const QString id = local.create(u"Home"_s, {}, &error);
+    QVERIFY(local.exportEvents(id, {}, &error).isEmpty());
+    QVERIFY(!error.isEmpty());
+    const ics::Group events = ics::parse(R"(BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//t//EN
+BEGIN:VEVENT
+UID:standup
+DTSTART;TZID=Europe/Berlin:20261005T090000
+DTEND;TZID=Europe/Berlin:20261005T091500
+RRULE:FREQ=DAILY;COUNT=5
+SUMMARY:Standup
+END:VEVENT
+BEGIN:VEVENT
+UID:standup
+RECURRENCE-ID;TZID=Europe/Berlin:20261007T090000
+DTSTART;TZID=Europe/Berlin:20261007T110000
+DTEND;TZID=Europe/Berlin:20261007T111500
+SUMMARY:Standup, later
+END:VEVENT
+BEGIN:VEVENT
+UID:party
+DTSTART:20261009T190000Z
+DTEND:20261009T230000Z
+SUMMARY:Party
+END:VEVENT
+END:VCALENDAR
+)");
+    QCOMPARE(local.importEvents(id, events, &error), 2);
+
+    // The whole calendar, read back the same.
+    const ics::Group all = ics::parse(local.exportEvents(id, {}, &error));
+    QCOMPARE(all.size(), 3);
+    QCOMPARE(ics::byUid(all).size(), 2);
+    // One series, with the occurrence it changed and its zone.
+    const QByteArray standup = local.exportEvents(id, u"standup"_s, &error);
+    QVERIFY(standup.contains("BEGIN:VTIMEZONE"));
+    const ics::Group series = ics::parse(standup);
+    QCOMPARE(series.size(), 2);
+    QVERIFY(std::ranges::all_of(series, [](const auto &e) { return e->uid() == u"standup"; }));
+    QVERIFY(local.exportEvents(id, u"gone"_s, &error).isEmpty());
 }
 
 QTEST_MAIN(TestLocalCalendars)

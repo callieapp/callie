@@ -19,6 +19,7 @@
 #include <QLocale>
 #include <QMetaEnum>
 #include <QMetaProperty>
+#include <QSaveFile>
 
 #include <algorithm>
 
@@ -775,6 +776,47 @@ int Commands::removeCalendar(LocalCalendars &local, CalDavSource &caldav, const 
         return 1;
     }
     out << tr("Deleted %1 on its server.").arg(target.displayName) << "\n";
+    return 0;
+}
+
+int Commands::exportCalendar(const QString &calendar, const QString &file)
+{
+    if (calendar.isEmpty()) {
+        m_err << tr("usage: callie export <calendar> [file.ics]") << "\n";
+        return 2;
+    }
+    QList<CalendarInfo> found;
+    for (const CalendarInfo &each : m_source.calendars()) {
+        if (each.id == calendar || each.displayName.compare(calendar, Qt::CaseInsensitive) == 0)
+            found.append(each);
+    }
+    if (found.size() != 1) {
+        QStringList ids;
+        for (const CalendarInfo &each : std::as_const(found))
+            ids << each.id;
+        m_err << (found.isEmpty() ? tr("callie: no calendar is called %1").arg(calendar)
+                                  : tr("callie: more than one calendar is called %1; give its "
+                                       "id: %2")
+                                        .arg(calendar, ids.join(u", "_s)))
+              << "\n";
+        return found.isEmpty() ? 1 : 2;
+    }
+    QString error;
+    const QByteArray data = m_source.exportEvents(found.first().id, {}, &error);
+    if (data.isEmpty()) {
+        m_err << QStringLiteral("callie: %1\n").arg(error);
+        return 1;
+    }
+    if (file.isEmpty() || file == u"-") {
+        m_out << QString::fromUtf8(data);
+        return 0;
+    }
+    QSaveFile out(file);
+    if (!out.open(QIODevice::WriteOnly) || out.write(data) != data.size() || !out.commit()) {
+        m_err << QStringLiteral("callie: %1: %2\n").arg(file, out.errorString());
+        return 1;
+    }
+    m_out << tr("Saved %1 to %2.").arg(found.first().displayName, file) << "\n";
     return 0;
 }
 

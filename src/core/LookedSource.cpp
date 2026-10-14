@@ -72,6 +72,12 @@ void LookedSource::importEvents(const QString &calendarId, const QByteArray &dat
     m_inner->importEvents(calendarId, data, std::move(done));
 }
 
+QByteArray LookedSource::exportEvents(const QString &calendarId, const QString &uid,
+                                      QString *error) const
+{
+    return m_inner->exportEvents(calendarId, uid, error);
+}
+
 void LookedSource::respond(const Event &event, const QString &status, bool wholeSeries,
                            Created done)
 {

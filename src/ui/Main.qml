@@ -983,6 +983,16 @@ ApplicationWindow {
     }
 
     Connections {
+        target: Exporter
+        function onSaved(fileName) {
+            undoToast.show("", qsTr("Saved %1").arg(fileName))
+        }
+        function onFailed(error) {
+            undoToast.show("", error)
+        }
+    }
+
+    Connections {
         target: Importer
         function onPendingChanged() {
             if (Importer.pending)

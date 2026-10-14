@@ -102,6 +102,19 @@ void CombinedSource::importEvents(const QString &calendarId, const QByteArray &d
         source->importEvents(calendarId, data, std::move(done));
 }
 
+QByteArray CombinedSource::exportEvents(const QString &calendarId, const QString &uid,
+                                        QString *error) const
+{
+    for (CalendarSource *source : sources()) {
+        for (const CalendarInfo &calendar : source->calendars()) {
+            if (calendar.id == calendarId)
+                return source->exportEvents(calendarId, uid, error);
+        }
+    }
+    *error = tr("That calendar is not connected any more.");
+    return {};
+}
+
 void CombinedSource::respond(const Event &event, const QString &status, bool wholeSeries,
                              Created done)
 {

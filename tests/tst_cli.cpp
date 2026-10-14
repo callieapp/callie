@@ -5,6 +5,7 @@
 #include "callie/CalDavSource.h"
 #include "callie/CombinedSource.h"
 #include "callie/ContactBook.h"
+#include "callie/Ics.h"
 #include "callie/LocalCalendars.h"
 #include "callie/SampleSource.h"
 #include "callie/Settings.h"
@@ -151,6 +152,7 @@ private Q_SLOTS:
     void importPicksItsCalendar();
     void importReachesCalendarsElsewhere();
     void removingAServerCalendarAsksFirst();
+    void exportWritesTheCalendar();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -882,6 +884,41 @@ void TestCli::removingAServerCalendarAsksFirst()
     // --yes deletes on the server without asking.
     QCOMPARE(remove(u"Home"_s, true, {}, false), 0);
     QVERIFY(!server.calendars.contains(FakeCalDavServer::calendarPath("home")));
+}
+
+void TestCli::exportWritesTheCalendar()
+{
+    QTemporaryDir dir;
+    LocalCalendars local(dir.filePath(u"calendars"_s));
+    QString error;
+    const QString home = local.create(u"Home"_s, {}, &error);
+    QCOMPARE(local.importEvents(home,
+                                ics::parse("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+                                           "BEGIN:VEVENT\r\nUID:p\r\nDTSTART:20261009T190000Z\r\n"
+                                           "DTEND:20261009T230000Z\r\nSUMMARY:Party\r\n"
+                                           "END:VEVENT\r\nEND:VCALENDAR\r\n"),
+                                &error),
+             1);
+    Commands commands(local, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
+    const auto run = [&](const QString &calendar, const QString &file) {
+        m_out.clear();
+        m_err.clear();
+        const int code = commands.exportCalendar(calendar, file);
+        m_outStream->flush();
+        m_errStream->flush();
+        return code;
+    };
+
+    // To the output, then to a file, by name.
+    QCOMPARE(run(u"home"_s, {}), 0);
+    QVERIFY(m_out.contains(u"SUMMARY:Party"_s));
+    const QString path = dir.filePath(u"home.ics"_s);
+    QCOMPARE(run(u"Home"_s, path), 0);
+    QFile saved(path);
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    QCOMPARE(ics::parse(saved.readAll()).size(), 1);
+    QCOMPARE(run(u"Work"_s, {}), 1);
+    QCOMPARE(run({}, {}), 2);
 }
 
 QTEST_GUILESS_MAIN(TestCli)

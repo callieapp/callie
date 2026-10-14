@@ -42,6 +42,17 @@
   </categories>
 
   <releases>
+    <release version="0.5.0" date="2026-10-14">
+      <description>
+        <ul>
+          <li>Outlook and Microsoft 365 accounts: connect one in Settings, under Accounts, or with callie accounts add microsoft. Calendars sync both ways, guests get invitations from Outlook, invitations can be answered, and events can have a Teams link where the account has Teams.</li>
+          <li>Make and delete calendars on CalDAV servers, under the account in Settings or with callie calendars new &lt;name&gt; --account &lt;id&gt; and callie calendars remove. Deleting asks first.</li>
+          <li>Save a calendar, or one event, as an .ics file from the calendar's menu in the sidebar or the event's details, or with callie export.</li>
+          <li>Importing an .ics file into Google keeps a changed occurrence of a repeating event in its series.</li>
+          <li>The end time list says how long the event would be: it counted a quarter hour short.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.1" date="2026-10-13">
       <description>
         <p>Renaming and recoloring CalDAV calendars on the server, invitations sent by CalDAV

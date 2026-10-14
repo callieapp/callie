@@ -980,6 +980,18 @@ QList<GoogleImport> toGoogle(const Group &events)
                     json.insert(u"description"_s, QString());
                 if (!json.contains(u"transparency"_s))
                     json.insert(u"transparency"_s, u"opaque"_s);
+                // Google merges times too, so the other kind of time is cleared,
+                // as when an all-day occurrence is given hours.
+                for (const QString &end : {u"start"_s, u"end"_s}) {
+                    QJsonObject time = json[end].toObject();
+                    if (time.contains(u"date"_s)) {
+                        time.insert(u"dateTime"_s, QJsonValue::Null);
+                        time.insert(u"timeZone"_s, QJsonValue::Null);
+                    } else {
+                        time.insert(u"date"_s, QJsonValue::Null);
+                    }
+                    json.insert(end, time);
+                }
                 changed << GoogleImport::Occurrence{id, (*master)->allDay(), json};
                 continue;
             }

@@ -595,6 +595,20 @@ void TestCalDavSource::calendarChangesTakeTurnsWithSyncs()
     QTRY_VERIFY(!m_source->syncing());
     QVERIFY(calendarId(u"Trip"_s).isEmpty());
     QVERIFY(!m_server->calendars.contains(FakeCalDavServer::calendarPath("trip")));
+
+    // Resyncing waits for a change under way; removing the account lets it answer.
+    m_server->addCalendar("book", "Book");
+    sync();
+    error = u"no answer"_s;
+    m_source->removeCalendar(calendarId(u"Book"_s),
+                             [&error](const QString &failed) { error = failed; });
+    QString refused;
+    QVERIFY(!m_source->resync(u"me@example.com"_s, &refused));
+    QVERIFY(!refused.isEmpty());
+    QString forgotten;
+    QVERIFY(m_source->forget(u"me@example.com"_s, &forgotten));
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY(!m_source->syncing());
 }
 
 void TestCalDavSource::aNewLookGoesToTheServer()

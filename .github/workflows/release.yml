@@ -70,6 +70,7 @@ jobs:
         env:
           CALLIE_GOOGLE_CLIENT_ID: ${{ secrets.CALLIE_GOOGLE_CLIENT_ID }}
           CALLIE_GOOGLE_CLIENT_SECRET: ${{ secrets.CALLIE_GOOGLE_CLIENT_SECRET }}
+          CALLIE_MICROSOFT_CLIENT_ID: ${{ secrets.CALLIE_MICROSOFT_CLIENT_ID }}
           CALLIE_REQUIRE_GOOGLE_CLIENT: ${{ github.ref_type == 'tag' && '1' || '' }}
         run: |
           version="${{ needs.source.outputs.version }}"
@@ -102,6 +103,7 @@ jobs:
         env:
           CALLIE_GOOGLE_CLIENT_ID: ${{ secrets.CALLIE_GOOGLE_CLIENT_ID }}
           CALLIE_GOOGLE_CLIENT_SECRET: ${{ secrets.CALLIE_GOOGLE_CLIENT_SECRET }}
+          CALLIE_MICROSOFT_CLIENT_ID: ${{ secrets.CALLIE_MICROSOFT_CLIENT_ID }}
           CALLIE_REQUIRE_GOOGLE_CLIENT: ${{ github.ref_type == 'tag' && '1' || '' }}
         run: |
           version="${{ needs.source.outputs.version }}"

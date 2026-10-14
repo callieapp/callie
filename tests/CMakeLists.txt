@@ -40,6 +40,7 @@ set_tests_properties(tst_ics_new_york PROPERTIES ENVIRONMENT
 callie_add_test(tst_localcalendars)
 callie_add_test(tst_subscriptions)
 callie_add_test(tst_caldavclient)
+callie_add_test(tst_microsoftauth)
 callie_add_test(tst_caldavsource)
 callie_add_test(tst_radicale)
 callie_add_test(tst_import)

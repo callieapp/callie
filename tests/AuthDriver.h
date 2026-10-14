@@ -3,37 +3,40 @@
 #include "FakeHttpServer.h"
 
 #include "callie/GoogleAuth.h"
+#include "callie/MicrosoftAuth.h"
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSignalSpy>
 #include <QUrlQuery>
 
-/// Plays the parts of Google's sign-in page and the user's browser, so tests can
-/// run the real GoogleAuth against a FakeHttpServer token endpoint.
-namespace GoogleAuthDriver {
+/// Plays the parts of the sign-in page and the user's browser, so tests can run
+/// the real GoogleAuth or MicrosoftAuth against a FakeHttpServer token endpoint.
+namespace AuthDriver {
 
 /// Points `auth` at `tokenServer` before a flow starts.
-inline void useTokenServer(callie::GoogleAuth &auth, const FakeHttpServer &tokenServer)
+template<typename Auth>
+inline void useTokenServer(Auth &auth, const FakeHttpServer &tokenServer)
 {
     auth.setEndpoints(QUrl(QStringLiteral("https://accounts.example/auth")),
                       tokenServer.url(QStringLiteral("/token")));
 }
 
 /// Starts authorization and returns the URL the browser would open.
-inline QUrl startAuthorization(callie::GoogleAuth &auth, const FakeHttpServer &tokenServer)
+template<typename Auth>
+inline QUrl startAuthorization(Auth &auth, const FakeHttpServer &tokenServer)
 {
     useTokenServer(auth, tokenServer);
-    QSignalSpy ready(&auth, &callie::GoogleAuth::authorizeUrlReady);
+    QSignalSpy ready(&auth, &Auth::authorizeUrlReady);
     auth.authorize();
     if (ready.isEmpty() && !ready.wait(2000))
         return {};
     return ready.first().first().toUrl();
 }
 
-/// Google redirecting to the loopback callback after the user consents.
-inline void redirectBack(QNetworkAccessManager &network, const callie::GoogleAuth &auth,
-                         const QString &state)
+/// The provider redirecting to the loopback callback after the user consents.
+template<typename Auth>
+inline void redirectBack(QNetworkAccessManager &network, const Auth &auth, const QString &state)
 {
     QUrl callback = auth.callbackUrl();
     QUrlQuery query;
@@ -45,10 +48,11 @@ inline void redirectBack(QNetworkAccessManager &network, const callie::GoogleAut
 }
 
 /// Answers the redirect for whatever authorization `auth` starts next.
-inline void approveNextAuthorization(QNetworkAccessManager &network, callie::GoogleAuth &auth)
+template<typename Auth>
+inline void approveNextAuthorization(QNetworkAccessManager &network, Auth &auth)
 {
     QObject::connect(
-        &auth, &callie::GoogleAuth::authorizeUrlReady, &auth,
+        &auth, &Auth::authorizeUrlReady, &auth,
         [&network, &auth](const QUrl &url) {
             const QString state =
                 QUrlQuery(url).queryItemValue(QStringLiteral("state"), QUrl::FullyDecoded);
@@ -57,4 +61,4 @@ inline void approveNextAuthorization(QNetworkAccessManager &network, callie::Goo
         Qt::SingleShotConnection);
 }
 
-} // namespace GoogleAuthDriver
+} // namespace AuthDriver

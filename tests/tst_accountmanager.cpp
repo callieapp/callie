@@ -1,5 +1,5 @@
+#include "AuthDriver.h"
 #include "FakeCalDavServer.h"
-#include "GoogleAuthDriver.h"
 
 #include "callie/AccountManager.h"
 #include "callie/AccountStore.h"
@@ -144,14 +144,14 @@ void TestAccountManager::runConnect(int tokenStatus, const QByteArray &tokenBody
 
     QNetworkAccessManager network;
     GoogleAuth auth(kClient);
-    GoogleAuthDriver::useTokenServer(auth, tokenServer);
+    AuthDriver::useTokenServer(auth, tokenServer);
     GoogleCalendarApi api(&network);
     api.setBaseUrl(apiServer.url(QStringLiteral("/calendar/v3/")));
     api.setPeopleBaseUrl(apiServer.url(QStringLiteral("/people/v1/")));
 
     QSignalSpy connected(m_manager.get(), &AccountManager::connected);
     QSignalSpy failed(m_manager.get(), &AccountManager::failed);
-    GoogleAuthDriver::approveNextAuthorization(network, auth);
+    AuthDriver::approveNextAuthorization(network, auth);
     m_manager->connectGoogle(auth, api);
 
     QTRY_VERIFY_WITH_TIMEOUT(connected.size() + failed.size() > 0, 5000);

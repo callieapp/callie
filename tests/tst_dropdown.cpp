@@ -21,6 +21,7 @@ private Q_SLOTS:
     void pickingTheCurrentChoiceKeepsItMarked();
     void aLongListFitsTheWindow();
     void aLongChoiceIsCutShort();
+    void endTimesCountFromTheStart();
 
 private:
     /// The menu's entries, in the overlay over the window's content.
@@ -133,6 +134,44 @@ void TestDropdown::aLongChoiceIsCutShort()
     QVERIFY2(object, qPrintable(component.errorString()));
     auto *dropdown = qobject_cast<QQuickItem *>(object.get());
     QCOMPARE(dropdown->implicitWidth(), 240.0);
+}
+
+void TestDropdown::endTimesCountFromTheStart()
+{
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    component.loadFromModule("Callie.Ui", "TimePicker");
+    // An end for a 5:00 PM start, as the event editor has it: the list begins
+    // a quarter hour on, and lengths count from the start.
+    std::unique_ptr<QObject> object(
+        component.createWithInitialProperties({{u"minutes"_s, 17 * 60 + 45},
+                                               {u"from"_s, 17 * 60 + 15},
+                                               {u"since"_s, 17 * 60},
+                                               {u"showLength"_s, true}}));
+    QVERIFY2(object, qPrintable(component.errorString()));
+    auto *picker = qobject_cast<QQuickItem *>(object.get());
+    QQuickWindow window;
+    window.resize(400, 600);
+    picker->setParentItem(window.contentItem());
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    click(window, picker);
+    QStringList texts;
+    QTRY_VERIFY([&] {
+        texts.clear();
+        const std::function<void(QQuickItem *)> walk = [&](QQuickItem *item) {
+            const QString text = item->property("text").toString();
+            // A row and its label say the same, so each is kept once.
+            if (item->isVisible() && text.endsWith(u')') && !texts.contains(text))
+                texts << text;
+            for (QQuickItem *child : item->childItems())
+                walk(child);
+        };
+        walk(window.contentItem());
+        return texts.size() >= 3;
+    }());
+    QVERIFY2(texts.first().endsWith(u"(15 min)"_s), qPrintable(texts.first()));
+    QVERIFY2(texts.at(2).endsWith(u"(45 min)"_s), qPrintable(texts.at(2)));
 }
 
 QTEST_MAIN(TestDropdown)

@@ -266,6 +266,7 @@ Column {
             from: root.startDay.getTime() === root.endDay.getTime() ? root.startMinutes + Theme.snapMinutes :
                                                                       0
             showLength: root.startDay.getTime() === root.endDay.getTime()
+            since: root.startMinutes
             onPicked: minutes => root.endMinutes = minutes
         }
         DatePicker {

@@ -11,8 +11,10 @@ AbstractButton {
     property int minutes
     /// What the list starts from, such as the start time for an end time.
     property int from: 0
-    /// Shows how long after `from` each choice is, for an end time.
+    /// Shows how long after `since` each choice is, for an end time.
     property bool showLength: false
+    /// Where lengths count from: the start, which the list of ends begins after.
+    property int since: from
 
     signal picked(int minutes)
 
@@ -86,7 +88,7 @@ AbstractButton {
                 text: {
                     if (!root.showLength)
                         return root.label(at)
-                    const length = at - root.from
+                    const length = at - root.since
                     const span = length < 60 ? qsTr("%1 min").arg(length) : length % 60 === 0 ? qsTr(
                                                                                                     "%1 h").arg(
                                                                                                     length / 60) :

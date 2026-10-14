@@ -42,6 +42,15 @@
   </categories>
 
   <releases>
+    <release version="0.5.1" date="2026-10-14">
+      <description>
+        <ul>
+          <li>On GNOME, a button layout with no window buttons, as tiling setups often use, is followed rather than putting minimize, maximize and close back.</li>
+          <li>Copying a theme under a name with a line break in it no longer leaves a theme that will not load.</li>
+          <li>Turning debug logging on or off while Callie is busy can no longer upset the check that keeps event details out of the log file.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.0" date="2026-10-14">
       <description>
         <ul>

@@ -117,7 +117,8 @@ private:
     /// Changes the occurrences of the series `id` that differ between `before`
     /// and `after`: patched, deleted or answered.
     void sendOccurrences(const QString &token, const QString &id, const ics::Group &before,
-                         const ics::Group &after, bool organizer, const QString &self, Done done);
+                         const ics::Group &after, bool organizer, const QString &self,
+                         std::function<void(const GraphError &)> done);
     void readContacts(const QString &accountId, const QString &token);
 
     [[nodiscard]] static State readState(const QString &folder);

@@ -770,10 +770,7 @@ void MicrosoftSource::send(const QString &token, const Folder &folder, const QSt
     };
     const auto occurrences = [self, token, after, self_,
                               then](const QString &id, const ics::Group &before, bool organizer) {
-        self->sendOccurrences(token, id, before, after, organizer, self_,
-                              [id, then](const QString &error) {
-                                  then(id)(error.isEmpty() ? GraphError() : GraphError{400, error});
-                              });
+        self->sendOccurrences(token, id, before, after, organizer, self_, then(id));
     };
     if (remote.id.isEmpty()) {
         m_graph->send(token, "POST", u"me/calendars/%1/events"_s.arg(encoded(state.calendarId)),
@@ -817,7 +814,8 @@ void MicrosoftSource::send(const QString &token, const Folder &folder, const QSt
 
 void MicrosoftSource::sendOccurrences(const QString &token, const QString &id,
                                       const ics::Group &before, const ics::Group &after,
-                                      bool organizer, const QString &self, Done done)
+                                      bool organizer, const QString &self,
+                                      std::function<void(const GraphError &)> done)
 {
     QList<Step> steps = stepsBetween(before, after, organizer, self);
     // One step at a time, each finding its occurrence first.
@@ -846,7 +844,7 @@ void MicrosoftSource::sendOccurrences(const QString &token, const QString &id,
             source->m_graph->send(token, method, path, body,
                                   [done, next](const QJsonObject &, const GraphError &error) {
                                       if (error && error.status != 404) {
-                                          done(error.message);
+                                          done(error);
                                           *next = nullptr;
                                           return;
                                       }
@@ -867,7 +865,7 @@ void MicrosoftSource::sendOccurrences(const QString &token, const QString &id,
             [step, at, act, done, next](const QList<QJsonObject> &instances,
                                         const GraphError &error) {
                 if (error) {
-                    done(error.message);
+                    done(error);
                     *next = nullptr;
                     return;
                 }

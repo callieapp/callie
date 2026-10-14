@@ -107,6 +107,11 @@ public:
     /// invalid color leaves that one as it is.
     void setLook(const QUrl &calendar, const QString &name, const QColor &color,
                  std::function<void(const DavError &)> done);
+    /// Makes a calendar for events at `calendar`, an address inside the home.
+    void makeCalendar(const QUrl &calendar, const QString &name, const QColor &color,
+                      std::function<void(const DavError &)> done);
+    /// Deletes a calendar and everything in it. Gone already counts.
+    void removeCalendar(const QUrl &calendar, std::function<void(const DavError &)> done);
     /// Deletes the item, only at version `etag` when given. Gone already counts.
     void remove(const QUrl &href, const QString &etag, std::function<void(const DavError &)> done);
 

@@ -519,6 +519,38 @@ void CalDavClient::setLook(const QUrl &calendar, const QString &name, const QCol
          });
 }
 
+void CalDavClient::makeCalendar(const QUrl &calendar, const QString &name, const QColor &color,
+                                std::function<void(const DavError &)> done)
+{
+    QByteArray props = "<d:displayname>" + escaped(name) +
+                       "</d:displayname>"
+                       "<c:supported-calendar-component-set><c:comp name=\"VEVENT\"/>"
+                       "</c:supported-calendar-component-set>";
+    if (color.isValid())
+        props += "<a:calendar-color>" + color.name().toUpper().toUtf8() + "FF</a:calendar-color>";
+    const QByteArray body =
+        R"(<c:mkcalendar xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav")"
+        R"( xmlns:a="http://apple.com/ns/ical/"><d:set><d:prop>)" +
+        props + "</d:prop></d:set></c:mkcalendar>";
+    send("MKCALENDAR", calendar, body, {}, [done](QNetworkReply *, const DavError &error) {
+        if (error.status == 403 || error.status == 405 || error.status == 501)
+            done({error.status, tr("This server does not let Callie make calendars; make one "
+                                   "on its website instead.")});
+        else
+            done(error);
+    });
+}
+
+void CalDavClient::removeCalendar(const QUrl &calendar, std::function<void(const DavError &)> done)
+{
+    send("DELETE", calendar, {}, {}, [done](QNetworkReply *, const DavError &error) {
+        if (error.status == 403 || error.status == 405)
+            done({error.status, tr("This server does not let Callie delete that calendar.")});
+        else
+            done(error.status == 404 ? DavError{} : error);
+    });
+}
+
 void CalDavClient::remove(const QUrl &href, const QString &etag,
                           std::function<void(const DavError &)> done)
 {

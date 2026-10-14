@@ -28,6 +28,7 @@ private Q_SLOTS:
     void init();
     void eventsGoBetweenTwoComputers();
     void aRenameReachesTheOtherComputer();
+    void aCalendarMadeHereReachesTheOtherComputer();
 
 private:
     [[nodiscard]] std::unique_ptr<CalDavSource> computer(const QString &name);
@@ -236,6 +237,30 @@ void TestRadicale::aRenameReachesTheOtherComputer()
     QVERIFY(!calendarId(*m_there, u"Office"_s).isEmpty());
     for (const CalendarInfo &calendar : m_there->calendars())
         QCOMPARE(calendar.color, QColor(u"#ff0066"_s));
+}
+
+void TestRadicale::aCalendarMadeHereReachesTheOtherComputer()
+{
+    sync(*m_here);
+    sync(*m_there);
+    QString made = u"no answer"_s;
+    QString error = u"no answer"_s;
+    m_here->createCalendar(u"me@radicale"_s, u"Book club"_s, QColor(u"#ff0066"_s),
+                           [&](const QString &id, const QString &failed) {
+                               made = id;
+                               error = failed;
+                           });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    sync(*m_there);
+    QVERIFY(!calendarId(*m_there, u"Book club"_s).isEmpty());
+
+    error = u"no answer"_s;
+    m_here->removeCalendar(made, [&error](const QString &failed) { error = failed; });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    sync(*m_there);
+    QVERIFY(calendarId(*m_there, u"Book club"_s).isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestRadicale)

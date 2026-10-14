@@ -58,6 +58,14 @@ public:
     /// in `settings`, on this computer only.
     void followLooks(Settings *settings);
 
+    /// Makes a calendar on an account's server and a copy here, then calls
+    /// `done` with its id, or an error. The account must have synced once.
+    void createCalendar(const QString &accountId, const QString &name, const QColor &color,
+                        std::function<void(const QString &id, const QString &error)> done);
+    /// Deletes a calendar on its server, then the copy here, with any changes
+    /// not sent. `done` has the error, empty once it is gone.
+    void removeCalendar(const QString &calendarId, std::function<void(const QString &)> done);
+
     /// Sends what is waiting and brings down what changed, for every account.
     void refresh() override;
 
@@ -119,6 +127,9 @@ private:
     using Done = std::function<void(const QString &error)>;
 
     [[nodiscard]] QString accountPath(const QString &accountId) const;
+    /// Calls `done` with the account's client, signed in, or why it cannot be.
+    void signIn(const Account &account,
+                std::function<void(CalDavClient *client, const QString &error)> done);
     void scan();
     void sync(const Account &account);
     void finish(const Account &account, const QString &error);

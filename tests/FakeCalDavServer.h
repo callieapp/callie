@@ -73,6 +73,8 @@ public:
     QByteArray address = "mailto:me@example.com";
     /// On, calendars cannot be renamed or recolored.
     bool refuseLooks = false;
+    /// On, calendars cannot be made or deleted.
+    bool refuseCalendars = false;
     /// The calendar home as the principal names it, when not the usual path.
     QByteArray homeHref = "/dav/calendars/me/";
     QMap<QByteArray, Calendar> calendars;
@@ -152,6 +154,9 @@ private:
                                   "</d:sync-token>");
             return xml(body);
         }
+        if (request.method == "MKCALENDAR" ||
+            (request.method == "DELETE" && calendars.contains(path)))
+            return calendarChange(request);
         if (calendars.contains(path))
             return collection(request, calendars[path]);
         const QByteArray parent = path.left(path.lastIndexOf('/') + 1);
@@ -179,6 +184,29 @@ private:
             return {204, "", {}, "text/plain"};
         }
         return {405, "", {}, "text/plain"};
+    }
+
+    FakeHttpServer::Reply calendarChange(const FakeHttpServer::Request &request)
+    {
+        const QByteArray path = request.target;
+        if (refuseCalendars)
+            return {403, "", {}, "text/plain"};
+        if (request.method == "DELETE") {
+            calendars.remove(path);
+            return {204, "", {}, "text/plain"};
+        }
+        if (calendars.contains(path) || !path.startsWith(homeHref) || !path.endsWith('/'))
+            return {405, "", {}, "text/plain"};
+        static const QRegularExpression name(
+            QStringLiteral("<d:displayname>([^<]*)</d:displayname>"));
+        static const QRegularExpression color(
+            QStringLiteral("<a:calendar-color>([^<]*)</a:calendar-color>"));
+        const QString body = QString::fromUtf8(request.body);
+        calendars.insert(path, {name.match(body).captured(1).toUtf8(),
+                                color.match(body).captured(1).toUtf8(),
+                                true,
+                                {}});
+        return {201, "", {}, "text/plain"};
     }
 
     FakeHttpServer::Reply collection(const FakeHttpServer::Request &request, Calendar &calendar)

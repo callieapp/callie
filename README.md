@@ -60,8 +60,8 @@ address, then the user name and an app password, which goes in the system keyrin
 copy of each calendar under `$XDG_DATA_HOME/callie/caldav`, laid out like the calendars on this
 computer, sends changes in the background, renamed and recolored calendars included, holds them
 while the server cannot be reached, and keeps the server's version when an event changed in both
-places. `callie accounts add caldav <server>
-<user>` does the same from a terminal, asking for the password.
+places. Under the account in Settings, calendars can be made on the server and deleted there.
+`callie accounts add caldav <server> <user>` connects one from a terminal, asking for the password.
 
 Calendars can also live on this computer alone: add one in Settings, under Accounts, or with
 `callie calendars new "Book club"`. Each is a folder of `.ics` files under
@@ -112,6 +112,7 @@ callie accounts add caldav caldav.fastmail.com me@fastmail.com # asks for an app
 callie accounts remove google you@example.com # or caldav <id>
 callie calendars                         # calendars in each account, tab-separated
 callie calendars new "Book club"         # a calendar on this computer; remove takes it away
+callie calendars new Club --account <id> # one on a CalDAV server; remove asks before deleting it
 callie import party.ics                  # its events into a calendar here; --calendar picks any
 callie subscribe webcal://example.com/holidays.ics # unsubscribe <calendar> stops it
 callie calendars rename Focus "Deep work" # also hide, show, color <calendar> <#rrggbb>, reset

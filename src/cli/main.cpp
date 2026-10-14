@@ -119,7 +119,7 @@ const QList<std::pair<QString, QString>> kCommands = {
     {u"duplicate"_s, u"Copy an event, to --start if given"_s},
     {u"accounts"_s, u"List, add, remove or rename calendar accounts"_s},
     {u"calendars"_s,
-     u"List the calendars; make or remove one on this computer; hide, show, rename, color or reset one"_s},
+     u"List the calendars; make or remove one, here or on a CalDAV server; hide, show, rename, color or reset one"_s},
     {u"settings"_s, u"List settings, or read or change one: callie settings viMode true"_s},
     {u"logs"_s, u"Show, follow (-f) or open (--open) the log files"_s},
     {u"status"_s, u"Sync state, keyring and configuration"_s},
@@ -556,9 +556,47 @@ int runSync(QCoreApplication &app)
     return app.exec();
 }
 
-/// `callie calendars new <name>` and `callie calendars remove <calendar>`, for
-/// the calendars on this computer.
-int runLocalCalendars(const QString &action, const QString &name)
+/// CalDAV calendars as `callie calendars new` and `remove` reach them: the
+/// accounts, signed in from the keyring, with their copies.
+struct ServerCalendars
+{
+    QList<CalDavSource::Account> accounts;
+    QNetworkAccessManager network;
+    KeychainTokenStore tokens;
+    CalDavSource source{CalDavSource::defaultRoot(), &network, &tokens};
+
+    ServerCalendars()
+    {
+        QList<Account> all;
+        AccountStore(AccountStore::defaultPath()).load(all);
+        for (const Account &account : std::as_const(all)) {
+            if (account.provider == u"caldav")
+                accounts << CalDavSource::Account{account.id, QUrl(account.server), account.user};
+        }
+        source.setAccounts(accounts);
+    }
+};
+
+/// Asks before something that cannot be undone, unless `yes`; a script has to
+/// say yes, since no one is there to ask.
+bool confirmed(const QString &question, bool yes)
+{
+    if (yes)
+        return true;
+    if (!isatty(STDIN_FILENO)) {
+        err << QObject::tr("callie: %1 Run it again with --yes to go ahead.").arg(question) << "\n";
+        return false;
+    }
+    err << question << QObject::tr(" [y/N] ");
+    err.flush();
+    const QString answer = QTextStream(stdin).readLine().trimmed().toLower();
+    return answer == u"y" || answer == u"yes";
+}
+
+/// `callie calendars new <name> [--account <id>]` and `callie calendars remove
+/// <calendar>`, for calendars on this computer or on a CalDAV server.
+int runCalendarChange(const QString &action, const QString &name, const QString &accountId,
+                      bool yes)
 {
     if (name.trimmed().isEmpty()) {
         err << QObject::tr("usage: callie calendars %1 <name>").arg(action) << "\n";
@@ -566,7 +604,7 @@ int runLocalCalendars(const QString &action, const QString &name)
     }
     LocalCalendars local(LocalCalendars::defaultRoot());
     QString error;
-    if (action == u"new") {
+    if (action == u"new" && accountId.isEmpty()) {
         const QString id = local.create(name, {}, &error);
         if (id.isEmpty()) {
             err << QStringLiteral("callie: %1\n").arg(error);
@@ -575,24 +613,77 @@ int runLocalCalendars(const QString &action, const QString &name)
         out << id << "\n";
         return 0;
     }
-    QStringList ids;
-    for (const CalendarInfo &calendar : local.calendars()) {
+    ServerCalendars server;
+    if (action == u"new") {
+        const auto account =
+            std::ranges::find(server.accounts, accountId, &CalDavSource::Account::id);
+        if (account == server.accounts.cend()) {
+            err << QObject::tr("callie: no CalDAV account is called %1; callie accounts lists them")
+                       .arg(accountId)
+                << "\n";
+            return 1;
+        }
+        std::optional<std::pair<QString, QString>> made;
+        QEventLoop waiting;
+        server.source.createCalendar(accountId, name, {},
+                                     [&made, &waiting](const QString &id, const QString &failed) {
+                                         made = {id, failed};
+                                         waiting.quit();
+                                     });
+        if (!made)
+            waiting.exec();
+        if (!made->second.isEmpty()) {
+            err << QStringLiteral("callie: %1\n").arg(made->second);
+            return 1;
+        }
+        out << made->first << "\n";
+        return 0;
+    }
+    QList<CalendarInfo> found;
+    for (const CalendarInfo &calendar : local.calendars() + server.source.calendars()) {
         if (calendar.id == name || calendar.displayName.compare(name, Qt::CaseInsensitive) == 0)
+            found << calendar;
+    }
+    if (found.size() != 1) {
+        QStringList ids;
+        for (const CalendarInfo &calendar : std::as_const(found))
             ids << calendar.id;
-    }
-    if (ids.size() != 1) {
-        err << (ids.isEmpty()
-                    ? QObject::tr("callie: no calendar on this computer is called %1").arg(name)
-                    : QObject::tr("callie: more than one calendar is called %1; give its id: %2")
-                          .arg(name, ids.join(u", "_s)))
+        err << (found.isEmpty() ? QObject::tr("callie: no calendar here or on a CalDAV server is "
+                                              "called %1")
+                                      .arg(name)
+                                : QObject::tr("callie: more than one calendar is called %1; give "
+                                              "its id: %2")
+                                      .arg(name, ids.join(u", "_s)))
             << "\n";
-        return ids.isEmpty() ? 1 : 2;
+        return found.isEmpty() ? 1 : 2;
     }
-    if (!local.remove(ids.first(), &error)) {
-        err << QStringLiteral("callie: %1\n").arg(error);
+    const CalendarInfo calendar = found.first();
+    if (!calendar.id.startsWith(u"caldav:")) {
+        if (!local.remove(calendar.id, &error)) {
+            err << QStringLiteral("callie: %1\n").arg(error);
+            return 1;
+        }
+        out << QObject::tr("Moved %1 to the trash.").arg(calendar.displayName) << "\n";
+        return 0;
+    }
+    if (!confirmed(QObject::tr("Delete %1 and its events on the server of %2? This cannot be "
+                               "undone.")
+                       .arg(calendar.displayName, calendar.account),
+                   yes))
+        return 1;
+    std::optional<QString> failed;
+    QEventLoop waiting;
+    server.source.removeCalendar(calendar.id, [&failed, &waiting](const QString &problem) {
+        failed = problem;
+        waiting.quit();
+    });
+    if (!failed)
+        waiting.exec();
+    if (!failed->isEmpty()) {
+        err << QStringLiteral("callie: %1\n").arg(*failed);
         return 1;
     }
-    out << QObject::tr("Moved %1 to the trash.").arg(name) << "\n";
+    out << QObject::tr("Deleted %1 on its server.").arg(calendar.displayName) << "\n";
     return 0;
 }
 
@@ -1059,6 +1150,10 @@ int main(int argc, char *argv[])
              u"With agenda, search, invites and contacts: print JSON, with ids for other commands."_s,
              {}},
             {{u"calendar"_s}, u"With add or import: the calendar, by name or id."_s, u"name"_s},
+            {{u"account"_s},
+             u"With calendars new: make it on this CalDAV account's server."_s,
+             u"id"_s},
+            {{u"yes"_s}, u"With calendars remove: delete a CalDAV calendar without asking."_s, {}},
             {{u"scope"_s},
              u"With edit, delete and respond on a repeating event: this, following or all."_s,
              u"which"_s},
@@ -1260,7 +1355,8 @@ int main(int argc, char *argv[])
         return runSubscription(command, args.value(1), args.mid(2).join(u' '));
     if (command == QLatin1String("calendars") &&
         (args.value(1) == u"new" || args.value(1) == u"remove"))
-        return runLocalCalendars(args.value(1), args.mid(2).join(u' '));
+        return runCalendarChange(args.value(1), args.mid(2).join(u' '), parser.value(u"account"_s),
+                                 parser.isSet(u"yes"_s));
     if (command == QLatin1String("calendars"))
         return args.size() == 1 ? runCalendars(app)
                                 : runEvents(app, command, args, parser, parser.isSet(sampleOption));

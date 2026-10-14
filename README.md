@@ -72,8 +72,7 @@ its folder to the trash.
 Open an `.ics` file with Callie, drop one on its window, or pick one in Settings, under Accounts, to
 add its events to any calendar you can change, CalDAV and Google ones included, or to a new one on
 this computer named after the file. Adding the same file again updates its events rather than
-repeating them. Google keeps no changed occurrences of a repeating event, so those go in as events
-of their own. Any calendar, or one event, can be saved as an `.ics` file too, from the calendar's
+repeating them. Any calendar, or one event, can be saved as an `.ics` file too, from the calendar's
 menu in the sidebar or the event's details.
 
 Subscribe to a calendar others publish as a link, such as holidays or a team's schedule, in

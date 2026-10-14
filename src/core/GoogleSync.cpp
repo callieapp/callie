@@ -9,6 +9,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 
 #include <QPointer>
 #include <QTimer>
@@ -128,7 +129,7 @@ void GoogleSync::insert(const Account &account, const QString &calendarId, const
 }
 
 void GoogleSync::importEvents(const Account &account, const QString &calendarId,
-                              QList<QJsonObject> events,
+                              QList<ics::GoogleImport> events,
                               std::function<void(int, const QString &)> done, int imported)
 {
     if (events.isEmpty()) {
@@ -137,20 +138,20 @@ void GoogleSync::importEvents(const Account &account, const QString &calendarId,
         done(imported, {});
         return;
     }
-    const QJsonObject event = events.takeFirst();
+    const ics::GoogleImport next = events.takeFirst();
     const QPointer<GoogleSync> self(this);
-    const Created failed = [this, account, done, imported](const Outcome &outcome) {
-        if (imported > 0)
+    const auto failed = [this, account, done](int count, const QString &error) {
+        if (count > 0)
             Q_EMIT changed(account);
-        done(imported, outcome.error);
+        done(count, error);
     };
     withToken(
         account, false,
-        [this, self, account, calendarId, event, events, done, imported,
+        [this, self, account, calendarId, next, events, done, imported,
          failed](const QString &token, const Retry &retry) {
             m_api.importEvent(
-                token, calendarId, event,
-                [this, self, account, calendarId, events, done, imported, failed,
+                token, calendarId, next.event,
+                [this, self, account, calendarId, next, events, done, imported, failed,
                  retry](const GoogleEvent &stored, const GoogleApiError &error) {
                     if (!self)
                         return;
@@ -159,17 +160,92 @@ void GoogleSync::importEvents(const Account &account, const QString &calendarId,
                         return;
                     }
                     if (error) {
-                        failed(tr("Google could not import the events: %1").arg(error.message));
+                        failed(imported,
+                               tr("Google could not import the events: %1").arg(error.message));
                         return;
                     }
                     if (!m_cache.storeEvents(account, calendarId, {stored})) {
-                        failed(m_cache.errorString());
+                        failed(imported, m_cache.errorString());
                         return;
                     }
-                    importEvents(account, calendarId, events, done, imported + 1);
+                    patchOccurrences(account, calendarId, stored.id, next.changed,
+                                     [this, self, account, calendarId, events, done, imported,
+                                      failed](const Outcome &outcome) {
+                                         if (!self)
+                                             return;
+                                         if (!outcome.error.isEmpty())
+                                             failed(imported + 1, outcome.error);
+                                         else
+                                             importEvents(account, calendarId, events, done,
+                                                          imported + 1);
+                                     });
                 });
         },
-        failed);
+        [failed, imported](const Outcome &outcome) { failed(imported, outcome.error); });
+}
+
+void GoogleSync::patchOccurrences(const Account &account, const QString &calendarId,
+                                  const QString &seriesId,
+                                  QList<ics::GoogleImport::Occurrence> changed, Created done)
+{
+    if (changed.isEmpty()) {
+        done({});
+        return;
+    }
+    const ics::GoogleImport::Occurrence occurrence = changed.takeFirst();
+    const QPointer<GoogleSync> self(this);
+    withToken(
+        account, false,
+        [this, self, account, calendarId, seriesId, occurrence, changed, done](const QString &token,
+                                                                               const Retry &retry) {
+            // A day either side finds it whatever the zone it is shown in.
+            m_api.fetchInstances(
+                token, calendarId, seriesId, occurrence.start.addDays(-1),
+                occurrence.start.addDays(1),
+                [this, self, account, calendarId, seriesId, occurrence, changed, done, retry,
+                 token](const QList<GoogleEvent> &instances, const GoogleApiError &error) {
+                    if (!self)
+                        return;
+                    if (error.unauthorized()) {
+                        retry();
+                        return;
+                    }
+                    if (error) {
+                        done(tr("Google could not import the events: %1").arg(error.message));
+                        return;
+                    }
+                    const auto found =
+                        std::ranges::find_if(instances, [&occurrence](const GoogleEvent &e) {
+                            return occurrence.allDay
+                                       ? e.originalStart.date == occurrence.start.date()
+                                       : e.originalStart.dateTime == occurrence.start;
+                        });
+                    if (found == instances.cend()) {
+                        done(tr("Google has no occurrence of an imported event on %1.")
+                                 .arg(QLocale().toString(occurrence.start.date())));
+                        return;
+                    }
+                    m_api.patchEvent(
+                        token, calendarId, found->id, occurrence.fields,
+                        [this, self, account, calendarId, seriesId, changed,
+                         done](const GoogleEvent &patched, const GoogleApiError &patchError) {
+                            if (!self)
+                                return;
+                            if (patchError) {
+                                done(tr("Google could not import the events: %1")
+                                         .arg(patchError.message));
+                                return;
+                            }
+                            if (!m_cache.storeEvents(account, calendarId, {patched})) {
+                                done(m_cache.errorString());
+                                return;
+                            }
+                            patchOccurrences(account, calendarId, seriesId, changed, done);
+                        },
+                        false, true);
+                });
+        },
+        done);
 }
 
 void GoogleSync::withToken(const Account &account, bool retried, Call call, const Created &failed)

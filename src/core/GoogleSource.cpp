@@ -373,7 +373,7 @@ void GoogleSource::importEvents(const QString &calendarId, const QByteArray &dat
         return;
     }
     QString error;
-    const QList<QJsonObject> events = ics::toGoogle(ics::parse(data, &error));
+    const QList<ics::GoogleImport> events = ics::toGoogle(ics::parse(data, &error));
     if (events.isEmpty()) {
         done(0, error.isEmpty() ? tr("There are no events to add.") : error);
         return;

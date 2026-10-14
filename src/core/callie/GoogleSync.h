@@ -2,6 +2,7 @@
 
 #include "Account.h"
 #include "GoogleCalendarApi.h"
+#include "Ics.h"
 #include "Outcome.h"
 
 #include <QHash>
@@ -66,8 +67,10 @@ public:
                 bool conference, Created done);
 
     /// Imports `events`, as ics::toGoogle() writes them, one after another,
-    /// and stores them. `done` has how many went in before any error.
-    void importEvents(const Account &account, const QString &calendarId, QList<QJsonObject> events,
+    /// with the occurrences they change, and stores them. `done` has how many
+    /// went in before any error.
+    void importEvents(const Account &account, const QString &calendarId,
+                      QList<ics::GoogleImport> events,
                       std::function<void(int, const QString &)> done, int imported = 0);
 
     /// What an answer or a deletion is aimed at: one event, one occurrence of
@@ -131,6 +134,11 @@ private:
     using Retry = std::function<void()>;
     using Call = std::function<void(const QString &token, const Retry &retry)>;
     void withToken(const Account &account, bool retried, Call call, const Created &failed);
+    /// Patches each of `changed` into its occurrence of the series `seriesId`,
+    /// telling no one, then calls `done`.
+    void patchOccurrences(const Account &account, const QString &calendarId,
+                          const QString &seriesId, QList<ics::GoogleImport::Occurrence> changed,
+                          Created done);
 
     GoogleTokenProvider &m_tokens;
     GoogleCalendarApi &m_api;

@@ -155,6 +155,8 @@ add_library(calliecore STATIC
     MicrosoftClientConfig.cpp
     callie/MicrosoftAuth.h
     MicrosoftAuth.cpp
+    callie/OAuthReplyHandler.h
+    OAuthReplyHandler.cpp
     callie/MicrosoftTokenProvider.h
     MicrosoftTokenProvider.cpp
     callie/GraphApi.h

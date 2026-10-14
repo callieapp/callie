@@ -39,6 +39,7 @@ private Q_SLOTS:
     void environmentReplacesBuiltInApp();
     void authorizationAsksForCalendarsAndARefreshToken();
     void codeExchangeSendsNoSecret();
+    void aRefusedExchangeSaysWhy();
     void refreshStoresTheNewRefreshToken();
     void revokedRefreshSaysToReconnect();
     void connectingListsTheAccountByAddress();
@@ -94,6 +95,24 @@ void TestMicrosoftAuth::codeExchangeSendsNoSecret()
     const QByteArray body = tokenServer.requests.first().body;
     QVERIFY(!formValue(body, "code_verifier").isEmpty());
     QVERIFY(!body.contains("client_secret"));
+}
+
+void TestMicrosoftAuth::aRefusedExchangeSaysWhy()
+{
+    FakeHttpServer tokenServer;
+    tokenServer.respond(400, R"({"error":"invalid_client","error_description":)"
+                             R"("AADSTS7000218: The request body must contain client_secret.\r\n)"
+                             R"(Trace ID: abc\r\nTimestamp: 2026-10-14"})");
+    MicrosoftAuth auth(kClient);
+    QSignalSpy failed(&auth, &MicrosoftAuth::failed);
+    QNetworkAccessManager network;
+    const QUrlQuery query(AuthDriver::startAuthorization(auth, tokenServer));
+    AuthDriver::redirectBack(network, auth, query.queryItemValue(u"state"_s, QUrl::FullyDecoded));
+    QVERIFY(failed.wait(5000));
+    const QString message = failed.first().first().toString();
+    QVERIFY2(message.contains(u"AADSTS7000218"_s), qPrintable(message));
+    QVERIFY(message.contains(u"invalid_client"_s));
+    QVERIFY(!message.contains(u"Trace ID"_s));
 }
 
 void TestMicrosoftAuth::refreshStoresTheNewRefreshToken()

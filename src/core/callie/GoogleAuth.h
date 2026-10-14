@@ -10,10 +10,11 @@
 
 class QNetworkAccessManager;
 class QOAuth2AuthorizationCodeFlow;
-class QOAuthHttpServerReplyHandler;
 class QTimer;
 
 namespace callie {
+
+class OAuthReplyHandler;
 
 struct GoogleTokens
 {
@@ -74,7 +75,7 @@ private:
     QOAuth2AuthorizationCodeFlow *m_flow;
     QNetworkAccessManager *m_network;
     QUrl m_tokenUrl;
-    QOAuthHttpServerReplyHandler *m_handler = nullptr;
+    OAuthReplyHandler *m_handler = nullptr;
     QTimer *m_signInTimer;
 };
 

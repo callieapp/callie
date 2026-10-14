@@ -44,6 +44,7 @@ private Q_SLOTS:
     void callbackPageIsThemed();
     void codeExchangeSendsVerifierMatchingChallenge();
     void mismatchedStateIsNotExchanged();
+    void aRefusedExchangeSaysWhy();
     void missingRefreshTokenFails();
     void refreshKeepsExistingRefreshToken();
     void refreshSendsClientAndReportsExpiry();
@@ -202,6 +203,20 @@ void TestGoogleAuth::codeExchangeSendsVerifierMatchingChallenge()
         QCryptographicHash::hash(verifier, QCryptographicHash::Sha256)
             .toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
     QCOMPARE(QString::fromLatin1(challenge), formValue(authQuery, "code_challenge"));
+}
+
+void TestGoogleAuth::aRefusedExchangeSaysWhy()
+{
+    FakeHttpServer tokenServer;
+    tokenServer.respond(400, R"({"error":"invalid_grant","error_description":"Bad Request"})");
+    GoogleAuth auth(kClient);
+    QSignalSpy failed(&auth, &GoogleAuth::failed);
+    QNetworkAccessManager network;
+    const QUrlQuery authQuery(AuthDriver::startAuthorization(auth, tokenServer));
+    AuthDriver::redirectBack(network, auth, formValue(authQuery, "state"));
+    QVERIFY(failed.wait(5000));
+    QVERIFY2(failed.first().first().toString().contains(u"invalid_grant"_s),
+             qPrintable(failed.first().first().toString()));
 }
 
 void TestGoogleAuth::mismatchedStateIsNotExchanged()

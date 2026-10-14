@@ -127,6 +127,12 @@ private:
     using Done = std::function<void(const QString &error)>;
 
     [[nodiscard]] QString accountPath(const QString &accountId) const;
+    /// Runs `work`, a change to an account's calendars, once no sync of the
+    /// account is under way; until it calls doneChanging, syncs wait.
+    void whenIdle(const QString &accountId, std::function<void()> work);
+    void doneChanging(const QString &accountId);
+    /// Starts what waited for the account: a calendar change, else a sync.
+    void next(const QString &accountId);
     /// Calls `done` with the account's client, signed in, or why it cannot be.
     void signIn(const Account &account,
                 std::function<void(CalDavClient *client, const QString &error)> done);
@@ -167,6 +173,10 @@ private:
     /// Accounts syncing, and those asked to sync again once they finish.
     QSet<QString> m_running;
     QSet<QString> m_again;
+    /// Accounts whose calendars are being made or deleted, and the changes
+    /// waiting for a sync to finish.
+    QSet<QString> m_changing;
+    QHash<QString, QList<std::function<void()>>> m_waiting;
     /// Changes made together go out together.
     QTimer m_soon;
     /// The looks in Settings as last seen, to tell which changed.

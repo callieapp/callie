@@ -1,5 +1,6 @@
 #include "Commands.h"
 
+#include "callie/CalDavSource.h"
 #include "callie/ContactBook.h"
 #include "callie/Ics.h"
 #include "callie/LocalCalendars.h"
@@ -714,6 +715,66 @@ int Commands::importFile(CalendarSource &calendars, LocalCalendars &local, const
     out << (added == 1 ? tr("Added 1 event to %1.").arg(name)
                        : tr("Added %1 events to %2.").arg(added).arg(name))
         << "\n";
+    return 0;
+}
+
+int Commands::removeCalendar(LocalCalendars &local, CalDavSource &caldav, const QString &calendar,
+                             bool yes, QTextStream *answers, QTextStream &out, QTextStream &err)
+{
+    QList<CalendarInfo> found;
+    for (const CalendarInfo &each : local.calendars() + caldav.calendars()) {
+        if (each.id == calendar || each.displayName.compare(calendar, Qt::CaseInsensitive) == 0)
+            found << each;
+    }
+    if (found.size() != 1) {
+        QStringList ids;
+        for (const CalendarInfo &each : std::as_const(found))
+            ids << each.id;
+        err << (found.isEmpty() ? tr("callie: no calendar here or on a CalDAV server is called %1")
+                                      .arg(calendar)
+                                : tr("callie: more than one calendar is called %1; give its id: %2")
+                                      .arg(calendar, ids.join(u", "_s)))
+            << "\n";
+        return found.isEmpty() ? 1 : 2;
+    }
+    const CalendarInfo target = found.first();
+    QString error;
+    if (!target.id.startsWith(u"caldav:")) {
+        if (!local.remove(target.id, &error)) {
+            err << QStringLiteral("callie: %1\n").arg(error);
+            return 1;
+        }
+        out << tr("Moved %1 to the trash.").arg(target.displayName) << "\n";
+        return 0;
+    }
+    // The server keeps no copy, so someone says yes first.
+    const QString question = tr("Delete %1 and its events on the server of %2? This cannot be "
+                                "undone.")
+                                 .arg(target.displayName, target.account);
+    if (!yes && !answers) {
+        err << tr("callie: %1 Run it again with --yes to go ahead.").arg(question) << "\n";
+        return 1;
+    }
+    if (!yes) {
+        err << question << tr(" [y/N] ");
+        err.flush();
+        const QString answer = answers->readLine().trimmed().toLower();
+        if (answer != u"y" && answer != u"yes")
+            return 1;
+    }
+    std::optional<QString> failed;
+    QEventLoop waiting;
+    caldav.removeCalendar(target.id, [&failed, &waiting](const QString &problem) {
+        failed = problem;
+        waiting.quit();
+    });
+    if (!failed)
+        waiting.exec();
+    if (!failed->isEmpty()) {
+        err << QStringLiteral("callie: %1\n").arg(*failed);
+        return 1;
+    }
+    out << tr("Deleted %1 on its server.").arg(target.displayName) << "\n";
     return 0;
 }
 

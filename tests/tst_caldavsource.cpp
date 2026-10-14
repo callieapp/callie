@@ -39,6 +39,7 @@ private Q_SLOTS:
     void aNewLookGoesToTheServer();
     void calendarsAreMadeAndDeletedOnTheServer();
     void aServerThatRefusesCalendarsSaysSo();
+    void calendarChangesTakeTurnsWithSyncs();
     void importedEventsGoToTheServer();
     void aLookTurnedDownComesBack();
     void looksGivenInSettingsBecomeTheCalendars();
@@ -564,6 +565,36 @@ void TestCalDavSource::aServerThatRefusesCalendarsSaysSo()
     QTRY_VERIFY(error != u"no answer");
     QVERIFY(!error.isEmpty());
     QCOMPARE(calendarId(u"Work"_s), work);
+}
+
+void TestCalDavSource::calendarChangesTakeTurnsWithSyncs()
+{
+    sync();
+    m_server->addCalendar("club", "Club");
+    m_server->addCalendar("trip", "Trip");
+    sync();
+    QSignalSpy synced(m_source.get(), &CalDavSource::synced);
+
+    // Deleted while a sync is under way: it waits, and the sync cannot bring it back.
+    m_source->refresh();
+    QVERIFY(m_source->syncing());
+    QString error = u"no answer"_s;
+    m_source->removeCalendar(calendarId(u"Club"_s),
+                             [&error](const QString &failed) { error = failed; });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QTRY_VERIFY(!m_source->syncing());
+    QVERIFY(calendarId(u"Club"_s).isEmpty());
+
+    // A sync asked for while a delete is under way waits for it.
+    error = u"no answer"_s;
+    m_source->removeCalendar(calendarId(u"Trip"_s),
+                             [&error](const QString &failed) { error = failed; });
+    m_source->refresh();
+    QTRY_VERIFY(error != u"no answer");
+    QTRY_VERIFY(!m_source->syncing());
+    QVERIFY(calendarId(u"Trip"_s).isEmpty());
+    QVERIFY(!m_server->calendars.contains(FakeCalDavServer::calendarPath("trip")));
 }
 
 void TestCalDavSource::aNewLookGoesToTheServer()

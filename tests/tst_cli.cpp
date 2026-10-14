@@ -1,5 +1,8 @@
 #include "Commands.h"
+#include "FakeCalDavServer.h"
+#include "FakeTokenStore.h"
 
+#include "callie/CalDavSource.h"
 #include "callie/CombinedSource.h"
 #include "callie/ContactBook.h"
 #include "callie/LocalCalendars.h"
@@ -9,6 +12,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
@@ -145,6 +150,7 @@ private Q_SLOTS:
     void calendarsAndAccountsTakeNewLooks();
     void importPicksItsCalendar();
     void importReachesCalendarsElsewhere();
+    void removingAServerCalendarAsksFirst();
 
 private:
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -824,6 +830,58 @@ void TestCli::importReachesCalendarsElsewhere()
     elsewhere.error.clear();
     QCOMPARE(import(u"Nowhere"_s), 1);
     QVERIFY(m_err.contains(u"no calendar that takes events"_s));
+}
+
+void TestCli::removingAServerCalendarAsksFirst()
+{
+    QTemporaryDir dir;
+    LocalCalendars local(dir.filePath(u"calendars"_s));
+    QString error;
+    local.create(u"Home"_s, {}, &error);
+    FakeCalDavServer server;
+    server.addCalendar("club", "Club");
+    server.addCalendar("home", "Home");
+    QNetworkAccessManager network;
+    FakeTokenStore tokens;
+    tokens.secrets.insert(u"me@example.com"_s, u"app-password"_s);
+    CalDavSource caldav(dir.filePath(u"caldav"_s), &network, &tokens);
+    caldav.setAccounts({{u"me@example.com"_s, server.url(), u"me"_s}});
+    QSignalSpy synced(&caldav, &CalDavSource::synced);
+    caldav.refresh();
+    QVERIFY(synced.wait(5000));
+    const auto remove = [&](const QString &name, bool yes, const QString &typed, bool asked) {
+        m_out.clear();
+        m_err.clear();
+        QString answer = typed;
+        QTextStream answers(&answer);
+        const int code = Commands::removeCalendar(
+            local, caldav, name, yes, asked ? &answers : nullptr, *m_outStream, *m_errStream);
+        m_outStream->flush();
+        m_errStream->flush();
+        return code;
+    };
+
+    // Two calendars with one name: the id picks.
+    QCOMPARE(remove(u"Home"_s, false, {}, false), 2);
+    // Not a person at the keyboard: nothing without --yes.
+    QCOMPARE(remove(u"Club"_s, false, {}, false), 1);
+    QVERIFY(m_err.contains(u"--yes"_s));
+    // Asked, and told no.
+    QCOMPARE(remove(u"Club"_s, false, u"n\n"_s, true), 1);
+    QVERIFY(server.calendars.contains(FakeCalDavServer::calendarPath("club")));
+    // Asked, and told yes.
+    QCOMPARE(remove(u"Club"_s, false, u"y\n"_s, true), 0);
+    QVERIFY(!server.calendars.contains(FakeCalDavServer::calendarPath("club")));
+    QVERIFY(m_out.contains(u"Deleted Club"_s));
+    // The one here goes to the trash, with no question; the test's, not the desktop's.
+    const QByteArray dataHome = qgetenv("XDG_DATA_HOME");
+    qputenv("XDG_DATA_HOME", dir.path().toUtf8());
+    QCOMPARE(remove(u"local:home"_s, false, {}, false), 0);
+    qputenv("XDG_DATA_HOME", dataHome);
+    QVERIFY(local.calendars().isEmpty());
+    // --yes deletes on the server without asking.
+    QCOMPARE(remove(u"Home"_s, true, {}, false), 0);
+    QVERIFY(!server.calendars.contains(FakeCalDavServer::calendarPath("home")));
 }
 
 QTEST_GUILESS_MAIN(TestCli)

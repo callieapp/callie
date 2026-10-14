@@ -209,9 +209,12 @@ void AccountManager::remove(const Account &account)
             Q_EMIT failed(m_store.errorString());
         else {
             qCInfo(lcAccounts) << "removed" << account.provider << account.id;
-            // Google and Microsoft accounts bring contacts; a CalDAV id can match one.
+            // Google and Microsoft accounts bring contacts, each under its own
+            // key; a CalDAV id can match a Google one.
             if (m_contacts && account.provider != u"caldav")
-                m_contacts->forget(account.id);
+                m_contacts->forget(account.provider == u"microsoft"
+                                       ? MicrosoftSource::keyFor(account.id)
+                                       : account.id);
             Q_EMIT removed(account);
         }
     });

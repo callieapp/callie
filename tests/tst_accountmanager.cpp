@@ -533,7 +533,9 @@ void TestAccountManager::removingAMicrosoftAccountTakesItsCopiesAndContacts()
     MicrosoftSource microsoft(m_dir->filePath(u"microsoft"_s), nullptr, nullptr);
     microsoft.setAccounts({account.id});
     ContactBook contacts({});
-    contacts.setContacts(account.id, {{u"Alex"_s, u"alex@contoso.com"_s}});
+    contacts.setContacts(MicrosoftSource::keyFor(account.id), {{u"Alex"_s, u"alex@contoso.com"_s}});
+    // A Google account with the same address keeps its own.
+    contacts.setContacts(account.id, {{u"Pat"_s, u"pat@example.com"_s}});
     m_manager->setMicrosoft(&microsoft);
     m_manager->setContacts(&contacts);
     QSignalSpy removed(m_manager.get(), &AccountManager::removed);
@@ -544,6 +546,7 @@ void TestAccountManager::removingAMicrosoftAccountTakesItsCopiesAndContacts()
     QVERIFY(!QDir(copies).exists());
     QVERIFY(microsoft.accounts().isEmpty());
     QVERIFY(contacts.suggest(u"alex"_s, {}).isEmpty());
+    QCOMPARE(contacts.suggest(u"pat"_s, {}).size(), 1);
     QVERIFY(m_tokens->secrets.isEmpty());
 }
 

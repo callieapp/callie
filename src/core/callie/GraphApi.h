@@ -59,10 +59,16 @@ public:
               const QJsonObject &body, Answer answer);
     /// Every page of a list at `path`, items in order.
     void list(const QString &accessToken, const QString &path, Pages pages);
+    /// The bytes at `path`, such as a photo.
+    void fetch(const QString &accessToken, const QString &path,
+               std::function<void(const QByteArray &data, const GraphError &error)> result);
 
 private:
     void request(const QString &accessToken, const QByteArray &method, const QUrl &url,
                  const QJsonObject &body, Answer answer);
+    using Raw = std::function<void(const QByteArray &data, const GraphError &error)>;
+    void requestRaw(const QString &accessToken, const QByteArray &method, const QUrl &url,
+                    const QJsonObject &body, Raw answer);
     void nextPage(const QString &accessToken, const QUrl &url, QList<QJsonObject> items,
                   Pages pages);
 

@@ -86,7 +86,8 @@ Popup {
         Field {
             id: field
             width: parent.width
-            placeholderText: root.account ? root.targetId : qsTr("Its own name")
+            placeholderText: root.account ? root.targetId.replace(/^microsoft:/, "") : qsTr(
+                                                "Its own name")
             Accessible.name: root.account ? qsTr("Account name") : qsTr("Calendar name")
             onAccepted: root.close()
         }

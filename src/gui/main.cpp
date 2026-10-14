@@ -50,6 +50,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QTimer>
@@ -248,6 +249,9 @@ int main(int argc, char *argv[])
         caldav->followLooks(&settings);
         microsoft.emplace(callie::MicrosoftSource::defaultRoot(), &graph, &microsoftTokens);
         microsoft->setAccounts(microsoftAccounts);
+        microsoft->setPhotoFolder(
+            QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u'/' +
+            callie::identity::dirName() + QStringLiteral("/photos"));
     }
     callie::CombinedSource combined;
     combined.setSources(local ? QList<callie::CalendarSource *>{&google, &*microsoft, &*caldav,
@@ -288,13 +292,23 @@ int main(int argc, char *argv[])
         QStringList ids;
         for (const callie::Account &account : std::as_const(accounts))
             ids << account.id;
-        contacts.keepOnly(ids + microsoftAccounts);
+        for (const QString &account : std::as_const(microsoftAccounts))
+            ids << callie::MicrosoftSource::keyFor(account);
+        contacts.keepOnly(ids);
     }
-    if (microsoft)
+    // A Microsoft account's contacts and photo go under its own key, apart from
+    // a Google account with the same address.
+    if (microsoft) {
         QObject::connect(&*microsoft, &callie::MicrosoftSource::contactsFound, &contacts,
                          [&contacts](const QString &account, const QList<callie::Contact> &people) {
-                             contacts.setContacts(account, people);
+                             contacts.setContacts(callie::MicrosoftSource::keyFor(account), people);
                          });
+        QObject::connect(&*microsoft, &callie::MicrosoftSource::photoFound, &settings,
+                         [&settings](const QString &account, const QUrl &photo) {
+                             settings.setAccountPhoto(callie::MicrosoftSource::keyFor(account),
+                                                      photo);
+                         });
+    }
     QObject::connect(
         &sync, &callie::GoogleSync::contactsFound, &contacts,
         [&contacts](const callie::Account &account, const QList<callie::Contact> &people) {

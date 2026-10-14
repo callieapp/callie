@@ -29,6 +29,12 @@ public:
 
     /// `$XDG_DATA_HOME/callie/microsoft`
     [[nodiscard]] static QString defaultRoot();
+    /// What the account is known by beside others, as in a calendar's account
+    /// or a setting: "microsoft:" and the address, apart from a Google account
+    /// with the same address.
+    [[nodiscard]] static QString keyFor(const QString &address);
+    /// Where the account's photo is kept, once read.
+    void setPhotoFolder(const QString &folder) { m_photos = folder; }
 
     /// The accounts, by the address each signs in with.
     void setAccounts(const QStringList &accounts);
@@ -55,6 +61,8 @@ Q_SIGNALS:
     void synced();
     /// The people an account works with, for guest suggestions.
     void contactsFound(const QString &accountId, const QList<callie::Contact> &contacts);
+    /// The account's photo, saved as a file.
+    void photoFound(const QString &accountId, const QUrl &photo);
 
 protected:
     void fileChanged(const Folder &folder, const QString &fileName, bool removed) override;
@@ -123,6 +131,7 @@ private:
                          const ics::Group &after, bool organizer, const QString &self,
                          std::function<void(const GraphError &)> done);
     void readContacts(const QString &accountId, const QString &token);
+    void readPhoto(const QString &accountId, const QString &token);
 
     [[nodiscard]] static State readState(const QString &folder);
     static void writeState(const QString &folder, const State &state);
@@ -141,6 +150,8 @@ private:
     QSet<QString> m_again;
     /// Accounts whose contacts were read in this run of the app.
     QSet<QString> m_contactsRead;
+    QSet<QString> m_photoRead;
+    QString m_photos;
     QTimer m_soon;
 };
 

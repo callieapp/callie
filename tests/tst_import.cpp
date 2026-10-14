@@ -187,6 +187,7 @@ void TestImport::savesACalendarOrAnEvent()
     QCOMPARE(ExportController::fileNameFor(u"..."_s), u"calendar.ics"_s);
     QCOMPARE(ExportController::fileNameFor(u"Équipe"_s), u"équipe.ics"_s);
     QCOMPARE(ExportController::fileNameFor(u"日本の休日"_s), u"日本の休日.ics"_s);
+    QVERIFY(ExportController::suggestedFile(u"Work"_s).toLocalFile().endsWith(u"/work.ics"_s));
 
     QString error;
     const QString home = m_local->create(u"Home"_s, {}, &error);

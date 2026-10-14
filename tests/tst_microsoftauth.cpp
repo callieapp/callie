@@ -361,10 +361,15 @@ void TestMicrosoftAuth::graphErrorsSayWhatMicrosoftSaid()
     QNetworkAccessManager network;
     GraphApi graph(&network);
     graph.setBaseUrl(server.url(u"/v1.0/"_s));
+    // One after the other, as the fake answers its queue in the order asked.
     QList<GraphError> errors;
-    for (int i = 0; i < 2; ++i)
+    const auto ask = [&] {
         graph.send(u"at"_s, "GET", u"me"_s, {},
                    [&errors](const QJsonObject &, const GraphError &e) { errors << e; });
+    };
+    ask();
+    QTRY_COMPARE(errors.size(), 1);
+    ask();
     QTRY_COMPARE(errors.size(), 2);
     QCOMPARE(errors.first().message, u"Slow down"_s);
     QVERIFY(errors.first().later());

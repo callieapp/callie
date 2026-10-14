@@ -56,6 +56,24 @@ endif()
 configure_file(GoogleBuildConfig.h.in
     "${CMAKE_CURRENT_BINARY_DIR}/generated/callie/GoogleBuildConfig.h" @ONLY)
 
+# Microsoft's app: an explicit value wins, then CALLIE_MICROSOFT_CLIENT_ID in the
+# environment, as the release workflow sets it. A public client has no secret.
+set(CALLIE_MICROSOFT_CLIENT_ID "" CACHE STRING "Microsoft Entra application (client) id")
+set(callie_microsoft_client_id "${CALLIE_MICROSOFT_CLIENT_ID}")
+if(callie_microsoft_client_id STREQUAL "")
+    set(callie_microsoft_client_id "$ENV{CALLIE_MICROSOFT_CLIENT_ID}")
+endif()
+if(NOT callie_microsoft_client_id MATCHES "^[A-Za-z0-9-]*$")
+    message(FATAL_ERROR "Microsoft application id contains unexpected characters")
+endif()
+if(callie_microsoft_client_id STREQUAL "")
+    message(STATUS "Microsoft app: not configured, set it at runtime to use Microsoft accounts")
+else()
+    message(STATUS "Microsoft app: configured")
+endif()
+configure_file(MicrosoftBuildConfig.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/callie/MicrosoftBuildConfig.h" @ONLY)
+
 # Deliberately not a QML module. The CLI links this, and pulling QtQml in would
 # cost it startup time for no benefit. QML exposure happens in src/ui.
 add_library(calliecore STATIC
@@ -133,6 +151,14 @@ add_library(calliecore STATIC
     GoogleCalendarApi.cpp
     callie/GoogleTokenProvider.h
     GoogleTokenProvider.cpp
+    callie/MicrosoftClientConfig.h
+    MicrosoftClientConfig.cpp
+    callie/MicrosoftAuth.h
+    MicrosoftAuth.cpp
+    callie/MicrosoftTokenProvider.h
+    MicrosoftTokenProvider.cpp
+    callie/GraphApi.h
+    GraphApi.cpp
     callie/GoogleCache.h
     GoogleCache.cpp
     callie/GoogleSync.h

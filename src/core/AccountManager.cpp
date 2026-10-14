@@ -8,7 +8,9 @@
 #include "callie/GoogleAuth.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
+#include "callie/GraphApi.h"
 #include "callie/Logging.h"
+#include "callie/MicrosoftAuth.h"
 #include "callie/TokenStore.h"
 
 #include <QTimer>
@@ -52,41 +54,81 @@ void AccountManager::connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api)
     };
 
     connect(&auth, &GoogleAuth::failed, attempt, fail);
-    connect(
-        &auth, &GoogleAuth::granted, attempt,
-        [this, &api, finish, fail](const GoogleTokens &tokens) {
-            api.fetchPrimaryCalendarId(tokens.accessToken, [this, finish, fail,
-                                                            tokens](const QString &id,
-                                                                    const GoogleApiError &error) {
-                if (error) {
-                    fail(error.message);
-                    return;
-                }
-                const Account account{QStringLiteral("google"), id};
-                m_tokens.write(
-                    account, tokens.refreshToken,
-                    [this, finish, fail, account](const QString &keyring) {
-                        if (!keyring.isEmpty())
-                            fail(tr("could not store the token: %1").arg(keyring));
-                        else if (!m_store.add(account)) {
-                            // Undo the keyring write, or the token would stay behind with no
-                            // listed account, where remove() cannot reach it.
-                            const QString listError = m_store.errorString();
-                            m_tokens.remove(account, [fail, listError](const QString &cleanup) {
-                                fail(cleanup.isEmpty()
-                                         ? listError
-                                         : tr("%1, and the stored token could not be removed: %2")
-                                               .arg(listError, cleanup));
-                            });
-                        } else if (finish()) {
-                            qCInfo(lcAccounts) << "connected" << account.provider << account.id;
-                            Q_EMIT connected(account);
+    connect(&auth, &GoogleAuth::granted, attempt,
+            [this, &api, finish, fail](const GoogleTokens &tokens) {
+                api.fetchPrimaryCalendarId(
+                    tokens.accessToken,
+                    [this, finish, fail, tokens](const QString &id, const GoogleApiError &error) {
+                        if (error) {
+                            fail(error.message);
+                            return;
                         }
+                        record({QStringLiteral("google"), id}, tokens.refreshToken, finish, fail);
                     });
             });
-        });
 
     auth.authorize();
+}
+
+void AccountManager::connectMicrosoft(MicrosoftAuth &auth, GraphApi &graph)
+{
+    QList<Account> existing;
+    if (!m_store.load(existing)) {
+        QTimer::singleShot(0, this,
+                           [this, message = m_store.errorString()] { Q_EMIT failed(message); });
+        return;
+    }
+    auto *attempt = new QObject(this);
+    auto finished = std::make_shared<bool>(false);
+    const auto finish = [attempt, finished] {
+        if (*finished)
+            return false;
+        *finished = true;
+        attempt->deleteLater();
+        return true;
+    };
+    const auto fail = [this, finish](const QString &message) {
+        if (finish())
+            Q_EMIT failed(message);
+    };
+    connect(&auth, &MicrosoftAuth::failed, attempt, fail);
+    connect(&auth, &MicrosoftAuth::granted, attempt,
+            [this, &graph, finish, fail](const MicrosoftTokens &tokens) {
+                graph.fetchMe(
+                    tokens.accessToken,
+                    [this, finish, fail, tokens](const GraphUser &user, const GraphError &error) {
+                        if (error) {
+                            fail(error.message);
+                            return;
+                        }
+                        record({QStringLiteral("microsoft"), user.address.toLower()},
+                               tokens.refreshToken, finish, fail);
+                    });
+            });
+    auth.authorize();
+}
+
+void AccountManager::record(const Account &account, const QString &secret,
+                            const std::function<bool()> &finish,
+                            const std::function<void(const QString &)> &fail)
+{
+    m_tokens.write(account, secret, [this, finish, fail, account](const QString &keyring) {
+        if (!keyring.isEmpty())
+            fail(tr("could not store the token: %1").arg(keyring));
+        else if (!m_store.add(account)) {
+            // Undo the keyring write, or the token would stay behind with no
+            // listed account, where remove() cannot reach it.
+            const QString listError = m_store.errorString();
+            m_tokens.remove(account, [fail, listError](const QString &cleanup) {
+                fail(cleanup.isEmpty() ? listError
+                                       : tr("%1, and the stored token could not be removed: %2")
+                                             .arg(listError, cleanup));
+            });
+        } else if (finish()) {
+            qCInfo(lcAccounts) << "connected" << account.provider << account.id;
+            Q_EMIT connected(account);
+        }
+    });
 }
 
 QString AccountManager::calDavId(const QUrl &server, const QString &user)

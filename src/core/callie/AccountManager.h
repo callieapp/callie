@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QUrl>
 
+#include <functional>
+
 namespace callie {
 
 class ContactBook;
@@ -15,6 +17,8 @@ class CalDavSource;
 class GoogleCache;
 class GoogleAuth;
 class GoogleCalendarApi;
+class GraphApi;
+class MicrosoftAuth;
 class TokenStore;
 
 /// Connects and removes accounts. Owns the ordering between the keyring and the
@@ -37,6 +41,10 @@ public:
     /// without a token. Emits connected or failed once.
     void connectGoogle(GoogleAuth &auth, GoogleCalendarApi &api);
 
+    /// Signs in with Microsoft and records the account under its address, as
+    /// connectGoogle does. Emits connected or failed once.
+    void connectMicrosoft(MicrosoftAuth &auth, GraphApi &graph);
+
     /// Checks that the server takes the password and has calendars, then stores
     /// the password and lists the account, as connectGoogle does. For an account
     /// already listed, its password and server change. A name or password in
@@ -58,6 +66,11 @@ Q_SIGNALS:
     void failed(const QString &message);
 
 private:
+    /// Stores `secret` for the account, then lists it, undoing the first if
+    /// the second fails; `finish` says whether this outcome is the first.
+    void record(const Account &account, const QString &secret, const std::function<bool()> &finish,
+                const std::function<void(const QString &)> &fail);
+
     TokenStore &m_tokens;
     AccountStore &m_store;
     GoogleCache *m_cache;

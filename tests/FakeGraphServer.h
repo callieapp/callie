@@ -84,6 +84,8 @@ public:
     int down = 0;
     /// Answers only the lookups of a series' occurrences with this status.
     int instancesDown = 0;
+    /// Turns down every change to an event with this status.
+    int refuseChanges = 0;
 
 private:
     static FakeHttpServer::Reply json(const QJsonObject &body, int status = 200)
@@ -144,6 +146,9 @@ private:
             return {down, "{}"};
         if (instancesDown && path.endsWith(u"/instances"))
             return {instancesDown, "{}"};
+        if (refuseChanges && request.method == "PATCH")
+            return {refuseChanges,
+                    R"({"error":{"code":"ErrorAccessDenied","message":"Access is denied."}})"};
         const QStringList parts = path.split(u'/');
         if (request.method == "GET" && path == u"me/calendars") {
             QJsonArray list;

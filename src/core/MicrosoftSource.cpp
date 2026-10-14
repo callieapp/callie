@@ -694,11 +694,17 @@ void MicrosoftSource::send(const QString &token, const Folder &folder, const QSt
         self->push(token, folder, done);
     };
     // Turned down: Outlook's version stands, and the user hears why.
-    const auto refused = [self, token, folder, fileName, remote, settled](const QString &why) {
+    const auto refused = [self, token, folder, fileName, remote, waiting,
+                          settled](const QString &why) {
         if (!self)
             return;
         Q_EMIT self->errorOccurred(why);
+        // A change made meanwhile goes next, over Outlook's version.
         State state = readState(folder.path);
+        if (state.pending.value(fileName).seq != waiting.seq) {
+            settled();
+            return;
+        }
         state.pending.remove(fileName);
         writeState(folder.path, state);
         if (remote.id.isEmpty()) {

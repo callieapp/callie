@@ -873,15 +873,18 @@ int Commands::calendarLook(const QString &action, const QString &calendar, const
 int Commands::renameAccount(const QString &account, const QString &name)
 {
     const QList<CalendarInfo> calendars = m_source.calendars();
-    const bool known =
-        std::any_of(calendars.cbegin(), calendars.cend(),
-                    [&account](const CalendarInfo &c) { return c.account == account; });
-    if (!known) {
+    const auto known = [&calendars](const QString &key) {
+        return std::ranges::any_of(calendars,
+                                   [&key](const CalendarInfo &c) { return c.account == key; });
+    };
+    // A Microsoft account goes by its address too, unless a Google one has it.
+    const QString key = known(account) ? account : u"microsoft:"_s + account;
+    if (!known(key)) {
         m_err << tr("callie: no account is called %1; callie accounts lists them").arg(account)
               << "\n";
         return 1;
     }
-    m_settings.setAccountName(account, name);
+    m_settings.setAccountName(key, name);
     return 0;
 }
 

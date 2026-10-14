@@ -151,6 +151,7 @@ private Q_SLOTS:
     void calendarsAndAccountsTakeNewLooks();
     void importPicksItsCalendar();
     void importReachesCalendarsElsewhere();
+    void aMicrosoftAccountIsRenamedByItsAddress();
     void removingAServerCalendarAsksFirst();
     void exportWritesTheCalendar();
 
@@ -919,6 +920,27 @@ void TestCli::exportWritesTheCalendar()
     QCOMPARE(ics::parse(saved.readAll()).size(), 1);
     QCOMPARE(run(u"Work"_s, {}), 1);
     QCOMPARE(run({}, {}), 2);
+}
+
+void TestCli::aMicrosoftAccountIsRenamedByItsAddress()
+{
+    // Calendars of a Microsoft account, which go by microsoft: and the address.
+    struct Outlook : SampleSource
+    {
+        QList<CalendarInfo> calendars() const override
+        {
+            QList<CalendarInfo> list = SampleSource::calendars();
+            for (CalendarInfo &calendar : list)
+                calendar.account = u"microsoft:me@outlook.com"_s;
+            return list;
+        }
+    } outlook;
+    Commands commands(outlook, *m_settings, *m_outStream, *m_errStream, kNow, QTimeZone::UTC);
+    QCOMPARE(commands.renameAccount(u"me@outlook.com"_s, u"Outlook"_s), 0);
+    QCOMPARE(m_settings->accountName(u"microsoft:me@outlook.com"_s), u"Outlook"_s);
+    QCOMPARE(commands.renameAccount(u"microsoft:me@outlook.com"_s, u"Mail"_s), 0);
+    QCOMPARE(m_settings->accountName(u"microsoft:me@outlook.com"_s), u"Mail"_s);
+    QCOMPARE(commands.renameAccount(u"nobody@outlook.com"_s, u"X"_s), 1);
 }
 
 QTEST_GUILESS_MAIN(TestCli)

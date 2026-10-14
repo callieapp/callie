@@ -32,7 +32,8 @@ Popup {
     function editAccount(id) {
         account = true
         targetId = id
-        root.name = Settings.accountName(id)
+        // A Microsoft account's key is not its name; its address is.
+        root.name = Settings.accountNames[id] || id.replace(/^microsoft:/, "")
         open()
     }
 

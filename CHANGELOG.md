@@ -19,6 +19,10 @@ as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md)
 
 - Importing an `.ics` file into Google keeps a changed occurrence of a repeating event in its series.
 
+### Fixed
+
+- The end time list says how long the event would be: it counted a quarter hour short.
+
 ## 0.4.1 - 2026-10-13
 
 ### New

@@ -980,7 +980,7 @@ QList<GoogleImport> toGoogle(const Group &events)
                     json.insert(u"description"_s, QString());
                 if (!json.contains(u"transparency"_s))
                     json.insert(u"transparency"_s, u"opaque"_s);
-                changed << GoogleImport::Occurrence{id, event->allDay(), json};
+                changed << GoogleImport::Occurrence{id, (*master)->allDay(), json};
                 continue;
             }
             json.insert(u"iCalUID"_s,

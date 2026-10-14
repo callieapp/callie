@@ -1,6 +1,7 @@
 #include "callie/MicrosoftAuth.h"
 
 #include "callie/Logging.h"
+#include "callie/OAuthReplyHandler.h"
 #include "callie/SignInPage.h"
 #include "callie/ThemeLoader.h"
 
@@ -10,7 +11,6 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QOAuth2AuthorizationCodeFlow>
-#include <QOAuthHttpServerReplyHandler>
 #include <QTimer>
 #include <QUrlQuery>
 
@@ -65,8 +65,12 @@ MicrosoftAuth::MicrosoftAuth(const MicrosoftClientConfig &client, QObject *paren
 #else
     connect(m_flow, &QAbstractOAuth2::error, this, onServerError);
 #endif
-    connect(m_flow, &QAbstractOAuth::requestFailed, this,
-            [this](QAbstractOAuth::Error) { fail(tr("the request to Microsoft failed")); });
+    connect(m_flow, &QAbstractOAuth::requestFailed, this, [this](QAbstractOAuth::Error) {
+        // With Microsoft's own reason when it gave one, such as an AADSTS code.
+        const QString reason = m_handler ? m_handler->lastRefusal() : QString();
+        fail(reason.isEmpty() ? tr("the request to Microsoft failed")
+                              : tr("Microsoft turned the sign-in down: %1").arg(reason));
+    });
 }
 
 MicrosoftAuth::~MicrosoftAuth() = default;
@@ -97,7 +101,7 @@ void MicrosoftAuth::authorize()
 {
     if (!m_handler) {
         // Loopback only, so the code never reaches the network.
-        m_handler = new QOAuthHttpServerReplyHandler(QHostAddress::LocalHost, 0, this);
+        m_handler = new OAuthReplyHandler(QHostAddress::LocalHost, 0, this);
 #ifdef CALLIE_QT_OAUTH_69
         // Microsoft, like Google, recommends the IP literal over "localhost".
         m_handler->setCallbackHost(QStringLiteral("127.0.0.1"));

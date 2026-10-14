@@ -1,6 +1,7 @@
 #include "callie/GoogleAuth.h"
 
 #include "callie/Logging.h"
+#include "callie/OAuthReplyHandler.h"
 #include "callie/SignInPage.h"
 #include "callie/ThemeLoader.h"
 
@@ -10,7 +11,6 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QOAuth2AuthorizationCodeFlow>
-#include <QOAuthHttpServerReplyHandler>
 #include <QTimer>
 #include <QUrlQuery>
 
@@ -68,8 +68,12 @@ GoogleAuth::GoogleAuth(const GoogleClientConfig &client, QObject *parent)
 #else
     connect(m_flow, &QAbstractOAuth2::error, this, onServerError);
 #endif
-    connect(m_flow, &QAbstractOAuth::requestFailed, this,
-            [this](QAbstractOAuth::Error) { fail(tr("the request to Google failed")); });
+    connect(m_flow, &QAbstractOAuth::requestFailed, this, [this](QAbstractOAuth::Error) {
+        // With Google's own reason when it gave one, such as invalid_grant.
+        const QString reason = m_handler ? m_handler->lastRefusal() : QString();
+        fail(reason.isEmpty() ? tr("the request to Google failed")
+                              : tr("Google turned the sign-in down: %1").arg(reason));
+    });
 }
 
 GoogleAuth::~GoogleAuth() = default;
@@ -108,7 +112,7 @@ void GoogleAuth::authorize()
     if (!m_handler) {
         // The default address is QHostAddress::Any, which would expose the
         // callback port, and with it the authorization code, to the network.
-        m_handler = new QOAuthHttpServerReplyHandler(QHostAddress::LocalHost, 0, this);
+        m_handler = new OAuthReplyHandler(QHostAddress::LocalHost, 0, this);
 #ifdef CALLIE_QT_OAUTH_69
         // Google recommends the IP literal over "localhost" for loopback redirects.
         m_handler->setCallbackHost(QStringLiteral("127.0.0.1"));

@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import Callie.Ui
-import QtCore as Core
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
@@ -165,9 +164,7 @@ Popup {
             visible: !root.account
             text: qsTr("Save as .ics")
             onClicked: {
-                saveDialog.selectedFile = Core.StandardPaths.writableLocation(
-                            Core.StandardPaths.DocumentsLocation) + "/" + Exporter.fileNameFor(
-                            root.name)
+                saveDialog.selectedFile = Exporter.suggestedFile(root.name)
                 saveDialog.open()
             }
         }

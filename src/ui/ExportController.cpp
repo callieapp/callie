@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QStandardPaths>
 
 using namespace Qt::StringLiterals;
 
@@ -39,6 +40,12 @@ QString ExportController::fileNameFor(const QString &name)
                  u"-"_s);
     base.remove(QRegularExpression(u"^-+|-+$"_s));
     return (base.isEmpty() ? u"calendar"_s : base) + u".ics"_s;
+}
+
+QUrl ExportController::suggestedFile(const QString &name)
+{
+    return QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
+                               u'/' + fileNameFor(name));
 }
 
 bool ExportController::save(const QString &calendarId, const QString &uid, const QUrl &file)

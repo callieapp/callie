@@ -249,14 +249,33 @@ void TestGoogleSource::exportsTheCalendarOrOneSeries()
     CombinedSource combined;
     combined.setSources({&google});
     const QString mine = u"me@example.com/mine"_s;
+    // One occurrence moved and one cancelled, as Google keeps them.
+    QVERIFY(m_cache->applyChanges(
+        kAccount, u"mine"_s,
+        {{parsed(R"({"id":"standup_20261007T133000Z","recurringEventId":"standup",
+                     "summary":"Standup, later",
+                     "originalStartTime":{"dateTime":"2026-10-07T09:30:00-04:00"},
+                     "start":{"dateTime":"2026-10-07T10:30:00-04:00"},
+                     "end":{"dateTime":"2026-10-07T10:45:00-04:00"}})"),
+          parsed(R"({"id":"standup_20261008T133000Z","recurringEventId":"standup",
+                     "status":"cancelled",
+                     "originalStartTime":{"dateTime":"2026-10-08T09:30:00-04:00"}})")},
+         u"t2"_s},
+        false));
     QString error;
     // Through the combined source, as the app and the CLI reach it.
     const ics::Group all = ics::parse(combined.exportEvents(mine, {}, &error));
-    QCOMPARE(all.size(), 2);
+    QCOMPARE(all.size(), 3);
+    // The series takes its occurrences along, found by the series they name.
     const ics::Group standup = ics::parse(combined.exportEvents(mine, u"standup"_s, &error));
-    QCOMPARE(standup.size(), 1);
-    QCOMPARE(standup.first()->uid(), u"standup@google.com"_s);
-    QCOMPARE(standup.first()->recurrence()->duration(), 5);
+    QCOMPARE(standup.size(), 2);
+    const auto master =
+        *std::ranges::find_if(standup, [](const auto &e) { return !e->hasRecurrenceId(); });
+    QCOMPARE(master->uid(), u"standup@google.com"_s);
+    QCOMPARE(master->recurrence()->duration(), 5);
+    QCOMPARE(master->recurrence()->exDateTimes().size(), 1);
+    QVERIFY(std::ranges::all_of(standup,
+                                [](const auto &e) { return e->uid() == u"standup@google.com"; }));
     QVERIFY(combined.exportEvents(mine, u"gone"_s, &error).isEmpty());
     QVERIFY(error.contains(u"not in the calendar"_s));
     QVERIFY(combined.exportEvents(u"google/nobody@example.com/x"_s, {}, &error).isEmpty());

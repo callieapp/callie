@@ -25,6 +25,8 @@ public:
 
     /// A file name for `name`, such as "book-club.ics".
     Q_INVOKABLE static QString fileNameFor(const QString &name);
+    /// Where a save dialog first offers to put `name`: the Documents folder.
+    Q_INVOKABLE static QUrl suggestedFile(const QString &name);
     /// Saves the calendar, or with `uid` that event and its series, to `file`.
     Q_INVOKABLE bool save(const QString &calendarId, const QString &uid, const QUrl &file);
 

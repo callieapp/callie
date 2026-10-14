@@ -3,6 +3,17 @@
 What changed in each version of Callie, for the people using it. Notes collect under Unreleased
 as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md).
 
+## Unreleased
+
+### Fixed
+
+- On GNOME, a button layout with no window buttons, as tiling setups often use, is followed
+  rather than putting minimize, maximize and close back.
+- Copying a theme under a name with a line break in it no longer leaves a theme that will not
+  load.
+- Turning debug logging on or off while Callie is busy can no longer upset the check that keeps
+  event details out of the log file.
+
 ## 0.5.0 - 2026-10-14
 
 ### New

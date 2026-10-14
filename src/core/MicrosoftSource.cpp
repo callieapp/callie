@@ -211,6 +211,11 @@ QString MicrosoftSource::defaultRoot()
            identity::dirName() + u"/microsoft"_s;
 }
 
+QString MicrosoftSource::keyFor(const QString &address)
+{
+    return u"microsoft:"_s + address;
+}
+
 QString MicrosoftSource::accountPath(const QString &accountId) const
 {
     return m_root + u'/' + slug(accountId);
@@ -262,6 +267,7 @@ QList<CalendarInfo> MicrosoftSource::calendars() const
         const auto folder = std::ranges::find(all, calendar.id, &Folder::id);
         calendar.videoCalls = folder != all.cend() && calendar.writable &&
                               !readState(folder->path).meetings.isEmpty();
+        calendar.account = keyFor(calendar.account);
     }
     return list;
 }
@@ -418,6 +424,8 @@ void MicrosoftSource::sync(const QString &accountId)
                     const QStringList problems = self->updateCalendars(accountId, calendars);
                     if (!self->m_contactsRead.contains(accountId))
                         self->readContacts(accountId, token);
+                    if (!self->m_photoRead.contains(accountId) && !self->m_photos.isEmpty())
+                        self->readPhoto(accountId, token);
                     QList<Folder> mine;
                     for (const Folder &folder : self->folders()) {
                         if (folder.account == accountId)
@@ -929,6 +937,34 @@ void MicrosoftSource::readContacts(const QString &accountId, const QString &toke
                   });
 }
 
+void MicrosoftSource::readPhoto(const QString &accountId, const QString &token)
+{
+    m_photoRead.insert(accountId);
+    const QPointer<MicrosoftSource> self(this);
+    m_graph->fetch(token, u"me/photos/96x96/$value"_s,
+                   [self, accountId](const QByteArray &data, const GraphError &error) {
+                       if (!self)
+                           return;
+                       // None set is no error; anything else is tried again next run.
+                       if (error || data.isEmpty()) {
+                           if (error.status != 404)
+                               self->m_photoRead.remove(accountId);
+                           return;
+                       }
+                       QDir().mkpath(self->m_photos);
+                       const QString path =
+                           self->m_photos + u'/' +
+                           QString::fromLatin1(QCryptographicHash::hash(keyFor(accountId).toUtf8(),
+                                                                        QCryptographicHash::Sha1)
+                                                   .toHex()) +
+                           u".jpg"_s;
+                       QSaveFile file(path);
+                       if (file.open(QIODevice::WriteOnly) && file.write(data) == data.size() &&
+                           file.commit())
+                           Q_EMIT self->photoFound(accountId, QUrl::fromLocalFile(path));
+                   });
+}
+
 QDateTime MicrosoftSource::lastSynced() const
 {
     QDateTime oldest;
@@ -955,6 +991,7 @@ QVariantList MicrosoftSource::syncReport() const
     for (const QString &account : m_accounts) {
         const AccountState state = readAccount(accountPath(account));
         report << QVariantMap{{u"account"_s, account},
+                              {u"provider"_s, u"microsoft"_s},
                               {u"lastSynced"_s, state.synced.toLocalTime()},
                               {u"error"_s, state.error},
                               {u"problems"_s, QStringList()}};

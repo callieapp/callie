@@ -569,7 +569,10 @@ ApplicationWindow {
                                                                              qsTr("synced %1").arg(
                                                                                  Settings.times.time(
                                                                                      entry.lastSynced))
-                            lines.push(qsTr("%1: %2").arg(entry.account).arg(when))
+                            const who = entry.provider === "microsoft" ? qsTr("%1 (Microsoft)").arg(
+                                                                             entry.account) :
+                                                                         entry.account
+                            lines.push(qsTr("%1: %2").arg(who).arg(when))
                             if (entry.error)
                                 lines.push("    " + entry.error)
                             for (const problem of entry.problems)

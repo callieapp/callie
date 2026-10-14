@@ -11,11 +11,26 @@ Column {
     /// The source's syncReport, for each account's status line.
     property var report: []
 
-    function entryFor(id) {
+    /// One account's line in the report: Google and Microsoft accounts can
+    /// share an address, so the provider counts too.
+    function entryFor(provider, id) {
         for (const entry of report)
-            if (entry.account === id)
+            if (entry.account === id && (entry.provider || provider) === provider)
                 return entry
         return null
+    }
+
+    /// What the account is known by in settings, apart from another provider's
+    /// with the same address.
+    function keyFor(account) {
+        return account.provider === "microsoft" ? "microsoft:" + account.id : account.id
+    }
+
+    /// The provider, as the person knows it.
+    function kindOf(provider) {
+        return provider === "microsoft" ? qsTr("Microsoft") : provider === "caldav" ? qsTr(
+                                                                                          "CalDAV") :
+                                                                                      qsTr("Google")
     }
 
     width: parent ? parent.width : 0
@@ -53,10 +68,10 @@ Column {
                 readonly property bool manageable: caldav ? Accounts.calDavReady : microsoft
                                                             ? Accounts.microsoftReady :
                                                               Accounts.unavailable === ""
-                readonly property var entry: root.entryFor(modelData.id)
+                readonly property var entry: root.entryFor(modelData.provider, modelData.id)
                 /// Callie asks for more than this account granted when it signed in.
                 readonly property bool missing: !!entry && (entry.missingScopes || []).length > 0
-                readonly property url photo: Settings.accountPhotos[modelData.id] || ""
+                readonly property url photo: Settings.accountPhotos[root.keyFor(modelData)] || ""
                 readonly property string problem: entry ? (entry.error || (entry.problems.length > 0
                                                                            ? entry.problems[0] :
                                                                              "")) : ""
@@ -80,8 +95,15 @@ Column {
 
                         function load() {
                             ready = false
-                            if (source.toString() !== "")
-                                loadImage(source)
+                            if (source.toString() === "")
+                                return
+                            // Already loaded for another canvas, it says nothing more.
+                            if (isImageLoaded(source)) {
+                                ready = true
+                                requestPaint()
+                                return
+                            }
+                            loadImage(source)
                         }
 
                         anchors.fill: parent
@@ -126,7 +148,8 @@ Column {
 
                     Text {
                         width: parent.width
-                        text: row.modelData.id
+                        text: qsTr("%1 (%2)").arg(row.modelData.id).arg(root.kindOf(
+                                                                            row.modelData.provider))
                         textFormat: Text.PlainText
                         elide: Text.ElideMiddle
                         color: Theme.text

@@ -80,6 +80,8 @@ public:
     QMap<QString, Item> items;
     QList<Call> calls;
     QJsonArray people;
+    /// The account's photo; none set when empty.
+    QByteArray photo;
     /// Answers every call with this status, as an Outlook that is down.
     int down = 0;
     /// Answers only the lookups of a series' occurrences with this status.
@@ -173,6 +175,9 @@ private:
         }
         if (request.method == "GET" && path == u"me/people")
             return json({{QStringLiteral("value"), people}});
+        if (request.method == "GET" && path == u"me/photos/96x96/$value")
+            return photo.isEmpty() ? missing()
+                                   : FakeHttpServer::Reply{200, photo, {}, "image/jpeg"};
         // me/calendars/{id}/events
         if (parts.size() == 4 && parts[1] == u"calendars" && parts[3] == u"events") {
             if (request.method == "POST") {

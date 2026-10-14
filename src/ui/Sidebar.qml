@@ -15,7 +15,16 @@ Rectangle {
             "local": qsTr("On this computer"),
             "subscriptions": qsTr("Subscribed")
         }
-        return Settings.accountNames[account] || kinds[account] || account
+        if (Settings.accountNames[account])
+            return Settings.accountNames[account]
+        // A Microsoft account goes by its address, said to be Microsoft's when a
+        // Google account here has the same one.
+        if (account.startsWith("microsoft:")) {
+            const address = account.slice("microsoft:".length)
+            return calendars.accounts.indexOf(address) >= 0 ? qsTr("%1 (Microsoft)").arg(address) :
+                                                              address
+        }
+        return kinds[account] || account
     }
 
     required property TodayModel today

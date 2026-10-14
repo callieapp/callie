@@ -725,6 +725,7 @@ QVariantList GoogleSource::syncReport() const
                 problems << QStringLiteral("%1: %2").arg(calendar.summary, error);
         }
         report << QVariantMap{{QStringLiteral("account"), account.id},
+                              {QStringLiteral("provider"), QStringLiteral("google")},
                               {QStringLiteral("lastSynced"), state.lastSynced},
                               {QStringLiteral("error"), state.lastError},
                               {QStringLiteral("problems"), problems},

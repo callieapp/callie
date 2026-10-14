@@ -972,6 +972,7 @@ QVariantList CalDavSource::syncReport() const
     for (const Account &account : m_accounts) {
         const AccountState state = readAccount(accountPath(account.id));
         report << QVariantMap{{u"account"_s, account.id},
+                              {u"provider"_s, u"caldav"_s},
                               {u"lastSynced"_s, state.synced.toLocalTime()},
                               {u"error"_s, state.error},
                               {u"problems"_s, QStringList()}};

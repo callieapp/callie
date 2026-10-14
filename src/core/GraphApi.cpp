@@ -71,8 +71,23 @@ void GraphApi::nextPage(const QString &accessToken, const QUrl &url, QList<QJson
             });
 }
 
+void GraphApi::fetch(const QString &accessToken, const QString &path,
+                     std::function<void(const QByteArray &, const GraphError &)> result)
+{
+    requestRaw(accessToken, "GET", m_baseUrl.resolved(QUrl(path)), {}, std::move(result));
+}
+
 void GraphApi::request(const QString &accessToken, const QByteArray &method, const QUrl &url,
                        const QJsonObject &body, Answer answer)
+{
+    requestRaw(accessToken, method, url, body,
+               [answer = std::move(answer)](const QByteArray &data, const GraphError &error) {
+                   answer(error ? QJsonObject() : QJsonDocument::fromJson(data).object(), error);
+               });
+}
+
+void GraphApi::requestRaw(const QString &accessToken, const QByteArray &method, const QUrl &url,
+                          const QJsonObject &body, Raw answer)
 {
     if (!m_network) {
         answer({}, {0, tr("Callie is not online.")});
@@ -94,12 +109,13 @@ void GraphApi::request(const QString &accessToken, const QByteArray &method, con
     connect(reply, &QNetworkReply::finished, this, [reply, answer = std::move(answer)] {
         reply->deleteLater();
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        const QJsonObject json = QJsonDocument::fromJson(reply->readAll()).object();
+        const QByteArray bytes = reply->readAll();
         if (reply->error() == QNetworkReply::NoError) {
-            answer(json, {});
+            answer(bytes, {});
             return;
         }
-        const QString message = json[u"error"][u"message"].toString();
+        const QString message =
+            QJsonDocument::fromJson(bytes).object()[u"error"][u"message"].toString();
         qCInfo(lcSync) << "Graph request failed with status" << status;
         answer({}, {status, message.isEmpty() ? reply->errorString() : message});
     });

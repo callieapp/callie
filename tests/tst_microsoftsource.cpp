@@ -27,6 +27,7 @@ private Q_SLOTS:
     void changesWaitWhileOutlookIsDown();
     void aChangeOutlookTurnsDownGoesBack();
     void removingAnAccountForgetsItsCopies();
+    void theAccountIsKnownApartFromGoogle();
     void forgettingDuringASyncLeavesNothingBehind();
     void occurrencesAreFoundInTheirSeriesZone();
 
@@ -161,7 +162,7 @@ void TestMicrosoftSource::firstSyncBringsCalendarsDown()
     const QList<CalendarInfo> calendars = m_source->calendars();
     QCOMPARE(calendars.size(), 1);
     QCOMPARE(calendars.first().displayName, u"Work"_s);
-    QCOMPARE(calendars.first().account, kMe);
+    QCOMPARE(calendars.first().account, MicrosoftSource::keyFor(kMe));
     QCOMPARE(calendars.first().color, QColor(u"#E86AA6"_s));
     QVERIFY(calendars.first().videoCalls);
     QVERIFY(calendars.first().invites);
@@ -449,6 +450,28 @@ void TestMicrosoftSource::occurrencesAreFoundInTheirSeriesZone()
     QVERIFY(called("DELETE", u"me/events/"_s + away + u"_20261008T000000"_s));
     QVERIFY(m_graph->items[away].cancelled.contains(u"2026-10-08"_s));
     QVERIFY(m_source->waitingChanges().isEmpty());
+}
+
+void TestMicrosoftSource::theAccountIsKnownApartFromGoogle()
+{
+    m_graph->photo = "jpeg bytes";
+    const QString photos = m_dir->filePath(u"photos"_s);
+    m_source->setPhotoFolder(photos);
+    QSignalSpy photo(m_source.get(), &MicrosoftSource::photoFound);
+    sync();
+    // Its calendars and its report say which account they are, apart from a
+    // Google one with the same address.
+    QCOMPARE(m_source->calendars().first().account, u"microsoft:"_s + kMe);
+    QCOMPARE(m_source->syncReport().first().toMap().value(u"provider"_s).toString(),
+             u"microsoft"_s);
+    QTRY_COMPARE(photo.size(), 1);
+    QCOMPARE(photo.first().first().toString(), kMe);
+    QFile saved(photo.first().at(1).toUrl().toLocalFile());
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    QCOMPARE(saved.readAll(), "jpeg bytes");
+    // Read once a run.
+    sync();
+    QCOMPARE(photo.size(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestMicrosoftSource)

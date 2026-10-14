@@ -66,9 +66,17 @@ void rotate(const QString &path, qint64 maxBytes)
 void handle(QtMsgType type, const QMessageLogContext &context, const QString &message)
 {
     State &s = state();
+    // Read under the lock, as any thread may log while another changes them.
+    bool verbose = false;
+    bool debug = false;
+    {
+        const QMutexLocker lock(&s.mutex);
+        verbose = s.verboseTerminal;
+        debug = s.debug;
+    }
     // Debug output, QML's console.log included, can carry event details, so it
     // is kept off disk unless logging was turned up on purpose.
-    if (type != QtDebugMsg || s.verboseTerminal || s.debug) {
+    if (type != QtDebugMsg || verbose || debug) {
         const QMutexLocker lock(&s.mutex);
         if (s.file.isOpen()) {
             QTextStream out(&s.file);
@@ -88,7 +96,7 @@ void handle(QtMsgType type, const QMessageLogContext &context, const QString &me
     }
     // Info reaches the file by default, but the terminal only on request, so the
     // CLI stays quiet.
-    if (isProblem(type) || s.verboseTerminal) {
+    if (isProblem(type) || verbose) {
         const QString line = qFormatLogMessage(type, context, message);
         std::fprintf(stderr, "%s\n", qPrintable(line));
         std::fflush(stderr);

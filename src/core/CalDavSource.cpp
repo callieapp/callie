@@ -15,6 +15,7 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QUuid>
 
 using namespace Qt::StringLiterals;
 
@@ -285,6 +286,125 @@ void CalDavSource::fileChanged(const Folder &folder, const QString &fileName, bo
     Q_EMIT statusChanged();
 }
 
+void CalDavSource::signIn(const Account &account,
+                          std::function<void(CalDavClient *client, const QString &error)> done)
+{
+    if (!m_network || !m_tokens) {
+        done(nullptr, tr("Callie is not online."));
+        return;
+    }
+    const QPointer<CalDavSource> self(this);
+    m_tokens->read({u"caldav"_s, account.id}, [self, account, done](const QString &password,
+                                                                    const QString &keyring) {
+        if (!self)
+            return;
+        if (!keyring.isEmpty() || password.isEmpty()) {
+            done(nullptr, keyring.isEmpty()
+                              ? tr("No password is stored for this account; sign in again.")
+                              : keyring);
+            return;
+        }
+        CalDavClient *&client = self->m_clients[account.id];
+        if (!client)
+            client = new CalDavClient(self->m_network, self);
+        client->setCredentials(account.user, password);
+        done(client, {});
+    });
+}
+
+void CalDavSource::createCalendar(const QString &accountId, const QString &name,
+                                  const QColor &color,
+                                  std::function<void(const QString &, const QString &)> done)
+{
+    const auto account = std::ranges::find(m_accounts, accountId, &Account::id);
+    const QString trimmed = name.trimmed();
+    if (account == m_accounts.cend() || trimmed.isEmpty()) {
+        done({}, account == m_accounts.cend() ? tr("That account is not connected.")
+                                              : tr("Give the calendar a name."));
+        return;
+    }
+    const QString path = accountPath(accountId);
+    QUrl home = readAccount(path).home;
+    if (!home.isValid()) {
+        done({}, tr("That account has not synced yet; try again once it has."));
+        return;
+    }
+    if (!home.path().endsWith(u'/'))
+        home.setPath(home.path() + u'/');
+    // Named after the calendar, made unique, as servers want new addresses.
+    const QString folderName =
+        slug(trimmed) + u'-' + QUuid::createUuid().toString(QUuid::Id128).left(8);
+    const QUrl url = home.resolved(QUrl(folderName + u'/'));
+    const QPointer<CalDavSource> self(this);
+    signIn(*account, [self, url, trimmed, color, path, folderName, accountId,
+                      done](CalDavClient *client, const QString &signInError) {
+        if (!self)
+            return;
+        if (!client) {
+            done({}, signInError);
+            return;
+        }
+        client->makeCalendar(
+            url, trimmed, color,
+            [self, url, trimmed, color, path, folderName, accountId, done](const DavError &error) {
+                if (!self)
+                    return;
+                if (error) {
+                    done({}, error.message);
+                    return;
+                }
+                const QString folder = path + u'/' + folderName;
+                QDir().mkpath(folder);
+                State state;
+                state.url = url;
+                writeState(folder, state);
+                writeMeta(folder + u"/displayname"_s, trimmed);
+                if (color.isValid())
+                    writeMeta(folder + u"/color"_s, color.name());
+                self->scan();
+                Q_EMIT self->changed();
+                done(u"caldav:"_s + slug(accountId) + u'/' + folderName, {});
+            });
+    });
+}
+
+void CalDavSource::removeCalendar(const QString &calendarId,
+                                  std::function<void(const QString &)> done)
+{
+    const QList<Folder> all = folders();
+    const auto found = std::ranges::find(all, calendarId, &Folder::id);
+    const auto account = found == all.cend()
+                             ? m_accounts.cend()
+                             : std::ranges::find(m_accounts, found->account, &Account::id);
+    if (account == m_accounts.cend()) {
+        done(tr("That calendar is not in a connected account."));
+        return;
+    }
+    const QString folder = found->path;
+    const QUrl url = readState(folder).url;
+    const QPointer<CalDavSource> self(this);
+    signIn(*account, [self, folder, url, done](CalDavClient *client, const QString &signInError) {
+        if (!self)
+            return;
+        if (!client) {
+            done(signInError);
+            return;
+        }
+        client->removeCalendar(url, [self, folder, done](const DavError &error) {
+            if (!self)
+                return;
+            if (error) {
+                done(error.message);
+                return;
+            }
+            QDir(folder).removeRecursively();
+            self->scan();
+            Q_EMIT self->changed();
+            done({});
+        });
+    });
+}
+
 void CalDavSource::sync(const Account &account)
 {
     if (m_running.contains(account.id)) {
@@ -296,21 +416,14 @@ void CalDavSource::sync(const Account &account)
     m_running.insert(account.id);
     Q_EMIT statusChanged();
     const QPointer<CalDavSource> self(this);
-    m_tokens->read({u"caldav"_s, account.id}, [self, account](const QString &password,
-                                                              const QString &keyring) {
+    signIn(account, [self, account](CalDavClient *client, const QString &signInError) {
         // Stopped meanwhile, as when the account was removed.
         if (!self || !self->m_running.contains(account.id))
             return;
-        if (!keyring.isEmpty() || password.isEmpty()) {
-            self->finish(account, keyring.isEmpty()
-                                      ? tr("No password is stored for this account; sign in again.")
-                                      : keyring);
+        if (!client) {
+            self->finish(account, signInError);
             return;
         }
-        CalDavClient *&client = self->m_clients[account.id];
-        if (!client)
-            client = new CalDavClient(self->m_network, self);
-        client->setCredentials(account.user, password);
         const QString path = self->accountPath(account.id);
         AccountState state = readAccount(path);
         // Signed in again to another server: the copies are of the old one.

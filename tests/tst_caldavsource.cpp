@@ -37,6 +37,8 @@ private Q_SLOTS:
     void guestsAlreadyThereAreLeftAlone();
     void noAddressNoInvitations();
     void aNewLookGoesToTheServer();
+    void calendarsAreMadeAndDeletedOnTheServer();
+    void aServerThatRefusesCalendarsSaysSo();
     void importedEventsGoToTheServer();
     void aLookTurnedDownComesBack();
     void looksGivenInSettingsBecomeTheCalendars();
@@ -487,6 +489,81 @@ void TestCalDavSource::importedEventsGoToTheServer()
     QVERIFY(m_server->calendars[FakeCalDavServer::calendarPath("work")]
                 .items.value("/dav/calendars/me/work/party.ics")
                 .data.contains("SUMMARY:Party"));
+}
+
+void TestCalDavSource::calendarsAreMadeAndDeletedOnTheServer()
+{
+    // Made before the first sync, there is nowhere to put it yet.
+    QString made = u"no answer"_s;
+    QString error = u"no answer"_s;
+    m_source->createCalendar(u"me@example.com"_s, u"Book club"_s, {},
+                             [&](const QString &id, const QString &failed) {
+                                 made = id;
+                                 error = failed;
+                             });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY(made.isEmpty());
+
+    sync();
+    error = u"no answer"_s;
+    m_source->createCalendar(u"me@example.com"_s, u"Book club"_s, QColor(u"#ff0066"_s),
+                             [&](const QString &id, const QString &failed) {
+                                 made = id;
+                                 error = failed;
+                             });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QCOMPARE(calendarId(u"Book club"_s), made);
+    const auto onServer = [this] {
+        for (auto it = m_server->calendars.cbegin(); it != m_server->calendars.cend(); ++it) {
+            if (it->name == "Book club")
+                return it.key();
+        }
+        return QByteArray();
+    };
+    QVERIFY(!onServer().isEmpty());
+    QCOMPARE(m_server->calendars.value(onServer()).color, "#FF0066FF");
+
+    // Synced, it is the same calendar, and takes events.
+    sync();
+    QCOMPARE(m_source->calendars().size(), 3);
+    EventDraft draft;
+    draft.calendarId = made;
+    draft.summary = u"Chapter 3"_s;
+    draft.start = kMonday.addDays(3).addSecs(19 * 3600);
+    draft.end = draft.start.addSecs(3600);
+    QVERIFY(outcome([&](auto done) { m_source->createEvent(draft, done); }).isEmpty());
+    sync();
+    QCOMPARE(m_server->calendars.value(onServer()).items.size(), 1);
+
+    // Deleted, it goes from the server and from here, and stays gone.
+    error = u"no answer"_s;
+    m_source->removeCalendar(made, [&error](const QString &failed) { error = failed; });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QVERIFY(onServer().isEmpty());
+    QVERIFY(calendarId(u"Book club"_s).isEmpty());
+    sync();
+    QCOMPARE(m_source->calendars().size(), 2);
+}
+
+void TestCalDavSource::aServerThatRefusesCalendarsSaysSo()
+{
+    sync();
+    m_server->refuseCalendars = true;
+    QString error = u"no answer"_s;
+    m_source->createCalendar(u"me@example.com"_s, u"Book club"_s, {},
+                             [&error](const QString &, const QString &failed) { error = failed; });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY(error.contains(u"website"_s));
+    QVERIFY(calendarId(u"Book club"_s).isEmpty());
+
+    const QString work = calendarId(u"Work"_s);
+    error = u"no answer"_s;
+    m_source->removeCalendar(work, [&error](const QString &failed) { error = failed; });
+    QTRY_VERIFY(error != u"no answer");
+    QVERIFY(!error.isEmpty());
+    QCOMPARE(calendarId(u"Work"_s), work);
 }
 
 void TestCalDavSource::aNewLookGoesToTheServer()

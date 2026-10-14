@@ -14,6 +14,8 @@ qt_add_qml_module(callieui
         AccountsController.cpp
         LocalController.h
         LocalController.cpp
+        ServerCalendarsController.h
+        ServerCalendarsController.cpp
         ImportController.h
         ImportController.cpp
         SubscriptionsController.h
@@ -95,6 +97,7 @@ qt_add_qml_module(callieui
         Dropdown.qml
         PickerButton.qml
         LocalSection.qml
+        CalDavCalendarList.qml
         CalDavForm.qml
         ImportDialog.qml
         SubscribeDialog.qml

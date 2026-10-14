@@ -34,7 +34,9 @@ void ExportController::setUp(CalendarSource *calendars)
 QString ExportController::fileNameFor(const QString &name)
 {
     QString base = name.toLower();
-    base.replace(QRegularExpression(u"[^\\w]+"_s), u"-"_s);
+    // Letters in any script stay; the rest become dashes.
+    base.replace(QRegularExpression(u"[^\\w]+"_s, QRegularExpression::UseUnicodePropertiesOption),
+                 u"-"_s);
     base.remove(QRegularExpression(u"^-+|-+$"_s));
     return (base.isEmpty() ? u"calendar"_s : base) + u".ics"_s;
 }

@@ -8,7 +8,16 @@
 
 #include <optional>
 
+namespace KCalendarCore {
+class Recurrence;
+}
+
 namespace callie {
+
+/// Fills `recurrence` from the series' RRULE, EXRULE, RDATE and EXDATE lines,
+/// starting at `start`. False when no line could be used.
+bool buildGoogleRecurrence(KCalendarCore::Recurrence &recurrence, const GoogleEvent &series,
+                           const QDateTime &start, bool allDay);
 
 /// The occurrences of `events`, as stored by GoogleCache for one calendar,
 /// that overlap [from, to). Series are expanded in their organizer's time

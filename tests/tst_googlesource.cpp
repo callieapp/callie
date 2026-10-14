@@ -1,11 +1,13 @@
 #include "FakeHttpServer.h"
 #include "FakeTokenStore.h"
 
+#include "callie/CombinedSource.h"
 #include "callie/GoogleCache.h"
 #include "callie/GoogleCalendarApi.h"
 #include "callie/GoogleSource.h"
 #include "callie/GoogleSync.h"
 #include "callie/GoogleTokenProvider.h"
+#include "callie/Ics.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -55,6 +57,7 @@ private Q_SLOTS:
     void eventsComeFromEveryCalendar();
     void eventsAreInTheRequestedZone();
     void seriesAreExpanded();
+    void exportsTheCalendarOrOneSeries();
     void readOnlyCalendarsAllowNoChanges();
     void onlyTheOwnCalendarSaysWhereTheUserWorks();
     void remindersFallBackToTheCalendar();
@@ -238,6 +241,26 @@ void TestGoogleSource::onlyTheOwnCalendarSaysWhereTheUserWorks()
     QCOMPARE(workPlace.value(u"me"_s), true);
     QCOMPARE(workPlace.value(u"pat"_s), false);
     QVERIFY(workPlace.contains(u"pat"_s));
+}
+
+void TestGoogleSource::exportsTheCalendarOrOneSeries()
+{
+    GoogleSource google(*m_cache, {kAccount});
+    CombinedSource combined;
+    combined.setSources({&google});
+    const QString mine = u"me@example.com/mine"_s;
+    QString error;
+    // Through the combined source, as the app and the CLI reach it.
+    const ics::Group all = ics::parse(combined.exportEvents(mine, {}, &error));
+    QCOMPARE(all.size(), 2);
+    const ics::Group standup = ics::parse(combined.exportEvents(mine, u"standup"_s, &error));
+    QCOMPARE(standup.size(), 1);
+    QCOMPARE(standup.first()->uid(), u"standup@google.com"_s);
+    QCOMPARE(standup.first()->recurrence()->duration(), 5);
+    QVERIFY(combined.exportEvents(mine, u"gone"_s, &error).isEmpty());
+    QVERIFY(error.contains(u"not in the calendar"_s));
+    QVERIFY(combined.exportEvents(u"google/nobody@example.com/x"_s, {}, &error).isEmpty());
+    QVERIFY(!error.isEmpty());
 }
 
 void TestGoogleSource::readOnlyCalendarsAllowNoChanges()

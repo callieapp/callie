@@ -1,6 +1,7 @@
 #include "callie/Ics.h"
 
 #include "callie/GoogleCalendarApi.h"
+#include "callie/GoogleRecurrence.h"
 
 #include <KCalendarCore/ICalFormat>
 #include <KCalendarCore/MemoryCalendar>
@@ -925,26 +926,9 @@ Group fromGoogle(const QList<GoogleEvent> &events)
                 KCalendarCore::Attendee(person[u"displayName"].toString(), email, false,
                                         partstat(person[u"responseStatus"].toString())));
         }
-        if (!google.recurrence.isEmpty()) {
-            // Read by KCalendarCore, as part of an event, then moved across.
-            const QByteArray text =
-                "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Callie//EN\r\nBEGIN:VEVENT\r\n"
-                "UID:x\r\nDTSTART:" +
-                event->dtStart().toUTC().toString(u"yyyyMMdd'T'HHmmss'Z'"_s).toUtf8() + "\r\n" +
-                google.recurrence.join(u"\r\n"_s).toUtf8() + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
-            const Group parsed = parse(text);
-            if (!parsed.isEmpty()) {
-                const KCalendarCore::Recurrence *from = parsed.first()->recurrence();
-                KCalendarCore::Recurrence *to = event->recurrence();
-                for (const KCalendarCore::RecurrenceRule *rule : from->rRules())
-                    to->addRRule(new KCalendarCore::RecurrenceRule(*rule));
-                to->setExDateTimes(from->exDateTimes());
-                to->setExDates(from->exDates());
-                to->setRDateTimes(from->rDateTimes());
-                to->setRDates(from->rDates());
-            }
+        if (!google.recurrence.isEmpty() &&
+            buildGoogleRecurrence(*event->recurrence(), google, event->dtStart(), event->allDay()))
             series.insert(google.id, event);
-        }
         group << event;
     }
     // A cancelled occurrence of a series known here is a day it skips.

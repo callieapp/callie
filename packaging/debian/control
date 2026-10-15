@@ -1,7 +1,7 @@
 Source: callie
 Section: utils
 Priority: optional
-Maintainer: Lara Kelley <larakelley@higharc.ai>
+Maintainer: Lara Kelley <hello@callieapp.org>
 Build-Depends: debhelper-compat (= 13),
                cmake (>= 3.28),
                ninja-build,

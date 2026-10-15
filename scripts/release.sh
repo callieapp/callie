@@ -104,8 +104,8 @@ else
 fi
 notes="$(scripts/release-notes.sh "$next")"
 
-# The maintainer as the packaging names them already.
-maintainer="$(sed -n 's/^ -- \(.*>\)  .*/\1/p' packaging/debian/changelog | head -1)"
+# The maintainer as the Debian packaging names them.
+maintainer="$(sed -n 's/^Maintainer: *//p' packaging/debian/control)"
 
 sed -i "s/^\( *VERSION \)$current\$/\1$next/" CMakeLists.txt
 sed -i "s/^\(Version: *\)$current\$/\1$next/" packaging/rpm/callie.spec

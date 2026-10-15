@@ -5,6 +5,12 @@ as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md)
 
 ## Unreleased
 
+### New
+
+- Callie has its own signed dnf and apt repository at callieapp.org. The installer adds it, so
+  later updates come with `dnf upgrade` or `apt upgrade`; run it again to add it to an existing
+  install. The README shows how to add it by hand.
+
 ### Fixed
 
 - With Qt 6.12, a sign-in that Google or Microsoft turns down says why again, such as

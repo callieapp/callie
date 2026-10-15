@@ -6,6 +6,7 @@
 
 #include <QDir>
 #include <QNetworkAccessManager>
+#include <QRegularExpression>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -324,6 +325,10 @@ void TestMicrosoftSource::aChangeOutlookTurnsDownGoesBack()
     sync();
     m_graph->refuseChanges = 403;
     QSignalSpy refused(m_source.get(), &CalendarSource::errorOccurred);
+    // The log says which request was turned down and why.
+    QTest::ignoreMessage(QtInfoMsg,
+                         QRegularExpression(uR"(^Graph request failed with status 403 for /\S+ )"
+                                            uR"(- Access is denied\.$)"_s));
     const Event lunch = find(u"Lunch"_s);
     QVERIFY(outcome([&](auto done) {
                 m_source->moveEvent(lunch, lunch.start.addSecs(3600), lunch.end.addSecs(3600),

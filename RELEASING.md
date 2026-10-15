@@ -20,7 +20,10 @@ to `main`, which repository admins may do.
 
 Pushing the tag runs the release workflow. It checks the versions again, builds the source tarball
 and the `.deb` and `.rpm` packages, and publishes a GitHub release with the notes from
-`CHANGELOG.md`.
+`CHANGELOG.md`. Then it starts the site's deploy, which builds Callie's dnf and apt repositories at
+`callieapp.org/rpm` and `callieapp.org/deb` from the packages of the last ten releases, signed with
+the key in the `CALLIE_REPO_SIGNING_KEY` secret. Without that secret, the site goes out without
+them.
 
 The packages take the Google OAuth client from the repository's `CALLIE_GOOGLE_CLIENT_ID` and
 `CALLIE_GOOGLE_CLIENT_SECRET` Actions secrets, so the installed app can sign in. A tag build without

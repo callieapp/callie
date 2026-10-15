@@ -177,6 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -191,3 +192,8 @@ jobs:
             --title "Callie ${{ needs.source.outputs.version }}" \
             --notes-file dist/notes.md \
             dist/callie-*.tar.xz $(find dist -name '*.deb' -o -name '*.rpm')
+
+      - name: Update the package repositories on the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main

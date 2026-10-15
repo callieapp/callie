@@ -3,6 +3,14 @@
 What changed in each version of Callie, for the people using it. Notes collect under Unreleased
 as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md).
 
+## Unreleased
+
+### Fixed
+
+- `callie --help` keeps a space between each command and its description, where `unsubscribe`
+  ran into its own, and `callie completions` without a shell says how to use it.
+- Shell completion offers `--help` and `--version`.
+
 ## 0.5.1 - 2026-10-14
 
 ### Fixed

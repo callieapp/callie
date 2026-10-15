@@ -1148,13 +1148,14 @@ int main(int argc, char *argv[])
 
     QCommandLineParser parser;
     QString description = u"Callie: an elegant calendar for Linux.\n\nCommands:"_s;
+    qsizetype width = 0;
     for (const auto &[name, about] : kCommands)
-        description += u"\n  "_s + name.leftJustified(11) + about;
+        width = std::max(width, name.size());
+    for (const auto &[name, about] : kCommands)
+        description += u"\n  "_s + name.leftJustified(width + 2) + about;
     parser.setApplicationDescription(description);
-    parser.addHelpOption();
-    parser.addVersionOption();
     // Kept for completion too, since the parser does not list them.
-    QList<QCommandLineOption> options;
+    QList<QCommandLineOption> options{parser.addHelpOption(), parser.addVersionOption()};
     const auto addOption = [&parser, &options](const QCommandLineOption &option) {
         parser.addOption(option);
         options.append(option);
@@ -1310,11 +1311,11 @@ int main(int argc, char *argv[])
     const QString command = !args.isEmpty() ? args.first() : interactive ? u"tui"_s : u"agenda"_s;
     const HintAfterwards hint(command, parser.isSet(u"json"_s));
 
-    if (command == u"completions" && args.size() == 2) {
+    if (command == u"completions") {
         const QHash<QString, QString> files = {
             {u"bash"_s, u"callie.bash"_s}, {u"zsh"_s, u"_callie"_s}, {u"fish"_s, u"callie.fish"_s}};
-        QFile script(u":/completions/"_s + files.value(args.at(1), u"none"_s));
-        if (!script.open(QIODevice::ReadOnly)) {
+        QFile script(u":/completions/"_s + files.value(args.value(1), u"none"_s));
+        if (args.size() != 2 || !script.open(QIODevice::ReadOnly)) {
             err << QObject::tr("usage: callie completions bash|zsh|fish") << "\n";
             return 2;
         }

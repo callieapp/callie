@@ -16,6 +16,13 @@ public:
     /// The provider's error and description from its last refusal, such as
     /// "invalid_client: AADSTS7000218: ...", or empty.
     [[nodiscard]] QString lastRefusal() const { return m_refusal; }
+    /// The last refusal when it was for this error, else empty.
+    [[nodiscard]] QString refusalFor(const QString &error) const
+    {
+        const bool same = !error.isEmpty() && (m_refusal == error ||
+                                               m_refusal.startsWith(error + QStringLiteral(": ")));
+        return same ? m_refusal : QString();
+    }
 
     void networkReplyFinished(QNetworkReply *reply) override;
 

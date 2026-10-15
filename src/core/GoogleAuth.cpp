@@ -61,7 +61,12 @@ GoogleAuth::GoogleAuth(const GoogleClientConfig &client, QObject *parent)
     connect(m_flow, &QAbstractOAuth::granted, this, &GoogleAuth::onGranted);
     const auto onServerError = [this](const QString &error, const QString &description,
                                       const QUrl &) {
-        fail(description.isEmpty() ? error : description);
+        // Qt 6.12 reports a refused token request here, with less than the reply said.
+        const QString reason = m_handler ? m_handler->refusalFor(error) : QString();
+        if (!reason.isEmpty())
+            fail(tr("Google turned the sign-in down: %1").arg(reason));
+        else
+            fail(description.isEmpty() ? error : description);
     };
 #ifdef CALLIE_QT_OAUTH_69
     connect(m_flow, &QAbstractOAuth2::serverReportedErrorOccurred, this, onServerError);

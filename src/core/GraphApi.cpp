@@ -116,7 +116,9 @@ void GraphApi::requestRaw(const QString &accessToken, const QByteArray &method, 
         }
         const QString message =
             QJsonDocument::fromJson(bytes).object()[u"error"][u"message"].toString();
-        qCInfo(lcSync) << "Graph request failed with status" << status;
+        // The path alone, as in GoogleCalendarApi.
+        qCInfo(lcSync).noquote() << "Graph request failed with status" << status << "for"
+                                 << reply->url().path() << "-" << message;
         answer({}, {status, message.isEmpty() ? reply->errorString() : message});
     });
 }

@@ -10,6 +10,9 @@ bin="$(mktemp -d)"
 trap 'rm -rf "$bin"' EXIT
 ln -s "$(realpath "$2")" "$bin/callie"
 export PATH="$bin:$PATH"
+# Keeps callie's settings, data and log away from the user's own.
+export XDG_CONFIG_HOME="$bin/config" XDG_DATA_HOME="$bin/data" XDG_STATE_HOME="$bin/state" \
+    XDG_CACHE_HOME="$bin/cache"
 # shellcheck disable=SC1090
 source "$script"
 failures=0
@@ -41,6 +44,8 @@ expect "callie --sample edit x --scope=f" "following"
 # Names with spaces come quoted for the shell.
 expect "callie --sample calendars hide Fo" "Focus"
 expect "callie -d 3 ag" "agenda"
+expect "callie --he" "--help"
+expect "callie --ver" "--version"
 
 # Escaped and quoted spaces, against a stand-in callie offering one name.
 callie() { printf '%s\n' "$candidate"; }
@@ -53,6 +58,16 @@ expect 'callie add x --calendar="Deep w' 'Deep work'
 # Without : as a word break, bash replaces the whole word.
 candidate="Work: team"
 COMP_WORDBREAKS=${COMP_WORDBREAKS//:/} expect 'callie add x --calendar Work:\ t' 'Work:\ team'
+
+# Every command in the help keeps a space before its description.
+if command callie --help | grep -E '^  [a-z-]+[A-Z]'; then
+    printf 'FAIL: a command runs into its description in the help\n\n'
+    failures=$((failures + 1))
+fi
+if [ "$(command callie completions 2>&1)" != "usage: callie completions bash|zsh|fish" ]; then
+    printf 'FAIL: "callie completions" without a shell does not show its usage\n\n'
+    failures=$((failures + 1))
+fi
 
 if [ "$failures" -gt 0 ]; then
     printf '%s check(s) failed\n' "$failures"

@@ -30,3 +30,13 @@ The packages take the Google OAuth client from the repository's `CALLIE_GOOGLE_C
 them fails rather than publish packages that cannot connect a Google account. The Microsoft app id
 comes from the `CALLIE_MICROSOFT_CLIENT_ID` secret the same way; without it the packages build, and
 only Microsoft accounts cannot connect.
+
+## AUR
+
+`packaging/arch/` holds the PKGBUILDs for the AUR: `callie` builds a release's tarball and
+`callie-git` builds `main`. The release workflow builds `callie` against each release's own source.
+After a release, set `pkgver` and the tarball's first `sha256sums` entry in
+`packaging/arch/callie/PKGBUILD`, then copy it into the AUR's `callie` repository with the
+`.SRCINFO` that `makepkg --printsrcinfo` writes, fill in `_google_client_id` and
+`_google_client_secret` there, and push. The Google client stays out of this repository, where
+secret scanning would report it.

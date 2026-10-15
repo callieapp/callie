@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Cuts a release from main: picks the next version, dates the notes in
-# CHANGELOG.md, sets the version everywhere it is named, commits, tags and
-# pushes. The tag runs the release workflow, which builds and publishes.
+# CHANGELOG.md, sets the version everywhere it is named, runs make check,
+# commits, tags and pushes. The tag runs the release workflow, which builds
+# and publishes.
 #
 #   scripts/release.sh patch|minor|major [--dry-run]
 #   scripts/release.sh 0.5.0 [--dry-run]
@@ -78,7 +79,8 @@ if [ "$dry" = 1 ]; then
     printf '%s\n' "$notes"
     echo
     echo "Would set $next in CMakeLists.txt, the RPM spec, the Debian changelog and the"
-    echo "metainfo, commit \"chore: release $next\", tag v$next and push both to origin."
+    echo "metainfo, run make check, commit \"chore: release $next\", tag v$next and push both"
+    echo "to origin."
     exit 0
 fi
 
@@ -138,6 +140,13 @@ awk -v release="$release" '!done && /<release version=/ { print release; done = 
 mv metainfo.new data/org.callieapp.Callie.metainfo.xml
 
 scripts/check-version.sh "$next"
+# The tests read the dated notes, so they run on the release as it will be tagged.
+if ! make check; then
+    sed -i "s/^## $next - $today\$/## Unreleased/" CHANGELOG.md
+    git checkout -- CMakeLists.txt packaging/rpm/callie.spec packaging/debian/changelog \
+        data/org.callieapp.Callie.metainfo.xml
+    fail "make check failed on $next; the notes are left under ## Unreleased"
+fi
 git --no-pager diff --stat
 if [ "${RELEASE_YES:-0}" != 1 ]; then
     printf 'Commit, tag v%s and push to origin? [y/N] ' "$next"

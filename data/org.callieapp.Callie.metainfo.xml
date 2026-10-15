@@ -42,6 +42,14 @@
   </categories>
 
   <releases>
+    <release version="0.5.2" date="2026-10-15">
+      <description>
+        <ul>
+          <li>callie --help keeps a space between each command and its description, where unsubscribe ran into its own, and callie completions without a shell says how to use it.</li>
+          <li>Shell completion offers --help and --version.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.1" date="2026-10-14">
       <description>
         <ul>

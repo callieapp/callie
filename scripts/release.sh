@@ -145,6 +145,8 @@ if ! make check; then
     sed -i "s/^## $next - $today\$/## Unreleased/" CHANGELOG.md
     git checkout -- CMakeLists.txt packaging/rpm/callie.spec packaging/debian/changelog \
         data/org.callieapp.Callie.metainfo.xml
+    [ "$drafted" = 0 ] || fail "make check failed on $next; the notes written up are left under" \
+        "## Unreleased, to commit and push before releasing again"
     fail "make check failed on $next; the notes are left under ## Unreleased"
 fi
 git --no-pager diff --stat

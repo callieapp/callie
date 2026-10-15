@@ -55,8 +55,8 @@ jobs:
           done
           fingerprint="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')"
           if ! echo check | gpg --batch --pinentry-mode error --local-user "$fingerprint" \
-              --clearsign >/dev/null 2>&1; then
-            echo "::error::CALLIE_REPO_SIGNING_PASSPHRASE does not unlock CALLIE_REPO_SIGNING_KEY."
+              --clearsign >/dev/null; then
+            echo "::error::Could not sign with CALLIE_REPO_SIGNING_KEY; CALLIE_REPO_SIGNING_PASSPHRASE may be wrong, see gpg's error above."
             exit 1
           fi
           mkdir packages

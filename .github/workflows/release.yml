@@ -124,6 +124,35 @@ jobs:
           path: "*.deb"
           if-no-files-found: error
 
+  # The AUR's PKGBUILD, built against this source. Arch moves quickly, so a
+  # failure here does not hold back the release.
+  arch:
+    needs: source
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: source
+
+      - name: Build the package
+        run: |
+          version="${{ needs.source.outputs.version }}"
+          pacman -Syu --noconfirm --needed base-devel
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+          mkdir /build
+          cp packaging/arch/callie/PKGBUILD "callie-$version.tar.xz" /build/
+          sum="$(sha256sum "callie-$version.tar.xz" | cut -d' ' -f1)"
+          # The release's own tarball, which makepkg finds beside the PKGBUILD.
+          sed -i -e "s/^pkgver=.*/pkgver=$version/" \
+            -e "0,/^sha256sums=('[0-9a-f]*'/s//sha256sums=('$sum'/" /build/PKGBUILD
+          chown -R builder /build
+          cd /build
+          sudo -u builder makepkg --syncdeps --noconfirm
+
   # Each package installed on a clean system, and run, before it is published.
   installed:
     needs: [rpm, deb]

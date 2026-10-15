@@ -1,0 +1,63 @@
+# Maintainer: Lara Kelley <hello@callieapp.org>
+pkgname=callie-git
+pkgver=0.5.2.r0.g0000000
+pkgrel=1
+pkgdesc='An elegant calendar for Linux (from main)'
+arch=(x86_64)
+url='https://callieapp.org'
+license=(MIT OFL-1.1)
+depends=(gcc-libs glibc hicolor-icon-theme kcalendarcore qt6-base qt6-declarative
+         qt6-networkauth qtkeychain-qt6 tomlplusplus)
+# Arch has no FTXUI for the TUI, so a static one is built alongside.
+_ftxui=7.0.3
+# Callie's Google OAuth client, filled in on the AUR's copy only. Empty, Google
+# accounts need a client set at runtime.
+_google_client_id=''
+_google_client_secret=''
+makedepends=(cmake git ninja)
+provides=(callie)
+conflicts=(callie)
+source=("git+https://github.com/callieapp/callie.git"
+        "ftxui-$_ftxui.tar.gz::https://github.com/ArthurSonzogni/FTXUI/archive/refs/tags/v$_ftxui.tar.gz")
+sha256sums=('SKIP'
+            'e7c62ffe19009759821b4f0f8df7f2a6fb83784c3a9f1477d81f56d3ee723c88')
+
+pkgver() {
+  cd callie
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  cmake -B ftxui-build -S "FTXUI-$_ftxui" -G Ninja \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX="$srcdir/ftxui" \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DFTXUI_BUILD_EXAMPLES=OFF \
+    -DFTXUI_BUILD_DOCS=OFF \
+    -DFTXUI_BUILD_TESTS=OFF \
+    -DFTXUI_ENABLE_INSTALL=ON
+  cmake --build ftxui-build
+  cmake --install ftxui-build
+
+  cmake -B build -S callie -G Ninja \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCALLIE_TUI=ON \
+    -DCMAKE_PREFIX_PATH="$srcdir/ftxui" \
+    -DCALLIE_MICROSOFT_CLIENT_ID=63b30b16-ab77-4338-bd6e-467d31393af1 \
+    -DCALLIE_GOOGLE_CLIENT_ID="$_google_client_id" \
+    -DCALLIE_GOOGLE_CLIENT_SECRET="$_google_client_secret"
+  cmake --build build
+}
+
+check() {
+  TZ=UTC QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  cd callie
+  install -Dm644 LICENSE data/fonts/Nunito-OFL.txt data/fonts/Fraunces-OFL.txt \
+    -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

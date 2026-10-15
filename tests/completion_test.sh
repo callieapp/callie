@@ -64,8 +64,9 @@ if command callie --help | grep -E '^  [a-z-]+[A-Z]'; then
     printf 'FAIL: a command runs into its description in the help\n\n'
     failures=$((failures + 1))
 fi
-if [ "$(command callie completions 2>&1)" != "usage: callie completions bash|zsh|fish" ]; then
-    printf 'FAIL: "callie completions" without a shell does not show its usage\n\n'
+usage="$(command callie completions 2>&1)"
+if [ $? != 2 ] || ! printf '%s\n' "$usage" | grep -qxF "usage: callie completions bash|zsh|fish"; then
+    printf 'FAIL: "callie completions" without a shell does not show its usage:\n%s\n\n' "$usage"
     failures=$((failures + 1))
 fi
 

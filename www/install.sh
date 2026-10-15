@@ -8,6 +8,8 @@
 # the systems Callie ships packages for: Fedora 44 or later, and Debian 13
 # (trixie) or later, on x86_64. Anything else stops before changing anything.
 # Run again, it updates Callie, or says it is up to date without downloading.
+# It also adds Callie's own dnf or apt repository, so later updates come with
+# the system's.
 set -eu
 
 repo="callieapp/callie"
@@ -20,6 +22,9 @@ release_file="${CALLIE_INSTALL_RELEASE_JSON:-}"
 # Set, even empty, it stands in for the installed version.
 installed_override="${CALLIE_INSTALL_INSTALLED-}"
 installed_overridden="${CALLIE_INSTALL_INSTALLED+yes}"
+# Prefixed to the system's repository files.
+root="${CALLIE_INSTALL_ROOT:-}"
+site="https://callieapp.org"
 
 say() { printf 'callie: %s\n' "$*"; }
 fail() {
@@ -44,7 +49,8 @@ while [ $# -gt 0 ]; do
     --version=*) version="${1#--version=}" ;;
     -h | --help)
         printf '%s\n' "usage: install.sh [--dry-run] [--force] [--version X.Y.Z]" \
-            "Installs or updates Callie from its GitHub release with dnf or apt." \
+            "Installs or updates Callie from its GitHub release with dnf or apt, and" \
+            "adds Callie's repository so later updates come with the system's." \
             "--version installs that release, older ones included; --force installs" \
             "it again when it is the one installed."
         exit 0
@@ -159,6 +165,39 @@ else
     installed="${installed%%-*}"
 fi
 
+# Callie's repository, added once; failing to add it leaves Callie installed.
+case "$kind" in
+rpm) repo_files="/etc/yum.repos.d/callie.repo" ;;
+deb) repo_files="/usr/share/keyrings/callie.asc /etc/apt/sources.list.d/callie.sources" ;;
+esac
+add_repo() {
+    present=1
+    for file in $repo_files; do
+        [ -e "$root$file" ] || present=0
+    done
+    [ "$present" -eq 0 ] || return 0
+    if [ "$dry_run" -eq 1 ]; then
+        say "would add Callie's repository: $repo_files"
+        return 0
+    fi
+    if [ "$needs_root" -eq 1 ]; then
+        say "Callie's repository was not added: that needs root."
+        return 0
+    fi
+    get="$sudo curl --proto =https --tlsv1.2 -fsSL"
+    case "$kind" in
+    rpm) $get -o "$root/etc/yum.repos.d/callie.repo" "$site/rpm/callie.repo" ;;
+    deb)
+        $get -o "$root/usr/share/keyrings/callie.asc" "$site/callie.asc" &&
+            $get -o "$root/etc/apt/sources.list.d/callie.sources" "$site/deb/callie.sources"
+        ;;
+    esac || {
+        say "Callie's repository could not be added; callie upgrade still updates Callie."
+        return 0
+    }
+    say "Added Callie's repository; updates now come with the system's."
+}
+
 # Whether version $1 comes before version $2.
 older() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]; }
 
@@ -167,6 +206,7 @@ if [ -n "$installed" ]; then
     if [ "$installed" = "$target" ]; then
         if [ "$force" -eq 0 ]; then
             say "Callie $target is installed and up to date."
+            add_repo
             exit 0
         fi
         action=reinstall
@@ -174,6 +214,7 @@ if [ -n "$installed" ]; then
         # Only on request: the latest release can trail a build from source.
         if [ -z "$version" ]; then
             say "Callie $installed is installed, newer than the latest release, $target."
+            add_repo
             exit 0
         fi
         action=downgrade
@@ -214,6 +255,7 @@ if [ "$dry_run" -eq 1 ]; then
     say "would check it against sha256 $digest"
     [ -z "$refresh" ] || say "then run: $refresh"
     say "then run: $install ./$package"
+    add_repo
     exit 0
 fi
 
@@ -237,3 +279,4 @@ fi
 (cd "$dir" && $install "./$package") </dev/null || fail "The package manager could not install $package."
 
 say "Callie $target is installed. Open it from your app menu, or run callie-gui."
+add_repo

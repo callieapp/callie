@@ -25,8 +25,25 @@ It finds the latest [GitHub release](https://github.com/callieapp/callie/release
 package against the checksum GitHub records for it, and installs it with `dnf` or `apt`. On any
 other system it stops before changing anything. Run again, it updates Callie, or says it is up to
 date. `sh -s -- --dry-run` shows what it would do, `--version 0.2.1` installs that version, older
-ones included, and `--force` installs it again. The packages can also be downloaded from the
-release and installed by hand.
+ones included, and `--force` installs it again. It also adds Callie's own repository, so later
+updates come with `dnf upgrade` or `apt upgrade`.
+
+To add the repository yourself instead, on Fedora:
+
+```sh
+sudo curl -fsSLo /etc/yum.repos.d/callie.repo https://callieapp.org/rpm/callie.repo
+sudo dnf install callie
+```
+
+And on Debian:
+
+```sh
+sudo curl -fsSLo /usr/share/keyrings/callie.asc https://callieapp.org/callie.asc
+sudo curl -fsSLo /etc/apt/sources.list.d/callie.sources https://callieapp.org/deb/callie.sources
+sudo apt update && sudo apt install callie
+```
+
+The packages can also be downloaded from the release and installed by hand.
 
 Installation provides the `Callie` desktop app and a `callie` CLI for those who prefer to live in
 the terminal 🖥️

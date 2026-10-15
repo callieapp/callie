@@ -19,11 +19,12 @@ installs_on() {
     if [ "${installed:-}" = ask ]; then
         # shellcheck disable=SC2086
         output="$(PATH="$tmp/bin:$PATH" CALLIE_INSTALL_OS_RELEASE="$tmp/os-release" \
+            CALLIE_INSTALL_ROOT="$tmp/root" \
             CALLIE_INSTALL_RELEASE_JSON="${json:-$release}" \
             sh "$script" --dry-run ${options:-} 2>&1)"
     else
         # shellcheck disable=SC2086
-        output="$(CALLIE_INSTALL_OS_RELEASE="$tmp/os-release" \
+        output="$(CALLIE_INSTALL_OS_RELEASE="$tmp/os-release" CALLIE_INSTALL_ROOT="$tmp/root" \
             CALLIE_INSTALL_RELEASE_JSON="${json:-$release}" CALLIE_INSTALL_INSTALLED="${installed:-}" \
             sh "$script" --dry-run ${options:-} 2>&1)"
     fi
@@ -72,6 +73,7 @@ expect_status fedora 0
 expect fedora "/v0.2.1/callie-0.2.1-1.fc44.x86_64.rpm"
 expect fedora "sha256 350e52621a778c23e0946ffef28b7e718442db280b9ea2888fc22d4892f8c345"
 expect fedora "dnf install -y ./callie-0.2.1-1.fc44.x86_64.rpm"
+expect fedora "would add Callie's repository: /etc/yum.repos.d/callie.repo"
 
 # Debian gets the deb, not the debug symbols, after refreshing apt's lists.
 installs_on ID=debian VERSION_ID=13 'PRETTY_NAME="Debian GNU/Linux 13 (trixie)"'
@@ -79,6 +81,7 @@ expect_status debian 0
 expect debian "/v0.2.1/callie_0.2.1-1_amd64.deb"
 expect debian "apt-get update"
 expect debian "apt-get install -y ./callie_0.2.1-1_amd64.deb"
+expect debian "would add Callie's repository: /usr/share/keyrings/callie.asc /etc/apt/sources.list.d/callie.sources"
 
 # Testing and unstable carry no version; they are newer than trixie.
 installs_on ID=debian 'PRETTY_NAME="Debian GNU/Linux forky/sid"'
@@ -123,6 +126,8 @@ installs_on ID=debian VERSION_ID=13 "$debian"
 expect_status current 0
 expect current "Callie 0.2.1 is installed and up to date."
 refuse current "package:"
+# One installed before the repository existed gets it on running this again.
+expect current "would add Callie's repository"
 options=--force
 installs_on ID=debian VERSION_ID=13 "$debian"
 expect "forced" "installing Callie 0.2.1 again"
@@ -144,6 +149,15 @@ expect "downgrade" "apt-get install -y --allow-downgrades ./callie_0.2.1-1_amd64
 installs_on ID=fedora VERSION_ID=44 "$fedora"
 expect "downgrade rpm" "dnf downgrade -y ./callie-0.2.1-1.fc44.x86_64.rpm"
 unset options installed
+
+# The repository is added once: not again when its files are all there.
+mkdir -p "$tmp/root/etc/yum.repos.d" "$tmp/root/usr/share/keyrings"
+touch "$tmp/root/etc/yum.repos.d/callie.repo" "$tmp/root/usr/share/keyrings/callie.asc"
+installs_on ID=fedora VERSION_ID=44 "$fedora"
+refuse "rpm repo added" "would add Callie's repository"
+installs_on ID=debian VERSION_ID=13 "$debian"
+expect "deb repo half added" "would add Callie's repository"
+rm -rf "$tmp/root"
 
 # The installed version comes from rpm or dpkg-query, without the packaging's
 # revision; a removed deb that left its configuration is not installed.

@@ -176,7 +176,9 @@ void GoogleCalendarApi::send(QNetworkReply *reply, Page page)
         }
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         const QString message = body[u"error"][u"message"].toString();
-        qCInfo(lcSync) << "Google API request failed with status" << status;
+        // The path alone: queries can hold search words and sync tokens.
+        qCInfo(lcSync).noquote() << "Google API request failed with status" << status << "for"
+                                 << reply->url().path() << "-" << message;
         page({}, {status, message.isEmpty() ? reply->errorString() : message});
     });
 }

@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
+#include <QRegularExpression>
 #include <QTest>
 #include <QTimeZone>
 #include <QUrlQuery>
@@ -109,6 +110,10 @@ void TestGoogleCalendarApi::primaryCalendarIdSendsBearerToken()
 void TestGoogleCalendarApi::errorCarriesStatusAndMessage()
 {
     m_server->respond(401, R"({"error":{"code":401,"message":"Invalid Credentials"}})");
+    // The log says which request failed and why, without its query.
+    QTest::ignoreMessage(QtInfoMsg, QRegularExpression(QStringLiteral(
+                                        R"(^Google API request failed with status 401 for )"
+                                        R"(/\S*calendarList - Invalid Credentials$)")));
 
     GoogleApiError error;
     bool done = false;

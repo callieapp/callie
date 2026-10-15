@@ -13,6 +13,8 @@ as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md)
 
 ### Fixed
 
+- When Google or Microsoft turns a sync request down, the log says which request it was and the
+  reason the server gave, not only the status code.
 - With Qt 6.12, a sign-in that Google or Microsoft turns down says why again, such as
   `invalid_grant`, rather than only "Bad Request".
 

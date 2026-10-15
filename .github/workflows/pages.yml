@@ -1,9 +1,11 @@
 name: pages
 
+# The site, with Callie's dnf and apt repositories built from the published
+# releases. A release starts this once it is published.
 on:
   push:
     branches: [main]
-    paths: ["www/**", ".github/workflows/pages.yml"]
+    paths: ["www/**", "scripts/package-repo.sh", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -17,13 +19,64 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  repo:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the package repositories
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_KEY: ${{ secrets.CALLIE_REPO_SIGNING_KEY }}
+          SIGNING_PASSPHRASE: ${{ secrets.CALLIE_REPO_SIGNING_PASSPHRASE }}
+        run: |
+          mkdir -p repo
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::notice::No CALLIE_REPO_SIGNING_KEY secret; the site goes out without package repositories."
+            exit 0
+          fi
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ca-certificates gh gnupg rpm createrepo-c apt-utils >/dev/null
+          GNUPGHOME="$(mktemp -d)"
+          export GNUPGHOME
+          # The passphrase goes to this runner's agent up front, so signing never asks.
+          echo allow-preset-passphrase > "$GNUPGHOME/gpg-agent.conf"
+          printf '%s\n' "$SIGNING_KEY" | gpg --batch --quiet --import
+          for keygrip in $(gpg --list-secret-keys --with-keygrip --with-colons |
+              awk -F: '/^grp/ { print $10 }'); do
+            printf '%s' "$SIGNING_PASSPHRASE" |
+              "$(gpgconf --list-dirs libexecdir)/gpg-preset-passphrase" --preset "$keygrip"
+          done
+          fingerprint="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')"
+          mkdir packages
+          for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 10 \
+              --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName'); do
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir packages \
+              --pattern 'callie-[0-9]*.x86_64.rpm' --pattern 'callie_*_amd64.deb'
+          done
+          bash scripts/package-repo.sh packages repo "$fingerprint"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repo
+          path: repo
+          if-no-files-found: ignore
+
   deploy:
+    needs: repo
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: repo
+          path: www
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

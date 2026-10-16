@@ -9,7 +9,7 @@
 set -eu
 
 url="https://github.com/callieapp/jot/releases/latest/download/install.sh"
-if ! script="$(curl -fsSL "$url")"; then
+if ! script="$(curl --proto '=https' --tlsv1.2 -fsSL "$url")"; then
     printf 'jot: could not download the installer from %s\n' "$url" >&2
     exit 1
 fi

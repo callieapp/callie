@@ -15,7 +15,8 @@ Popup {
     x: parent ? parent.width - width - Theme.space6 : 0
     y: parent ? (parent.height - height) / 2 : 0
     width: 400
-    height: Math.min(640, (parent ? parent.height : 640) - 2 * Theme.space6)
+    // The window's height, not the parent's: a LazyPopup that has no size of its own.
+    height: Math.min(640, (Overlay.overlay ? Overlay.overlay.height : 640) - 2 * Theme.space6)
     padding: 0
     modal: true
     focus: true
@@ -53,16 +54,23 @@ Popup {
                 font.pixelSize: Theme.textXl
                 font.weight: Theme.weightBold
             }
-            StickerButton {
+            Row {
                 anchors {
                     right: parent.right
                     verticalCenter: title.verticalCenter
                 }
-                accent: true
-                text: qsTr("Done")
-                onClicked: {
-                    root.close()
-                    root.finished()
+                spacing: Theme.space2
+
+                StickerButton {
+                    accent: true
+                    text: qsTr("Done")
+                    onClicked: {
+                        root.close()
+                        root.finished()
+                    }
+                }
+                CloseButton {
+                    onClicked: root.close()
                 }
             }
         }

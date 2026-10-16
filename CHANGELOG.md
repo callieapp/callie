@@ -10,6 +10,12 @@ as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md)
 - Packages for Ubuntu 26.04 or later, built against Ubuntu's own libraries. The installer and
   `callie upgrade` pick them on Ubuntu, and Callie's apt repository has them under its own suite.
 
+### Fixed
+
+- The keyboard shortcuts window and the theme editor open again; they showed only the dimmed
+  window behind them.
+- Every dialog and popup has an X that closes it, as Escape does.
+
 ## 0.5.3 - 2026-10-15
 
 ### New

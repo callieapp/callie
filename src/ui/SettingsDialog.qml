@@ -91,13 +91,11 @@ Popup {
                 font.weight: Theme.weightBold
             }
 
-            StickerButton {
+            CloseButton {
                 anchors {
                     right: parent.right
                     verticalCenter: title.verticalCenter
                 }
-                glyph: "close"
-                Accessible.name: qsTr("Close")
                 onClicked: root.close()
             }
         }

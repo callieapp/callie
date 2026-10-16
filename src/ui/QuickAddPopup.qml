@@ -94,30 +94,43 @@ Popup {
     contentItem: Column {
         spacing: Theme.space4
 
-        TextField {
-            id: field
+        Item {
             width: parent.width
-            placeholderText: root.fromGrid ? qsTr(
-                                                 "What is it? Add \"at\" and a place, if you like") :
-                                             qsTr("Lunch with Alex tomorrow 12-1pm at Cafe Sol")
-            placeholderTextColor: Theme.textFaint
-            color: Theme.text
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textBase
-            font.weight: Theme.weightStrong
-            leftPadding: Theme.space4
-            rightPadding: Theme.space4
-            topPadding: Theme.space3
-            bottomPadding: Theme.space3
-            Accessible.name: qsTr("Describe the event")
-            onTextEdited: composer.text = text
-            Keys.onReturnPressed: composer.submit()
-            Keys.onEnterPressed: composer.submit()
-            background: Rectangle {
-                radius: Theme.radiusLg
-                color: Theme.surfaceAlt
-                border.width: field.activeFocus ? 2 : 1
-                border.color: field.activeFocus ? Theme.accent : Theme.border
+            height: field.height
+
+            TextField {
+                id: field
+                width: parent.width - addClose.width - Theme.space3
+                placeholderText: root.fromGrid ? qsTr(
+                                                     "What is it? Add \"at\" and a place, if you like") :
+                                                 qsTr("Lunch with Alex tomorrow 12-1pm at Cafe Sol")
+                placeholderTextColor: Theme.textFaint
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textBase
+                font.weight: Theme.weightStrong
+                leftPadding: Theme.space4
+                rightPadding: Theme.space4
+                topPadding: Theme.space3
+                bottomPadding: Theme.space3
+                Accessible.name: qsTr("Describe the event")
+                onTextEdited: composer.text = text
+                Keys.onReturnPressed: composer.submit()
+                Keys.onEnterPressed: composer.submit()
+                background: Rectangle {
+                    radius: Theme.radiusLg
+                    color: Theme.surfaceAlt
+                    border.width: field.activeFocus ? 2 : 1
+                    border.color: field.activeFocus ? Theme.accent : Theme.border
+                }
+            }
+            CloseButton {
+                id: addClose
+                anchors {
+                    right: parent.right
+                    verticalCenter: field.verticalCenter
+                }
+                onClicked: root.close()
             }
         }
 

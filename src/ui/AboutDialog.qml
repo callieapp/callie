@@ -48,91 +48,105 @@ Popup {
         }
     }
 
-    contentItem: Column {
-        spacing: Theme.space4
-
-        Logo {
-            id: logo
-            anchors.horizontalCenter: parent.horizontalCenter
-            size: 80
-        }
+    contentItem: Item {
+        implicitHeight: about.implicitHeight
 
         Column {
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Theme.space1
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: Release.devel ? qsTr("Callie Devel") : qsTr("Callie")
-                color: Theme.text
-                font.family: Theme.displayFontFamily
-                font.pixelSize: Theme.text2xl
-                font.weight: Theme.weightBold
-            }
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Version %1").arg(Release.version)
-                color: Theme.textMuted
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.textSm
-                font.weight: Theme.weightBold
-            }
-        }
-
-        Text {
+            id: about
             width: parent.width
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            text: qsTr("A cozy, open source calendar for Linux that keeps up with your Google "
-                       + "calendars. Made with care, and free to use, share and change under "
-                       + "the MIT license.")
-            color: Theme.text
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textMd
-        }
+            spacing: Theme.space4
 
-        StickerButton {
-            anchors.horizontalCenter: parent.horizontalCenter
-            accent: true
-            text: qsTr("What's new in %1").arg(Release.notesVersion)
-            visible: Release.notes !== ""
-            onClicked: {
-                root.close()
-                root.whatsNewRequested()
+            Logo {
+                id: logo
+                anchors.horizontalCenter: parent.horizontalCenter
+                size: 80
             }
-        }
 
-        Flow {
-            width: parent.width
-            spacing: Theme.space2
+            Column {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: Theme.space1
 
-            Repeater {
-                model: [
-                    {
-                        "label": qsTr("Website"),
-                        "url": Release.website
-                    },
-                    {
-                        "label": qsTr("Privacy"),
-                        "url": Release.privacy
-                    },
-                    {
-                        "label": qsTr("Terms"),
-                        "url": Release.terms
-                    },
-                    {
-                        "label": qsTr("Source code"),
-                        "url": Release.source
-                    }
-                ]
-
-                PillButton {
-                    id: link
-                    required property var modelData
-                    label: link.modelData.label
-                    onClicked: Qt.openUrlExternally(link.modelData.url)
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: Release.devel ? qsTr("Callie Devel") : qsTr("Callie")
+                    color: Theme.text
+                    font.family: Theme.displayFontFamily
+                    font.pixelSize: Theme.text2xl
+                    font.weight: Theme.weightBold
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: qsTr("Version %1").arg(Release.version)
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.textSm
+                    font.weight: Theme.weightBold
                 }
             }
+
+            Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                text: qsTr("A cozy, open source calendar for Linux that keeps up with your Google "
+                           + "calendars. Made with care, and free to use, share and change under "
+                           + "the MIT license.")
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textMd
+            }
+
+            StickerButton {
+                anchors.horizontalCenter: parent.horizontalCenter
+                accent: true
+                text: qsTr("What's new in %1").arg(Release.notesVersion)
+                visible: Release.notes !== ""
+                onClicked: {
+                    root.close()
+                    root.whatsNewRequested()
+                }
+            }
+
+            Flow {
+                width: parent.width
+                spacing: Theme.space2
+
+                Repeater {
+                    model: [
+                        {
+                            "label": qsTr("Website"),
+                            "url": Release.website
+                        },
+                        {
+                            "label": qsTr("Privacy"),
+                            "url": Release.privacy
+                        },
+                        {
+                            "label": qsTr("Terms"),
+                            "url": Release.terms
+                        },
+                        {
+                            "label": qsTr("Source code"),
+                            "url": Release.source
+                        }
+                    ]
+
+                    PillButton {
+                        id: link
+                        required property var modelData
+                        label: link.modelData.label
+                        onClicked: Qt.openUrlExternally(link.modelData.url)
+                    }
+                }
+            }
+        }
+
+        CloseButton {
+            anchors {
+                top: parent.top
+                right: parent.right
+            }
+            onClicked: root.close()
         }
     }
 }

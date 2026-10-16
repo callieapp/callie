@@ -70,16 +70,29 @@ Popup {
     contentItem: Column {
         spacing: Theme.space3
 
-        Field {
-            id: field
+        Item {
             width: parent.width
-            placeholderText: qsTr("Search events")
-            Accessible.name: qsTr("Search events")
-            onTextEdited: results.currentIndex = 0
-            Keys.onDownPressed: results.incrementCurrentIndex()
-            Keys.onUpPressed: results.decrementCurrentIndex()
-            Keys.onReturnPressed: root.choose(results.currentIndex)
-            Keys.onEnterPressed: root.choose(results.currentIndex)
+            height: field.height
+
+            Field {
+                id: field
+                width: parent.width - searchClose.width - Theme.space3
+                placeholderText: qsTr("Search events")
+                Accessible.name: qsTr("Search events")
+                onTextEdited: results.currentIndex = 0
+                Keys.onDownPressed: results.incrementCurrentIndex()
+                Keys.onUpPressed: results.decrementCurrentIndex()
+                Keys.onReturnPressed: root.choose(results.currentIndex)
+                Keys.onEnterPressed: root.choose(results.currentIndex)
+            }
+            CloseButton {
+                id: searchClose
+                anchors {
+                    right: parent.right
+                    verticalCenter: field.verticalCenter
+                }
+                onClicked: root.close()
+            }
         }
 
         Text {

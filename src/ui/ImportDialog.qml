@@ -44,24 +44,12 @@ Popup {
     contentItem: Column {
         spacing: Theme.space4
 
-        Text {
-            width: parent.width
-            wrapMode: Text.Wrap
-            text: Importer.count === 1 ? qsTr("Add 1 event") : qsTr("Add %1 events").arg(
-                                             Importer.count)
+        DialogHeader {
+            title: Importer.count === 1 ? qsTr("Add 1 event") : qsTr("Add %1 events").arg(
+                                              Importer.count)
 
-            color: Theme.text
-            font.family: Theme.displayFontFamily
-            font.pixelSize: Theme.textXl
-            font.weight: Theme.weightBold
-        }
-        Text {
-            width: parent.width
-            elide: Text.ElideMiddle
-            text: qsTr("From %1").arg(Importer.fileName)
-            color: Theme.textMuted
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textSm
+            subtitle: qsTr("From %1").arg(Importer.fileName)
+            onCloseRequested: root.close()
         }
 
         Column {

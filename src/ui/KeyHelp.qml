@@ -12,7 +12,9 @@ Popup {
 
     anchors.centerIn: Overlay.overlay
     width: 620
-    height: Math.min(implicitHeight, (parent ? parent.height : 800) - 2 * Theme.space6)
+    // The window's height, not the parent's: a LazyPopup that has no size of its own.
+    height: Math.min(implicitHeight, (Overlay.overlay ? Overlay.overlay.height : 800) - 2
+                     * Theme.space6)
     padding: Theme.space6
     modal: true
     focus: true
@@ -42,12 +44,9 @@ Popup {
             width: parent.width
             spacing: Theme.space4
 
-            Text {
-                text: qsTr("Keyboard shortcuts")
-                color: Theme.text
-                font.family: Theme.displayFontFamily
-                font.pixelSize: Theme.textXl
-                font.weight: Theme.weightBold
+            DialogHeader {
+                title: qsTr("Keyboard shortcuts")
+                onCloseRequested: root.close()
             }
 
             Table {

@@ -46,14 +46,11 @@ Popup {
     contentItem: Column {
         spacing: Theme.space3
 
-        Text {
-            width: parent.width
-            wrapMode: Text.Wrap
-            text: qsTr("Move this event, or every one in the series?")
-            color: Theme.text
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textSm
-            font.weight: Theme.weightBold
+        DialogHeader {
+            title: qsTr("Move this event, or every one in the series?")
+            titleSize: Theme.textSm
+            display: false
+            onCloseRequested: root.close()
         }
         Flow {
             width: parent.width

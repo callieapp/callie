@@ -42,6 +42,15 @@
   </categories>
 
   <releases>
+    <release version="0.5.4" date="2026-10-16">
+      <description>
+        <ul>
+          <li>Packages for Ubuntu 26.04 or later, built against Ubuntu's own libraries. The installer and callie upgrade pick them on Ubuntu, and Callie's apt repository has them under its own suite.</li>
+          <li>The keyboard shortcuts window and the theme editor open again; they showed only the dimmed window behind them.</li>
+          <li>Every dialog and popup has an X that closes it, as Escape does.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.3" date="2026-10-15">
       <description>
         <ul>

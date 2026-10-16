@@ -1,7 +1,14 @@
 #include "WindowButtons.h"
 
+#include "callie/Identity.h"
 #include "callie/Logging.h"
 
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
+#include <QDBusVariant>
+#include <QDir>
 #include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
@@ -47,8 +54,11 @@ WindowButtons::WindowButtons(QObject *parent) : QObject(parent), m_layout{{}, kK
         readGnome();
         return;
     }
-    const QString path =
-        QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kwinrc"));
+    // A Flatpak's config folder is its own; the host's kwinrc is shared at its own path.
+    const QString path = identity::isFlatpak()
+                             ? QDir::homePath() + QStringLiteral("/.config/kwinrc")
+                             : QStandardPaths::locate(QStandardPaths::GenericConfigLocation,
+                                                      QStringLiteral("kwinrc"));
     QSettings kwin(path, QSettings::IniFormat);
     kwin.beginGroup(QStringLiteral("org.kde.kdecoration2"));
     // KDE's own defaults apply when the user never changed them.
@@ -63,6 +73,10 @@ WindowButtons *WindowButtons::create(QQmlEngine *engine, QJSEngine *)
 
 void WindowButtons::readGnome()
 {
+    if (identity::isFlatpak()) {
+        readGnomeFromPortal();
+        return;
+    }
     auto *gsettings = new QProcess(this);
     connect(gsettings, &QProcess::finished, this, [this, gsettings](int code) {
         gsettings->deleteLater();
@@ -79,6 +93,30 @@ void WindowButtons::readGnome()
     gsettings->start(QStringLiteral("gsettings"),
                      {QStringLiteral("get"), QStringLiteral("org.gnome.desktop.wm.preferences"),
                       QStringLiteral("button-layout")});
+}
+
+void WindowButtons::readGnomeFromPortal()
+{
+    QDBusMessage call = QDBusMessage::createMethodCall(
+        QStringLiteral("org.freedesktop.portal.Desktop"),
+        QStringLiteral("/org/freedesktop/portal/desktop"),
+        QStringLiteral("org.freedesktop.portal.Settings"), QStringLiteral("Read"));
+    call << QStringLiteral("org.gnome.desktop.wm.preferences") << QStringLiteral("button-layout");
+    auto *watcher =
+        new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, watcher] {
+        watcher->deleteLater();
+        const QDBusPendingReply<QDBusVariant> reply = *watcher;
+        if (reply.isError())
+            return;
+        // Read wraps the value in a second variant.
+        QVariant value = reply.value().variant();
+        if (value.canConvert<QDBusVariant>())
+            value = value.value<QDBusVariant>().variant();
+        const QString setting = value.toString().trimmed();
+        if (!setting.isEmpty())
+            apply(fromGnome(setting));
+    });
 }
 
 void WindowButtons::apply(const Layout &layout)

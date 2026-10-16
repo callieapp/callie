@@ -1,5 +1,6 @@
 #include "WindowButtons.h"
 
+#include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QSignalSpy>
@@ -20,6 +21,7 @@ private Q_SLOTS:
     void kdeDefaultPutsThreeOnTheRight();
     void kdeLettersMapToButtons();
     void readsKwinrcOnKde();
+    void readsTheHostKwinrcInAFlatpak();
     void readsGnomeSettingWithoutBlocking();
     void keepsTheDefaultWithoutGsettings();
     void takesAnEmptyGnomeLayout();
@@ -86,6 +88,28 @@ void TestWindowButtons::readsKwinrcOnKde()
 
     QCOMPARE(buttons.left(), (QStringList{u"close"_s, u"maximize"_s}));
     QCOMPARE(buttons.right(), QStringList());
+}
+
+void TestWindowButtons::readsTheHostKwinrcInAFlatpak()
+{
+    // The sandbox's own config folder holds no kwinrc; the host's is in its usual place.
+    QTemporaryDir home;
+    QTemporaryDir sandboxConfig;
+    QVERIFY(QDir(home.path()).mkpath(u".config"_s));
+    write(home.filePath(u".config/kwinrc"_s),
+          "[org.kde.kdecoration2]\nButtonsOnLeft=I\nButtonsOnRight=X\n");
+    const QByteArray oldHome = qgetenv("HOME");
+    qputenv("HOME", home.path().toUtf8());
+    qputenv("XDG_CONFIG_HOME", sandboxConfig.path().toUtf8());
+    qputenv("XDG_CURRENT_DESKTOP", "KDE");
+    qputenv("CALLIE_FLATPAK", "1");
+
+    const WindowButtons buttons;
+    qputenv("CALLIE_FLATPAK", "0");
+    qputenv("HOME", oldHome);
+
+    QCOMPARE(buttons.left(), QStringList{u"minimize"_s});
+    QCOMPARE(buttons.right(), QStringList{u"close"_s});
 }
 
 void TestWindowButtons::readsGnomeSettingWithoutBlocking()

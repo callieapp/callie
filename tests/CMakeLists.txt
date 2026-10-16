@@ -15,7 +15,9 @@ function(callie_add_test name)
     else()
         add_test(NAME ${name} COMMAND ${name})
     endif()
-    set_tests_properties(${name} PROPERTIES ENVIRONMENT "TZ=UTC;QT_QPA_PLATFORM=offscreen")
+    # The same on the host and inside a Flatpak build; tests that want a Flatpak say so.
+    set_tests_properties(${name} PROPERTIES ENVIRONMENT
+        "TZ=UTC;QT_QPA_PLATFORM=offscreen;CALLIE_FLATPAK=0")
 endfunction()
 
 callie_add_test(tst_eventmodel)

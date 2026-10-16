@@ -20,6 +20,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request replaces its older run; tag runs always finish.
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   source:
     runs-on: ubuntu-latest
@@ -79,7 +84,11 @@ jobs:
           dnf builddep -y "callie-$version/packaging/rpm/callie.spec"
           mkdir -p rpmbuild/SOURCES
           cp "callie-$version.tar.xz" rpmbuild/SOURCES/
-          rpmbuild -ba --define "_topdir $PWD/rpmbuild" "callie-$version/packaging/rpm/callie.spec"
+          # Link-time optimization doubles the build, so only the published packages get it.
+          set --
+          [ "$GITHUB_REF_TYPE" = tag ] || set -- --define "_lto_cflags %{nil}"
+          rpmbuild -ba --define "_topdir $PWD/rpmbuild" "$@" \
+            "callie-$version/packaging/rpm/callie.spec"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -150,6 +159,8 @@ jobs:
           sed -i -e "s/^pkgver=.*/pkgver=$version/" \
             -e "0,/^sha256sums=('[0-9a-f]*'/s//sha256sums=('$sum'/" /build/PKGBUILD
           chown -R builder /build
+          # As for the rpm, link-time optimization only for a release.
+          [ "$GITHUB_REF_TYPE" = tag ] || echo 'options=(!lto)' >> /build/PKGBUILD
           cd /build
           sudo -u builder makepkg --syncdeps --noconfirm
 

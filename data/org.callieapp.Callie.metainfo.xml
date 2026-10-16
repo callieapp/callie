@@ -42,6 +42,13 @@
   </categories>
 
   <releases>
+    <release version="0.5.6" date="2026-10-16">
+      <description>
+        <ul>
+          <li>Themes made in Jot, with its [editor] section for the note editor's font and code colors, load without warnings; Callie keeps the section and does not use it.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.5" date="2026-10-16">
       <description>
         <ul>

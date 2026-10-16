@@ -8,7 +8,9 @@ Canvas {
     property bool ready: false
 
     function load() {
+        // Cleared now, so a photo that changed or went away does not linger.
         ready = false
+        requestPaint()
         if (source.toString() === "")
             return
         // Already loaded for another canvas, it says nothing more.
@@ -20,10 +22,12 @@ Canvas {
         loadImage(source)
     }
 
-    // Left visible, as a hidden canvas misses the paint asked for when the photo
-    // loads; it draws nothing until then.
     Component.onCompleted: load()
     onSourceChanged: load()
+    // A paint asked for before the canvas can draw is dropped.
+    onAvailableChanged: requestPaint()
+    onWidthChanged: requestPaint()
+    onHeightChanged: requestPaint()
     onImageLoaded: {
         ready = isImageLoaded(source)
         requestPaint()
@@ -31,12 +35,12 @@ Canvas {
     onPaint: {
         const ctx = getContext("2d")
         ctx.reset()
-        // Drawing a photo that has not loaded is a type mismatch.
+        // Only a photo that loaded can be drawn; drawImage takes its address as a string.
         if (!ready)
             return
         ctx.beginPath()
         ctx.arc(width / 2, height / 2, width / 2, 0, 2 * Math.PI)
         ctx.clip()
-        ctx.drawImage(source, 0, 0, width, height)
+        ctx.drawImage(source.toString(), 0, 0, width, height)
     }
 }

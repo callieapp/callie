@@ -17,9 +17,47 @@ class TestRoundPhoto : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    // The same renderer everywhere, and one that needs no GPU.
+    void initTestCase() { QQuickWindow::setGraphicsApi(QSGRendererInterface::Software); }
     void drawsThePhotoInACircle();
     void drawsNothingWithoutAPhoto();
+
+private:
+    /// What the canvas holds, read back from it rather than from the screen.
+    static QColor drawnAt(QObject *canvas, int x, int y);
+    /// A RoundPhoto of `source` in a window of its own.
+    struct Shown
+    {
+        QQmlEngine engine;
+        std::unique_ptr<QObject> object;
+        QQuickWindow window;
+        QQuickItem *photo = nullptr;
+    };
+    static void show(Shown &shown, const QUrl &source);
 };
+
+QColor TestRoundPhoto::drawnAt(QObject *canvas, int x, int y)
+{
+    QString data;
+    QMetaObject::invokeMethod(canvas, "toDataURL", Q_RETURN_ARG(QString, data),
+                              Q_ARG(QString, u"image/png"_s));
+    const QImage image = QImage::fromData(QByteArray::fromBase64(data.section(u',', 1).toLatin1()));
+    return image.isNull() ? QColor() : image.pixelColor(x, y);
+}
+
+void TestRoundPhoto::show(Shown &shown, const QUrl &source)
+{
+    QQmlComponent component(&shown.engine);
+    component.loadFromModule("Callie.Ui", "RoundPhoto");
+    shown.object.reset(component.createWithInitialProperties({{u"source"_s, source}}));
+    QVERIFY2(shown.object, qPrintable(component.errorString()));
+    shown.photo = qobject_cast<QQuickItem *>(shown.object.get());
+    shown.window.resize(64, 64);
+    shown.photo->setSize({64, 64});
+    shown.photo->setParentItem(shown.window.contentItem());
+    shown.window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&shown.window));
+}
 
 void TestRoundPhoto::drawsThePhotoInACircle()
 {
@@ -30,48 +68,28 @@ void TestRoundPhoto::drawsThePhotoInACircle()
     const QString file = dir.filePath(u"photo.png"_s);
     QVERIFY(red.save(file));
 
-    QQmlEngine engine;
-    QQmlComponent component(&engine);
-    component.loadFromModule("Callie.Ui", "RoundPhoto");
-    std::unique_ptr<QObject> object(
-        component.createWithInitialProperties({{u"source"_s, QUrl::fromLocalFile(file)}}));
-    QVERIFY2(object, qPrintable(component.errorString()));
-    auto *photo = qobject_cast<QQuickItem *>(object.get());
-    QQuickWindow window;
-    window.setColor(Qt::black);
-    window.resize(64, 64);
-    photo->setSize({64, 64});
-    photo->setParentItem(window.contentItem());
-    window.show();
-    QVERIFY(QTest::qWaitForWindowExposed(&window));
-
-    QTRY_VERIFY(photo->property("ready").toBool());
+    Shown shown;
+    show(shown, QUrl::fromLocalFile(file));
+    QTRY_VERIFY(shown.photo->property("ready").toBool());
     // The photo fills the circle, and the corners stay clear.
-    QTRY_COMPARE(window.grabWindow().pixelColor(32, 32), QColor(Qt::red));
-    QCOMPARE(window.grabWindow().pixelColor(1, 1), QColor(Qt::black));
+    QTRY_COMPARE(drawnAt(shown.photo, 32, 32), QColor(Qt::red));
+    QCOMPARE(drawnAt(shown.photo, 1, 1).alpha(), 0);
+
+    // A photo that goes away leaves nothing behind for the letter to sit on.
+    shown.photo->setProperty("source", QUrl());
+    QVERIFY(!shown.photo->property("ready").toBool());
+    QTRY_COMPARE(drawnAt(shown.photo, 32, 32).alpha(), 0);
 }
 
 void TestRoundPhoto::drawsNothingWithoutAPhoto()
 {
     QTest::failOnWarning(QRegularExpression(u"drawImage"_s));
-    QQmlEngine engine;
-    QQmlComponent component(&engine);
-    component.loadFromModule("Callie.Ui", "RoundPhoto");
-    std::unique_ptr<QObject> object(component.create());
-    QVERIFY2(object, qPrintable(component.errorString()));
-    auto *photo = qobject_cast<QQuickItem *>(object.get());
-    QQuickWindow window;
-    window.setColor(Qt::black);
-    window.resize(64, 64);
-    photo->setSize({64, 64});
-    photo->setParentItem(window.contentItem());
-    window.show();
-    QVERIFY(QTest::qWaitForWindowExposed(&window));
-
+    Shown shown;
+    show(shown, QUrl());
     // An account without a photo shows its letter instead.
-    QMetaObject::invokeMethod(photo, "requestPaint");
-    QCOMPARE(window.grabWindow().pixelColor(32, 32), QColor(Qt::black));
-    QVERIFY(!photo->property("ready").toBool());
+    QTRY_VERIFY(drawnAt(shown.photo, 32, 32).isValid());
+    QCOMPARE(drawnAt(shown.photo, 32, 32).alpha(), 0);
+    QVERIFY(!shown.photo->property("ready").toBool());
 }
 
 QTEST_MAIN(TestRoundPhoto)

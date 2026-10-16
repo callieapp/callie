@@ -87,41 +87,10 @@ Column {
                     color: Theme.tint(Theme.accent, 0.25)
 
                     // The account's photo, round, over its letter until it loads.
-                    Canvas {
+                    RoundPhoto {
                         id: photo
-
-                        readonly property url source: row.photo
-                        property bool ready: false
-
-                        function load() {
-                            ready = false
-                            if (source.toString() === "")
-                                return
-                            // Already loaded for another canvas, it says nothing more.
-                            if (isImageLoaded(source)) {
-                                ready = true
-                                requestPaint()
-                                return
-                            }
-                            loadImage(source)
-                        }
-
                         anchors.fill: parent
-                        visible: ready
-                        Component.onCompleted: load()
-                        onSourceChanged: load()
-                        onImageLoaded: {
-                            ready = isImageLoaded(source)
-                            requestPaint()
-                        }
-                        onPaint: {
-                            const ctx = getContext("2d")
-                            ctx.reset()
-                            ctx.beginPath()
-                            ctx.arc(width / 2, height / 2, width / 2, 0, 2 * Math.PI)
-                            ctx.clip()
-                            ctx.drawImage(source, 0, 0, width, height)
-                        }
+                        source: row.photo
                     }
 
                     Text {

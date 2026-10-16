@@ -76,6 +76,7 @@ qt_add_qml_module(callieui
         StickerButton.qml
         CloseButton.qml
         DialogHeader.qml
+        RoundPhoto.qml
         DangerButton.qml
         Glyph.qml
         Logo.qml

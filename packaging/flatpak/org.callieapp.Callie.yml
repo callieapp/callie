@@ -1,0 +1,88 @@
+app-id: org.callieapp.Callie
+runtime: org.kde.Platform
+runtime-version: "6.11"
+sdk: org.kde.Sdk
+command: callie-gui
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Sign-in tokens and app passwords, in the system keyring.
+  - --talk-name=org.freedesktop.secrets
+  # Reminders, with their snooze and open actions.
+  - --talk-name=org.freedesktop.Notifications
+  # The tray entry.
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Window buttons placed as KDE places them.
+  - --filesystem=xdg-config/kwinrc:ro
+  # Flathub delivers updates, so Callie does not look for releases itself.
+  - --env=CALLIE_NO_UPDATE_CHECK=1
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - "*.a"
+modules:
+  - name: qtkeychain
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_WITH_QT6=ON
+      - -DBUILD_TRANSLATIONS=OFF
+      - -DBUILD_TEST_APPLICATION=OFF
+    sources:
+      - type: archive
+        url: https://github.com/frankosterfeld/qtkeychain/archive/refs/tags/0.15.0.tar.gz
+        sha256: f4254dc8f0933b06d90672d683eab08ef770acd8336e44dfa030ce041dc2ca22
+
+  - name: tomlplusplus
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: archive
+        url: https://github.com/marzer/tomlplusplus/archive/refs/tags/v3.4.0.tar.gz
+        sha256: 8517f65938a4faae9ccf8ebb36631a38c1cadfb5efa85d9a72e15b9e97d25155
+
+  # For the TUI; linked in statically.
+  - name: ftxui
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SHARED_LIBS=OFF
+      - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      - -DFTXUI_BUILD_EXAMPLES=OFF
+      - -DFTXUI_BUILD_DOCS=OFF
+      - -DFTXUI_BUILD_TESTS=OFF
+      - -DFTXUI_ENABLE_INSTALL=ON
+    sources:
+      - type: archive
+        url: https://github.com/ArthurSonzogni/FTXUI/archive/refs/tags/v7.0.3.tar.gz
+        sha256: e7c62ffe19009759821b4f0f8df7f2a6fb83784c3a9f1477d81f56d3ee723c88
+
+  - name: callie
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - -DCALLIE_TUI=ON
+      - -DCALLIE_MICROSOFT_CLIENT_ID=63b30b16-ab77-4338-bd6e-467d31393af1
+    run-tests: true
+    test-rule: test
+    build-options:
+      test-args:
+        - --env=TZ=UTC
+        - --env=QT_QPA_PLATFORM=offscreen
+        - --env=CTEST_OUTPUT_ON_FAILURE=1
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - build
+          - node_modules
+          - google-oauth-credentials.json
+          # What flatpak-builder itself leaves in a checkout it runs in.
+          - .flatpak-builder
+          - flatpak_app
+          - repo

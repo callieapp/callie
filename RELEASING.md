@@ -40,3 +40,19 @@ After a release, set `pkgver` and the tarball's first `sha256sums` entry in
 `.SRCINFO` that `makepkg --printsrcinfo` writes, fill in `_google_client_id` and
 `_google_client_secret` there, and push. The Google client stays out of this repository, where
 secret scanning would report it.
+
+## Flatpak
+
+`packaging/flatpak/org.callieapp.Callie.yml` is the manifest for Flathub, which builds and
+publishes the Flatpak itself. The release workflow builds it and runs the tests in its sandbox. To
+try one beside an installed Callie, build Callie Devel, with its own app id, folders and keyring
+entries:
+
+```sh
+scripts/flatpak-devel.sh > packaging/flatpak/org.callieapp.Callie.Devel.yml
+flatpak-builder --user --install --install-deps-from=flathub --force-clean build/flatpak \
+    packaging/flatpak/org.callieapp.Callie.Devel.yml
+flatpak run org.callieapp.Callie.Devel
+```
+
+Local builds have no Google client, so Google accounts cannot connect in them.

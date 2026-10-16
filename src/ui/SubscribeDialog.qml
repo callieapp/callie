@@ -31,21 +31,10 @@ Popup {
     contentItem: Column {
         spacing: Theme.space4
 
-        Text {
-            width: parent.width
-            text: qsTr("Subscribe to this calendar?")
-            color: Theme.text
-            font.family: Theme.displayFontFamily
-            font.pixelSize: Theme.textXl
-            font.weight: Theme.weightBold
-        }
-        Text {
-            width: parent.width
-            elide: Text.ElideMiddle
-            text: root.link
-            color: Theme.textMuted
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textSm
+        DialogHeader {
+            title: qsTr("Subscribe to this calendar?")
+            subtitle: root.link
+            onCloseRequested: root.close()
         }
         Text {
             width: parent.width

@@ -76,13 +76,24 @@ Popup {
     contentItem: Column {
         spacing: Theme.space4
 
-        Text {
-            text: root.account ? qsTr("Account name") : qsTr("Calendar name")
-            color: Theme.textFaint
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.textXs
-            font.weight: Theme.weightHeavy
-            font.letterSpacing: 0.6
+        Item {
+            width: parent.width
+            height: lookClose.height
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.account ? qsTr("Account name") : qsTr("Calendar name")
+                color: Theme.textFaint
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.textXs
+                font.weight: Theme.weightHeavy
+                font.letterSpacing: 0.6
+            }
+            CloseButton {
+                id: lookClose
+                anchors.right: parent.right
+                onClicked: root.close()
+            }
         }
         Field {
             id: field

@@ -41,12 +41,10 @@ Popup {
     contentItem: Column {
         spacing: Theme.space4
 
-        Text {
-            text: qsTr("Invitations")
-            color: Theme.text
-            font.family: Theme.displayFontFamily
-            font.pixelSize: Theme.textLg
-            font.weight: Theme.weightBold
+        DialogHeader {
+            title: qsTr("Invitations")
+            titleSize: Theme.textLg
+            onCloseRequested: root.close()
         }
 
         Text {

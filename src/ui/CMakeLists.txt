@@ -74,6 +74,8 @@ qt_add_qml_module(callieui
         CalendarMark.qml
         PillButton.qml
         StickerButton.qml
+        CloseButton.qml
+        DialogHeader.qml
         DangerButton.qml
         Glyph.qml
         Logo.qml

@@ -34,7 +34,7 @@ fail() {
 unsupported() {
     fail "$1
 Packages are built for Fedora 44 or later, Debian 13 (trixie) or later and Ubuntu 26.04 or later,
-on x86_64. Elsewhere, the Flatpak runs on most systems.
+on x86_64.
 On other systems, build Callie from source: https://github.com/$repo#development"
 }
 

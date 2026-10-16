@@ -110,7 +110,6 @@ expect "debian 12" "older than Debian 13"
 installs_on ID=ubuntu VERSION_ID=24.04 'PRETTY_NAME="Ubuntu 24.04 LTS"'
 expect_status "ubuntu 24.04" 1
 expect "ubuntu 24.04" "older than Ubuntu 26.04"
-expect "ubuntu 24.04" "the Flatpak runs on most systems"
 installs_on ID=arch 'PRETTY_NAME="Arch Linux"'
 expect_status arch 1
 expect arch "not one Callie ships packages for"

@@ -3,6 +3,15 @@
 What changed in each version of Callie, for the people using it. Notes collect under Unreleased
 as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md).
 
+## Unreleased
+
+### Fixed
+
+- Opening Callie from its tray entry brings the window to the front on Wayland, as Plasma
+  asks.
+- An account's photo in Settings, under Accounts, draws without errors, and an account without
+  one shows its letter.
+
 ## 0.5.4 - 2026-10-16
 
 ### New

@@ -137,6 +137,9 @@ public Q_SLOTS:
     Q_SCRIPTABLE void SecondaryActivate(int x, int y);
     Q_SCRIPTABLE void ContextMenu(int x, int y);
     Q_SCRIPTABLE void Scroll(int delta, const QString &orientation);
+    /// The panel's token for the window that a click opens, which Wayland asks
+    /// for before it lets a window come to the front.
+    Q_SCRIPTABLE void ProvideXdgActivationToken(const QString &token);
 
 Q_SIGNALS:
     void activated();

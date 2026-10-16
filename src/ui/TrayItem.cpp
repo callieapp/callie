@@ -170,6 +170,12 @@ void TrayStatusItem::Activate(int, int)
     Q_EMIT activated();
 }
 
+void TrayStatusItem::ProvideXdgActivationToken(const QString &token)
+{
+    // Qt's Wayland support hands it over with the window's next requestActivate().
+    qputenv("XDG_ACTIVATION_TOKEN", token.toUtf8());
+}
+
 void TrayStatusItem::SecondaryActivate(int, int)
 {
     Q_EMIT activated();

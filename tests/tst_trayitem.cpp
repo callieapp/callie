@@ -108,6 +108,16 @@ void TestTrayItem::panelShowsAndDrivesTheEntry()
     QSignalSpy opened(&tray, &TrayItem::openRequested);
     QSignalSpy synced(&tray, &TrayItem::syncRequested);
     QSignalSpy quit(&tray, &TrayItem::quitRequested);
+    // Plasma hands over the token Wayland wants for focus, then clicks.
+    qunsetenv("XDG_ACTIVATION_TOKEN");
+    const QDBusMessage given =
+        ask(QDBusMessage::createMethodCall(tray.serviceName(), u"/StatusNotifierItem"_s,
+                                           u"org.kde.StatusNotifierItem"_s,
+                                           u"ProvideXdgActivationToken"_s)
+            << u"token-from-panel"_s);
+    QCOMPARE(given.type(), QDBusMessage::ReplyMessage);
+    QCOMPARE(qgetenv("XDG_ACTIVATION_TOKEN"), QByteArray("token-from-panel"));
+    qunsetenv("XDG_ACTIVATION_TOKEN");
     ask(QDBusMessage::createMethodCall(tray.serviceName(), u"/StatusNotifierItem"_s,
                                        u"org.kde.StatusNotifierItem"_s, u"Activate"_s)
         << 0 << 0);

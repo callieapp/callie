@@ -96,7 +96,7 @@ PackageSystem PackageSystem::detect(const QString &osRelease, const QString &arc
             system.why = QObject::tr("cannot read the Ubuntu version of %1").arg(system.name);
         else if (major < 26)
             system.why = QObject::tr("%1 is older than Ubuntu 26.04, the first with the Qt Callie "
-                                     "needs; the Flatpak runs there")
+                                     "needs")
                              .arg(system.name);
         else {
             system.kind = Kind::Deb;

@@ -60,6 +60,14 @@ struct ThemeSpec
         int weightHeavy = 800;
     };
 
+    /// The note editor, for apps that have one: the font notes are written in, and the
+    /// colors code is highlighted in. An unset color is worked out from the accent.
+    struct Editor
+    {
+        QString family; // empty means type.family
+        QColor keyword, string, number, type, comment;
+    };
+
     struct Motion
     {
         int durationFast = 140; // milliseconds
@@ -75,6 +83,7 @@ struct ThemeSpec
     Shape shape;
     Shadow shadow;
     Type type;
+    Editor editor;
     Motion motion;
 };
 

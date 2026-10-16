@@ -48,6 +48,7 @@ private Q_SLOTS:
     void lowInkContrastIsAWarning();
     void shadowOpacityIsBounded();
     void weightsAreReadAndBounded();
+    void editorSectionIsRead();
 };
 
 void TestTheme::defaultThemeIsCompleteAndClean()
@@ -229,6 +230,27 @@ void TestTheme::weightsAreReadAndBounded()
     const ThemeLoadResult heavy = parse("[type]\nweight-bold = 1000\n");
     QVERIFY(!heavy.ok());
     QVERIFY(anyContains(heavy.errors, "type.weight-bold"));
+}
+
+void TestTheme::editorSectionIsRead()
+{
+    const ThemeLoadResult result =
+        parse("[editor]\nfamily = \"Literata\"\nkeyword = \"#ff0000\"\ncomment = \"#00ff00\"\n");
+    QVERIFY(result.ok());
+    QCOMPARE(result.theme.editor.family, QStringLiteral("Literata"));
+    QCOMPARE(result.theme.editor.keyword, QColor("#ff0000"));
+    QVERIFY(!result.theme.editor.string.isValid());
+    QVERIFY(ThemeLoader::defaultTheme().editor.family.isEmpty());
+
+    QVERIFY(!parse("[editor]\nstring = \"green\"\n").ok());
+    QVERIFY(anyContains(parse("[editor]\nsize = 3\n").warnings, "editor.size"));
+
+    // A theme made in Jot loads here without a word about its editor section.
+    const ThemeLoadResult jot = parse("[editor]\nfamily = \"Literata\"\nkeyword = \"#c678dd\"\n"
+                                      "string = \"#98c379\"\nnumber = \"#d19a66\"\n"
+                                      "type = \"#e5c07b\"\ncomment = \"#7f848e\"\n");
+    QVERIFY(jot.ok());
+    QVERIFY2(jot.warnings.isEmpty(), qPrintable(jot.warnings.join(u'\n')));
 }
 
 QTEST_GUILESS_MAIN(TestTheme)

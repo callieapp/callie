@@ -24,5 +24,8 @@ struct Names
 [[nodiscard]] QString dirName();
 [[nodiscard]] QString displayName();
 [[nodiscard]] bool isDevel();
+/// Whether Callie runs in a Flatpak sandbox, where Flathub delivers updates and
+/// the host is reached through portals.
+[[nodiscard]] bool isFlatpak();
 
 } // namespace callie::identity

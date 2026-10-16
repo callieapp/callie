@@ -1,5 +1,7 @@
 #include "callie/Identity.h"
 
+#include <QFileInfo>
+
 using namespace Qt::StringLiterals;
 
 namespace callie::identity {
@@ -30,6 +32,15 @@ QString displayName()
 bool isDevel()
 {
     return CALLIE_DEVEL_BUILD;
+}
+
+bool isFlatpak()
+{
+    // CALLIE_FLATPAK=0 or 1 decides, as tests need wherever they run.
+    const QByteArray forced = qgetenv("CALLIE_FLATPAK");
+    if (!forced.isEmpty())
+        return forced != "0";
+    return QFileInfo::exists(QStringLiteral("/.flatpak-info"));
 }
 
 } // namespace callie::identity

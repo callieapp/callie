@@ -377,6 +377,15 @@ void TestUpgrade::failuresStopBeforeInstalling()
     QCOMPARE(run({}, u"0.2.1"_s), 1);
     QVERIFY(m_err.contains(u"git pull"_s));
     QVERIFY(m_ran.isEmpty());
+    m_devel = false;
+
+    // A Flatpak is Flathub's to update.
+    qputenv("CALLIE_FLATPAK", "1");
+    QCOMPARE(run({}, u"0.2.1"_s), 1);
+    qputenv("CALLIE_FLATPAK", "0");
+    QVERIFY(m_err.contains(u"flatpak update org.callieapp.Callie"_s));
+    QVERIFY(m_ran.isEmpty());
+    QVERIFY(m_downloads.isEmpty());
 }
 
 QTEST_MAIN(TestUpgrade)

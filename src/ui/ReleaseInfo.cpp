@@ -109,4 +109,9 @@ bool ReleaseInfo::devel() const
     return identity::isDevel();
 }
 
+bool ReleaseInfo::flatpak() const
+{
+    return identity::isFlatpak();
+}
+
 } // namespace callie

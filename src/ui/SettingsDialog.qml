@@ -820,7 +820,7 @@ Popup {
 
         Section {
             title: qsTr("Updates")
-            visible: root.tab === "general" && !Release.devel
+            visible: root.tab === "general" && !Release.devel && !Release.flatpak
 
             Toggle {
                 width: parent.width

@@ -1,7 +1,6 @@
 #include "TrayItem.h"
 
 #include "callie/Identity.h"
-
 #include "callie/Logging.h"
 
 #include <QCoreApplication>
@@ -235,7 +234,11 @@ bool TrayMenu::AboutToShow(int)
 
 TrayItem::TrayItem(const QDBusConnection &bus, const QString &watcher, QObject *parent)
     : QObject(parent), m_bus(bus), m_watcher(watcher),
-      m_service(u"org.kde.StatusNotifierItem-%1-1"_s.arg(QCoreApplication::applicationPid())),
+      // A Flatpak may not own the usual name, whose process id is the sandbox's
+      // anyway, so it offers the entry under its connection's own name.
+      m_service(identity::isFlatpak()
+                    ? bus.baseService()
+                    : u"org.kde.StatusNotifierItem-%1-1"_s.arg(QCoreApplication::applicationPid())),
       m_item(new TrayStatusItem(this)), m_menu(new TrayMenu(this)),
       m_watching(
           new QDBusServiceWatcher(watcher, bus, QDBusServiceWatcher::WatchForRegistration, this))
@@ -273,10 +276,12 @@ void TrayItem::setVisible(bool visible)
     if (visible) {
         m_bus.registerObject(kItemPath, m_item, exports);
         m_bus.registerObject(kMenuPath, m_menu, exports);
-        m_bus.registerService(m_service);
+        if (!identity::isFlatpak())
+            m_bus.registerService(m_service);
         announce();
     } else {
-        m_bus.unregisterService(m_service);
+        if (!identity::isFlatpak())
+            m_bus.unregisterService(m_service);
         m_bus.unregisterObject(kMenuPath);
         m_bus.unregisterObject(kItemPath);
     }

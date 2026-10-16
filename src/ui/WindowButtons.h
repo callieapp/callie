@@ -43,6 +43,8 @@ Q_SIGNALS:
 
 private:
     void readGnome();
+    /// The GNOME layout through the Settings portal, as a Flatpak cannot run gsettings.
+    void readGnomeFromPortal();
     void apply(const Layout &layout);
 
     Layout m_layout;

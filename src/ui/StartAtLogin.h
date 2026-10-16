@@ -37,6 +37,8 @@ Q_SIGNALS:
 
 private:
     explicit StartAtLogin(QObject *parent);
+    /// Asks the Background portal to start Callie at login, or not.
+    static void requestBackground(bool autostart);
 
     Autostart *m_autostart = nullptr;
     QPointer<Settings> m_settings;

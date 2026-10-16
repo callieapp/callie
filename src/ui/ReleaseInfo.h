@@ -35,6 +35,8 @@ class ReleaseInfo : public QObject
     Q_PROPERTY(QUrl support READ support CONSTANT)
     /// A development build, kept apart from an installed Callie.
     Q_PROPERTY(bool devel READ devel CONSTANT)
+    /// A Flatpak, which Flathub keeps up to date.
+    Q_PROPERTY(bool flatpak READ flatpak CONSTANT)
     /// A newer release that is out, such as "0.3.1", or empty.
     Q_PROPERTY(QString update READ update NOTIFY updateChanged)
     /// That release's page.
@@ -53,6 +55,7 @@ public:
     [[nodiscard]] QUrl source() const;
     [[nodiscard]] QUrl support() const;
     [[nodiscard]] bool devel() const;
+    [[nodiscard]] bool flatpak() const;
     [[nodiscard]] QUrl history() const;
     [[nodiscard]] QString update() const { return m_update; }
     [[nodiscard]] QUrl updatePage() const { return m_updatePage; }

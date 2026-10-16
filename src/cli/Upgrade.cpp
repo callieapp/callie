@@ -53,6 +53,12 @@ void Upgrade::run(const Options &options, Done done)
               << "\n";
         return finish(1);
     }
+    if (identity::isFlatpak()) {
+        m_err << tr("callie: Callie came from Flathub; update it with: flatpak update %1")
+                     .arg(identity::appId())
+              << "\n";
+        return finish(1);
+    }
     if (m_system.kind == PackageSystem::Kind::Unsupported) {
         m_err << tr("callie: %1, so there is no package to install.").arg(m_system.why) << "\n";
         return finish(1);

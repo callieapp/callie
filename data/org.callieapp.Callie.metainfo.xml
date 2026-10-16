@@ -42,6 +42,14 @@
   </categories>
 
   <releases>
+    <release version="0.5.5" date="2026-10-16">
+      <description>
+        <ul>
+          <li>Opening Callie from its tray entry brings the window to the front on Wayland, as Plasma asks.</li>
+          <li>An account's photo in Settings, under Accounts, draws without errors, and an account without one shows its letter.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.4" date="2026-10-16">
       <description>
         <ul>

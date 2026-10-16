@@ -42,12 +42,14 @@ namespace releases {
 } // namespace releases
 
 /// The packages this system takes, read from os-release: Callie ships them
-/// for Fedora 44 or later and Debian 13 or later, on x86_64.
+/// for Fedora 44 or later, Debian 13 or later and Ubuntu 26.04 or later, on x86_64.
 struct PackageSystem
 {
     enum class Kind { Unsupported, Rpm, Deb };
 
     Kind kind = Kind::Unsupported;
+    /// Ubuntu, whose debs are built apart from Debian's.
+    bool ubuntu = false;
     /// The system's own name, such as "Fedora Linux 44".
     QString name;
     /// Why there are no packages for it, when there are none.

@@ -3,6 +3,13 @@
 What changed in each version of Callie, for the people using it. Notes collect under Unreleased
 as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md).
 
+## Unreleased
+
+### New
+
+- Packages for Ubuntu 26.04 or later, built against Ubuntu's own libraries. The installer and
+  `callie upgrade` pick them on Ubuntu, and Callie's apt repository has them under its own suite.
+
 ## 0.5.3 - 2026-10-15
 
 ### New

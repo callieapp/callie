@@ -63,7 +63,8 @@ jobs:
           for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 10 \
               --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName'); do
             gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir packages \
-              --pattern 'callie-[0-9]*.x86_64.rpm' --pattern 'callie_*_amd64.deb'
+              --pattern 'callie-[0-9]*.x86_64.rpm' --pattern 'callie_*_amd64.deb' \
+              --pattern 'callie-ubuntu_*_amd64.deb'
           done
           bash scripts/package-repo.sh packages repo "$fingerprint"
 

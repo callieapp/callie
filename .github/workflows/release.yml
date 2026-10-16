@@ -98,10 +98,20 @@ jobs:
             rpmbuild/SRPMS/*.rpm
           if-no-files-found: error
 
+  # Debian's, and Ubuntu's built against Ubuntu's own libraries.
   deb:
     needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:trixie
+            artifact: deb
+          - image: ubuntu:26.04
+            artifact: deb-ubuntu
+    name: deb (${{ matrix.image }})
     runs-on: ubuntu-latest
-    container: debian:trixie
+    container: ${{ matrix.image }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -123,13 +133,22 @@ jobs:
           cp "callie-$version.tar.xz" "callie_$version.orig.tar.xz"
           cd "callie-$version"
           cp -r packaging/debian debian
+          . /etc/os-release
+          # Ubuntu's version sorts below Debian's, and its file is named apart, so a
+          # Callie from before Ubuntu's debs never takes it for Debian.
+          if [ "$ID" = ubuntu ]; then
+            sed -i "1s/(\([^)]*\))/(\1~ubuntu$VERSION_ID)/" debian/changelog
+          fi
           mk-build-deps --install --remove \
             --tool "apt-get -y --no-install-recommends" debian/control
           dpkg-buildpackage -us -uc -b
+          if [ "$ID" = ubuntu ]; then
+            for deb in ../callie_*.deb; do mv "$deb" "../callie-ubuntu_${deb#../callie_}"; done
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: deb
+          name: ${{ matrix.artifact }}
           path: "*.deb"
           if-no-files-found: error
 
@@ -193,6 +212,9 @@ jobs:
           - name: debian
             image: debian:trixie
             package: deb
+          - name: ubuntu
+            image: ubuntu:26.04
+            package: deb-ubuntu
     name: installed (${{ matrix.name }})
     runs-on: ubuntu-latest
     container: ${{ matrix.image }}
@@ -211,12 +233,12 @@ jobs:
           $(find packages/RPMS -name 'callie-[0-9]*.rpm')
 
       # The offscreen platform the check draws with is not one a desktop needs.
-      - name: Install the package (Debian)
-        if: matrix.name == 'debian'
+      - name: Install the package (Debian and Ubuntu)
+        if: matrix.name != 'fedora'
         run: |
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            qt6-qpa-plugins ./packages/callie_*.deb
+            qt6-qpa-plugins $(find ./packages -name 'callie_*.deb' -o -name 'callie-ubuntu_*.deb')
 
       - name: Run what was installed
         run: tests/package_smoke.sh shots

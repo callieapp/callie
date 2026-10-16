@@ -5,8 +5,8 @@
 #   curl -fsSL https://callieapp.org/install.sh | sh -s -- --dry-run
 #
 # Installs the latest release's package with the system's package manager, on
-# the systems Callie ships packages for: Fedora 44 or later, and Debian 13
-# (trixie) or later, on x86_64. Anything else stops before changing anything.
+# the systems Callie ships packages for: Fedora 44 or later, Debian 13 (trixie)
+# or later, and Ubuntu 26.04 or later, on x86_64. Anything else stops before changing anything.
 # Run again, it updates Callie, or says it is up to date without downloading.
 # It also adds Callie's own dnf or apt repository, so later updates come with
 # the system's.
@@ -33,7 +33,8 @@ fail() {
 }
 unsupported() {
     fail "$1
-Packages are built for Fedora 44 or later and Debian 13 (trixie) or later, on x86_64.
+Packages are built for Fedora 44 or later, Debian 13 (trixie) or later and Ubuntu 26.04 or later,
+on x86_64. Elsewhere, the Flatpak runs on most systems.
 On other systems, build Callie from source: https://github.com/$repo#development"
 }
 
@@ -94,7 +95,12 @@ debian)
     kind=deb
     ;;
 ubuntu)
-    unsupported "$system is not supported yet: Callie needs Qt 6.8, newer than Ubuntu's LTS ships."
+    case "$major" in
+    '' | *[!0-9]*) unsupported "Cannot read the Ubuntu version of $system." ;;
+    esac
+    [ "$major" -ge 26 ] ||
+        unsupported "$system is older than Ubuntu 26.04, the first with the Qt Callie needs."
+    kind=deb
     ;;
 *)
     unsupported "$system is not one Callie ships packages for."
@@ -132,6 +138,8 @@ case "$kind" in
 rpm) pattern='callie-[0-9][^"]*\.x86_64\.rpm' ;;
 deb) pattern='callie_[0-9][^"]*_amd64\.deb' ;;
 esac
+# Named apart, so an installer from before Ubuntu's debs never takes one for Debian.
+[ "$ID" != ubuntu ] || pattern='callie-ubuntu_[0-9][^"]*_amd64\.deb'
 package="$(printf '%s\n' "$release" | grep -o "\"name\": *\"$pattern\"" | head -n 1 |
     sed 's/.*"\([^"]*\)"$/\1/')"
 [ -n "$package" ] || fail "The release has no $kind package for $arch."
@@ -170,6 +178,9 @@ case "$kind" in
 rpm) repo_files="/etc/yum.repos.d/callie.repo" ;;
 deb) repo_files="/usr/share/keyrings/callie.asc /etc/apt/sources.list.d/callie.sources" ;;
 esac
+# Ubuntu's section of the apt repository holds the debs built for it.
+sources=callie.sources
+[ "$ID" != ubuntu ] || sources=callie-ubuntu.sources
 add_repo() {
     present=1
     for file in $repo_files; do
@@ -177,7 +188,9 @@ add_repo() {
     done
     [ "$present" -eq 0 ] || return 0
     if [ "$dry_run" -eq 1 ]; then
-        say "would add Callie's repository: $repo_files"
+        from="$site/rpm/callie.repo"
+        [ "$kind" = rpm ] || from="$site/callie.asc and $site/deb/$sources"
+        say "would add Callie's repository: $repo_files, from $from"
         return 0
     fi
     if [ "$needs_root" -eq 1 ]; then
@@ -189,7 +202,7 @@ add_repo() {
     rpm) $get -o "$root/etc/yum.repos.d/callie.repo" "$site/rpm/callie.repo" ;;
     deb)
         $get -o "$root/usr/share/keyrings/callie.asc" "$site/callie.asc" &&
-            $get -o "$root/etc/apt/sources.list.d/callie.sources" "$site/deb/callie.sources"
+            $get -o "$root/etc/apt/sources.list.d/callie.sources" "$site/deb/$sources"
         ;;
     esac || {
         say "Callie's repository could not be added; callie upgrade still updates Callie."

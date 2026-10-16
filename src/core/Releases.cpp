@@ -92,9 +92,16 @@ PackageSystem PackageSystem::detect(const QString &osRelease, const QString &arc
         else
             system.kind = Kind::Deb;
     } else if (id == u"ubuntu") {
-        system.why = QObject::tr("%1 is not supported yet: Callie needs Qt 6.8, newer than "
-                                 "Ubuntu's LTS ships")
-                         .arg(system.name);
+        if (!numeric)
+            system.why = QObject::tr("cannot read the Ubuntu version of %1").arg(system.name);
+        else if (major < 26)
+            system.why = QObject::tr("%1 is older than Ubuntu 26.04, the first with the Qt Callie "
+                                     "needs; the Flatpak runs there")
+                             .arg(system.name);
+        else {
+            system.kind = Kind::Deb;
+            system.ubuntu = true;
+        }
     } else {
         system.why = QObject::tr("%1 is not one Callie ships packages for").arg(system.name);
     }
@@ -105,8 +112,10 @@ std::optional<ReleaseAsset> PackageSystem::packageIn(const Release &release) con
 {
     static const QRegularExpression rpm(u"^callie-[0-9][^/]*\\.x86_64\\.rpm$"_s);
     static const QRegularExpression deb(u"^callie_[0-9][^/]*_amd64\\.deb$"_s);
+    // Named apart, so a Callie from before Ubuntu's debs never takes one for Debian.
+    static const QRegularExpression ubuntuDeb(u"^callie-ubuntu_[0-9][^/]*_amd64\\.deb$"_s);
     const QRegularExpression *pattern = kind == Kind::Rpm   ? &rpm
-                                        : kind == Kind::Deb ? &deb
+                                        : kind == Kind::Deb ? (ubuntu ? &ubuntuDeb : &deb)
                                                             : nullptr;
     if (!pattern)
         return std::nullopt;

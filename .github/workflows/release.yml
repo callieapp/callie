@@ -153,6 +153,22 @@ jobs:
           cd /build
           sudo -u builder makepkg --syncdeps --noconfirm
 
+  # The Flatpak, built and tested in its sandbox. Flathub builds the published
+  # one, so this does not hold back the release either.
+  flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: callie.flatpak
+          manifest-path: packaging/flatpak/org.callieapp.Callie.yml
+          cache-key: flatpak-builder-${{ hashFiles('packaging/flatpak/*.yml') }}
+
   # Each package installed on a clean system, and run, before it is published.
   installed:
     needs: [rpm, deb]

@@ -35,6 +35,7 @@ class TestTrayItem : public QObject
 
 private Q_SLOTS:
     void panelShowsAndDrivesTheEntry();
+    void aFlatpakOffersItsOwnConnectionName();
 };
 
 void TestTrayItem::panelShowsAndDrivesTheEntry()
@@ -127,6 +128,44 @@ void TestTrayItem::panelShowsAndDrivesTheEntry()
 
     panel.unregisterService(watcherName);
     QDBusConnection::disconnectFromBus(u"panel"_s);
+}
+
+void TestTrayItem::aFlatpakOffersItsOwnConnectionName()
+{
+    if (!QDBusConnection::sessionBus().isConnected())
+        QSKIP("no session bus");
+    QDBusConnection panel =
+        QDBusConnection::connectToBus(QDBusConnection::SessionBus, u"flatpak-panel"_s);
+    const QString watcherName =
+        u"org.callieapp.TestFlatpakWatcher%1"_s.arg(QCoreApplication::applicationPid());
+    FakeWatcher watcher;
+    QVERIFY(panel.registerObject(u"/StatusNotifierWatcher"_s, &watcher,
+                                 QDBusConnection::ExportScriptableSlots));
+    QVERIFY(panel.registerService(watcherName));
+
+    // A sandbox may not own a name of its own choosing.
+    qputenv("CALLIE_FLATPAK", "1");
+    const QDBusConnection app =
+        QDBusConnection::connectToBus(QDBusConnection::SessionBus, u"flatpak-app"_s);
+    TrayItem tray(app, watcherName);
+    qputenv("CALLIE_FLATPAK", "0");
+    tray.setVisible(true);
+    QTRY_COMPARE(watcher.offered, QStringList{app.baseService()});
+    const QString usual =
+        u"org.kde.StatusNotifierItem-%1-1"_s.arg(QCoreApplication::applicationPid());
+    QVERIFY(!panel.interface()->isServiceRegistered(usual).value());
+
+    // The panel reaches the entry under that name.
+    QDBusMessage get =
+        QDBusMessage::createMethodCall(app.baseService(), u"/StatusNotifierItem"_s,
+                                       u"org.freedesktop.DBus.Properties"_s, u"Get"_s);
+    get << u"org.kde.StatusNotifierItem"_s << u"Title"_s;
+    QDBusPendingCall pending = panel.asyncCall(get);
+    QVERIFY(QTest::qWaitFor([&pending] { return pending.isFinished(); }));
+    const QDBusReply<QDBusVariant> title = pending.reply();
+    QVERIFY(title.isValid());
+    QCOMPARE(title.value().variant().toString(), identity::displayName());
+    tray.setVisible(false);
 }
 
 QTEST_GUILESS_MAIN(TestTrayItem)

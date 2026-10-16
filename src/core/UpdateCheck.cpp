@@ -27,7 +27,9 @@ QString UpdateCheck::defaultPath()
 
 bool UpdateCheck::wanted(bool setting) const
 {
-    return setting && !m_devel && qEnvironmentVariableIsEmpty("CALLIE_NO_UPDATE_CHECK");
+    // Flathub keeps a Flatpak up to date.
+    return setting && !m_devel && !identity::isFlatpak() &&
+           qEnvironmentVariableIsEmpty("CALLIE_NO_UPDATE_CHECK");
 }
 
 QJsonObject UpdateCheck::read() const

@@ -8,6 +8,10 @@
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusPendingCall>
+#include <QDBusPendingCallWatcher>
+#include <QRandomGenerator>
+
+using namespace Qt::StringLiterals;
 
 namespace callie {
 
@@ -68,21 +72,56 @@ void StartAtLogin::setEnabled(bool enabled)
 
 void StartAtLogin::requestBackground(bool autostart)
 {
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (!m_request.isEmpty())
+        bus.disconnect(m_portal, m_request, u"org.freedesktop.portal.Request"_s, u"Response"_s,
+                       this, SLOT(backgroundAnswered(uint, QVariantMap)));
+    // The request's path is known ahead, so its answer cannot come before Callie listens.
+    const QString token = u"callie%1"_s.arg(QRandomGenerator::global()->generate());
+    QString sender = bus.baseService().mid(1);
+    sender.replace(u'.', u'_');
+    m_request = u"/org/freedesktop/portal/desktop/request/%1/%2"_s.arg(sender, token);
+    m_requestedAutostart = autostart;
+    bus.connect(m_portal, m_request, u"org.freedesktop.portal.Request"_s, u"Response"_s, this,
+                SLOT(backgroundAnswered(uint, QVariantMap)));
+
     QDBusMessage call = QDBusMessage::createMethodCall(
-        QStringLiteral("org.freedesktop.portal.Desktop"),
-        QStringLiteral("/org/freedesktop/portal/desktop"),
-        QStringLiteral("org.freedesktop.portal.Background"), QStringLiteral("RequestBackground"));
+        m_portal, u"/org/freedesktop/portal/desktop"_s, u"org.freedesktop.portal.Background"_s,
+        u"RequestBackground"_s);
     const QVariantMap options{
-        {QStringLiteral("reason"),
-         tr("Keeps %1 running for event reminders").arg(identity::displayName())},
-        {QStringLiteral("autostart"), autostart},
-        {QStringLiteral("commandline"),
-         QStringList{QStringLiteral("callie-gui"),
-                     QStringLiteral("--") + QString::fromLatin1(Autostart::kBackgroundOption)}},
-        {QStringLiteral("dbus-activatable"), false},
+        {u"handle_token"_s, token},
+        {u"reason"_s, tr("Keeps %1 running for event reminders").arg(identity::displayName())},
+        {u"autostart"_s, autostart},
+        {u"commandline"_s,
+         QStringList{u"callie-gui"_s, u"--"_s + QString::fromLatin1(Autostart::kBackgroundOption)}},
+        {u"dbus-activatable"_s, false},
     };
     call << QString() << options;
-    QDBusConnection::sessionBus().asyncCall(call);
+    auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(call), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, watcher, autostart] {
+        watcher->deleteLater();
+        if (watcher->isError() && autostart)
+            refused(tr("the desktop could not be asked: %1").arg(watcher->error().message()));
+    });
+}
+
+void StartAtLogin::backgroundAnswered(uint response, const QVariantMap &results)
+{
+    QDBusConnection::sessionBus().disconnect(m_portal, m_request,
+                                             u"org.freedesktop.portal.Request"_s, u"Response"_s,
+                                             this, SLOT(backgroundAnswered(uint, QVariantMap)));
+    m_request.clear();
+    // 0 is yes; 1 is the user saying no, 2 anything else.
+    if (m_requestedAutostart && (response != 0 || !results.value(u"autostart"_s).toBool()))
+        refused(tr("the desktop did not allow %1 to start at login").arg(identity::displayName()));
+}
+
+void StartAtLogin::refused(const QString &why)
+{
+    if (m_autostart)
+        m_autostart->setEnabled(false);
+    m_error = why;
+    Q_EMIT changed();
 }
 
 } // namespace callie

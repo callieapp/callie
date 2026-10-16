@@ -55,8 +55,10 @@ private:
 QJsonObject TestUpgrade::release(const QString &version, bool prerelease) const
 {
     QJsonArray assets;
-    for (const QString &name : {u"callie-%1-1.fc44.src.rpm"_s, u"callie-%1-1.fc44.x86_64.rpm"_s,
-                                u"callie_%1-1_amd64.deb"_s, u"callie-dbgsym_%1-1_amd64.deb"_s}) {
+    for (const QString &name :
+         {u"callie-%1-1.fc44.src.rpm"_s, u"callie-%1-1.fc44.x86_64.rpm"_s,
+          u"callie_%1-1_amd64.deb"_s, u"callie-ubuntu_%1-1~ubuntu26.04_amd64.deb"_s,
+          u"callie-dbgsym_%1-1_amd64.deb"_s}) {
         const QString file = name.arg(version);
         const QByteArray digest =
             QCryptographicHash::hash(file.toUtf8(), QCryptographicHash::Sha256).toHex();
@@ -114,9 +116,10 @@ int TestUpgrade::run(const Upgrade::Options &options, const QString &installed,
     QFile osRelease(m_dir->filePath(u"os-release"_s));
     if (!osRelease.open(QIODevice::WriteOnly))
         return -1;
-    osRelease.write(system == u"fedora"
-                        ? "ID=fedora\nVERSION_ID=44\nPRETTY_NAME=\"Fedora Linux 44\"\n"
-                        : "ID=debian\nVERSION_ID=13\nPRETTY_NAME=\"Debian 13\"\n");
+    osRelease.write(
+        system == u"fedora"   ? "ID=fedora\nVERSION_ID=44\nPRETTY_NAME=\"Fedora Linux 44\"\n"
+        : system == u"ubuntu" ? "ID=ubuntu\nVERSION_ID=\"26.04\"\nPRETTY_NAME=\"Ubuntu 26.04\"\n"
+                              : "ID=debian\nVERSION_ID=13\nPRETTY_NAME=\"Debian 13\"\n");
     osRelease.close();
 
     m_out.clear();
@@ -166,6 +169,15 @@ void TestUpgrade::updatesToTheLatest()
                                                 u"callie-0.2.3-1.fc44.x86_64.rpm"_s}}));
     // A package's revision is not part of its release.
     QCOMPARE(run({}, u"0.2.3-1"_s), 0);
+    QVERIFY(m_out.contains(u"up to date"_s));
+
+    // Debian and Ubuntu each get the deb built for them.
+    QCOMPARE(run({}, u"0.2.1"_s, u"debian"_s), 0);
+    QCOMPARE(m_downloads.last(), u"callie_0.2.3-1_amd64.deb"_s);
+    QCOMPARE(run({}, u"0.2.1"_s, u"ubuntu"_s), 0);
+    QCOMPARE(m_downloads.last(), u"callie-ubuntu_0.2.3-1~ubuntu26.04_amd64.deb"_s);
+    // Ubuntu's own revision is not part of the release either.
+    QCOMPARE(run({}, u"0.2.3-1~ubuntu26.04"_s, u"ubuntu"_s), 0);
     QVERIFY(m_out.contains(u"up to date"_s));
 }
 
@@ -323,8 +335,10 @@ void TestUpgrade::systemsWithoutPackagesSayWhy_data()
                                     << u"x86_64"_s << deb << QString();
     QTest::newRow("debian 12") << QByteArray("ID=debian\nVERSION_ID=12\nPRETTY_NAME=Debian 12\n")
                                << u"x86_64"_s << none << u"older than Debian 13"_s;
-    QTest::newRow("ubuntu") << QByteArray("ID=ubuntu\nVERSION_ID=24.04\n") << u"x86_64"_s << none
-                            << u"Callie needs Qt 6.8"_s;
+    QTest::newRow("ubuntu 26.04") << QByteArray("ID=ubuntu\nVERSION_ID=\"26.04\"\n") << u"x86_64"_s
+                                  << deb << QString();
+    QTest::newRow("ubuntu 24.04") << QByteArray("ID=ubuntu\nVERSION_ID=24.04\n") << u"x86_64"_s
+                                  << none << u"older than Ubuntu 26.04"_s;
     QTest::newRow("arch") << QByteArray("ID=arch\nPRETTY_NAME=\"Arch Linux\"\n") << u"x86_64"_s
                           << none << u"Arch Linux is not one Callie ships packages for"_s;
     QTest::newRow("arm") << QByteArray("ID=fedora\nVERSION_ID=44\n") << u"arm64"_s << none

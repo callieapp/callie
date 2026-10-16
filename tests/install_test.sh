@@ -83,6 +83,18 @@ expect debian "apt-get update"
 expect debian "apt-get install -y ./callie_0.2.1-1_amd64.deb"
 expect debian "would add Callie's repository: /usr/share/keyrings/callie.asc /etc/apt/sources.list.d/callie.sources"
 
+# Ubuntu 26.04 gets the deb built for it, and its own part of the apt repository;
+# Debian keeps its own deb, though Ubuntu's comes first in the release.
+installs_on ID=ubuntu VERSION_ID=26.04 'PRETTY_NAME="Ubuntu 26.04 LTS"'
+expect_status ubuntu 0
+expect ubuntu "/v0.2.1/callie-ubuntu_0.2.1-1~ubuntu26.04_amd64.deb"
+expect ubuntu "sha256 7777777777777777777777777777777777777777777777777777777777777777"
+expect ubuntu "apt-get install -y ./callie-ubuntu_0.2.1-1~ubuntu26.04_amd64.deb"
+expect ubuntu "from https://callieapp.org/callie.asc and https://callieapp.org/deb/callie-ubuntu.sources"
+installs_on ID=debian VERSION_ID=13 'PRETTY_NAME="Debian GNU/Linux 13 (trixie)"'
+refuse "debian deb" "ubuntu"
+expect "debian sources" "https://callieapp.org/deb/callie.sources"
+
 # Testing and unstable carry no version; they are newer than trixie.
 installs_on ID=debian 'PRETTY_NAME="Debian GNU/Linux forky/sid"'
 expect_status "debian testing" 0
@@ -96,8 +108,9 @@ installs_on ID=debian VERSION_ID=12 'PRETTY_NAME="Debian GNU/Linux 12 (bookworm)
 expect_status "debian 12" 1
 expect "debian 12" "older than Debian 13"
 installs_on ID=ubuntu VERSION_ID=24.04 'PRETTY_NAME="Ubuntu 24.04 LTS"'
-expect_status ubuntu 1
-expect ubuntu "Callie needs Qt 6.8"
+expect_status "ubuntu 24.04" 1
+expect "ubuntu 24.04" "older than Ubuntu 26.04"
+expect "ubuntu 24.04" "the Flatpak runs on most systems"
 installs_on ID=arch 'PRETTY_NAME="Arch Linux"'
 expect_status arch 1
 expect arch "not one Callie ships packages for"

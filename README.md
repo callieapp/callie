@@ -15,7 +15,7 @@ for teaching me that Linux calendars don't have to stink!
 
 ## Installation
 
-On Fedora 44 or later, or Debian 13 (trixie) or later, on x86_64:
+On Fedora 44 or later, Debian 13 (trixie) or later, or Ubuntu 26.04 or later, on x86_64:
 
 ```sh
 curl -fsSL https://callieapp.org/install.sh | sh
@@ -42,6 +42,9 @@ sudo curl -fsSLo /usr/share/keyrings/callie.asc https://callieapp.org/callie.asc
 sudo curl -fsSLo /etc/apt/sources.list.d/callie.sources https://callieapp.org/deb/callie.sources
 sudo apt update && sudo apt install callie
 ```
+
+On Ubuntu, the same with `callie-ubuntu.sources` in place of `callie.sources`, for the packages
+built against Ubuntu's own libraries.
 
 The packages can also be downloaded from the release and installed by hand.
 

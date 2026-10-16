@@ -87,6 +87,20 @@
       "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-debugsource-0.2.1-1.fc44.x86_64.rpm"
     },
     {
+      "name": "callie-ubuntu_0.2.1-1~ubuntu26.04_amd64.deb",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "type": "Bot",
+        "site_admin": false
+      },
+      "content_type": "application/x-debian-package",
+      "state": "uploaded",
+      "size": 1924720,
+      "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "browser_download_url": "https://github.com/callieapp/callie/releases/download/v0.2.1/callie-ubuntu_0.2.1-1~ubuntu26.04_amd64.deb"
+    },
+    {
       "name": "callie_0.2.1-1_amd64.deb",
       "label": "",
       "uploader": {

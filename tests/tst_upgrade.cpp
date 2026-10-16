@@ -287,6 +287,11 @@ void TestUpgrade::hintsOnlyWhereWanted()
     check.setDevel(true);
     QVERIFY(hint(u"agenda"_s, false, true, true).line.isEmpty());
     check.setDevel(false);
+    // Nor in a Flatpak.
+    qputenv("CALLIE_FLATPAK", "1");
+    QVERIFY(!check.wanted(true));
+    QVERIFY(hint(u"agenda"_s, false, true, true).line.isEmpty());
+    qputenv("CALLIE_FLATPAK", "0");
     // Up to date, it says nothing; a day on, it asks again.
     QVERIFY(UpdateHint::after(u"agenda"_s, false, true, true, check, QVersionNumber(0, 2, 3))
                 .line.isEmpty());

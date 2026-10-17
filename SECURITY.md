@@ -3,12 +3,12 @@
 ## Supported versions
 
 Fixes go into the latest release only. Please check that a problem still happens on the
-[latest release](https://github.com/callieapp/callie/releases/latest) before reporting it.
+[latest release](https://github.com/greylocklabs/callie/releases/latest) before reporting it.
 
 ## Reporting a vulnerability
 
 Please do not open a public issue. Report it privately through GitHub instead:
-[report a vulnerability](https://github.com/callieapp/callie/security/advisories/new).
+[report a vulnerability](https://github.com/greylocklabs/callie/security/advisories/new).
 
 Include what you can of:
 

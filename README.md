@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/callieapp/callie/main/assets/logo.svg"
+<img src="https://raw.githubusercontent.com/greylocklabs/callie/main/assets/logo.svg"
      width="48" height="48" alt="Callie logo" />
 
 # callie
@@ -21,7 +21,7 @@ On Fedora 44 or later, Debian 13 (trixie) or later, or Ubuntu 26.04 or later, on
 curl -fsSL https://callieapp.org/install.sh | sh
 ```
 
-It finds the latest [GitHub release](https://github.com/callieapp/callie/releases), checks the
+It finds the latest [GitHub release](https://github.com/greylocklabs/callie/releases), checks the
 package against the checksum GitHub records for it, and installs it with `dnf` or `apt`. On any
 other system it stops before changing anything. Run again, it updates Callie, or says it is up to
 date. `sh -s -- --dry-run` shows what it would do, `--version 0.2.1` installs that version, older

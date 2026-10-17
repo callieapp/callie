@@ -83,7 +83,7 @@ QUrl ReleaseInfo::terms() const
 
 QUrl ReleaseInfo::source() const
 {
-    return QUrl(u"https://github.com/callieapp/callie"_s);
+    return QUrl(u"https://github.com/greylocklabs/callie"_s);
 }
 
 QUrl ReleaseInfo::support() const
@@ -93,7 +93,7 @@ QUrl ReleaseInfo::support() const
 
 QUrl ReleaseInfo::history() const
 {
-    return QUrl(u"https://github.com/callieapp/callie/blob/main/CHANGELOG.md"_s);
+    return QUrl(u"https://github.com/greylocklabs/callie/blob/main/CHANGELOG.md"_s);
 }
 
 bool ReleaseInfo::takeUpdateNotice()

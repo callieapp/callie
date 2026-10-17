@@ -3,6 +3,13 @@
 What changed in each version of Callie, for the people using it. Notes collect under Unreleased
 as changes land, and `make release` dates them; see [RELEASING.md](RELEASING.md).
 
+## Unreleased
+
+### Changed
+
+- Callie's source and releases moved to <https://github.com/greylocklabs/callie>. Updates, the
+  installer and bug reports use the new address; the old one redirects there.
+
 ## 0.5.6 - 2026-10-16
 
 ### Fixed

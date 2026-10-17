@@ -12,7 +12,7 @@
 # the system's.
 set -eu
 
-repo="callieapp/callie"
+repo="greylocklabs/callie"
 dry_run=0
 force=0
 version=""

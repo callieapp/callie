@@ -15,7 +15,7 @@ _ftxui=7.0.3
 _google_client_id=''
 _google_client_secret=''
 makedepends=(cmake ninja)
-source=("https://github.com/callieapp/callie/releases/download/v$pkgver/$pkgname-$pkgver.tar.xz"
+source=("https://github.com/greylocklabs/callie/releases/download/v$pkgver/$pkgname-$pkgver.tar.xz"
         "ftxui-$_ftxui.tar.gz::https://github.com/ArthurSonzogni/FTXUI/archive/refs/tags/v$_ftxui.tar.gz")
 sha256sums=('fc00f1e1bf0c8ac033b498967cb85c52ebe750e26a04f6ead8b147c5d2854d81'
             'e7c62ffe19009759821b4f0f8df7f2a6fb83784c3a9f1477d81f56d3ee723c88')

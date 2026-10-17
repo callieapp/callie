@@ -9,3 +9,4 @@ node_modules/
 google-oauth-credentials.json
 packaging/flatpak/org.callieapp.Callie.Devel.yml
 .flatpak-builder/
+SCRATCHPAD.md

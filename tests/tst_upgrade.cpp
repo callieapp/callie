@@ -69,7 +69,7 @@ QJsonObject TestUpgrade::release(const QString &version, bool prerelease) const
     }
     return {{u"tag_name"_s, u"v"_s + version},
             {u"prerelease"_s, prerelease},
-            {u"html_url"_s, u"https://github.com/callieapp/callie/releases/v"_s + version},
+            {u"html_url"_s, u"https://github.com/greylocklabs/callie/releases/v"_s + version},
             {u"assets"_s, assets}};
 }
 

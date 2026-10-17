@@ -6,7 +6,7 @@ Summary:        An elegant calendar for Linux
 # The bundled Nunito and Fraunces fonts are OFL-1.1.
 License:        MIT AND OFL-1.1
 URL:            https://callieapp.org
-Source0:        https://github.com/callieapp/callie/releases/download/v%{version}/%{name}-%{version}.tar.xz
+Source0:        https://github.com/greylocklabs/callie/releases/download/v%{version}/%{name}-%{version}.tar.xz
 
 BuildRequires:  cmake >= 3.28
 BuildRequires:  gcc-c++

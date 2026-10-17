@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: callie
 Upstream-Contact: Lara Kelley <hello@callieapp.org>
-Source: https://github.com/callieapp/callie
+Source: https://github.com/greylocklabs/callie
 
 Files: *
 Copyright: 2026 Lara Kelley

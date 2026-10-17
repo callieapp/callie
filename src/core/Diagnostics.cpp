@@ -194,7 +194,7 @@ void collect(TokenStore &tokens, const QString &extra, std::function<void(QStrin
 QUrl issueUrl(const QString &report)
 {
     const auto build = [](const QString &body) {
-        QUrl url(QStringLiteral("https://github.com/callieapp/callie/issues/new"));
+        QUrl url(QStringLiteral("https://github.com/greylocklabs/callie/issues/new"));
         QUrlQuery query;
         query.addQueryItem(QStringLiteral("template"), QStringLiteral("bug_report.yml"));
         query.addQueryItem(QStringLiteral("diagnostics"), body);

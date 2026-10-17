@@ -1,14 +1,10 @@
 #!/bin/sh
-# Jot installer - https://callieapp.org/jot
-#
-#   curl -fsSL https://callieapp.org/jot/install.sh | sh
-#   curl -fsSL https://callieapp.org/jot/install.sh | sh -s -- --dry-run
-#
-# Runs the installer from Jot's latest release, which lives with Jot's source, so it
-# always matches the packages it installs. Options are passed along to it.
+# Jot's installer moved to https://jotwriter.org/install.sh. This address keeps
+# working for copies of Jot and instructions that still name it, and runs the
+# installer from there. Options are passed along to it.
 set -eu
 
-url="https://github.com/callieapp/jot/releases/latest/download/install.sh"
+url="https://jotwriter.org/install.sh"
 if ! script="$(curl --proto '=https' --tlsv1.2 -fsSL "$url")"; then
     printf 'jot: could not download the installer from %s\n' "$url" >&2
     exit 1

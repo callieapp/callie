@@ -22,13 +22,13 @@
 </header>
 
 <h1>Privacy Policy</h1>
-<p class="meta">Last updated: 15 October 2026</p>
+<p class="meta">Last updated: 17 October 2026</p>
 
 <h2>Summary</h2>
 <p>
   Callie is a desktop application that runs entirely on your computer. It has no servers,
-  no accounts, and no analytics. It does not collect, transmit, or sell your data. Your
-  calendar information travels between your computer and the calendar providers you
+  no accounts, no analytics, and no AI. It does not collect, transmit, or sell your data.
+  Your calendar information travels between your computer and the calendar providers you
   choose to connect, and nowhere else. Two things reach other services, and you can turn
   either off: place search, which sends what you type as an event's place to a map search
   service, and a daily check for a new release, which asks GitHub for Callie's latest
@@ -107,6 +107,24 @@
   <li>Google and Microsoft sign-in tokens and CalDAV app passwords are stored in your system keyring through the Secret Service API, not in plain text.</li>
   <li>Nothing is stored on any server operated by Callie, because there is none.</li>
 </ul>
+
+<h2>How your data is protected</h2>
+<ul>
+  <li>Callie talks to Google and Microsoft directly from your computer, over HTTPS, so your data is encrypted on the way and passes through no server of ours.</li>
+  <li>Signing in happens in your web browser, on Google's or Microsoft's own page; Callie never sees your password. The sign-in uses PKCE and returns only to Callie on your own computer.</li>
+  <li>Sign-in tokens and app passwords are kept in your system keyring, which stores them encrypted, and never in plain text or in logs.</li>
+  <li>Everything else Callie keeps, such as cached events and contact names, stays in your user directory on your computer. Apart from the place text that place search sends, none of it is copied anywhere else.</li>
+  <li>Disconnecting an account deletes its cached data and its stored token.</li>
+</ul>
+
+<h2>No AI</h2>
+<p>
+  Callie has no AI features and does not use, include, or connect to any artificial
+  intelligence or machine learning service or model, whether run by another company or on
+  your own computer. Nothing you keep in Callie, and no data from Google, Microsoft or any
+  other account you connect, is sent to an AI service or used to develop, improve or train
+  AI or machine learning models.
+</p>
 
 <h2>Google API Limited Use disclosure</h2>
 <p>

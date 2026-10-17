@@ -42,6 +42,13 @@
   </categories>
 
   <releases>
+    <release version="0.5.7" date="2026-10-17">
+      <description>
+        <ul>
+          <li>Callie's source and releases moved to &lt;https://github.com/greylocklabs/callie&gt;. Updates, the installer and bug reports use the new address; the old one redirects there.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.6" date="2026-10-16">
       <description>
         <ul>

@@ -4,6 +4,9 @@
 globs:
   - "**/*.md"
 
+# Skip files git ignores, such as local notes
+gitignore: true
+
 # Globs to ignore
 ignores:
   - node_modules/**
